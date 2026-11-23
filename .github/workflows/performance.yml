@@ -52,6 +52,8 @@ jobs:
             echo "::error title=Lighthouse CI output::$details"
           fi
           exit "$result"
+      - name: Summarize representative Lighthouse results
+        run: node scripts/summarize-lighthouse.mjs
       - name: Upload reports for review
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
