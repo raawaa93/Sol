@@ -1,0 +1,15 @@
+{
+  "ci": {
+    "collect": {
+      "staticDistDir": "dist",
+      "numberOfRuns": 3
+    },
+    "assert": {
+      "assertions": {}
+    },
+    "upload": {
+      "target": "filesystem",
+      "outputDir": ".lighthouseci"
+    }
+  }
+}

@@ -44,6 +44,7 @@ test('Binance proxy maps only approved market-data endpoints to the fixed Binanc
     ['endpoint=ticker', '/eapi/v1/ticker'],
     ['endpoint=index&underlying=BTCUSDT', '/eapi/v1/index?underlying=BTCUSDT'],
     ['endpoint=openInterest&underlyingAsset=BTC&expiration=261225', '/eapi/v1/openInterest?underlyingAsset=BTC&expiration=261225'],
+    ['endpoint=depth&symbol=BTC-261225-100000-C&limit=20', '/eapi/v1/depth?symbol=BTC-261225-100000-C&limit=20'],
   ];
 
   for (const [query, expected] of cases) {
@@ -61,6 +62,11 @@ test('Binance proxy rejects trade paths, arbitrary URLs, unknown and malformed p
     'endpoint=index&underlying=BTC%2F..%2Forder',
     'endpoint=openInterest&underlyingAsset=BTC&expiration=tomorrow',
     'endpoint=mark&symbol=BTC-261225-100000-C',
+    'endpoint=depth&symbol=BTC-261225-100000-C&limit=1000',
+    'endpoint=depth&symbol=BTC-261225-100000-C&limit=20&url=https%3A%2F%2Fevil.example',
+    'endpoint=depth&symbol=BTC-261225-%2Fdepth-C&limit=20',
+    'endpoint=depth&limit=20',
+    'endpoint=depth&symbol=BTC-261225-100000-C&limit=20&limit=20',
     'endpoint=mark&endpoint=ticker',
   ];
 
@@ -82,6 +88,7 @@ test('Binance proxy enables browser CORS only for the published app origin', () 
   assert.equal(getCorsHeaders(null).get('Access-Control-Allow-Origin'), null);
   assert.equal(getCacheSeconds('exchangeInfo'), 60);
   assert.equal(getCacheSeconds('openInterest'), 15);
+  assert.equal(getCacheSeconds('depth'), 2);
 });
 
 test('Binance proxy answers preflight and serves fixed-host JSON with the app CORS origin', async () => {

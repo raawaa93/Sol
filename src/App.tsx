@@ -33,9 +33,10 @@ import DeferredVolatilityCharts from './components/DeferredVolatilityCharts';
 import DeferredPayoffChart from './components/DeferredPayoffChart';
 import GreeksPanel from './components/GreeksPanel';
 import OpportunityReview from './components/OpportunityReview';
+import MarketDepthPanel from './components/MarketDepthPanel';
 import { DEMO_MARKETS, DEMO_QUOTES, getExpiryChoices } from './lib/demo';
-import { fetchBinanceOptions } from './lib/binance';
-import type { BinanceOptionsSnapshot } from './lib/binance';
+import { fetchBinanceDepth, fetchBinanceOptions } from './lib/binance';
+import type { BinanceDepthSnapshot, BinanceOptionsSnapshot } from './lib/binance';
 import { getLatestQuotePerContract, getMarketSnapshotFromQuotes } from './lib/market';
 import { downloadCsv, downloadCsvTemplate, MAX_CSV_FILE_BYTES, parseOptionsCsv } from './lib/csv';
 import type { CsvTimestampRange } from './lib/csv';
@@ -188,6 +189,10 @@ function App() {
   const [binanceSnapshot, setBinanceSnapshot] = useState<BinanceOptionsSnapshot | null>(null);
   const [binanceLoading, setBinanceLoading] = useState(false);
   const [binanceError, setBinanceError] = useState('');
+  const [binanceDepth, setBinanceDepth] = useState<BinanceDepthSnapshot | null>(null);
+  const [binanceDepthLoading, setBinanceDepthLoading] = useState(false);
+  const [binanceDepthError, setBinanceDepthError] = useState('');
+  const [binanceDepthRefreshKey, setBinanceDepthRefreshKey] = useState(0);
   const [importedAt, setImportedAt] = useState<Date | null>(null);
   const [sourceTimeRange, setSourceTimeRange] = useState<CsvTimestampRange | null>(null);
   const [activeView, setActiveView] = useState('overview');
@@ -205,6 +210,7 @@ function App() {
   const [showAssumptions, setShowAssumptions] = useState(false);
   const uploadRef = useRef<HTMLInputElement>(null);
   const binanceRequestId = useRef(0);
+  const binanceDepthRequestId = useRef(0);
 
   const expiryChoices = useMemo(() => getExpiryChoices(quotes, underlying), [quotes, underlying]);
   const selectedExpiryExists = expiryChoices.some((item) => item.value === selectedExpiry);
@@ -236,6 +242,62 @@ function App() {
       ?? quotes[0]
       ?? DEMO_QUOTES[0];
   }, [assetQuotes, effectiveExpiry, filteredQuotes, quotes, selectedId, selectedType, underlying]);
+
+  useEffect(() => {
+    if (dataMode !== 'BINANCE') {
+      binanceDepthRequestId.current += 1;
+      setBinanceDepth(null);
+      setBinanceDepthError('');
+      setBinanceDepthLoading(false);
+      return;
+    }
+
+    if (!binanceSnapshot) {
+      binanceDepthRequestId.current += 1;
+      setBinanceDepth(null);
+      setBinanceDepthError('');
+      setBinanceDepthLoading(false);
+      return;
+    }
+    if (!binanceSnapshot.quotes.some((quote) => quote.symbol === selectedQuote.symbol)) {
+      binanceDepthRequestId.current += 1;
+      setBinanceDepth(null);
+      setBinanceDepthError('العقد المحدد لا ينتمي إلى لقطة Binance المحمّلة.');
+      setBinanceDepthLoading(false);
+      return;
+    }
+
+    const proxyUrl = import.meta.env.VITE_BINANCE_PROXY_URL;
+    if (!proxyUrl) {
+      setBinanceDepth(null);
+      setBinanceDepthError('عنوان وسيط Binance غير مهيأ في هذا البناء.');
+      setBinanceDepthLoading(false);
+      return;
+    }
+
+    const requestId = ++binanceDepthRequestId.current;
+    const controller = new AbortController();
+    let active = true;
+    setBinanceDepth(null);
+    setBinanceDepthError('');
+    setBinanceDepthLoading(true);
+    fetchBinanceDepth(selectedQuote.symbol, proxyUrl, controller.signal)
+      .then((snapshot) => {
+        if (active && requestId === binanceDepthRequestId.current) setBinanceDepth(snapshot);
+      })
+      .catch((error: unknown) => {
+        if (!active || requestId !== binanceDepthRequestId.current || controller.signal.aborted) return;
+        setBinanceDepthError(error instanceof Error ? error.message : String(error));
+      })
+      .finally(() => {
+        if (active && requestId === binanceDepthRequestId.current) setBinanceDepthLoading(false);
+      });
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [binanceDepthRefreshKey, binanceSnapshot?.fetchedAt, dataMode, selectedQuote.symbol]);
 
   useEffect(() => {
     if (filteredQuotes.length && !filteredQuotes.some((quote) => quote.id === selectedId)) setSelectedId(filteredQuotes[0].id);
@@ -716,6 +778,11 @@ function App() {
                 {dataMode === 'BINANCE' && <div className="contract-specs"><span><small>وحدة العقد</small><b>{formatSmallNumber(selectedQuote.unit)} {selectedQuote.underlying}</b></span><span><small>حد الكمية</small><b>{selectedQuote.minQty === undefined ? '—' : formatQuantity(selectedQuote.minQty, selectedQuote)} – {selectedQuote.maxQty === undefined ? '—' : formatQuantity(selectedQuote.maxQty, selectedQuote)}</b></span><span><small>رسوم taker</small><b>{selectedQuote.takerFeeRate === undefined ? '—' : formatPercent(selectedQuote.takerFeeRate, 2)}</b></span></div>}
                 <div className="price-highlight"><span>{dataMode === 'BINANCE' ? 'سعر العقد المرجعي' : 'السعر المرجعي التقديري'}</span><strong>{formatOptionPrice(selectedPremium, selectedQuote)}</strong><small>{priceBasis}</small></div>
                 <div className="quote-row"><span>Bid <b>{formatQuotePrice(selectedQuote.bid, selectedQuote)}</b></span><span>Ask <b>{formatQuotePrice(selectedQuote.ask, selectedQuote)}</b></span></div>
+                {dataMode === 'BINANCE' && <div className="iv-source-range" aria-label="قيم IV المتاحة للعقد">
+                  <span>Bid IV <b>{selectedQuote.bidIv === undefined ? '—' : formatPercent(selectedQuote.bidIv)}</b></span>
+                  <span>{selectedQuote.estimatedFields?.includes('iv') ? 'IV مقدرة' : 'Mark IV'} <b>{formatPercent(selectedQuote.iv)}</b></span>
+                  <span>Ask IV <b>{selectedQuote.askIv === undefined ? '—' : formatPercent(selectedQuote.askIv)}</b></span>
+                </div>}
                 <div className="quote-quality"><span>الفارق السعري</span><span className={`quality-badge ${!Number.isFinite(spreadPct) ? 'unknown' : spreadPct > 10 ? 'bad' : spreadPct > 4 ? 'warn' : 'good'}`}><i />{Number.isFinite(spreadPct) ? `${quoteQuality} · ${spreadPct.toFixed(1)}%` : 'غير متاح · يلزم Bid وAsk'}</span></div>
                 <div className="analysis-divider" />
                 <div className="input-grid">
@@ -733,6 +800,14 @@ function App() {
                 <div className="no-signal"><ShieldAlert size={15} /><span>لا يصدر المختبر توصية شراء أو بيع.</span></div>
               </aside>
             </div>
+            {dataMode === 'BINANCE' && <MarketDepthPanel
+              quote={selectedQuote}
+              quantity={safeQuantity}
+              depth={binanceDepth}
+              loading={binanceDepthLoading}
+              error={binanceDepthError}
+              onRefresh={() => setBinanceDepthRefreshKey((value) => value + 1)}
+            />}
           </section>
 
           <GreeksPanel quote={selectedQuote} quantity={safeQuantity} dataMode={dataMode} />

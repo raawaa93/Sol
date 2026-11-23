@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { fetchBinanceOptions, normalizeBinanceSnapshot } from './binance.ts';
-import { getMidPrice } from './options.ts';
+import { fetchBinanceDepth, fetchBinanceOptions, normalizeBinanceDepth, normalizeBinanceSnapshot } from './binance.ts';
+import { blackScholes, getMidPrice } from './options.ts';
 
 function compactDate(timestamp: number): string {
   return new Intl.DateTimeFormat('en-GB', {
@@ -44,7 +44,7 @@ test('Binance snapshot normalizer merges the active option universe and public m
         { symbol: `BTC-${code}-100000-P`, underlying: 'BTCUSDT', quoteAsset: 'USDT', side: 'PUT', strikePrice: '100000', expiryDate: expiry, unit: 1, status: 'HALT' },
       ],
     },
-    marks: [{ symbol, markPrice: '5000', markIV: '0.55', delta: '0.61', riskFreeInterest: '0.02' }],
+    marks: [{ symbol, markPrice: '5000', bidIV: '0.52', askIV: '0.58', markIV: '0.55', delta: '0.61', gamma: '0.00003', theta: '-25', vega: '49', riskFreeInterest: '0.02' }],
     tickers: [{ symbol, bidPrice: '4900', askPrice: '5100', volume: '12', amount: '60000', closeTime: now - 1000 }],
     indices: [{ requestedUnderlying: 'BTCUSDT', item: { underlying: 'BTCUSDT', indexPrice: '104000', time: now - 1000 } }],
     openInterest: [{ symbol, sumOpenInterest: '25', sumOpenInterestUsd: '2600000', timestamp: String(now - 2000) }],
@@ -64,6 +64,12 @@ test('Binance snapshot normalizer merges the active option universe and public m
   assert.equal(snapshot.quotes[0].maxQty, 100);
   assert.equal(snapshot.quotes[0].priceSource, 'MARK');
   assert.equal(snapshot.quotes[0].delta, 0.61);
+  assert.equal(snapshot.quotes[0].bidIv, 0.52);
+  assert.equal(snapshot.quotes[0].askIv, 0.58);
+  assert.deepEqual(snapshot.quotes[0].unverifiedSourceGreeks, {
+    delta: 0.61, gamma: 0.00003, theta: -25, vega: 49,
+  });
+  assert.equal(snapshot.quotes[0].gamma, blackScholes(snapshot.quotes[0].spot, snapshot.quotes[0].strike, snapshot.quotes[0].daysToExpiry, snapshot.quotes[0].iv, 'CALL', 0.02).gamma);
   assert.equal(snapshot.quotes[0].quoteAsset, 'USDT');
   assert.equal(snapshot.quotes[0].filters?.[0].tickSize, '0.1');
 });

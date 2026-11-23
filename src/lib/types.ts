@@ -12,6 +12,14 @@ export interface OptionFilter {
   stepSize?: string;
 }
 
+export interface UnverifiedSourceGreeks {
+  /** Raw exchange values kept for diagnostics only; units are not normalised or used in calculations. */
+  delta?: number;
+  gamma?: number;
+  theta?: number;
+  vega?: number;
+}
+
 export interface OptionQuote {
   id: string;
   symbol: string;
@@ -27,6 +35,12 @@ export interface OptionQuote {
   markPrice: number;
   priceSource?: QuotePriceSource;
   iv: number;
+  /** Exchange-provided IV at the best bid, in annual decimal units. */
+  bidIv?: number;
+  /** Exchange-provided IV at the best ask, in annual decimal units. */
+  askIv?: number;
+  /** Unmodified source Greeks retained for audit; never used by the pricing model. */
+  unverifiedSourceGreeks?: UnverifiedSourceGreeks;
   delta: number;
   gamma: number;
   theta: number;

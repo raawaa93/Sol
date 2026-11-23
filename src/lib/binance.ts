@@ -38,9 +38,35 @@ interface BinanceExchangeInfo {
 interface BinanceMark {
   symbol?: string;
   markPrice?: string | number;
+  bidIV?: string | number;
+  askIV?: string | number;
   markIV?: string | number;
   delta?: string | number;
+  gamma?: string | number;
+  theta?: string | number;
+  vega?: string | number;
   riskFreeInterest?: string | number;
+}
+
+interface BinanceDepthResponse {
+  lastUpdateId?: number | string;
+  T?: number | string;
+  bids?: Array<[string | number, string | number]>;
+  asks?: Array<[string | number, string | number]>;
+}
+
+export interface BinanceDepthLevel {
+  price: number;
+  quantity: number;
+}
+
+export interface BinanceDepthSnapshot {
+  symbol: string;
+  lastUpdateId?: number;
+  transactionTime?: number;
+  fetchedAt: number;
+  bids: BinanceDepthLevel[];
+  asks: BinanceDepthLevel[];
 }
 
 interface BinanceTicker {
@@ -194,6 +220,15 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
     const oneSidedQuote = !crossedQuote ? (bid > 0 ? bid : ask > 0 ? ask : undefined) : undefined;
     const observedPrice = observedMark ?? twoSidedMid ?? lastPrice ?? oneSidedQuote;
     const observedIv = positiveNumber(mark?.markIV);
+    const bidIv = positiveNumber(mark?.bidIV);
+    const askIv = positiveNumber(mark?.askIV);
+    const sourceGreeks = {
+      delta: finiteNumber(mark?.delta),
+      gamma: finiteNumber(mark?.gamma),
+      theta: finiteNumber(mark?.theta),
+      vega: finiteNumber(mark?.vega),
+    };
+    const hasSourceGreeks = Object.values(sourceGreeks).some((value) => value !== undefined);
     const observedRiskFreeRate = finiteNumber(mark?.riskFreeInterest);
     const riskFreeRate = observedRiskFreeRate ?? 0;
     const referencePrice = twoSidedMid ?? observedMark ?? lastPrice ?? oneSidedQuote;
@@ -224,8 +259,8 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       estimatedFields.push('riskFreeRate');
     }
     // Delta is dimensionless. Model Greeks use per-day theta and per 1-point vega/rho units.
-    const delta = finiteNumber(mark?.delta) ?? model.delta;
-    if (finiteNumber(mark?.delta) === undefined) estimatedFields.push('delta');
+    const delta = sourceGreeks.delta ?? model.delta;
+    if (sourceGreeks.delta === undefined) estimatedFields.push('delta');
     estimatedFields.push('gamma', 'theta', 'vega', 'rho');
 
     const expiry = new Date(expiryDate).toISOString();
@@ -252,6 +287,9 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       markPrice,
       priceSource,
       iv,
+      bidIv,
+      askIv,
+      unverifiedSourceGreeks: hasSourceGreeks ? sourceGreeks : undefined,
       delta,
       gamma: model.gamma,
       theta: model.thetaPerDay,
@@ -299,7 +337,34 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
   return { quotes, fetchedAt, serverTime, availableAssets, activeSymbols: activeSymbols.length, warnings };
 }
 
-async function getJson<T>(path: string, params?: Record<string, string>, proxyUrl?: string): Promise<T> {
+export function normalizeBinanceDepth(
+  payload: BinanceDepthResponse,
+  symbol: string,
+  fetchedAt = Date.now(),
+): BinanceDepthSnapshot {
+  const normalizeLevels = (levels: BinanceDepthResponse['bids']) => (levels ?? [])
+    .filter((level): level is [string | number, string | number] => Array.isArray(level) && level.length >= 2)
+    .map(([rawPrice, rawQuantity]) => ({ price: finiteNumber(rawPrice), quantity: finiteNumber(rawQuantity) }))
+    .filter((level): level is BinanceDepthLevel => level.price !== undefined && level.price > 0
+      && level.quantity !== undefined && level.quantity > 0)
+    .sort((a, b) => b.price - a.price);
+
+  return {
+    symbol,
+    lastUpdateId: finiteNumber(payload.lastUpdateId),
+    transactionTime: finiteNumber(payload.T),
+    fetchedAt,
+    bids: normalizeLevels(payload.bids),
+    asks: normalizeLevels(payload.asks).sort((a, b) => a.price - b.price),
+  };
+}
+
+async function getJson<T>(
+  path: string,
+  params?: Record<string, string>,
+  proxyUrl?: string,
+  externalSignal?: AbortSignal,
+): Promise<T> {
   let url: URL;
   if (proxyUrl) {
     const endpoint = path.match(/^\/eapi\/v1\/([a-zA-Z]+)$/)?.[1];
@@ -311,6 +376,9 @@ async function getJson<T>(path: string, params?: Record<string, string>, proxyUr
   }
   Object.entries(params ?? {}).forEach(([key, value]) => url.searchParams.set(key, value));
   const controller = new AbortController();
+  const abortFromCaller = () => controller.abort();
+  if (externalSignal?.aborted) controller.abort();
+  else externalSignal?.addEventListener('abort', abortFromCaller, { once: true });
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
     const response = await fetch(url, { method: 'GET', headers: { Accept: 'application/json' }, signal: controller.signal });
@@ -334,7 +402,25 @@ async function getJson<T>(path: string, params?: Record<string, string>, proxyUr
     return payload as T;
   } finally {
     clearTimeout(timeout);
+    externalSignal?.removeEventListener('abort', abortFromCaller);
   }
+}
+
+export async function fetchBinanceDepth(
+  symbol: string,
+  proxyUrl?: string,
+  signal?: AbortSignal,
+): Promise<BinanceDepthSnapshot> {
+  if (!/^[A-Z0-9]{2,16}-\d{6}-\d+(?:\.\d+)?-[CP]$/.test(symbol)) {
+    throw new Error('Invalid Binance option symbol for order-book depth.');
+  }
+  const payload = await getJson<BinanceDepthResponse>(
+    '/eapi/v1/depth',
+    { symbol, limit: '20' },
+    proxyUrl,
+    signal,
+  );
+  return normalizeBinanceDepth(payload, symbol, Date.now());
 }
 
 async function mapWithConcurrency<T, R>(items: T[], concurrency: number, mapper: (item: T) => Promise<R>): Promise<R[]> {

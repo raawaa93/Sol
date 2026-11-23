@@ -117,7 +117,7 @@ export default function OpportunityReview({ quotes, market, underlying, dataMode
           <div><span className="section-kicker">REVIEW QUEUE · {underlying}</span><h3>عقود للتمحيص، لا للشراء التلقائي</h3></div>
           <span>{candidates.length ? `${candidates.length} عقود ثنائية الجانب` : 'لا توجد عروض مكتملة'}</span>
         </div>
-        <p className="watchlist-method">يفضّل الماسح استحقاق 20–40 يوماً و|Delta| بين 0.25 و0.75 إن توفرا، ثم يرتب وفق ضيق Bid/Ask، فالفائدة المفتوحة والحجم. المقارنة داخل السلسلة الحالية فقط؛ لا تحسب ربحاً متوقعاً.</p>
+        <p className="watchlist-method">يفضّل الماسح استحقاق 20–40 يوماً و|Delta| بين 0.25 و0.75 إن توفرا، ثم يرتب وفق ضيق Bid/Ask، فالفائدة المفتوحة والحجم. هذا ترتيب أولي لا يدخل عمق دفتر الأوامر ولا يحسب ربحاً متوقعاً؛ افتح عقد Binance لمراجعة لقطة أفضل 20 مستوى والحجم الظاهر قبل الحكم على قابلية التنفيذ.</p>
         {candidates.length ? <div className="review-candidate-grid">
           {candidates.map((quote) => {
             const spread = getSpreadPct(quote);

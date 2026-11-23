@@ -6,6 +6,7 @@ const ENDPOINTS = {
   ticker: { path: '/eapi/v1/ticker', params: [] as const, cacheSeconds: 5 },
   index: { path: '/eapi/v1/index', params: ['underlying'] as const, cacheSeconds: 5 },
   openInterest: { path: '/eapi/v1/openInterest', params: ['underlyingAsset', 'expiration'] as const, cacheSeconds: 15 },
+  depth: { path: '/eapi/v1/depth', params: ['symbol', 'limit'] as const, cacheSeconds: 2 },
 } as const;
 
 export type BinanceMarketEndpoint = keyof typeof ENDPOINTS;
@@ -65,6 +66,12 @@ export function buildBinanceUpstreamUrl(query: URLSearchParams): URL {
     }
     if (name === 'expiration' && (value.length !== 6 || [...value].some((character) => character < '0' || character > '9'))) {
       throw new ProxyRequestError('Invalid expiration date.');
+    }
+    if (name === 'symbol' && !/^[A-Z0-9]{2,16}-\d{6}-\d+(?:\.\d+)?-[CP]$/.test(value)) {
+      throw new ProxyRequestError('Invalid option symbol for order-book depth.');
+    }
+    if (name === 'limit' && value !== '20') {
+      throw new ProxyRequestError('Only a 20-level order-book snapshot is supported.');
     }
     upstream.searchParams.set(name, value);
   }

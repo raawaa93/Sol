@@ -106,6 +106,16 @@ export default function GreeksPanel({ quote, quantity, dataMode }: GreeksPanelPr
           ))}
         </div>
         <div className="greeks-footnote"><Info size={14} /><span>ΔP تقريب محلي: Delta·ΔSpot + ½Gamma·ΔSpot² + Vega·ΔIV + Theta·الأيام + Rho·Δالفائدة، مضروباً في الكمية ووحدة العقد. يفترض ثبات العوامل الأخرى ويهمل Vanna/Charm والتفاعلات والابتسامة والتقلب المحقق والرسوم والتنفيذ؛ لا تجمعه مع سيناريو الانتهاء كأنه توقع. {dataMode === 'BINANCE' ? 'Delta قد يأتي من Binance، أما Gamma/Theta/Vega/Rho فتحسب بنموذج Black–Scholes؛ ووحدة معدل الفائدة تحتاج تحققاً.' : dataMode === 'CSV' ? 'وحدات Greeks الواردة في CSV يجب أن تتبع القالب؛ الحقول الناقصة مقدّرة.' : 'كل مدخلات Demo والأسعار اصطناعية، والـGreeks محسوبة بنموذج Black–Scholes.'}</span></div>
+        {quote.unverifiedSourceGreeks && <details className="source-greek-raw">
+          <summary>قيم Greeks الخام من Binance لأغراض التدقيق فقط</summary>
+          <p>لا تدخل هذه القيم في حساب الحساسية. يحتفظ بها المختبر كما وردت؛ لم تُطبع وحداتها أو تُثبت مقابل مضاعف كل عقد.</p>
+          <div className="source-greek-values" dir="ltr">
+            {(['delta', 'gamma', 'theta', 'vega'] as const).map((key) => {
+              const raw = quote.unverifiedSourceGreeks?.[key];
+              return <span key={key}><small>{key}</small><strong>{raw === undefined ? '—' : formatSmallNumber(raw)}</strong></span>;
+            })}
+          </div>
+        </details>}
       </article>
     </section>
   );
