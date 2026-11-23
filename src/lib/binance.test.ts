@@ -124,6 +124,55 @@ test('Binance client requests public exchange and market data endpoints and maps
   }
 });
 
+test('Binance client routes all public market data through the configured proxy', async () => {
+  const now = Date.now();
+  const expiry = now + 28 * 86_400_000;
+  const expiryCode = compactDate(expiry);
+  const symbol = `BTC-${expiryCode}-100000-C`;
+  const proxyRoot = 'https://oyoyozdugicmnkfhjovo.supabase.co/functions/v1/volterra-binance-market-data';
+  const requestedUrls: URL[] = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const url = new URL(String(input));
+    requestedUrls.push(url);
+    const endpoint = url.searchParams.get('endpoint');
+    let payload: unknown;
+    if (endpoint === 'exchangeInfo') {
+      payload = {
+        serverTime: now,
+        optionContracts: [{ baseAsset: 'BTC', quoteAsset: 'USDT', underlying: 'BTCUSDT' }],
+        optionSymbols: [{ symbol, underlying: 'BTCUSDT', quoteAsset: 'USDT', side: 'CALL', strikePrice: 100000, expiryDate: expiry, unit: 1, status: 'TRADING' }],
+      };
+    } else if (endpoint === 'mark') {
+      payload = [{ symbol, markPrice: 5000, markIV: 0.5, delta: 0.55, riskFreeInterest: 0 }];
+    } else if (endpoint === 'ticker') {
+      payload = [{ symbol, bidPrice: 4900, askPrice: 5100, volume: 10, amount: 50000, closeTime: now }];
+    } else if (endpoint === 'index') {
+      payload = [{ underlying: 'BTCUSDT', indexPrice: 100000, time: now }];
+    } else if (endpoint === 'openInterest') {
+      payload = [{ symbol, sumOpenInterest: 5, sumOpenInterestUsd: 500000, timestamp: now }];
+    } else {
+      throw new Error(`Unexpected proxy URL ${url}`);
+    }
+    return new Response(JSON.stringify(payload), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  };
+
+  try {
+    const snapshot = await fetchBinanceOptions(proxyRoot);
+    assert.equal(snapshot.quotes.length, 1);
+    assert.equal(snapshot.quotes[0].openInterestUsd, 500000);
+    assert.ok(requestedUrls.length >= 5);
+    assert.ok(requestedUrls.every((url) => url.origin === new URL(proxyRoot).origin));
+    assert.ok(requestedUrls.every((url) => url.pathname === new URL(proxyRoot).pathname));
+    assert.ok(requestedUrls.some((url) => url.searchParams.get('endpoint') === 'index' && url.searchParams.get('underlying') === 'BTCUSDT'));
+    assert.ok(requestedUrls.some((url) => url.searchParams.get('endpoint') === 'openInterest'
+      && url.searchParams.get('underlyingAsset') === 'BTC'
+      && url.searchParams.get('expiration') === expiryCode));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('Binance normalizer models a reference price only when IV is observed and no market price exists', () => {
   const now = Date.now();
   const expiry = now + 45 * 86_400_000;

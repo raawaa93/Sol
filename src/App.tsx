@@ -334,7 +334,7 @@ function App() {
     setBinanceLoading(true);
     setBinanceError('');
     try {
-      const snapshot = await fetchBinanceOptions();
+      const snapshot = await fetchBinanceOptions(import.meta.env.VITE_BINANCE_PROXY_URL);
       if (requestId !== binanceRequestId.current) return;
       const nextUnderlying = snapshot.availableAssets.includes(underlying)
         ? underlying
@@ -550,7 +550,7 @@ function App() {
         <div className="nav-caption">مصدر البيانات</div>
         <div className="source-card">
           <div className="source-icon"><Database size={16} /></div>
-          <div className="source-copy"><strong>{dataMode === 'DEMO' ? 'بيانات تجريبية' : dataMode === 'CSV' ? 'ملف محلي مستورد' : 'Binance Options'}</strong><span>{dataMode === 'DEMO' ? 'ليست أسعاراً حية' : dataMode === 'CSV' ? 'لا يغادر جهازك' : 'بيانات عامة بلا مفتاح'}</span></div>
+          <div className="source-copy"><strong>{dataMode === 'DEMO' ? 'بيانات تجريبية' : dataMode === 'CSV' ? 'ملف محلي مستورد' : 'Binance Options'}</strong><span>{dataMode === 'DEMO' ? 'ليست أسعاراً حية' : dataMode === 'CSV' ? 'لا يغادر جهازك' : 'وسيط عام للقراءة فقط'}</span></div>
           <span className={`source-indicator ${dataMode === 'DEMO' ? 'demo' : dataMode === 'CSV' ? 'imported' : 'binance'}`} />
         </div>
 
@@ -599,7 +599,7 @@ function App() {
 
           <section className="compliance-banner" aria-label="تنبيه تنظيمي وتعليمي">
             <div className="compliance-icon"><ShieldAlert size={18} /></div>
-            <div className="compliance-copy"><strong>وضع تحليلي وتجريبي</strong><span>مصدر البيانات موضح في الواجهة: Demo اصطناعي، CSV محلي، أو لقطة REST عامة من Binance وليست بثاً لحظياً. لا تمثل الأرقام توصية. إذا كنت في المملكة المتحدة، تحقّق من أهلية الوصول إلى مشتقات الأصول المشفرة.</span></div>
+            <div className="compliance-copy"><strong>وضع تحليلي وتجريبي</strong><span>مصدر البيانات موضح في الواجهة: Demo اصطناعي، CSV محلي، أو لقطة REST عامة من Binance عبر وسيط للقراءة فقط، وليست بثاً لحظياً. لا تمثل الأرقام توصية. إذا كنت في المملكة المتحدة، تحقّق من أهلية الوصول إلى مشتقات الأصول المشفرة.</span></div>
             <a href="https://www.fca.org.uk/news/press-releases/fca-lift-ban-crypto-exchange-traded-notes" target="_blank" rel="noreferrer" className="fca-link">معلومات FCA <ExternalLink size={13} /></a>
           </section>
 
@@ -765,7 +765,7 @@ function App() {
 
           <section className="model-strip">
             <button className="model-toggle" onClick={() => setShowAssumptions((value) => !value)}><div className="model-icon"><Info size={16} /></div><div><strong>افتراضات النموذج وحدوده</strong><span>{dataMode === 'BINANCE' ? 'Binance REST snapshot · Mark/IV عند التوفر · بعض Greeks نموذجية' : dataMode === 'CSV' ? 'CSV محلي · Black–Scholes تقديري للقيم الناقصة' : 'Black–Scholes توضيحي · فائدة مفترضة 0% · تسوية أوروبية'}</span></div><ChevronDown className={showAssumptions ? 'rotated' : ''} size={16} /></button>
-            {showAssumptions && <div className="model-details">{dataMode === 'BINANCE' ? <><p>يستعلم التطبيق عن الواجهات العامة لـBinance Options: exchangeInfo لاكتشاف العقود النشطة، وmark/ticker/index وopenInterest لبيانات السوق. لا يطلب مفاتيح API ولا يرسل أوامر. ما يظهر هو لقطة REST عند آخر تحديث، وليس بثاً لحظياً؛ وقد تتغير العقود أو تتأخر البيانات أو تُحجب الواجهة حسب الشبكة والمنطقة.</p><p>تُعرض Mark/IV وBid/Ask والمؤشر والفائدة المفتوحة عند توفرها. يستخدم التحليل Delta من Binance عند وجوده ويقدّر Gamma وTheta وVega بنموذج Black–Scholes؛ ويعلّم القيم المستنتجة والافتراضات. قد تختلف وحدات العقد ووحدات Greeks عن افتراضات النموذج، لذا لا تُعاملها كقياسات تداول موثقة ولا تعتمد عليها مالياً.</p></> : <><p>{dataMode === 'DEMO' ? 'هذه نسخة محاكاة: بيانات الأسعار في وضع Demo مولدة وليست متصلة بـBinance. تسعير العرض يتم بنموذج Black–Scholes مبسط مع معدل فائدة 0%؛ وقد تختلف أسواق العملات المشفرة بسبب الابتسامة، القفزات، السيولة، التمويل، والفروقات بين السعر النظري وسعر التنفيذ.' : 'يستخدم المحلل في CSV السعر المتوسط من Bid/Ask إن توفرا، ويحسب القيم المفقودة تقريبياً. النتائج لا تشمل الرسوم تلقائياً إلا إذا أدخلتها؛ تحقّق من الوحدات والطوابع الزمنية.'}</p><p>لا يستخدم المختبر مصادر بديلة خفية ولا يخلط بيانات Demo ببيانات CSV أو Binance. لا تستخدم المحاكاة لاتخاذ قرار مالي مباشر.</p></>}</div>}
+            {showAssumptions && <div className="model-details">{dataMode === 'BINANCE' ? <><p>تمر طلبات Binance عبر وسيط Supabase عام محدود بواجهات بيانات السوق للقراءة فقط لتوافق CORS؛ يطلب exchangeInfo لاكتشاف العقود النشطة وmark/ticker/index وopenInterest لبيانات السوق. لا يخزن الوسيط مفاتيح API ولا يقبل مسارات حساب أو تداول، ولا يتجاوز قيود Binance الجغرافية. ما يظهر لقطة REST عند آخر تحديث وليس بثاً لحظياً؛ وقد تتغير العقود أو تتأخر البيانات أو تُحجب حسب الشبكة والمنطقة.</p><p>تُعرض Mark/IV وBid/Ask والمؤشر والفائدة المفتوحة عند توفرها. يستخدم التحليل Delta من Binance عند وجوده ويقدّر Gamma وTheta وVega بنموذج Black–Scholes؛ ويعلّم القيم المستنتجة والافتراضات. قد تختلف وحدات العقد ووحدات Greeks عن افتراضات النموذج، لذا لا تُعاملها كقياسات تداول موثقة ولا تعتمد عليها مالياً.</p></> : <><p>{dataMode === 'DEMO' ? 'هذه نسخة محاكاة: بيانات الأسعار في وضع Demo مولدة وليست متصلة بـBinance. تسعير العرض يتم بنموذج Black–Scholes مبسط مع معدل فائدة 0%؛ وقد تختلف أسواق العملات المشفرة بسبب الابتسامة، القفزات، السيولة، التمويل، والفروقات بين السعر النظري وسعر التنفيذ.' : 'يستخدم المحلل في CSV السعر المتوسط من Bid/Ask إن توفرا، ويحسب القيم المفقودة تقريبياً. النتائج لا تشمل الرسوم تلقائياً إلا إذا أدخلتها؛ تحقّق من الوحدات والطوابع الزمنية.'}</p><p>لا يستخدم المختبر مصادر بديلة خفية ولا يخلط بيانات Demo ببيانات CSV أو Binance. لا تستخدم المحاكاة لاتخاذ قرار مالي مباشر.</p></>}</div>}
           </section>
 
           <section className="section-anchor journal-section" id="journal">

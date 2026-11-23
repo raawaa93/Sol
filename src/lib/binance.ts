@@ -288,15 +288,32 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
   return { quotes, fetchedAt, serverTime, availableAssets, activeSymbols: activeSymbols.length, warnings };
 }
 
-async function getJson<T>(path: string, params?: Record<string, string>): Promise<T> {
-  const url = new URL(`${BINANCE_OPTIONS_API}${path}`);
+async function getJson<T>(path: string, params?: Record<string, string>, proxyUrl?: string): Promise<T> {
+  let url: URL;
+  if (proxyUrl) {
+    const endpoint = path.match(/^\/eapi\/v1\/([a-zA-Z]+)$/)?.[1];
+    if (!endpoint) throw new Error('Unsupported Binance market-data endpoint.');
+    url = new URL(proxyUrl);
+    url.searchParams.set('endpoint', endpoint);
+  } else {
+    url = new URL(`${BINANCE_OPTIONS_API}${path}`);
+  }
   Object.entries(params ?? {}).forEach(([key, value]) => url.searchParams.set(key, value));
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
     const response = await fetch(url, { method: 'GET', headers: { Accept: 'application/json' }, signal: controller.signal });
-    if (!response.ok) throw new Error(`Binance API returned HTTP ${response.status}`);
-    const payload = await response.json() as unknown;
+    let payload: unknown;
+    try {
+      payload = await response.json() as unknown;
+    } catch {
+      throw new Error(`Binance market-data service returned HTTP ${response.status} with a non-JSON response.`);
+    }
+    if (!response.ok) {
+      const error = payload && typeof payload === 'object' ? payload as { msg?: string; error?: string } : {};
+      const detail = error.msg ?? error.error;
+      throw new Error(`Binance market-data service returned HTTP ${response.status}${detail ? `: ${detail}` : ''}`);
+    }
     if (payload && typeof payload === 'object' && !Array.isArray(payload) && 'code' in payload) {
       const error = payload as { code?: number; msg?: string; optionSymbols?: unknown };
       if ((error.code !== undefined && error.code !== 0) || (error.msg && !error.optionSymbols)) {
@@ -324,8 +341,8 @@ async function mapWithConcurrency<T, R>(items: T[], concurrency: number, mapper:
   return results;
 }
 
-export async function fetchBinanceOptions(): Promise<BinanceOptionsSnapshot> {
-  const exchangeInfo = await getJson<BinanceExchangeInfo>('/eapi/v1/exchangeInfo');
+export async function fetchBinanceOptions(proxyUrl?: string): Promise<BinanceOptionsSnapshot> {
+  const exchangeInfo = await getJson<BinanceExchangeInfo>('/eapi/v1/exchangeInfo', undefined, proxyUrl);
   const serverTime = finiteNumber(exchangeInfo.serverTime) ?? Date.now();
   const symbols = asArray<BinanceOptionSymbol>(exchangeInfo.optionSymbols).filter((item) => {
     const expiry = finiteNumber(item.expiryDate);
@@ -345,11 +362,11 @@ export async function fetchBinanceOptions(): Promise<BinanceOptionsSnapshot> {
   }
 
   const [marksResult, tickersResult, indexResults] = await Promise.allSettled([
-    getJson<BinanceMark[]>('/eapi/v1/mark'),
-    getJson<BinanceTicker[]>('/eapi/v1/ticker'),
+    getJson<BinanceMark[]>('/eapi/v1/mark', undefined, proxyUrl),
+    getJson<BinanceTicker[]>('/eapi/v1/ticker', undefined, proxyUrl),
     mapWithConcurrency(underlyingSymbols, 4, async (underlying) => {
       try {
-        const response = await getJson<BinanceIndex[] | BinanceIndex>('/eapi/v1/index', { underlying });
+        const response = await getJson<BinanceIndex[] | BinanceIndex>('/eapi/v1/index', { underlying }, proxyUrl);
         const item = Array.isArray(response) ? response[0] : response;
         return item ? { requestedUnderlying: underlying, item } : null;
       } catch {
@@ -370,7 +387,7 @@ export async function fetchBinanceOptions(): Promise<BinanceOptionsSnapshot> {
   const groups = calculateOpenInterestGroups(symbols, contractsByUnderlying);
   const openInterestResults = await mapWithConcurrency(groups, 4, async ({ baseAsset, expiry }) => {
     try {
-      const response = await getJson<BinanceOpenInterest[]>('/eapi/v1/openInterest', { underlyingAsset: baseAsset, expiration: expiry });
+      const response = await getJson<BinanceOpenInterest[]>('/eapi/v1/openInterest', { underlyingAsset: baseAsset, expiration: expiry }, proxyUrl);
       return asArray<BinanceOpenInterest>(response);
     } catch {
       return [];

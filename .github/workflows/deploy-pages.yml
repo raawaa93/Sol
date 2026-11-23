@@ -32,6 +32,8 @@ jobs:
         run: npm test
       - name: Build site for GitHub Pages
         run: npm run build -- --mode pages
+        env:
+          VITE_BINANCE_PROXY_URL: https://oyoyozdugicmnkfhjovo.supabase.co/functions/v1/volterra-binance-market-data
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload site artifact
