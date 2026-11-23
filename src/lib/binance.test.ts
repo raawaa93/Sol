@@ -1,0 +1,145 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { fetchBinanceOptions, normalizeBinanceSnapshot } from './binance.ts';
+import { getMidPrice } from './options.ts';
+
+function compactDate(timestamp: number): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'UTC', year: '2-digit', month: '2-digit', day: '2-digit',
+  }).format(new Date(timestamp)).split('/').reverse().join('');
+}
+
+test('Binance snapshot normalizer merges the active option universe and public market feeds', () => {
+  const now = Date.now();
+  const expiry = now + 30 * 86_400_000;
+  const code = compactDate(expiry);
+  const symbol = `BTC-${code}-100000-C`;
+  const snapshot = normalizeBinanceSnapshot({
+    fetchedAt: now,
+    exchangeInfo: {
+      serverTime: now,
+      optionContracts: [{ baseAsset: 'BTC', quoteAsset: 'USDT', underlying: 'BTCUSDT', settleAsset: 'USDT' }],
+      optionSymbols: [
+        { symbol, underlying: 'BTCUSDT', quoteAsset: 'USDT', side: 'CALL', strikePrice: '100000', expiryDate: expiry, unit: 1, minQty: '0.01', maxQty: '100', makerFeeRate: '0.0002', takerFeeRate: '0.0003', priceScale: 2, quantityScale: 2, status: 'TRADING', filters: [{ filterType: 'PRICE_FILTER', tickSize: '0.1' }] },
+        { symbol: `BTC-${code}-100000-P`, underlying: 'BTCUSDT', quoteAsset: 'USDT', side: 'PUT', strikePrice: '100000', expiryDate: expiry, unit: 1, status: 'HALT' },
+      ],
+    },
+    marks: [{ symbol, markPrice: '5000', markIV: '0.55', delta: '0.61', riskFreeInterest: '0.02' }],
+    tickers: [{ symbol, bidPrice: '4900', askPrice: '5100', volume: '12', amount: '60000', closeTime: now - 1000 }],
+    indices: [{ requestedUnderlying: 'BTCUSDT', item: { underlying: 'BTCUSDT', indexPrice: '104000', time: now - 1000 } }],
+    openInterest: [{ symbol, sumOpenInterest: '25', sumOpenInterestUsd: '2600000', timestamp: String(now - 2000) }],
+  });
+
+  assert.equal(snapshot.quotes.length, 1);
+  assert.equal(snapshot.activeSymbols, 1);
+  assert.deepEqual(snapshot.availableAssets, ['BTC']);
+  assert.equal(snapshot.quotes[0].symbol, symbol);
+  assert.equal(snapshot.quotes[0].spot, 104_000);
+  assert.equal(snapshot.quotes[0].bid, 4_900);
+  assert.equal(snapshot.quotes[0].ask, 5_100);
+  assert.equal(snapshot.quotes[0].openInterest, 25);
+  assert.equal(snapshot.quotes[0].openInterestUsd, 2_600_000);
+  assert.equal(snapshot.quotes[0].unit, 1);
+  assert.equal(snapshot.quotes[0].minQty, 0.01);
+  assert.equal(snapshot.quotes[0].maxQty, 100);
+  assert.equal(snapshot.quotes[0].priceSource, 'MARK');
+  assert.equal(snapshot.quotes[0].delta, 0.61);
+  assert.equal(snapshot.quotes[0].quoteAsset, 'USDT');
+  assert.equal(snapshot.quotes[0].filters?.[0].tickSize, '0.1');
+});
+
+test('Binance normalizer avoids crossed bid/ask midpoints and preserves last-price provenance', () => {
+  const now = Date.now();
+  const expiry = now + 21 * 86_400_000;
+  const code = compactDate(expiry);
+  const symbol = `ETH-${code}-4000-P`;
+  const snapshot = normalizeBinanceSnapshot({
+    fetchedAt: now,
+    exchangeInfo: {
+      serverTime: now,
+      optionContracts: [{ baseAsset: 'ETH', quoteAsset: 'USDT', underlying: 'ETHUSDT' }],
+      optionSymbols: [{ symbol, underlying: 'ETHUSDT', quoteAsset: 'USDT', side: 'PUT', strikePrice: 4000, expiryDate: expiry, unit: 1, status: 'TRADING', filters: [{ filterType: 'LOT_SIZE', minQty: '0.1', maxQty: '5', stepSize: '0.1' }] }],
+    },
+    marks: [{ symbol, markIV: 0.6 }],
+    tickers: [{ symbol, bidPrice: 120, askPrice: 100, lastPrice: 111 }],
+    indices: [{ requestedUnderlying: 'ETHUSDT', item: { indexPrice: 3500, time: now } }],
+  });
+
+  const quote = snapshot.quotes[0];
+  assert.equal(quote.priceSource, 'LAST');
+  assert.equal(quote.markPrice, 111);
+  assert.equal(quote.minQty, 0.1);
+  assert.equal(quote.maxQty, 5);
+  assert.equal(getMidPrice(quote), 111);
+  assert.ok(snapshot.warnings.some((warning) => warning.includes('تعارض Bid/Ask')));
+  assert.ok(quote.estimatedFields?.includes('riskFreeRate'));
+  assert.ok(quote.estimatedFields?.includes('gamma'));
+});
+
+test('Binance client requests public exchange and market data endpoints and maps open interest by expiry', async () => {
+  const now = Date.now();
+  const expiry = now + 28 * 86_400_000;
+  const expiryCode = compactDate(expiry);
+  const symbol = `BTC-${expiryCode}-100000-C`;
+  const requestedUrls: URL[] = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const url = new URL(String(input));
+    requestedUrls.push(url);
+    let payload: unknown;
+    if (url.pathname.endsWith('/exchangeInfo')) {
+      payload = {
+        serverTime: now,
+        optionContracts: [{ baseAsset: 'BTC', quoteAsset: 'USDT', underlying: 'BTCUSDT' }],
+        optionSymbols: [{ symbol, underlying: 'BTCUSDT', quoteAsset: 'USDT', side: 'CALL', strikePrice: 100000, expiryDate: expiry, unit: 1, status: 'TRADING' }],
+      };
+    } else if (url.pathname.endsWith('/mark')) {
+      payload = [{ symbol, markPrice: 5000, markIV: 0.5, delta: 0.55, riskFreeInterest: 0 }];
+    } else if (url.pathname.endsWith('/ticker')) {
+      payload = [{ symbol, bidPrice: 4900, askPrice: 5100, volume: 10, amount: 50000, closeTime: now }];
+    } else if (url.pathname.endsWith('/index')) {
+      payload = [{ underlying: 'BTCUSDT', indexPrice: 100000, time: now }];
+    } else if (url.pathname.endsWith('/openInterest')) {
+      payload = [{ symbol, sumOpenInterest: 5, sumOpenInterestUsd: 500000, timestamp: now }];
+    } else {
+      throw new Error(`Unexpected Binance URL ${url}`);
+    }
+    return new Response(JSON.stringify(payload), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  };
+
+  try {
+    const snapshot = await fetchBinanceOptions();
+    assert.equal(snapshot.activeSymbols, 1);
+    assert.equal(snapshot.quotes.length, 1);
+    assert.equal(snapshot.quotes[0].openInterestUsd, 500000);
+    assert.ok(requestedUrls.some((url) => url.pathname.endsWith('/exchangeInfo')));
+    assert.ok(requestedUrls.some((url) => url.pathname.endsWith('/mark')));
+    assert.ok(requestedUrls.some((url) => url.pathname.endsWith('/ticker')));
+    assert.ok(requestedUrls.some((url) => url.pathname.endsWith('/index') && url.searchParams.get('underlying') === 'BTCUSDT'));
+    assert.ok(requestedUrls.some((url) => url.pathname.endsWith('/openInterest')
+      && url.searchParams.get('underlyingAsset') === 'BTC'
+      && url.searchParams.get('expiration') === expiryCode));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('Binance normalizer models a reference price only when IV is observed and no market price exists', () => {
+  const now = Date.now();
+  const expiry = now + 45 * 86_400_000;
+  const symbol = `BTC-${compactDate(expiry)}-100000-C`;
+  const snapshot = normalizeBinanceSnapshot({
+    fetchedAt: now,
+    exchangeInfo: {
+      serverTime: now,
+      optionContracts: [{ baseAsset: 'BTC', quoteAsset: 'USDT', underlying: 'BTCUSDT' }],
+      optionSymbols: [{ symbol, underlying: 'BTCUSDT', quoteAsset: 'USDT', side: 'CALL', strikePrice: 100000, expiryDate: expiry, unit: 1 }],
+    },
+    marks: [{ symbol, markIV: 0.55 }],
+    indices: [{ requestedUnderlying: 'BTCUSDT', item: { indexPrice: 100000 } }],
+  });
+
+  assert.equal(snapshot.quotes[0].priceSource, 'MODEL');
+  assert.ok(snapshot.quotes[0].markPrice > 0);
+  assert.ok(snapshot.quotes[0].estimatedFields?.includes('markPrice'));
+});
