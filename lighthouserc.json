@@ -3,7 +3,7 @@
     "collect": {
       "url": "http://127.0.0.1:4173/",
       "startServerCommand": "npm run preview -- --strictPort",
-      "startServerReadyPattern": "Local:",
+      "startServerReadyPattern": "http://localhost:",
       "startServerReadyTimeout": 30000,
       "numberOfRuns": 3,
       "settings": {
@@ -11,7 +11,9 @@
       }
     },
     "assert": {
-      "assertions": {}
+      "assertions": {
+        "categories:performance": ["warn", { "minScore": 0 }]
+      }
     },
     "upload": {
       "target": "filesystem",
