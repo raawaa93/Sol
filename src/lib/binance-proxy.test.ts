@@ -34,11 +34,15 @@ test('Binance proxy rejects trade paths, arbitrary URLs, unknown and malformed p
   }
 });
 
-test('Binance proxy enables CORS only for the app and local development origins', () => {
+test('Binance proxy enables browser CORS only for the published app origin', () => {
   const appOrigin = 'https://raawaa93.github.io';
   assert.equal(isAllowedOrigin(appOrigin), true);
+  assert.equal(isAllowedOrigin('http://localhost:5173'), false);
+  assert.equal(isAllowedOrigin('http://localhost:4173'), false);
   assert.equal(isAllowedOrigin('https://attacker.example'), false);
   assert.equal(getCorsHeaders(appOrigin).get('Access-Control-Allow-Origin'), appOrigin);
+  assert.equal(getCorsHeaders('http://localhost:5173').get('Access-Control-Allow-Origin'), null);
+  assert.equal(getCorsHeaders('http://localhost:4173').get('Access-Control-Allow-Origin'), null);
   assert.equal(getCorsHeaders('https://attacker.example').get('Access-Control-Allow-Origin'), null);
   assert.equal(getCorsHeaders(null).get('Access-Control-Allow-Origin'), null);
   assert.equal(getCacheSeconds('exchangeInfo'), 60);
@@ -97,6 +101,12 @@ test('Binance proxy refuses unknown browser origins and passes through regional 
     }));
     assert.equal(deniedOrigin.status, 403);
     assert.equal(called, false);
+
+    const deniedLocalPreflight = await handleRequest(new Request('https://function.example/?endpoint=exchangeInfo', {
+      method: 'OPTIONS',
+      headers: { origin: 'http://localhost:5173' },
+    }));
+    assert.equal(deniedLocalPreflight.status, 403);
 
     const upstreamDenial = await handleRequest(new Request('https://function.example/?endpoint=exchangeInfo', {
       headers: { origin: 'https://raawaa93.github.io', 'x-forwarded-for': 'proxy-test-region' },

@@ -48,6 +48,46 @@ test('Binance snapshot normalizer merges the active option universe and public m
   assert.equal(snapshot.quotes[0].filters?.[0].tickSize, '0.1');
 });
 
+test('Binance snapshot keeps every active crypto and commodity underlying returned by exchangeInfo', () => {
+  const now = Date.now();
+  const expiry = now + 35 * 86_400_000;
+  const code = compactDate(expiry);
+  const underlyings = [
+    ['BTC', 'BTCUSDT'], ['ETH', 'ETHUSDT'], ['BNB', 'BNBUSDT'], ['XRP', 'XRPUSDT'],
+    ['DOGE', 'DOGEUSDT'], ['SOL', 'SOLUSDT'], ['XAU', 'XAUUSDT'], ['XAG', 'XAGUSDT'],
+    ['CL', 'CLUSDT'], ['BZ', 'BZUSDT'],
+  ] as const;
+  const contracts = underlyings.map(([baseAsset, underlying]) => ({ baseAsset, quoteAsset: 'USDT', underlying, settleAsset: 'USDT' }));
+  const optionSymbols = underlyings.map(([baseAsset, underlying], index) => ({
+    symbol: `${baseAsset}-${code}-${1000 + index}-C`,
+    underlying,
+    quoteAsset: 'USDT',
+    side: 'CALL',
+    strikePrice: 1000 + index,
+    expiryDate: expiry,
+    unit: 1,
+    status: 'TRADING',
+  }));
+  const snapshot = normalizeBinanceSnapshot({
+    fetchedAt: now,
+    exchangeInfo: { serverTime: now, optionContracts: contracts, optionSymbols },
+    marks: optionSymbols.map(({ symbol }) => ({ symbol, markPrice: '10', markIV: '0.5' })),
+    indices: underlyings.map(([, underlying], index) => ({
+      requestedUnderlying: underlying,
+      item: { underlying, indexPrice: 1000 + index, time: now },
+    })),
+  });
+
+  assert.equal(snapshot.quotes.length, underlyings.length);
+  assert.deepEqual(snapshot.availableAssets, underlyings.map(([baseAsset]) => baseAsset).sort((a, b) => a.localeCompare(b)));
+  assert.ok(snapshot.availableAssets.includes('DOGE'));
+  assert.ok(snapshot.availableAssets.includes('SOL'));
+  assert.ok(snapshot.availableAssets.includes('XAU'));
+  assert.ok(snapshot.availableAssets.includes('XAG'));
+  assert.ok(snapshot.availableAssets.includes('CL'));
+  assert.ok(snapshot.availableAssets.includes('BZ'));
+});
+
 test('Binance normalizer avoids crossed bid/ask midpoints and preserves last-price provenance', () => {
   const now = Date.now();
   const expiry = now + 21 * 86_400_000;
@@ -98,9 +138,9 @@ test('Binance client requests public exchange and market data endpoints and maps
     } else if (url.pathname.endsWith('/ticker')) {
       payload = [{ symbol, bidPrice: 4900, askPrice: 5100, volume: 10, amount: 50000, closeTime: now }];
     } else if (url.pathname.endsWith('/index')) {
-      payload = [{ underlying: 'BTCUSDT', indexPrice: 100000, time: now }];
+      payload = { indexPrice: 100000, time: now };
     } else if (url.pathname.endsWith('/openInterest')) {
-      payload = [{ symbol, sumOpenInterest: 5, sumOpenInterestUsd: 500000, timestamp: now }];
+      payload = { symbol, sumOpenInterest: 5, sumOpenInterestUsd: 500000, timestamp: now };
     } else {
       throw new Error(`Unexpected Binance URL ${url}`);
     }

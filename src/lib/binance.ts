@@ -160,6 +160,7 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
   let crossedBidAsk = 0;
   let missingOpenInterest = 0;
   let missingIndex = 0;
+  const missingIndexAssets = new Set<string>();
   let missingUnit = 0;
   let missingRiskFreeRate = 0;
 
@@ -173,7 +174,10 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
     const spot = indexByUnderlying.get(indexKey);
     if (!expiryDate || !strike || !type || !spot) {
       skipped += 1;
-      if (!spot) missingIndex += 1;
+      if (!spot) {
+        missingIndex += 1;
+        missingIndexAssets.add(baseAsset);
+      }
       continue;
     }
 
@@ -275,7 +279,7 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
 
   const availableAssets = [...new Set(quotes.map((quote) => quote.underlying))].sort((a, b) => a.localeCompare(b));
   if (skipped > 0) warnings.push(`تعذّر استكمال بيانات ${skipped} عقد من قائمة Binance؛ قد يكون مؤشر الأصل أو سعر العقد غير متاح.`);
-  if (missingIndex > 0) warnings.push(`لم تتوفر أسعار مؤشر أساسي لـ${missingIndex} عقد؛ لم تُستعر أسعار Demo بديلاً عنها.`);
+  if (missingIndex > 0) warnings.push(`لم تتوفر أسعار مؤشر Binance لـ${missingIndex} عقد؛ الأصول المتأثرة: ${[...missingIndexAssets].sort().join('، ')}. لم تُستعر أسعار Demo بديلاً عنها.`);
   if (estimatedIv > 0) warnings.push(`استُنتج IV بنموذج Black–Scholes لـ${estimatedIv} عقد غاب فيها markIV.`);
   if (missingBidAsk > 0) warnings.push(`Bid أو Ask غير متاح لـ${missingBidAsk} عقد؛ لم يُختلق الطرف الناقص والفارق غير متاح.`);
   if (crossedBidAsk > 0) warnings.push(`تعارض Bid/Ask في ${crossedBidAsk} عقد؛ استُبعد المنتصف من مرجع السعر.`);
@@ -283,7 +287,13 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
   if (missingUnit > 0) warnings.push(`وحدة العقد غير موجودة في ${missingUnit} عقد؛ استُخدمت قيمة 1 افتراضياً.`);
   if (missingRiskFreeRate > 0) warnings.push(`معدل الفائدة من Binance غير متاح لـ${missingRiskFreeRate} عقد؛ استُخدم 0% للنموذج.`);
   if (quotes.length) warnings.push('Gamma وTheta وVega تقديرات Black–Scholes وليست Greeks مرصودة من Binance؛ تحقّق من الوحدات قبل استخدامها.');
-  if (!quotes.length) throw new Error('لم تُرجع Binance عقوداً نشطة قابلة للتحليل. قد يكون الوصول محجوباً أو لا توجد عقود متاحة حالياً.');
+  if (!quotes.length) {
+    const missingAssets = [...missingIndexAssets].sort();
+    const detail = missingAssets.length
+      ? ` تعذّر تحميل مؤشر الأصل للرموز: ${missingAssets.join('، ')}.`
+      : ' قد تكون بيانات المؤشر أو السعر أو التقلب غير متاحة حالياً.';
+    throw new Error(`لم تُرجع Binance بيانات كافية لتحليل عقود نشطة.${detail}`);
+  }
 
   return { quotes, fetchedAt, serverTime, availableAssets, activeSymbols: activeSymbols.length, warnings };
 }
@@ -387,8 +397,8 @@ export async function fetchBinanceOptions(proxyUrl?: string): Promise<BinanceOpt
   const groups = calculateOpenInterestGroups(symbols, contractsByUnderlying);
   const openInterestResults = await mapWithConcurrency(groups, 4, async ({ baseAsset, expiry }) => {
     try {
-      const response = await getJson<BinanceOpenInterest[]>('/eapi/v1/openInterest', { underlyingAsset: baseAsset, expiration: expiry }, proxyUrl);
-      return asArray<BinanceOpenInterest>(response);
+      const response = await getJson<BinanceOpenInterest[] | BinanceOpenInterest>('/eapi/v1/openInterest', { underlyingAsset: baseAsset, expiration: expiry }, proxyUrl);
+      return Array.isArray(response) ? response : response && typeof response === 'object' ? [response] : [];
     } catch {
       return [];
     }

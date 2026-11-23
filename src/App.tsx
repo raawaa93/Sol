@@ -53,6 +53,22 @@ import type { AssetSnapshot, OptionQuote, OptionSide, PaperTrade, Underlying } f
 
 const numberFormat = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 });
 const integerFormat = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+const UNDERLYING_NAMES: Record<string, string> = {
+  BTC: 'Bitcoin',
+  ETH: 'Ethereum',
+  BNB: 'BNB',
+  XRP: 'XRP',
+  DOGE: 'Dogecoin',
+  SOL: 'Solana',
+  XAU: 'Gold',
+  XAG: 'Silver',
+  CL: 'WTI crude',
+  BZ: 'Brent crude',
+};
+
+function getUnderlyingName(underlying: string): string {
+  return UNDERLYING_NAMES[underlying] ?? 'Underlying asset';
+}
 
 function formatMoney(value: number, digits = 2): string {
   if (!Number.isFinite(value)) return '—';
@@ -572,18 +588,18 @@ function App() {
         <div className="page-container">
           <section className="page-heading">
             <div>
-              <div className="eyebrow"><span className="eyebrow-line" /> DIGITAL ASSET DERIVATIVES <span className="eyebrow-dot">·</span> WORKSPACE</div>
+              <div className="eyebrow"><span className="eyebrow-line" /> MULTI-ASSET OPTIONS <span className="eyebrow-dot">·</span> WORKSPACE</div>
               <h1>مختبر <span>الخيارات</span></h1>
               <p>حلّل العقد، اختبر السيناريو، وسجّل قرارك — من دون تنفيذ أوامر.</p>
             </div>
             <div className="heading-actions">
               {dataMode === 'BINANCE' ? (
                 <label className="select-control asset-select"><span>الأصل</span><select value={underlying} onChange={(event) => changeUnderlying(event.target.value)} aria-label="اختر أصل Binance">
-                  {assetChoices.map((item) => <option key={item} value={item}>{item}</option>)}
+                  {assetChoices.map((item) => <option key={item} value={item}>{item} · {getUnderlyingName(item)}</option>)}
                 </select><ChevronDown size={13} /></label>
               ) : (
                 <div className="asset-switch" role="tablist" aria-label="الأصل الأساسي">
-                  {assetChoices.map((item) => <button key={item} className={underlying === item ? 'selected' : ''} onClick={() => changeUnderlying(item)}>{item}<span>{item === 'BTC' ? 'Bitcoin' : item === 'ETH' ? 'Ethereum' : 'الأصل الأساسي'}</span></button>)}
+                  {assetChoices.map((item) => <button key={item} className={underlying === item ? 'selected' : ''} onClick={() => changeUnderlying(item)}>{item}<span>{getUnderlyingName(item)}</span></button>)}
                 </div>
               )}
               <div className="upload-actions">
@@ -635,7 +651,7 @@ function App() {
                   <AreaChart data={smileData} margin={{ top: 10, right: 8, left: -18, bottom: 2 }}>
                     <defs><linearGradient id="ivFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#b6f36e" stopOpacity={0.22} /><stop offset="100%" stopColor="#b6f36e" stopOpacity={0} /></linearGradient></defs>
                     <CartesianGrid stroke="#222b31" strokeDasharray="3 5" vertical={false} />
-                    <XAxis dataKey="strike" tickFormatter={(value) => numberFormat.format(Number(value) / (underlying === 'BTC' ? 1000 : 1000))} tick={{ fill: '#78838a', fontSize: 10 }} axisLine={{ stroke: '#283137' }} tickLine={false} />
+                    <XAxis dataKey="strike" tickFormatter={(value) => Number(value) >= 10_000 ? `${numberFormat.format(Number(value) / 1000)}k` : numberFormat.format(Number(value))} tick={{ fill: '#78838a', fontSize: 10 }} axisLine={{ stroke: '#283137' }} tickLine={false} />
                     <YAxis tickFormatter={(value) => `${Math.round(Number(value) * 100)}%`} tick={{ fill: '#78838a', fontSize: 10 }} axisLine={false} tickLine={false} domain={['dataMin - 0.04', 'dataMax + 0.04']} />
                     <Tooltip contentStyle={{ background: '#11171b', border: '1px solid #2b353b', borderRadius: 10, color: '#e7ede8', fontSize: 12 }} formatter={(value) => [`${(Number(value) * 100).toFixed(2)}%`, 'IV']} labelFormatter={(value) => `Strike: ${numberFormat.format(Number(value))}`} />
                     <Area type="monotone" dataKey="iv" stroke="#b6f36e" strokeWidth={2.2} fill="url(#ivFill)" activeDot={{ r: 4, fill: '#d2ff92', stroke: '#182012', strokeWidth: 2 }} />

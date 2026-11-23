@@ -110,8 +110,8 @@ h1, h2, h3, p { margin: 0; }
 .button-ghost { color: #aab6b1; background: #11181b; border-color: #263236; }
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.asset-select { min-width: 160px; }
-.asset-select select { width: 100px; }
+.asset-select { min-width: 190px; }
+.asset-select select { width: 130px; }
 .button-ghost:hover:not(:disabled) { border-color: #4a5c4b; color: #d8ead1; background: #151f1d; }
 .button-paper { width: 100%; margin-top: 13px; color: #18210f; background: #b6ee79; border: 1px solid #c7f88e; }
 .button-paper:hover { background: #c9fa91; }

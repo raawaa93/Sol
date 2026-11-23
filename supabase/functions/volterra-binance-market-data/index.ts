@@ -12,8 +12,6 @@ export type BinanceMarketEndpoint = keyof typeof ENDPOINTS;
 
 const ALLOWED_ORIGINS = new Set([
   'https://raawaa93.github.io',
-  'http://localhost:5173',
-  'http://localhost:4173',
 ]);
 
 export class ProxyRequestError extends Error {}
