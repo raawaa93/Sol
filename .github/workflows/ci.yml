@@ -7,7 +7,6 @@ on:
   push:
     branches:
       - main
-      - arena/5d011bc6-sol
   workflow_dispatch:
 
 permissions:
@@ -43,7 +42,7 @@ jobs:
         run: npm run test:e2e
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: |

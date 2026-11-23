@@ -7,7 +7,6 @@ on:
   push:
     branches:
       - main
-      - arena/5d011bc6-sol
   workflow_dispatch:
   schedule:
     - cron: '17 7 * * 1'
@@ -42,10 +41,20 @@ jobs:
           CHROME_PATH="$(node --input-type=module -e 'import { chromium } from "@playwright/test"; process.stdout.write(chromium.executablePath())')"
           echo "CHROME_PATH=$CHROME_PATH" >> "$GITHUB_ENV"
       - name: Collect local Lighthouse reports
-        run: npm run perf:lighthouse
+        run: |
+          mkdir -p .lighthouseci
+          set +e
+          npm run perf:lighthouse 2>&1 | tee .lighthouseci/lighthouse-ci.log
+          result=${PIPESTATUS[0]}
+          if [ "$result" -ne 0 ]; then
+            tail -n 50 .lighthouseci/lighthouse-ci.log >> "$GITHUB_STEP_SUMMARY"
+            details="$(tail -c 4000 .lighthouseci/lighthouse-ci.log | tr '\r\n' ' ' | sed 's/%/%25/g')"
+            echo "::error title=Lighthouse CI output::$details"
+          fi
+          exit "$result"
       - name: Upload reports for review
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: lighthouse-reports
           path: .lighthouseci/

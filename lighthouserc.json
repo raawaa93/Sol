@@ -1,8 +1,14 @@
 {
   "ci": {
     "collect": {
-      "staticDistDir": "dist",
-      "numberOfRuns": 3
+      "url": "http://127.0.0.1:4173/",
+      "startServerCommand": "npm run preview -- --strictPort",
+      "startServerReadyPattern": "Local:",
+      "startServerReadyTimeout": 30000,
+      "numberOfRuns": 3,
+      "settings": {
+        "chromeFlags": "--no-sandbox --disable-dev-shm-usage"
+      }
     },
     "assert": {
       "assertions": {}
