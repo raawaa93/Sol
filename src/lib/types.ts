@@ -31,6 +31,8 @@ export interface OptionQuote {
   gamma: number;
   theta: number;
   vega: number;
+  /** Premium sensitivity per one percentage-point increase in the annual risk-free rate. */
+  rho: number;
   openInterest: number | null;
   openInterestUsd?: number | null;
   volume: number | null;
@@ -59,7 +61,9 @@ export interface AssetSnapshot {
   iv30: number | null;
   rv30: number | null;
   openInterestUsd: number | null;
+  openInterestUsdEstimated?: boolean;
   volume24hUsd: number | null;
+  volume24hUsdEstimated?: boolean;
   fundingRate: number;
 }
 
@@ -72,7 +76,9 @@ export interface PaperTrade {
   expiry: string;
   strike: number;
   quantity: number;
+  quantityPrecision?: number;
   entryPremium: number;
+  pricePrecision?: number;
   fees: number;
   spotAtEntry: number;
   status: 'PAPER';
@@ -84,4 +90,6 @@ export interface OptionGreeks {
   gamma: number;
   thetaPerDay: number;
   vegaPerVolPoint: number;
+  /** Premium sensitivity per +1 percentage point in the annual continuously compounded rate. */
+  rhoPerRatePoint: number;
 }

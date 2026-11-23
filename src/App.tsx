@@ -29,29 +29,20 @@ import {
   X,
   Zap,
 } from 'lucide-react';
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Line,
-  LineChart as RechartsLineChart,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import DeferredVolatilityCharts from './components/DeferredVolatilityCharts';
+import DeferredPayoffChart from './components/DeferredPayoffChart';
+import GreeksPanel from './components/GreeksPanel';
+import OpportunityReview from './components/OpportunityReview';
 import { DEMO_MARKETS, DEMO_QUOTES, getExpiryChoices } from './lib/demo';
 import { fetchBinanceOptions } from './lib/binance';
 import type { BinanceOptionsSnapshot } from './lib/binance';
-import { downloadCsv, downloadCsvTemplate, parseOptionsCsv } from './lib/csv';
+import { getLatestQuotePerContract, getMarketSnapshotFromQuotes } from './lib/market';
+import { downloadCsv, downloadCsvTemplate, MAX_CSV_FILE_BYTES, parseOptionsCsv } from './lib/csv';
 import type { CsvTimestampRange } from './lib/csv';
 import { buildScenarioSeries, getBreakeven, getExpectedMove, getMaxLoss, getMidPrice, getSpreadPct } from './lib/options';
-import type { AssetSnapshot, OptionQuote, OptionSide, PaperTrade, Underlying } from './lib/types';
+import { formatAssetPrice, formatOptionPrice, formatQuantity, formatSmallNumber, getOptionPricePrecision, getQuantityPrecision } from './lib/format';
+import type { OptionQuote, OptionSide, PaperTrade, Underlying } from './lib/types';
 
-const numberFormat = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 });
 const integerFormat = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 const UNDERLYING_NAMES: Record<string, string> = {
   BTC: 'Bitcoin',
@@ -79,14 +70,14 @@ function formatCompact(value: number): string {
   return `${new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 2 }).format(value)} USDT`;
 }
 
-function formatQuotePrice(value: number): string {
-  return value > 0 ? formatMoney(value, 0) : '—';
+function formatQuotePrice(value: number, quote: OptionQuote): string {
+  return formatOptionPrice(value, quote);
 }
 
 function formatEstimatedFields(fields: string[] | undefined): string {
   if (!fields?.length) return '';
   const labels: Record<string, string> = {
-    iv: 'IV', markPrice: 'السعر المرجعي', delta: 'Delta', gamma: 'Gamma', theta: 'Theta', vega: 'Vega', unit: 'وحدة العقد', riskFreeRate: 'معدل الفائدة',
+    iv: 'IV', markPrice: 'السعر المرجعي', delta: 'Delta', gamma: 'Gamma', theta: 'Theta', vega: 'Vega', rho: 'Rho', unit: 'وحدة العقد', riskFreeRate: 'معدل الفائدة', daysToExpiry: 'المدة حتى الانتهاء',
   };
   return [...new Set(fields)].map((field) => labels[field] ?? field).join('، ');
 }
@@ -122,46 +113,36 @@ function formatDateTime(date: Date): string {
   return new Intl.DateTimeFormat('ar-GB', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(date);
 }
 
+function isPaperTrade(value: unknown): value is PaperTrade {
+  if (!value || typeof value !== 'object') return false;
+  const trade = value as Partial<PaperTrade>;
+  const isOptionalPrecision = (precision: number | undefined) => precision === undefined
+    || (Number.isInteger(precision) && precision >= 0 && precision <= 8);
+  return typeof trade.id === 'string'
+    && typeof trade.createdAt === 'string' && Number.isFinite(Date.parse(trade.createdAt))
+    && typeof trade.underlying === 'string' && /^[A-Z0-9]{2,16}$/.test(trade.underlying)
+    && typeof trade.symbol === 'string'
+    && (trade.type === 'CALL' || trade.type === 'PUT')
+    && typeof trade.expiry === 'string' && Number.isFinite(Date.parse(trade.expiry))
+    && typeof trade.strike === 'number' && Number.isFinite(trade.strike) && trade.strike > 0
+    && typeof trade.quantity === 'number' && Number.isFinite(trade.quantity) && trade.quantity > 0
+    && isOptionalPrecision(trade.quantityPrecision)
+    && typeof trade.entryPremium === 'number' && Number.isFinite(trade.entryPremium) && trade.entryPremium > 0
+    && isOptionalPrecision(trade.pricePrecision)
+    && typeof trade.fees === 'number' && Number.isFinite(trade.fees) && trade.fees >= 0
+    && typeof trade.spotAtEntry === 'number' && Number.isFinite(trade.spotAtEntry) && trade.spotAtEntry > 0
+    && trade.status === 'PAPER';
+}
+
 function loadPaperTrades(): PaperTrade[] {
   try {
     const value = localStorage.getItem('volterra-paper-trades-v1');
-    return value ? JSON.parse(value) as PaperTrade[] : [];
+    if (!value) return [];
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter(isPaperTrade) : [];
   } catch {
     return [];
   }
-}
-
-function getCsvMarket(quotes: OptionQuote[], underlying: Underlying): AssetSnapshot | null {
-  const rows = quotes.filter((quote) => quote.underlying === underlying);
-  if (!rows.length) return null;
-  const spot = rows.map((row) => row.spot).sort((a, b) => a - b)[Math.floor(rows.length / 2)];
-  const near30 = rows.filter((row) => row.daysToExpiry >= 20 && row.daysToExpiry <= 40);
-  const sortedIv = near30.map((row) => row.iv).sort((a, b) => a - b);
-  const iv30 = sortedIv.length ? sortedIv[Math.floor(sortedIv.length / 2)] : null;
-  const oiRows = rows.filter((row) => row.openInterest !== null);
-  const directOiUsdRows = rows.filter((row) => row.openInterestUsd !== undefined && row.openInterestUsd !== null);
-  const volumeRows = rows.filter((row) => row.volume !== null);
-  const directVolumeUsdRows = rows.filter((row) => row.volumeQuote !== undefined && row.volumeQuote !== null);
-  const openInterestUsd = directOiUsdRows.length
-    ? directOiUsdRows.reduce((sum, row) => sum + (row.openInterestUsd ?? 0), 0)
-    : oiRows.length
-      ? oiRows.reduce((sum, row) => sum + (row.openInterest ?? 0) * row.spot * row.unit, 0)
-      : null;
-  const volume24hUsd = directVolumeUsdRows.length
-    ? directVolumeUsdRows.reduce((sum, row) => sum + (row.volumeQuote ?? 0), 0)
-    : volumeRows.length
-      ? volumeRows.reduce((sum, row) => sum + (row.volume ?? 0) * row.spot * row.unit, 0)
-      : null;
-  return {
-    underlying,
-    spot,
-    dayChangePct: 0,
-    iv30,
-    rv30: null,
-    openInterestUsd,
-    volume24hUsd,
-    fundingRate: 0,
-  };
 }
 
 function getQuantityStep(quote: OptionQuote): number {
@@ -237,7 +218,7 @@ function App() {
   const assetChoices = useMemo(() => dataMode === 'DEMO'
     ? Object.keys(DEMO_MARKETS)
     : [...new Set(quotes.map((quote) => quote.underlying))].sort((a, b) => a.localeCompare(b)), [dataMode, quotes]);
-  const market = useMemo(() => dataMode === 'DEMO' ? DEMO_MARKETS[underlying] : getCsvMarket(quotes, underlying), [dataMode, quotes, underlying]);
+  const market = useMemo(() => dataMode === 'DEMO' ? DEMO_MARKETS[underlying] : getMarketSnapshotFromQuotes(quotes, underlying), [dataMode, quotes, underlying]);
   const filteredQuotes = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     return assetQuotes
@@ -261,7 +242,11 @@ function App() {
   }, [filteredQuotes, selectedId]);
 
   useEffect(() => {
-    localStorage.setItem('volterra-paper-trades-v1', JSON.stringify(trades));
+    try {
+      localStorage.setItem('volterra-paper-trades-v1', JSON.stringify(trades));
+    } catch {
+      setToast('تعذر حفظ الدفتر محلياً؛ قد يكون التخزين معطلاً أو ممتلئاً.');
+    }
   }, [trades]);
 
   useEffect(() => {
@@ -311,12 +296,12 @@ function App() {
                 : 'لا يوجد سعر موثوق';
 
   const smileData = useMemo(() => {
-    const target = assetQuotes.filter((quote) => quote.daysToExpiry >= 20 && quote.daysToExpiry <= 40 && quote.type === selectedType);
+    const target = getLatestQuotePerContract(assetQuotes).filter((quote) => quote.daysToExpiry >= 20 && quote.daysToExpiry <= 40 && quote.type === selectedType);
     return target.sort((a, b) => a.strike - b.strike).map((quote) => ({ strike: quote.strike, iv: quote.iv, delta: quote.delta }));
   }, [assetQuotes, selectedType]);
 
   const termData = useMemo(() => expiryChoices.map((choice) => {
-    const expiryQuotes = assetQuotes.filter((quote) => quote.expiry === choice.value);
+    const expiryQuotes = getLatestQuotePerContract(assetQuotes).filter((quote) => quote.expiry === choice.value);
     const referenceSpot = market?.spot ?? assetQuotes[0]?.spot ?? 0;
     const atm = [...expiryQuotes].sort((a, b) => Math.abs(a.strike - referenceSpot) - Math.abs(b.strike - referenceSpot))[0];
     return { expiry: choice.label, days: choice.days, iv: atm?.iv ?? market?.iv30 ?? 0 };
@@ -418,6 +403,11 @@ function App() {
 
   const handleCsvUpload = (file?: File) => {
     if (!file) return;
+    if (file.size > MAX_CSV_FILE_BYTES) {
+      notify('حجم ملف CSV يتجاوز 5 MiB؛ اختصر الملف قبل استيراده.');
+      if (uploadRef.current) uploadRef.current.value = '';
+      return;
+    }
     invalidateBinanceRequest();
     setBinanceError('');
     const reader = new FileReader();
@@ -472,18 +462,22 @@ function App() {
       notify('أدخل كمية أكبر من صفر للمحاكاة.');
       return;
     }
+    if (selectedPremium <= 0) {
+      notify('لا يوجد سعر عقد موجب وموثوق لتسجيل القسط. اختر عقداً آخر أو حدّث بيانات السوق.');
+      return;
+    }
     if (dataMode === 'BINANCE') {
       const stepCount = safeQuantity / quantityStep;
       if (safeQuantity + 1e-9 < minimumQuantity) {
-        notify(`الكمية أقل من الحد الأدنى لعقد Binance (${numberFormat.format(minimumQuantity)}).`);
+        notify(`الكمية أقل من الحد الأدنى لعقد Binance (${formatQuantity(minimumQuantity, selectedQuote)}).`);
         return;
       }
       if (selectedQuote.maxQty !== undefined && safeQuantity - 1e-9 > selectedQuote.maxQty) {
-        notify(`الكمية تتجاوز الحد الأقصى للعقد (${numberFormat.format(selectedQuote.maxQty)}).`);
+        notify(`الكمية تتجاوز الحد الأقصى للعقد (${formatQuantity(selectedQuote.maxQty, selectedQuote)}).`);
         return;
       }
       if (Math.abs(stepCount - Math.round(stepCount)) > 1e-7) {
-        notify(`الكمية يجب أن تتوافق مع خطوة العقد ${numberFormat.format(quantityStep)}.`);
+        notify(`الكمية يجب أن تتوافق مع خطوة العقد ${formatQuantity(quantityStep, selectedQuote)}.`);
         return;
       }
     }
@@ -496,7 +490,9 @@ function App() {
       expiry: selectedQuote.expiry,
       strike: selectedQuote.strike,
       quantity: safeQuantity,
+      quantityPrecision: getQuantityPrecision(selectedQuote),
       entryPremium: selectedPremium,
+      pricePrecision: getOptionPricePrecision(selectedPremium, selectedQuote),
       fees: safeFees,
       spotAtEntry: selectedQuote.spot,
       status: 'PAPER',
@@ -527,19 +523,20 @@ function App() {
 
   const handleBudgetClick = () => {
     if (affordableQty + 1e-9 < minimumQuantity) {
-      notify(`الميزانية لا تكفي للحد الأدنى لهذه السلسلة (${numberFormat.format(minimumQuantity)}).`);
+      notify(`الميزانية لا تكفي للحد الأدنى لهذه السلسلة (${formatQuantity(minimumQuantity, selectedQuote)}).`);
       return;
     }
     setQuantity(affordableQty);
-    const precision = Math.min(8, Math.max(0, String(quantityStep).split('.')[1]?.length ?? 0));
-    notify(`حُسبت كمية تجريبية قدرها ${affordableQty.toFixed(precision)} وفق الميزانية المدخلة.`);
+    notify(`حُسبت كمية تجريبية قدرها ${formatQuantity(affordableQty, selectedQuote)} وفق الميزانية المدخلة.`);
   };
 
   const navItems = [
-    { id: 'overview', label: 'نظرة عامة', icon: <BarChart3 size={17} /> },
-    { id: 'scanner', label: 'ماسح العقود', icon: <ListFilter size={17} /> },
-    { id: 'trade-lab', label: 'مختبر الصفقة', icon: <Target size={17} /> },
-    { id: 'journal', label: 'الدفتر التجريبي', icon: <BookOpen size={17} /> },
+    { id: 'overview', label: 'نظرة عامة', mobileLabel: 'السوق', icon: <BarChart3 size={17} /> },
+    { id: 'opportunities', label: 'تحليل السوق', mobileLabel: 'الفرص', icon: <Activity size={17} /> },
+    { id: 'scanner', label: 'ماسح العقود', mobileLabel: 'السلسلة', icon: <ListFilter size={17} /> },
+    { id: 'trade-lab', label: 'مختبر الصفقة', mobileLabel: 'الحساب', icon: <Target size={17} /> },
+    { id: 'greeks', label: 'Greeks', mobileLabel: 'Greeks', icon: <Gauge size={17} /> },
+    { id: 'journal', label: 'الدفتر التجريبي', mobileLabel: 'الدفتر', icon: <BookOpen size={17} /> },
   ];
 
   return (
@@ -634,49 +631,36 @@ function App() {
           <section className="market-summary section-anchor" id="overview-metrics">
             <div className="section-title-row compact-title"><div><span className="section-kicker">MARKET SNAPSHOT</span><h2>لقطة السوق</h2></div><div className="snapshot-meta"><span className="live-hollow" />{dataMode === 'DEMO' ? 'قيم توضيحية مولّدة' : dataMode === 'CSV' ? 'مصدر الملف الذي استوردته' : `Binance REST · ${integerFormat.format(binanceSnapshot?.activeSymbols ?? 0)} عقد نشط / ${integerFormat.format(binanceSnapshot?.quotes.length ?? 0)} محلل`}<span className="meta-separator">·</span><span>{underlying}/USDT</span></div></div>
             {market ? <div className="stats-grid">
-              <StatCard label={`السعر المرجعي · ${underlying}`} value={formatMoney(market.spot, underlying === 'BTC' ? 0 : 2)} change={dataMode === 'DEMO' ? formatSignedPercent(DEMO_MARKETS[underlying].dayChangePct) : undefined} tone={dataMode === 'DEMO' ? (DEMO_MARKETS[underlying].dayChangePct >= 0 ? 'positive' : 'negative') : 'neutral'} footnote={dataMode === 'DEMO' ? 'قيمة محاكاة — ليست سعر Binance' : dataMode === 'BINANCE' ? 'مؤشر الأصل من Binance Options REST' : 'وسيط الأسعار الواردة في CSV'} icon={<span className="asset-symbol">{underlying === 'BTC' ? '₿' : underlying === 'ETH' ? 'Ξ' : underlying.slice(0, 3)}</span>} />
+              <StatCard label={`السعر المرجعي · ${underlying}`} value={formatAssetPrice(market.spot, market.spot)} change={dataMode === 'DEMO' ? formatSignedPercent(DEMO_MARKETS[underlying].dayChangePct) : undefined} tone={dataMode === 'DEMO' ? (DEMO_MARKETS[underlying].dayChangePct >= 0 ? 'positive' : 'negative') : 'neutral'} footnote={dataMode === 'DEMO' ? 'قيمة محاكاة — ليست سعر Binance' : dataMode === 'BINANCE' ? 'مؤشر الأصل من Binance Options REST' : 'وسيط الأسعار الواردة في CSV'} icon={<span className="asset-symbol">{underlying === 'BTC' ? '₿' : underlying === 'ETH' ? 'Ξ' : underlying.slice(0, 3)}</span>} />
               <StatCard label="التقلب الضمني · 30 يوم" value={market.iv30 === null ? 'غير متاح' : formatPercent(market.iv30)} change={market.iv30 === null ? 'لا يوجد أجل قريب' : dataMode === 'DEMO' ? 'قيمة مولّدة' : dataMode === 'BINANCE' ? 'سلسلة الخيارات' : 'تقريب من السلسلة'} tone={market.iv30 === null ? 'neutral' : 'accent'} footnote={market.iv30 === null ? 'يلزم وجود خيارات بين 20 و40 يوماً' : dataMode === 'DEMO' ? 'بيانات محاكاة وليست حية' : dataMode === 'BINANCE' ? 'وسيط IV لعقود 20–40 يوماً؛ قد يتضمن استنتاجاً' : 'وسيط صفوف 20–40 يوماً المتاحة'} icon={<Activity size={17} />} />
               <StatCard label="التقلب المحقّق · 30 يوم" value={market.rv30 === null ? 'غير متاح' : formatPercent(market.rv30)} change={market.rv30 === null ? 'يلزم تاريخ الأصل' : 'مرجع توضيحي'} tone="neutral" footnote={market.rv30 === null ? dataMode === 'BINANCE' ? 'لقطة REST لا توفر تاريخاً كافياً' : 'CSV لا يتضمن سلسلة أسعار تاريخية' : 'المحاكاة تستخدم قيمة ثابتة'} icon={<LineChart size={17} />} />
               <StatCard label="IV − RV" value={ivRvSpread === null ? 'غير متاح' : `${ivRvSpread >= 0 ? '+' : ''}${(ivRvSpread * 100).toFixed(1)} نقطة`} change={ivRvSpread === null ? 'بيانات غير كافية' : 'قراءة وصفية'} tone={ivTone === 'yellow' ? 'accent' : ivTone === 'green' ? 'positive' : 'neutral'} footnote={ivRvSpread === null ? 'لا نخلط بيانات تاريخية غير متوفرة' : 'ليس إشارة بيع أو شراء'} icon={<Gauge size={17} />} />
-              <StatCard label="الفائدة المفتوحة الاسمية" value={market.openInterestUsd === null ? 'غير متاح' : formatCompact(market.openInterestUsd)} change="من صفوف اللقطة" tone="neutral" footnote={dataMode === 'DEMO' ? 'قيمة تقريبية مولّدة' : dataMode === 'BINANCE' ? 'مجموع sumOpenInterestUsd من Binance' : 'OI × السعر المرجعي × وحدة العقد'} icon={<Layers3 size={17} />} />
-              <StatCard label="حجم التداول · 24 ساعة" value={market.volume24hUsd === null ? 'غير متاح' : formatCompact(market.volume24hUsd)} change="من صفوف اللقطة" tone="neutral" footnote={dataMode === 'DEMO' ? 'قيمة تقريبية مولّدة' : dataMode === 'BINANCE' ? 'مجموع amount من تكرات Binance' : 'تقدير من الحجم والسعر ووحدة العقد'} icon={<BarChart3 size={17} />} />
+              <StatCard label="الفائدة المفتوحة الاسمية" value={market.openInterestUsd === null ? 'غير متاح' : formatCompact(market.openInterestUsd)} change="من صفوف اللقطة" tone="neutral" footnote={market.openInterestUsd === null ? 'لا تتوفر قيمة مباشرة أو بيانات OI قابلة للتحويل' : dataMode === 'DEMO' ? 'قيمة تقريبية مولّدة' : market.openInterestUsdEstimated ? 'تقدير من OI × السعر المرجعي × وحدة العقد' : dataMode === 'BINANCE' ? 'مجموع sumOpenInterestUsd من Binance' : 'قيمة USD واردة في ملف CSV'} icon={<Layers3 size={17} />} />
+              <StatCard label="حجم التداول · 24 ساعة" value={market.volume24hUsd === null ? 'غير متاح' : formatCompact(market.volume24hUsd)} change="من صفوف اللقطة" tone="neutral" footnote={market.volume24hUsd === null ? 'لا تتوفر قيمة تداول أو حجم عقود للتحويل' : dataMode === 'DEMO' ? 'قيمة تقريبية مولّدة' : market.volume24hUsdEstimated ? 'تقدير من حجم العقود × علاوة الخيار × وحدة العقد' : dataMode === 'BINANCE' ? 'مجموع amount (عملة التسعير) من Binance' : 'volumeQuote/turnover وارد في ملف CSV'} icon={<BarChart3 size={17} />} />
             </div> : <EmptyState title="لا توجد بيانات لهذا الأصل في الملف" note="استورد سلسلة تتضمن عقوداً وسعراً مرجعياً لهذا الأصل، أو استعد بيانات المحاكاة." />}
           </section>
 
-          <section className="charts-grid">
-            <article className="panel chart-panel">
-              <div className="panel-heading"><div><span className="section-kicker">VOLATILITY STRUCTURE</span><h2>ابتسامة التقلب</h2><p>IV حسب سعر التنفيذ · أقرب انتهاء إلى 30 يوماً</p></div><div className="chart-select"><span className="chart-legend-dot" />{selectedType === 'CALL' ? 'Calls' : 'Puts'}<ChevronDown size={13} /></div></div>
-              {smileData.length ? <div className="chart-wrap">
-                <ResponsiveContainer width="100%" height={220}>
-                  <AreaChart data={smileData} margin={{ top: 10, right: 8, left: -18, bottom: 2 }}>
-                    <defs><linearGradient id="ivFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#b6f36e" stopOpacity={0.22} /><stop offset="100%" stopColor="#b6f36e" stopOpacity={0} /></linearGradient></defs>
-                    <CartesianGrid stroke="#222b31" strokeDasharray="3 5" vertical={false} />
-                    <XAxis dataKey="strike" tickFormatter={(value) => Number(value) >= 10_000 ? `${numberFormat.format(Number(value) / 1000)}k` : numberFormat.format(Number(value))} tick={{ fill: '#78838a', fontSize: 10 }} axisLine={{ stroke: '#283137' }} tickLine={false} />
-                    <YAxis tickFormatter={(value) => `${Math.round(Number(value) * 100)}%`} tick={{ fill: '#78838a', fontSize: 10 }} axisLine={false} tickLine={false} domain={['dataMin - 0.04', 'dataMax + 0.04']} />
-                    <Tooltip contentStyle={{ background: '#11171b', border: '1px solid #2b353b', borderRadius: 10, color: '#e7ede8', fontSize: 12 }} formatter={(value) => [`${(Number(value) * 100).toFixed(2)}%`, 'IV']} labelFormatter={(value) => `Strike: ${numberFormat.format(Number(value))}`} />
-                    <Area type="monotone" dataKey="iv" stroke="#b6f36e" strokeWidth={2.2} fill="url(#ivFill)" activeDot={{ r: 4, fill: '#d2ff92', stroke: '#182012', strokeWidth: 2 }} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div> : <EmptyState title="لا تتوفر سلسلة كافية" note="استورد صفوف خيارات تتضمن IV وسعر التنفيذ." />}
-              <div className="chart-footnote"><span>سعر التنفيذ · USDT لكل {underlying}</span><span>الابتسامة المعروضة من البيانات الحالية فقط</span></div>
-            </article>
+          <OpportunityReview
+            quotes={assetQuotes}
+            market={market ?? null}
+            underlying={underlying}
+            dataMode={dataMode}
+            onReviewQuote={(quote) => {
+              setSelectedExpiry(quote.expiry);
+              setSelectedType(quote.type);
+              setSelectedId(quote.id);
+              setQuantity(quote.minQty ?? getQuantityStep(quote));
+              navigate('scanner');
+            }}
+          />
 
-            <article className="panel chart-panel term-panel">
-              <div className="panel-heading"><div><span className="section-kicker">TERM STRUCTURE</span><h2>منحنى الانتهاء</h2><p>التقلب الضمني لأقرب عقد إلى السعر المرجعي</p></div><div className="chart-legend"><span className="chart-legend-dot blue" />ATM IV</div></div>
-              {termData.length ? <div className="chart-wrap">
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={termData} margin={{ top: 10, right: 5, left: -18, bottom: 0 }}>
-                    <CartesianGrid stroke="#222b31" strokeDasharray="3 5" vertical={false} />
-                    <XAxis dataKey="expiry" tick={{ fill: '#78838a', fontSize: 10 }} axisLine={{ stroke: '#283137' }} tickLine={false} />
-                    <YAxis tickFormatter={(value) => `${Math.round(Number(value) * 100)}%`} tick={{ fill: '#78838a', fontSize: 10 }} axisLine={false} tickLine={false} domain={[0, 'dataMax + 0.12']} />
-                    <Tooltip contentStyle={{ background: '#11171b', border: '1px solid #2b353b', borderRadius: 10, color: '#e7ede8', fontSize: 12 }} formatter={(value) => [`${(Number(value) * 100).toFixed(2)}%`, 'ATM IV']} />
-                    <Bar dataKey="iv" fill="#8e9ff5" radius={[5, 5, 0, 0]} maxBarSize={34} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div> : <EmptyState title="لا تتوفر استحقاقات" note="استورد أكثر من تاريخ انتهاء لرؤية المنحنى." />}
-              <div className="chart-footnote"><span>المدة حتى الانتهاء</span><span>أداة وصفية وليست توقعاً</span></div>
-            </article>
-          </section>
+          <DeferredVolatilityCharts
+            smileData={smileData}
+            termData={termData}
+            underlying={underlying}
+            selectedQuote={selectedQuote}
+            selectedType={selectedType}
+          />
 
           <section className="section-anchor scanner-section" id="scanner">
             <div className="section-title-row"><div><span className="section-kicker">OPTION CHAIN</span><h2>ماسح العقود</h2><p>اختر عقداً لعرض تحليله — لا توجد أوامر تنفيذ في هذا المختبر.</p></div><button className="text-button" onClick={resetDemo}><Zap size={14} /> استعادة المحاكاة</button></div>
@@ -715,8 +699,8 @@ function App() {
                         const isSelected = quote.id === selectedQuote.id;
                         const moneyness = ((quote.strike / quote.spot) - 1) * 100;
                         return <tr key={quote.id} onClick={() => setSelectedId(quote.id)} className={isSelected ? 'selected-row' : ''}>
-                          <td><div className="contract-cell"><strong>{numberFormat.format(quote.strike)}</strong><span className={`moneyness ${Math.abs(moneyness) < 2.6 ? 'atm' : ''}`}>{Math.abs(moneyness) < 2.6 ? 'ATM' : `${moneyness > 0 ? '+' : ''}${moneyness.toFixed(1)}%`}</span></div><span className="contract-symbol">{quote.symbol}</span></td>
-                          <td>{formatQuotePrice(quote.bid)}</td><td>{formatQuotePrice(quote.ask)}</td><td className="iv-cell">{formatPercent(quote.iv)}</td><td className={quote.delta >= 0 ? 'positive-text' : 'negative-text'}>{quote.delta.toFixed(3)}</td><td>{quote.openInterest === null ? '—' : numberFormat.format(quote.openInterest)}</td><td>{quote.volume === null ? '—' : numberFormat.format(quote.volume)}</td><td><span className={`spread-pill ${!Number.isFinite(spread) ? 'unknown' : spread > 8 ? 'wide' : spread > 4 ? 'medium' : 'tight'}`}>{Number.isFinite(spread) ? `${spread.toFixed(1)}%` : '—'}</span></td>
+                          <td><div className="contract-cell"><strong>{formatAssetPrice(quote.strike, quote.spot)}</strong><span className={`moneyness ${Math.abs(moneyness) < 2.6 ? 'atm' : ''}`}>{Math.abs(moneyness) < 2.6 ? 'ATM' : `${moneyness > 0 ? '+' : ''}${moneyness.toFixed(1)}%`}</span></div><span className="contract-symbol">{quote.symbol}</span></td>
+                          <td>{formatQuotePrice(quote.bid, quote)}</td><td>{formatQuotePrice(quote.ask, quote)}</td><td className="iv-cell">{formatPercent(quote.iv)}</td><td className={quote.delta >= 0 ? 'positive-text' : 'negative-text'}>{quote.delta.toFixed(3)}</td><td>{quote.openInterest === null ? '—' : formatSmallNumber(quote.openInterest)}</td><td>{quote.volume === null ? '—' : formatSmallNumber(quote.volume)}</td><td><span className={`spread-pill ${!Number.isFinite(spread) ? 'unknown' : spread > 8 ? 'wide' : spread > 4 ? 'medium' : 'tight'}`}>{Number.isFinite(spread) ? `${spread.toFixed(1)}%` : '—'}</span></td>
                         </tr>;
                       })}
                     </tbody>
@@ -728,10 +712,10 @@ function App() {
 
               <aside className="panel quick-analysis" id="trade-lab">
                 <div className="analysis-header"><div><span className="section-kicker">CONTRACT REVIEW</span><h3>ملخص العقد</h3></div><span className="analysis-state"><span /> فحص فقط</span></div>
-                <div className="selected-contract-title"><div className={`contract-type-icon ${selectedQuote.type.toLowerCase()}`}>{selectedQuote.type === 'CALL' ? <TrendingUp size={17} /> : <TrendingDown size={17} />}</div><div><strong>{selectedQuote.underlying} {selectedQuote.type}</strong><span>{numberFormat.format(selectedQuote.strike)} · ينتهي بعد {selectedQuote.daysToExpiry.toFixed(0)} يوم</span></div><button className="copy-symbol" onClick={() => { navigator.clipboard?.writeText(selectedQuote.symbol); notify('تم نسخ رمز العقد.'); }} title="نسخ رمز العقد">⧉</button></div>
-                {dataMode === 'BINANCE' && <div className="contract-specs"><span><small>وحدة العقد</small><b>{numberFormat.format(selectedQuote.unit)} {selectedQuote.underlying}</b></span><span><small>حد الكمية</small><b>{selectedQuote.minQty === undefined ? '—' : numberFormat.format(selectedQuote.minQty)} – {selectedQuote.maxQty === undefined ? '—' : numberFormat.format(selectedQuote.maxQty)}</b></span><span><small>رسوم taker</small><b>{selectedQuote.takerFeeRate === undefined ? '—' : formatPercent(selectedQuote.takerFeeRate, 2)}</b></span></div>}
-                <div className="price-highlight"><span>{dataMode === 'BINANCE' ? 'سعر العقد المرجعي' : 'السعر المرجعي التقديري'}</span><strong>{formatMoney(selectedPremium)}</strong><small>{priceBasis}</small></div>
-                <div className="quote-row"><span>Bid <b>{formatQuotePrice(selectedQuote.bid)}</b></span><span>Ask <b>{formatQuotePrice(selectedQuote.ask)}</b></span></div>
+                <div className="selected-contract-title"><div className={`contract-type-icon ${selectedQuote.type.toLowerCase()}`}>{selectedQuote.type === 'CALL' ? <TrendingUp size={17} /> : <TrendingDown size={17} />}</div><div><strong>{selectedQuote.underlying} {selectedQuote.type}</strong><span>{formatAssetPrice(selectedQuote.strike, selectedQuote.spot)} · ينتهي بعد {selectedQuote.daysToExpiry.toFixed(0)} يوم</span></div><button className="copy-symbol" onClick={() => { navigator.clipboard?.writeText(selectedQuote.symbol); notify('تم نسخ رمز العقد.'); }} title="نسخ رمز العقد">⧉</button></div>
+                {dataMode === 'BINANCE' && <div className="contract-specs"><span><small>وحدة العقد</small><b>{formatSmallNumber(selectedQuote.unit)} {selectedQuote.underlying}</b></span><span><small>حد الكمية</small><b>{selectedQuote.minQty === undefined ? '—' : formatQuantity(selectedQuote.minQty, selectedQuote)} – {selectedQuote.maxQty === undefined ? '—' : formatQuantity(selectedQuote.maxQty, selectedQuote)}</b></span><span><small>رسوم taker</small><b>{selectedQuote.takerFeeRate === undefined ? '—' : formatPercent(selectedQuote.takerFeeRate, 2)}</b></span></div>}
+                <div className="price-highlight"><span>{dataMode === 'BINANCE' ? 'سعر العقد المرجعي' : 'السعر المرجعي التقديري'}</span><strong>{formatOptionPrice(selectedPremium, selectedQuote)}</strong><small>{priceBasis}</small></div>
+                <div className="quote-row"><span>Bid <b>{formatQuotePrice(selectedQuote.bid, selectedQuote)}</b></span><span>Ask <b>{formatQuotePrice(selectedQuote.ask, selectedQuote)}</b></span></div>
                 <div className="quote-quality"><span>الفارق السعري</span><span className={`quality-badge ${!Number.isFinite(spreadPct) ? 'unknown' : spreadPct > 10 ? 'bad' : spreadPct > 4 ? 'warn' : 'good'}`}><i />{Number.isFinite(spreadPct) ? `${quoteQuality} · ${spreadPct.toFixed(1)}%` : 'غير متاح · يلزم Bid وAsk'}</span></div>
                 <div className="analysis-divider" />
                 <div className="input-grid">
@@ -751,25 +735,16 @@ function App() {
             </div>
           </section>
 
+          <GreeksPanel quote={selectedQuote} quantity={safeQuantity} dataMode={dataMode} />
+
           <section className="section-anchor payoff-section" id="payoff">
             <div className="section-title-row"><div><span className="section-kicker">EXPIRY SCENARIOS</span><h2>ماذا لو انتهى العقد عند مستويات مختلفة؟</h2><p>ربح/خسارة الخيار المشترى عند الانتهاء · قبل إضافة أي رسوم غير مدخلة</p></div><div className="scenario-controls"><span className="scenario-key"><i className="profit-key" /> صافي P&amp;L</span><span className="scenario-key"><i className="zero-key" /> التعادل</span></div></div>
             <div className="panel payoff-panel">
-              <div className="payoff-chart">
-                <ResponsiveContainer width="100%" height={264}>
-                  <RechartsLineChart data={scenarioSeries} margin={{ top: 12, right: 10, left: 10, bottom: 0 }}>
-                    <CartesianGrid stroke="#222b31" strokeDasharray="3 5" vertical={false} />
-                    <XAxis dataKey="label" tick={{ fill: '#829096', fontSize: 11 }} axisLine={{ stroke: '#283137' }} tickLine={false} />
-                    <YAxis tickFormatter={(value) => `${Math.round(Number(value))}`} tick={{ fill: '#829096', fontSize: 10 }} axisLine={false} tickLine={false} width={54} />
-                    <Tooltip contentStyle={{ background: '#11171b', border: '1px solid #2b353b', borderRadius: 10, color: '#e7ede8', fontSize: 12 }} formatter={(value) => [formatMoney(Number(value)), 'صافي P&L']} labelFormatter={(value, payload) => payload?.[0]?.payload ? `${value} · ${formatMoney(Number(payload[0].payload.spot), 0)}` : String(value)} />
-                    <ReferenceLine y={0} stroke="#8e9aa0" strokeDasharray="4 4" />
-                    <Line type="monotone" dataKey="pnl" stroke="#b6f36e" strokeWidth={2.5} dot={{ r: 3, fill: '#b6f36e', stroke: '#0f1518', strokeWidth: 2 }} activeDot={{ r: 5 }} />
-                  </RechartsLineChart>
-                </ResponsiveContainer>
-              </div>
+              <DeferredPayoffChart scenarioSeries={scenarioSeries} selectedQuote={selectedQuote} />
               <div className="scenario-side">
                 <div className="scenario-side-head"><span>نطاق الحركة الضمني التقريبي</span><CircleHelp size={14} /></div>
-                <div className="expected-move-value">±{formatMoney(expectedMove, 0)}</div>
-                <div className="expected-range"><span>{formatMoney(Math.max(0, selectedQuote.spot - expectedMove), 0)}</span><i /><span>{formatMoney(selectedQuote.spot + expectedMove, 0)}</span></div>
+                <div className="expected-move-value">±{formatAssetPrice(expectedMove, selectedQuote.spot)}</div>
+                <div className="expected-range"><span>{formatAssetPrice(Math.max(0, selectedQuote.spot - expectedMove), selectedQuote.spot)}</span><i /><span>{formatAssetPrice(selectedQuote.spot + expectedMove, selectedQuote.spot)}</span></div>
                 <p>تقريب 1σ من IV حتى الانتهاء. ليس توقعاً ولا احتمالاً مؤكداً.</p>
                 <div className="scenario-divider" />
                 <div className="scenario-stat"><span>Delta</span><strong className={selectedQuote.delta >= 0 ? 'positive-text' : 'negative-text'}>{selectedQuote.delta.toFixed(3)}</strong><small>حساسية تقريبية لكل حركة وحدة</small></div>
@@ -781,14 +756,14 @@ function App() {
 
           <section className="model-strip">
             <button className="model-toggle" onClick={() => setShowAssumptions((value) => !value)}><div className="model-icon"><Info size={16} /></div><div><strong>افتراضات النموذج وحدوده</strong><span>{dataMode === 'BINANCE' ? 'Binance REST snapshot · Mark/IV عند التوفر · بعض Greeks نموذجية' : dataMode === 'CSV' ? 'CSV محلي · Black–Scholes تقديري للقيم الناقصة' : 'Black–Scholes توضيحي · فائدة مفترضة 0% · تسوية أوروبية'}</span></div><ChevronDown className={showAssumptions ? 'rotated' : ''} size={16} /></button>
-            {showAssumptions && <div className="model-details">{dataMode === 'BINANCE' ? <><p>تمر طلبات Binance عبر وسيط Supabase عام محدود بواجهات بيانات السوق للقراءة فقط لتوافق CORS؛ يطلب exchangeInfo لاكتشاف العقود النشطة وmark/ticker/index وopenInterest لبيانات السوق. لا يخزن الوسيط مفاتيح API ولا يقبل مسارات حساب أو تداول، ولا يتجاوز قيود Binance الجغرافية. ما يظهر لقطة REST عند آخر تحديث وليس بثاً لحظياً؛ وقد تتغير العقود أو تتأخر البيانات أو تُحجب حسب الشبكة والمنطقة.</p><p>تُعرض Mark/IV وBid/Ask والمؤشر والفائدة المفتوحة عند توفرها. يستخدم التحليل Delta من Binance عند وجوده ويقدّر Gamma وTheta وVega بنموذج Black–Scholes؛ ويعلّم القيم المستنتجة والافتراضات. قد تختلف وحدات العقد ووحدات Greeks عن افتراضات النموذج، لذا لا تُعاملها كقياسات تداول موثقة ولا تعتمد عليها مالياً.</p></> : <><p>{dataMode === 'DEMO' ? 'هذه نسخة محاكاة: بيانات الأسعار في وضع Demo مولدة وليست متصلة بـBinance. تسعير العرض يتم بنموذج Black–Scholes مبسط مع معدل فائدة 0%؛ وقد تختلف أسواق العملات المشفرة بسبب الابتسامة، القفزات، السيولة، التمويل، والفروقات بين السعر النظري وسعر التنفيذ.' : 'يستخدم المحلل في CSV السعر المتوسط من Bid/Ask إن توفرا، ويحسب القيم المفقودة تقريبياً. النتائج لا تشمل الرسوم تلقائياً إلا إذا أدخلتها؛ تحقّق من الوحدات والطوابع الزمنية.'}</p><p>لا يستخدم المختبر مصادر بديلة خفية ولا يخلط بيانات Demo ببيانات CSV أو Binance. لا تستخدم المحاكاة لاتخاذ قرار مالي مباشر.</p></>}</div>}
+            {showAssumptions && <div className="model-details">{dataMode === 'BINANCE' ? <><p>تمر طلبات Binance عبر وسيط Supabase عام محدود بواجهات بيانات السوق للقراءة فقط لتوافق CORS؛ يطلب exchangeInfo لاكتشاف العقود النشطة وmark/ticker/index وopenInterest لبيانات السوق. لا يخزن الوسيط مفاتيح API ولا يقبل مسارات حساب أو تداول، ولا يتجاوز قيود Binance الجغرافية. ما يظهر لقطة REST عند آخر تحديث وليس بثاً لحظياً؛ وقد تتغير العقود أو تتأخر البيانات أو تُحجب حسب الشبكة والمنطقة.</p><p>تُعرض Mark/IV وBid/Ask والمؤشر والفائدة المفتوحة عند توفرها. يستخدم التحليل Delta من Binance عند وجوده ويقدّر Gamma وTheta وVega وRho بنموذج Black–Scholes؛ ويعلّم القيم المستنتجة والافتراضات. Rho لكل نقطة مئوية من معدل سنوي مركب باستمرار، ووحدة `riskFreeInterest` تحتاج تحققاً من المصدر. قد تختلف وحدات العقد وGreeks عن افتراضات النموذج، لذا لا تُعاملها كقياسات تداول موثقة ولا تعتمد عليها مالياً.</p></> : <><p>{dataMode === 'DEMO' ? 'هذه نسخة محاكاة: بيانات الأسعار في وضع Demo مولدة وليست متصلة بـBinance. تسعير العرض يتم بنموذج Black–Scholes مبسط مع معدل فائدة 0%؛ وقد تختلف أسواق العملات المشفرة بسبب الابتسامة، القفزات، السيولة، التمويل، والفروقات بين السعر النظري وسعر التنفيذ.' : 'يستخدم المحلل في CSV السعر المتوسط من Bid/Ask إن توفرا، ويحسب القيم المفقودة تقريبياً. النتائج لا تشمل الرسوم تلقائياً إلا إذا أدخلتها؛ تحقّق من الوحدات والطوابع الزمنية.'}</p><p>لا يستخدم المختبر مصادر بديلة خفية ولا يخلط بيانات Demo ببيانات CSV أو Binance. لا تستخدم المحاكاة لاتخاذ قرار مالي مباشر.</p></>}</div>}
           </section>
 
           <section className="section-anchor journal-section" id="journal">
             <div className="section-title-row"><div><span className="section-kicker">PAPER WORKSPACE</span><h2>الدفتر التجريبي</h2><p>سجل الفرضية والكمية والقسط قبل أن تقيم جودة القرار.</p></div><div className="journal-actions"><button className="button button-ghost" onClick={exportTrades}><Download size={14} /> تصدير CSV</button><button className="button button-ghost danger-ghost" onClick={() => { setTrades([]); notify('تم مسح الدفتر المحلي.'); }} disabled={!trades.length}><Trash2 size={14} /> مسح الدفتر</button></div></div>
             <article className="panel journal-panel">
               <div className="journal-summary"><div className="journal-summary-icon"><WalletCards size={18} /></div><div><strong>{trades.length} <span>صفقة تجريبية</span></strong><small>محفوظة محلياً في هذا المتصفح فقط</small></div><div className="journal-metric"><span>وضع التنفيذ</span><strong><i /> PAPER ONLY</strong></div><div className="journal-metric"><span>مفاتيح تداول</span><strong className="safe-label"><LockKeyhole size={13} /> غير مطلوبة</strong></div></div>
-              {trades.length ? <div className="journal-table-wrap"><table className="journal-table"><thead><tr><th>وقت التسجيل</th><th>العقد</th><th>Strike</th><th>كمية</th><th>قسط الدخول</th><th>Spot وقتها</th><th>الحالة</th></tr></thead><tbody>{trades.map((trade) => <tr key={trade.id}><td>{formatDateTime(new Date(trade.createdAt))}</td><td><span className={`mini-type ${trade.type.toLowerCase()}`}>{trade.type}</span><strong>{trade.symbol}</strong></td><td>{numberFormat.format(trade.strike)}</td><td>{trade.quantity.toFixed(2)}</td><td>{formatMoney(trade.entryPremium, 2)}</td><td>{formatMoney(trade.spotAtEntry, 0)}</td><td><span className="paper-status"><i /> تجريبية</span></td></tr>)}</tbody></table></div> : <div className="journal-empty"><div className="journal-empty-icon"><BookOpen size={20} /></div><strong>لا توجد صفقات مسجلة بعد</strong><span>اختر عقداً من الماسح ثم أضفه إلى الدفتر. لن يتم إرسال أي أمر إلى أي منصة.</span><button className="text-button" onClick={() => navigate('scanner')}>ابدأ بتحليل عقد <ArrowUpLeft size={14} /></button></div>}
+              {trades.length ? <div className="journal-table-wrap"><table className="journal-table"><thead><tr><th>وقت التسجيل</th><th>العقد</th><th>Strike</th><th>كمية</th><th>قسط الدخول</th><th>Spot وقتها</th><th>الحالة</th></tr></thead><tbody>{trades.map((trade) => <tr key={trade.id}><td>{formatDateTime(new Date(trade.createdAt))}</td><td><span className={`mini-type ${trade.type.toLowerCase()}`}>{trade.type}</span><strong>{trade.symbol}</strong></td><td>{formatAssetPrice(trade.strike, trade.spotAtEntry)}</td><td>{formatQuantity(trade.quantity, { quantityScale: trade.quantityPrecision })}</td><td>{formatOptionPrice(trade.entryPremium, { priceScale: trade.pricePrecision })}</td><td>{formatAssetPrice(trade.spotAtEntry, trade.spotAtEntry)}</td><td><span className="paper-status"><i /> تجريبية</span></td></tr>)}</tbody></table></div> : <div className="journal-empty"><div className="journal-empty-icon"><BookOpen size={20} /></div><strong>لا توجد صفقات مسجلة بعد</strong><span>اختر عقداً من الماسح ثم أضفه إلى الدفتر. لن يتم إرسال أي أمر إلى أي منصة.</span><button className="text-button" onClick={() => navigate('scanner')}>ابدأ بتحليل عقد <ArrowUpLeft size={14} /></button></div>}
             </article>
           </section>
 
@@ -797,7 +772,7 @@ function App() {
       </main>
 
       <div className="mobile-bottom-nav">
-        {navItems.map((item) => <button key={item.id} className={activeView === item.id ? 'active' : ''} onClick={() => navigate(item.id)}>{item.icon}<span>{item.label}</span></button>)}
+        {navItems.map((item) => <button key={item.id} className={activeView === item.id ? 'active' : ''} onClick={() => navigate(item.id)}>{item.icon}<span>{item.mobileLabel}</span></button>)}
       </div>
 
       {toast && <div className="toast-message"><span><Check size={15} /></span>{toast}<button onClick={() => setToast('')} aria-label="إغلاق"><X size={14} /></button></div>}

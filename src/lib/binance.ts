@@ -181,7 +181,7 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       continue;
     }
 
-    const daysToExpiry = Math.max(0, (expiryDate - fetchedAt) / 86_400_000);
+    const daysToExpiry = Math.max(0, (expiryDate - serverTime) / 86_400_000);
     const mark = markBySymbol.get(symbol);
     const ticker = tickerBySymbol.get(symbol);
     const openInterest = oiBySymbol.get(symbol);
@@ -223,10 +223,10 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       missingRiskFreeRate += 1;
       estimatedFields.push('riskFreeRate');
     }
-    // Delta is dimensionless. Theta and vega are normalised here to per-day and per 1-vol-point units.
+    // Delta is dimensionless. Model Greeks use per-day theta and per 1-point vega/rho units.
     const delta = finiteNumber(mark?.delta) ?? model.delta;
     if (finiteNumber(mark?.delta) === undefined) estimatedFields.push('delta');
-    estimatedFields.push('gamma', 'theta', 'vega');
+    estimatedFields.push('gamma', 'theta', 'vega', 'rho');
 
     const expiry = new Date(expiryDate).toISOString();
     const timestamp = ticker?.closeTime ?? indexTimestampByUnderlying.get(indexKey);
@@ -256,6 +256,7 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       gamma: model.gamma,
       theta: model.thetaPerDay,
       vega: model.vegaPerVolPoint,
+      rho: model.rhoPerRatePoint,
       openInterest: finiteNumber(openInterest?.sumOpenInterest) ?? null,
       openInterestUsd: finiteNumber(openInterest?.sumOpenInterestUsd) ?? null,
       volume: finiteNumber(ticker?.volume) ?? null,
@@ -286,7 +287,7 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
   if (missingOpenInterest > 0) warnings.push(`الفائدة المفتوحة غير متاحة لـ${missingOpenInterest} عقد/استحقاق.`);
   if (missingUnit > 0) warnings.push(`وحدة العقد غير موجودة في ${missingUnit} عقد؛ استُخدمت قيمة 1 افتراضياً.`);
   if (missingRiskFreeRate > 0) warnings.push(`معدل الفائدة من Binance غير متاح لـ${missingRiskFreeRate} عقد؛ استُخدم 0% للنموذج.`);
-  if (quotes.length) warnings.push('Gamma وTheta وVega تقديرات Black–Scholes وليست Greeks مرصودة من Binance؛ تحقّق من الوحدات قبل استخدامها.');
+  if (quotes.length) warnings.push('Gamma وTheta وVega وRho تقديرات Black–Scholes وليست Greeks مرصودة من Binance؛ تحقّق من الوحدات قبل استخدامها.');
   if (!quotes.length) {
     const missingAssets = [...missingIndexAssets].sort();
     const detail = missingAssets.length

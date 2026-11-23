@@ -9,6 +9,26 @@ function compactDate(timestamp: number): string {
   }).format(new Date(timestamp)).split('/').reverse().join('');
 }
 
+test('Binance time to expiry uses exchange server time rather than the browser clock', () => {
+  const serverTime = Date.UTC(2026, 10, 23, 12);
+  const localFetchTime = serverTime + 2 * 86_400_000;
+  const expiry = serverTime + 30 * 86_400_000;
+  const symbol = `BTC-${compactDate(expiry)}-100000-C`;
+  const snapshot = normalizeBinanceSnapshot({
+    fetchedAt: localFetchTime,
+    exchangeInfo: {
+      serverTime,
+      optionContracts: [{ baseAsset: 'BTC', quoteAsset: 'USDT', underlying: 'BTCUSDT' }],
+      optionSymbols: [{ symbol, underlying: 'BTCUSDT', side: 'CALL', strikePrice: 100000, expiryDate: expiry, unit: 1, status: 'TRADING' }],
+    },
+    marks: [{ symbol, markPrice: 5000, markIV: 0.5 }],
+    indices: [{ requestedUnderlying: 'BTCUSDT', item: { indexPrice: 100000 } }],
+  });
+
+  assert.equal(snapshot.quotes.length, 1);
+  assert.equal(snapshot.quotes[0].daysToExpiry, 30);
+});
+
 test('Binance snapshot normalizer merges the active option universe and public market feeds', () => {
   const now = Date.now();
   const expiry = now + 30 * 86_400_000;
@@ -114,6 +134,8 @@ test('Binance normalizer avoids crossed bid/ask midpoints and preserves last-pri
   assert.ok(snapshot.warnings.some((warning) => warning.includes('تعارض Bid/Ask')));
   assert.ok(quote.estimatedFields?.includes('riskFreeRate'));
   assert.ok(quote.estimatedFields?.includes('gamma'));
+  assert.ok(quote.estimatedFields?.includes('rho'));
+  assert.ok(Number.isFinite(quote.rho));
 });
 
 test('Binance client requests public exchange and market data endpoints and maps open interest by expiry', async () => {

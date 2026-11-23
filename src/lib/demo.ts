@@ -1,6 +1,7 @@
 import type { AssetSnapshot, OptionQuote, Underlying } from './types';
 import { blackScholes } from './options.ts';
 
+/** Synthetic teaching values only; none of these spot prices or market statistics are live. */
 export const DEMO_MARKETS: Record<Underlying, AssetSnapshot> = {
   BTC: {
     underlying: 'BTC',
@@ -22,10 +23,102 @@ export const DEMO_MARKETS: Record<Underlying, AssetSnapshot> = {
     volume24hUsd: 292_000_000,
     fundingRate: -0.00004,
   },
+  SOL: {
+    underlying: 'SOL',
+    spot: 142,
+    dayChangePct: 1.2,
+    iv30: 0.82,
+    rv30: 0.69,
+    openInterestUsd: 490_000_000,
+    volume24hUsd: 110_000_000,
+    fundingRate: 0.00008,
+  },
+  XRP: {
+    underlying: 'XRP',
+    spot: 1.12,
+    dayChangePct: -2.1,
+    iv30: 0.94,
+    rv30: 0.77,
+    openInterestUsd: 140_000_000,
+    volume24hUsd: 44_000_000,
+    fundingRate: -0.00003,
+  },
+  DOGE: {
+    underlying: 'DOGE',
+    spot: 0.168,
+    dayChangePct: 3.6,
+    iv30: 1.06,
+    rv30: 0.91,
+    openInterestUsd: 97_000_000,
+    volume24hUsd: 33_000_000,
+    fundingRate: 0.00015,
+  },
+  BNB: {
+    underlying: 'BNB',
+    spot: 620.4,
+    dayChangePct: 0.8,
+    iv30: 0.69,
+    rv30: 0.58,
+    openInterestUsd: 220_000_000,
+    volume24hUsd: 73_000_000,
+    fundingRate: 0.00005,
+  },
+  XAU: {
+    underlying: 'XAU',
+    spot: 2668,
+    dayChangePct: 0.35,
+    iv30: 0.215,
+    rv30: 0.18,
+    openInterestUsd: 85_000_000,
+    volume24hUsd: 20_000_000,
+    fundingRate: 0,
+  },
+  XAG: {
+    underlying: 'XAG',
+    spot: 31.4,
+    dayChangePct: -0.21,
+    iv30: 0.32,
+    rv30: 0.29,
+    openInterestUsd: 34_000_000,
+    volume24hUsd: 7_000_000,
+    fundingRate: 0,
+  },
+  CL: {
+    underlying: 'CL',
+    spot: 69.5,
+    dayChangePct: 0.42,
+    iv30: 0.38,
+    rv30: 0.31,
+    openInterestUsd: 48_000_000,
+    volume24hUsd: 11_000_000,
+    fundingRate: 0,
+  },
+  BZ: {
+    underlying: 'BZ',
+    spot: 73.2,
+    dayChangePct: 0.18,
+    iv30: 0.36,
+    rv30: 0.3,
+    openInterestUsd: 51_000_000,
+    volume24hUsd: 13_000_000,
+    fundingRate: 0,
+  },
 };
 
 const EXPIRIES = [7, 14, 30, 60];
 const STRIKE_OFFSETS = [-0.12, -0.08, -0.05, -0.025, 0, 0.025, 0.05, 0.08, 0.12];
+const STRIKE_STEPS: Record<string, number> = {
+  BTC: 1000,
+  ETH: 50,
+  SOL: 2.5,
+  XRP: 0.025,
+  DOGE: 0.002,
+  BNB: 10,
+  XAU: 50,
+  XAG: 0.5,
+  CL: 1,
+  BZ: 1,
+};
 
 function roundTo(value: number, step: number): number {
   return Math.round(value / step) * step;
@@ -38,12 +131,19 @@ function makeExpiry(days: number): string {
   return date.toISOString();
 }
 
+function getStrikeStep(underlying: string, spot: number): number {
+  const configured = STRIKE_STEPS[underlying];
+  if (configured) return configured;
+  const fallbackExponent = Math.floor(Math.log10(Math.max(spot, 0.000001))) - 1;
+  return 10 ** fallbackExponent;
+}
+
 export function createDemoQuotes(markets = DEMO_MARKETS): OptionQuote[] {
   const quotes: OptionQuote[] = [];
 
   (Object.keys(markets) as Underlying[]).forEach((underlying) => {
     const market = markets[underlying];
-    const strikeStep = underlying === 'BTC' ? 1000 : 50;
+    const strikeStep = getStrikeStep(underlying, market.spot);
 
     EXPIRIES.forEach((days) => {
       const expiry = makeExpiry(days);
@@ -60,14 +160,14 @@ export function createDemoQuotes(markets = DEMO_MARKETS): OptionQuote[] {
           const distance = Math.abs(actualMoneyness);
           const spreadFraction = 0.015 + Math.min(distance * 0.45, 0.12) + (days < 14 ? 0.008 : 0);
           const halfSpread = Math.max(greeks.price * spreadFraction / 2, market.spot * 0.000025);
-          const bid = Math.max(greeks.price - halfSpread, 0.05);
-          const ask = Math.max(greeks.price + halfSpread, bid + 0.05);
+          const bid = Math.max(greeks.price - halfSpread, 0.000001);
+          const ask = Math.max(greeks.price + halfSpread, bid + market.spot * 0.000025);
           const directionalInterest = Math.max(0.15, 1 - distance * 5);
           const sideBias = type === 'PUT' ? 1.08 : 0.94;
           const expiryBias = days === 30 ? 1.15 : days === 60 ? 0.78 : 0.58;
           const openInterest = Math.round((180 + directionalInterest * 950) * sideBias * expiryBias);
           const volume = Math.max(0, Math.round(openInterest * (0.025 + (1 - distance) * 0.035)));
-          const compactStrike = Number.isInteger(strike) ? String(strike) : strike.toFixed(1);
+          const compactStrike = Number.isInteger(strike) ? String(strike) : strike.toFixed(Math.max(1, strikeStep.toString().split('.')[1]?.length ?? 1));
           const expiryCode = new Intl.DateTimeFormat('en-GB', {
             timeZone: 'UTC', year: '2-digit', month: '2-digit', day: '2-digit',
           }).format(new Date(expiry)).split('/').reverse().join('');
@@ -89,6 +189,7 @@ export function createDemoQuotes(markets = DEMO_MARKETS): OptionQuote[] {
             gamma: greeks.gamma,
             theta: greeks.thetaPerDay,
             vega: greeks.vegaPerVolPoint,
+            rho: greeks.rhoPerRatePoint,
             openInterest,
             volume,
             spot: market.spot,

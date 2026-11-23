@@ -2,23 +2,101 @@ import type { OptionGreeks, OptionQuote, OptionSide } from './types';
 
 const SQRT_2 = Math.sqrt(2);
 const SQRT_2PI = Math.sqrt(2 * Math.PI);
+// Cephes rational coefficients for erf/erfc; attribution and license are in THIRD-PARTY-NOTICES.md.
+const ERF_NUMERATOR = [
+  9.60497373987051638749e0,
+  9.00260197203842689217e1,
+  2.23200534594684319226e3,
+  7.00332514112805075473e3,
+  5.55923013010394962768e4,
+];
+const ERF_DENOMINATOR = [
+  3.35617141647503099647e1,
+  5.21357949780152679795e2,
+  4.59432382970980127987e3,
+  2.26290000613890934246e4,
+  4.92673942608635921086e4,
+];
+const ERFC_NUMERATOR = [
+  2.46196981473530512524e-10,
+  5.64189564831068821977e-1,
+  7.46321056442269912687e0,
+  4.86371970985681366614e1,
+  1.96520832956077098242e2,
+  5.26445194995477358631e2,
+  9.34528527171957607540e2,
+  1.02755188689515710272e3,
+  5.57535335369399327526e2,
+];
+const ERFC_DENOMINATOR = [
+  1.32281951154744992508e1,
+  8.67072140885989742329e1,
+  3.54937778887819891062e2,
+  9.75708501743205489753e2,
+  1.82390916687909736289e3,
+  2.24633760818710981792e3,
+  1.65666309194161350182e3,
+  5.57535340817727675546e2,
+];
+const ERFC_LARGE_NUMERATOR = [
+  5.64189583547755073984e-1,
+  1.27536670759978104416e0,
+  5.01905042251180477414e0,
+  6.16021097993053585195e0,
+  7.40974269950448939160e0,
+  2.97886665372100240670e0,
+];
+const ERFC_LARGE_DENOMINATOR = [
+  2.26052863220117276590e0,
+  9.39603524938001434673e0,
+  1.20489539808096656605e1,
+  1.70814450747565897222e1,
+  9.60896809063285878198e0,
+  3.36907645100081516050e0,
+];
 
-function erf(value: number): number {
-  const sign = value < 0 ? -1 : 1;
-  const x = Math.abs(value);
-  const t = 1 / (1 + 0.3275911 * x);
-  const polynomial = (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t;
-  return sign * (1 - polynomial * Math.exp(-x * x));
+function evaluatePolynomial(value: number, coefficients: number[]): number {
+  let result = coefficients[0];
+  for (let index = 1; index < coefficients.length; index += 1) result = result * value + coefficients[index];
+  return result;
+}
+
+function evaluatePolynomialWithLeadingOne(value: number, coefficients: number[]): number {
+  let result = value + coefficients[0];
+  for (let index = 1; index < coefficients.length; index += 1) result = result * value + coefficients[index];
+  return result;
+}
+
+function erfcPositive(value: number): number {
+  const exponential = Math.exp(-value * value);
+  if (exponential === 0) return 0;
+  const numerator = value < 8 ? evaluatePolynomial(value, ERFC_NUMERATOR) : evaluatePolynomial(value, ERFC_LARGE_NUMERATOR);
+  const denominator = value < 8 ? evaluatePolynomialWithLeadingOne(value, ERFC_DENOMINATOR) : evaluatePolynomialWithLeadingOne(value, ERFC_LARGE_DENOMINATOR);
+  return (exponential * numerator) / denominator;
 }
 
 export function normalCdf(value: number): number {
-  return 0.5 * (1 + erf(value / SQRT_2));
+  if (Number.isNaN(value)) return Number.NaN;
+  if (value === Number.POSITIVE_INFINITY) return 1;
+  if (value === Number.NEGATIVE_INFINITY) return 0;
+
+  const scaled = Math.abs(value) / SQRT_2;
+  if (scaled < 1) {
+    const squared = scaled * scaled;
+    const erf = (scaled * evaluatePolynomial(squared, ERF_NUMERATOR))
+      / evaluatePolynomialWithLeadingOne(squared, ERF_DENOMINATOR);
+    return 0.5 * (1 + (value < 0 ? -erf : erf));
+  }
+
+  const tail = 0.5 * erfcPositive(scaled);
+  return value >= 0 ? 1 - tail : tail;
 }
 
 function normalPdf(value: number): number {
   return Math.exp(-0.5 * value * value) / SQRT_2PI;
 }
 
+/** European Black–Scholes using an annual continuously compounded rate and an actual/365 day count. */
 export function blackScholes(
   spot: number,
   strike: number,
@@ -40,6 +118,7 @@ export function blackScholes(
       gamma: 0,
       thetaPerDay: 0,
       vegaPerVolPoint: 0,
+      rhoPerRatePoint: 0,
     };
   }
 
@@ -50,6 +129,8 @@ export function blackScholes(
   const pdf = normalPdf(d1);
   const gamma = pdf / (s * sigma * sqrtT);
   const vegaPerVolPoint = (s * pdf * sqrtT) / 100;
+  const rhoPerRatePoint = (k * t * discount * normalCdf(type === 'CALL' ? d2 : -d2) / 100)
+    * (type === 'CALL' ? 1 : -1);
 
   if (type === 'CALL') {
     const price = s * normalCdf(d1) - k * discount * normalCdf(d2);
@@ -60,6 +141,7 @@ export function blackScholes(
       gamma,
       thetaPerDay: thetaAnnual / 365,
       vegaPerVolPoint,
+      rhoPerRatePoint,
     };
   }
 
@@ -71,6 +153,7 @@ export function blackScholes(
     gamma,
     thetaPerDay: thetaAnnual / 365,
     vegaPerVolPoint,
+    rhoPerRatePoint,
   };
 }
 
@@ -82,15 +165,27 @@ export function impliedVolatility(
   type: OptionSide,
   rate = 0,
 ): number | undefined {
-  if (!Number.isFinite(marketPrice) || marketPrice <= 0 || daysToExpiry <= 0 || spot <= 0 || strike <= 0) return undefined;
+  if (!Number.isFinite(marketPrice) || marketPrice <= 0
+    || !Number.isFinite(spot) || spot <= 0
+    || !Number.isFinite(strike) || strike <= 0
+    || !Number.isFinite(daysToExpiry) || daysToExpiry <= 0
+    || !Number.isFinite(rate)
+    || (type !== 'CALL' && type !== 'PUT')) return undefined;
 
-  const intrinsic = type === 'CALL' ? Math.max(spot - strike, 0) : Math.max(strike - spot, 0);
-  const upperBound = type === 'CALL' ? spot : strike * Math.exp(-rate * daysToExpiry / 365);
-  if (marketPrice <= intrinsic + 1e-8 || marketPrice >= upperBound) return undefined;
+  const timeToExpiry = daysToExpiry / 365;
+  const discountedStrike = strike * Math.exp(-rate * timeToExpiry);
+  if (!Number.isFinite(discountedStrike)) return undefined;
+  const lowerBound = type === 'CALL'
+    ? Math.max(spot - discountedStrike, 0)
+    : Math.max(discountedStrike - spot, 0);
+  const upperBound = type === 'CALL' ? spot : discountedStrike;
+  const priceTolerance = Math.max(1, spot, discountedStrike) * 1e-10;
+  if (marketPrice <= lowerBound + priceTolerance || marketPrice >= upperBound) return undefined;
 
   let low = 0.000001;
   let high = 5;
-  if (blackScholes(spot, strike, daysToExpiry, high, type, rate).price < marketPrice) return undefined;
+  const highestModelPrice = blackScholes(spot, strike, daysToExpiry, high, type, rate).price;
+  if (!Number.isFinite(highestModelPrice) || highestModelPrice < marketPrice) return undefined;
 
   for (let iteration = 0; iteration < 80; iteration += 1) {
     const middle = (low + high) / 2;
@@ -144,6 +239,28 @@ export function buildScenarioSeries(quote: OptionQuote, premium: number, quantit
       pnl: getExpiryPnl(quote, expirySpot, premium, quantity, fees),
     };
   });
+}
+
+export interface GreekShock {
+  /** Relative underlying price move in percent; 1 means +1%. */
+  spotMovePercent?: number;
+  /** Absolute implied-volatility move in vol points; 1 means +1 percentage point. */
+  volatilityMovePoints?: number;
+  /** Elapsed calendar days; time passage uses theta per day. */
+  daysElapsed?: number;
+  /** Absolute annual-rate move in percentage points; 1 means +1 percentage point. */
+  riskFreeRateMovePoints?: number;
+}
+
+/** Local first/second-order Greek P&L approximation. It excludes cross-Greeks, fees and execution effects. */
+export function estimateGreekPnl(quote: OptionQuote, quantity: number, shock: GreekShock): number {
+  const spotChange = quote.spot * (shock.spotMovePercent ?? 0) / 100;
+  const unitPnl = quote.delta * spotChange
+    + 0.5 * quote.gamma * spotChange * spotChange
+    + quote.vega * (shock.volatilityMovePoints ?? 0)
+    + quote.theta * (shock.daysElapsed ?? 0)
+    + quote.rho * (shock.riskFreeRateMovePoints ?? 0);
+  return unitPnl * quantity * quote.unit;
 }
 
 export function formatExpiry(expiry: string): string {

@@ -2,6 +2,41 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildBinanceUpstreamUrl, getCacheSeconds, getCorsHeaders, handleRequest, isAllowedOrigin } from '../../supabase/functions/volterra-binance-market-data/index.ts';
 
+const TEST_SUPABASE_URL = 'https://project.supabase.co';
+const TEST_SERVICE_ROLE_KEY = 'server-only-test-key';
+
+function installTestDenoEnv(values: Record<string, string>): () => void {
+  const runtimeGlobal = globalThis as unknown as {
+    Deno?: { env?: { get(name: string): string | undefined } };
+  };
+  const original = runtimeGlobal.Deno;
+  runtimeGlobal.Deno = { env: { get: (name) => values[name] } };
+  return () => {
+    if (original === undefined) delete runtimeGlobal.Deno;
+    else runtimeGlobal.Deno = original;
+  };
+}
+
+function installConfiguredTestDenoEnv(): () => void {
+  return installTestDenoEnv({
+    SUPABASE_URL: TEST_SUPABASE_URL,
+    SUPABASE_SERVICE_ROLE_KEY: TEST_SERVICE_ROLE_KEY,
+  });
+}
+
+async function expectedClientHash(address: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(TEST_SERVICE_ROLE_KEY),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(address));
+  return [...new Uint8Array(signature)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
 test('Binance proxy maps only approved market-data endpoints to the fixed Binance host', () => {
   const cases = [
     ['endpoint=exchangeInfo', '/eapi/v1/exchangeInfo'],
@@ -60,10 +95,18 @@ test('Binance proxy answers preflight and serves fixed-host JSON with the app CO
   assert.match(preflight.headers.get('Access-Control-Allow-Methods') ?? '', /GET/);
 
   const originalFetch = globalThis.fetch;
+  const restoreRuntime = installConfiguredTestDenoEnv();
   let upstreamUrl: URL | undefined;
   let upstreamInit: RequestInit | undefined;
   globalThis.fetch = async (input, init) => {
-    upstreamUrl = new URL(String(input));
+    const url = new URL(String(input));
+    if (url.pathname.endsWith('/rpc/volterra_check_rate_limit')) {
+      return new Response(JSON.stringify([{ allowed: true, retry_after_seconds: 60 }]), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    upstreamUrl = url;
     upstreamInit = init;
     return new Response(JSON.stringify([{ underlying: 'BTCUSDT', indexPrice: '100000' }]), {
       status: 200,
@@ -72,7 +115,7 @@ test('Binance proxy answers preflight and serves fixed-host JSON with the app CO
   };
   try {
     const response = await handleRequest(new Request('https://function.example/?endpoint=index&underlying=BTCUSDT', {
-      headers: { origin, 'x-forwarded-for': 'proxy-test-success' },
+      headers: { origin, 'cf-connecting-ip': '198.51.100.10', 'x-forwarded-for': '203.0.113.10' },
     }));
     assert.equal(response.status, 200);
     assert.equal(response.headers.get('Access-Control-Allow-Origin'), origin);
@@ -85,36 +128,198 @@ test('Binance proxy answers preflight and serves fixed-host JSON with the app CO
     assert.equal(new Headers(upstreamInit?.headers).get('authorization'), null);
   } finally {
     globalThis.fetch = originalFetch;
+    restoreRuntime();
+  }
+});
+
+test('public requests without an Origin header still pass through the shared limiter', async () => {
+  const originalFetch = globalThis.fetch;
+  const restoreRuntime = installConfiguredTestDenoEnv();
+  let rateLimiterCalled = false;
+  let upstreamCalled = false;
+  globalThis.fetch = async (input, init) => {
+    const url = new URL(String(input));
+    if (url.pathname.endsWith('/rpc/volterra_check_rate_limit')) {
+      rateLimiterCalled = true;
+      assert.equal(new Headers(init?.headers).get('authorization'), `Bearer ${TEST_SERVICE_ROLE_KEY}`);
+      return new Response(JSON.stringify([{ allowed: true, retry_after_seconds: 60 }]), { status: 200 });
+    }
+    upstreamCalled = true;
+    return new Response(JSON.stringify({ underlying: 'ETHUSDT', indexPrice: '2500' }), { status: 200 });
+  };
+
+  try {
+    const response = await handleRequest(new Request('https://function.example/?endpoint=index&underlying=ETHUSDT', {
+      headers: { 'cf-connecting-ip': '198.51.100.13' },
+    }));
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('Access-Control-Allow-Origin'), null);
+    assert.equal(rateLimiterCalled, true);
+    assert.equal(upstreamCalled, true);
+    assert.deepEqual(await response.json(), { underlying: 'ETHUSDT', indexPrice: '2500' });
+  } finally {
+    globalThis.fetch = originalFetch;
+    restoreRuntime();
   }
 });
 
 test('Binance proxy refuses unknown browser origins and passes through regional denial', async () => {
   const originalFetch = globalThis.fetch;
-  let called = false;
-  globalThis.fetch = async () => {
-    called = true;
+  const restoreRuntime = installConfiguredTestDenoEnv();
+  let rateLimiterCalled = false;
+  let upstreamCalled = false;
+  globalThis.fetch = async (input) => {
+    const url = new URL(String(input));
+    if (url.pathname.endsWith('/rpc/volterra_check_rate_limit')) {
+      rateLimiterCalled = true;
+      return new Response(JSON.stringify([{ allowed: true, retry_after_seconds: 60 }]), { status: 200 });
+    }
+    upstreamCalled = true;
     return new Response(JSON.stringify({ code: 0, msg: 'Service unavailable from a restricted location.' }), { status: 451 });
   };
   try {
     const deniedOrigin = await handleRequest(new Request('https://function.example/?endpoint=mark', {
-      headers: { origin: 'https://attacker.example', 'x-forwarded-for': 'proxy-test-origin' },
+      headers: { origin: 'https://attacker.example', 'cf-connecting-ip': '198.51.100.11' },
     }));
     assert.equal(deniedOrigin.status, 403);
-    assert.equal(called, false);
+    assert.equal(rateLimiterCalled, false);
+    assert.equal(upstreamCalled, false);
 
     const deniedLocalPreflight = await handleRequest(new Request('https://function.example/?endpoint=exchangeInfo', {
       method: 'OPTIONS',
       headers: { origin: 'http://localhost:5173' },
     }));
     assert.equal(deniedLocalPreflight.status, 403);
+    assert.equal(rateLimiterCalled, false);
 
     const upstreamDenial = await handleRequest(new Request('https://function.example/?endpoint=exchangeInfo', {
-      headers: { origin: 'https://raawaa93.github.io', 'x-forwarded-for': 'proxy-test-region' },
+      headers: { origin: 'https://raawaa93.github.io', 'cf-connecting-ip': '198.51.100.12' },
     }));
     assert.equal(upstreamDenial.status, 451);
     assert.equal(upstreamDenial.headers.get('Access-Control-Allow-Origin'), 'https://raawaa93.github.io');
     assert.deepEqual(await upstreamDenial.json(), { code: 0, msg: 'Service unavailable from a restricted location.' });
+    assert.equal(rateLimiterCalled, true);
+    assert.equal(upstreamCalled, true);
   } finally {
     globalThis.fetch = originalFetch;
+    restoreRuntime();
+  }
+});
+
+test('shared rate limiting uses a keyed client hash and blocks upstream calls over quota', async () => {
+  const originalFetch = globalThis.fetch;
+  const restoreRuntime = installConfiguredTestDenoEnv();
+  let upstreamCalled = false;
+  let rpcBody: Record<string, unknown> | undefined;
+  let rpcHeaders: Headers | undefined;
+  globalThis.fetch = async (input, init) => {
+    const url = new URL(String(input));
+    if (url.pathname.endsWith('/rpc/volterra_check_rate_limit')) {
+      rpcBody = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      rpcHeaders = new Headers(init?.headers);
+      return new Response(JSON.stringify([{ allowed: false, retry_after_seconds: 17 }]), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    upstreamCalled = true;
+    return new Response('[]', { status: 200 });
+  };
+
+  try {
+    const response = await handleRequest(new Request('https://function.example/?endpoint=mark', {
+      headers: {
+        origin: 'https://raawaa93.github.io',
+        'cf-connecting-ip': '198.51.100.88',
+        'x-forwarded-for': '203.0.113.88, 198.51.100.88',
+        'x-real-ip': '203.0.113.89',
+      },
+    }));
+
+    assert.equal(response.status, 429);
+    assert.equal(response.headers.get('Retry-After'), '17');
+    assert.equal(upstreamCalled, false);
+    assert.equal(rpcBody?.p_limit, 240);
+    assert.equal(rpcBody?.p_window_seconds, 60);
+    assert.equal(rpcBody?.p_client_hash, await expectedClientHash('198.51.100.88'));
+    assert.notEqual(rpcBody?.p_client_hash, await expectedClientHash('203.0.113.88'));
+    assert.equal(rpcHeaders?.get('authorization'), `Bearer ${TEST_SERVICE_ROLE_KEY}`);
+  } finally {
+    globalThis.fetch = originalFetch;
+    restoreRuntime();
+  }
+});
+
+test('proxy fails closed when the configured shared limiter is unavailable', async () => {
+  const originalFetch = globalThis.fetch;
+  const restoreRuntime = installConfiguredTestDenoEnv();
+  let upstreamCalled = false;
+  globalThis.fetch = async (input) => {
+    if (new URL(String(input)).pathname.endsWith('/rpc/volterra_check_rate_limit')) {
+      return new Response('{"error":"unavailable"}', { status: 503 });
+    }
+    upstreamCalled = true;
+    return new Response('[]', { status: 200 });
+  };
+
+  try {
+    const response = await handleRequest(new Request('https://function.example/?endpoint=mark', {
+      headers: { origin: 'https://raawaa93.github.io', 'cf-connecting-ip': '198.51.100.89' },
+    }));
+    assert.equal(response.status, 503);
+    assert.equal(response.headers.get('Retry-After'), '30');
+    assert.equal(upstreamCalled, false);
+    assert.deepEqual(await response.json(), { error: 'Shared rate limiter is temporarily unavailable.' });
+  } finally {
+    globalThis.fetch = originalFetch;
+    restoreRuntime();
+  }
+});
+
+test('proxy fails closed when the Supabase limiter secrets are missing', async () => {
+  const originalFetch = globalThis.fetch;
+  const restoreRuntime = installTestDenoEnv({});
+  let fetchCalled = false;
+  globalThis.fetch = async () => {
+    fetchCalled = true;
+    return new Response('[]', { status: 200 });
+  };
+
+  try {
+    const response = await handleRequest(new Request('https://function.example/?endpoint=mark', {
+      headers: { origin: 'https://raawaa93.github.io', 'cf-connecting-ip': '198.51.100.90' },
+    }));
+    assert.equal(response.status, 503);
+    assert.equal(response.headers.get('Retry-After'), '30');
+    assert.equal(fetchCalled, false);
+  } finally {
+    globalThis.fetch = originalFetch;
+    restoreRuntime();
+  }
+});
+
+test('proxy does not use caller-supplied forwarding headers when the trusted address is missing', async () => {
+  const originalFetch = globalThis.fetch;
+  const restoreRuntime = installConfiguredTestDenoEnv();
+  let fetchCalled = false;
+  globalThis.fetch = async () => {
+    fetchCalled = true;
+    return new Response('[]', { status: 200 });
+  };
+
+  try {
+    const response = await handleRequest(new Request('https://function.example/?endpoint=mark', {
+      headers: {
+        origin: 'https://raawaa93.github.io',
+        'x-forwarded-for': '203.0.113.90',
+        'x-real-ip': '198.51.100.91',
+      },
+    }));
+    assert.equal(response.status, 503);
+    assert.equal(response.headers.get('Retry-After'), '30');
+    assert.equal(fetchCalled, false);
+  } finally {
+    globalThis.fetch = originalFetch;
+    restoreRuntime();
   }
 });

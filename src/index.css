@@ -174,6 +174,9 @@ h1, h2, h3, p { margin: 0; }
 .chart-legend-dot.blue { background: #929df2; }
 .chart-wrap { height: 220px; margin-top: 9px; direction: ltr; }
 .chart-footnote { display: flex; justify-content: space-between; border-top: 1px solid #202a2e; margin-top: 1px; padding-top: 9px; color: #62706f; font-size: 8px; }
+.chart-loading-panel { min-height: 298px; display: flex; flex-direction: column; }
+.chart-loading-area { min-height: 220px; margin-top: 9px; display: grid; place-items: center; border: 1px dashed #243034; border-radius: 9px; color: #697775; background: linear-gradient(145deg, rgba(20, 28, 30, .45), rgba(13, 19, 21, .22)); font-size: 9px; text-align: center; }
+.payoff-chart-loading { min-height: 264px; margin-top: 0; }
 .empty-state { min-height: 170px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: #73817f; text-align: center; font-size: 10px; }
 .empty-state svg { color: #738c77; }
 .empty-state strong { color: #bbc7c0; font-size: 11px; }
@@ -455,4 +458,110 @@ h1, h2, h3, p { margin: 0; }
   .payoff-chart { margin-left: -5px; margin-right: -5px; }
   .expected-range { font-size: 7px; }
   .scenario-side { gap: 7px; }
+}
+
+/* Multi-asset review, opportunities and model-risk detail. */
+.heading-actions { min-width: 0; flex-wrap: wrap; justify-content: flex-end; }
+.asset-switch { max-width: min(760px, 56vw); overflow-x: auto; scrollbar-width: thin; scrollbar-color: #354340 transparent; }
+.asset-switch button { flex: 0 0 78px; min-width: 78px; }
+.opportunity-section { margin-top: 22px; }
+.opportunity-source { display: inline-flex; align-items: center; gap: 7px; color: #83908a; font-size: 8px; white-space: nowrap; }
+.opportunity-source i { width: 6px; height: 6px; flex: 0 0 auto; border-radius: 50%; background: #d5ad68; }
+.opportunity-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 11px; }
+.opportunity-metric { min-width: 0; min-height: 150px; padding: 13px 14px 12px; }
+.opportunity-metric-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: #91a098; font-size: 9px; }
+.opportunity-metric-heading svg { flex: 0 0 auto; color: #6d7b74; }
+.opportunity-value { display: block; margin-top: 13px; color: #e4ece4; font-family: Inter, Arial, sans-serif; font-size: clamp(17px, 1.6vw, 22px); font-weight: 650; letter-spacing: -.4px; direction: ltr; text-align: right; }
+.opportunity-accent .opportunity-value { color: #dbca8c; }
+.opportunity-positive .opportunity-value { color: #a9d88b; }
+.opportunity-negative .opportunity-value { color: #ee9287; }
+.opportunity-detail { display: block; min-height: 25px; margin-top: 7px; color: #bbc5bd; font-size: 8px; line-height: 1.55; }
+.opportunity-metric > small { display: block; margin-top: 7px; padding-top: 7px; border-top: 1px solid #222d31; color: #687671; font-size: 7px; line-height: 1.65; }
+.opportunity-watchlist { padding: 14px; }
+.watchlist-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.watchlist-heading h3 { margin-top: 4px; color: #e0e9e1; font-size: 12px; font-weight: 650; }
+.watchlist-heading > span { padding: 5px 8px; border: 1px solid #283532; border-radius: 7px; color: #a9c695; background: rgba(153, 207, 111, .05); font-size: 8px; white-space: nowrap; }
+.watchlist-method { margin-top: 7px; color: #75827c; font-size: 8px; line-height: 1.7; }
+.review-candidate-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; margin-top: 11px; }
+.review-candidate { display: flex; min-width: 0; flex-direction: column; align-items: stretch; gap: 7px; padding: 11px; border: 1px solid #283431; border-radius: 10px; background: linear-gradient(145deg, #121a1b, #101618); color: #e4ece5; text-align: right; cursor: pointer; transition: border-color .16s ease, transform .16s ease, background .16s ease; }
+.review-candidate:hover { transform: translateY(-1px); border-color: #53694f; background: #141d1c; }
+.review-candidate:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+.review-candidate-top { display: flex; align-items: center; gap: 7px; }
+.review-candidate-top > svg { margin-right: auto; color: #93a29a; }
+.review-spread { padding: 3px 6px; border-radius: 6px; font-family: Inter, sans-serif; font-size: 7px; direction: ltr; }
+.review-spread.tight { color: #aeda8a; background: rgba(149, 198, 109, .09); }
+.review-spread.medium { color: #e2ca88; background: rgba(218, 176, 85, .09); }
+.review-spread.wide { color: #eb9a8d; background: rgba(212, 107, 92, .1); }
+.review-spread.unknown { color: #9ba6a0; background: #20282a; }
+.review-symbol { overflow: hidden; color: #dce5de; font-family: Inter, Arial, sans-serif; font-size: 10px; font-weight: 600; text-overflow: ellipsis; direction: ltr; text-align: right; white-space: nowrap; }
+.review-contract-meta, .review-market-meta { color: #8d9a93; font-size: 8px; line-height: 1.55; }
+.review-market-meta { color: #aab6ad; }
+.review-estimated { color: #d1b87d; font-size: 7px; line-height: 1.5; }
+.review-open { padding-top: 7px; border-top: 1px solid #273130; color: #a9ce89; font-size: 8px; }
+.opportunity-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 22px 12px; color: #7b8982; text-align: center; }
+.opportunity-empty strong { color: #bbc7be; font-size: 9px; }
+.opportunity-empty span { font-size: 8px; line-height: 1.6; }
+.watchlist-caution { display: flex; align-items: flex-start; gap: 7px; margin-top: 11px; padding-top: 9px; border-top: 1px solid #222d31; color: #a49370; font-size: 8px; line-height: 1.65; }
+.watchlist-caution svg { flex: 0 0 auto; margin-top: 1px; color: #c6a56a; }
+.greeks-section { margin-top: 29px; }
+.greek-assumption { display: inline-flex; align-items: center; gap: 6px; padding: 6px 8px; border: 1px solid #283431; border-radius: 7px; color: #a1ae9e; font-size: 8px; white-space: nowrap; }
+.greek-assumption svg { color: #a8c78d; }
+.greeks-panel { padding: 13px 14px 11px; }
+.greeks-table-wrap { overflow-x: auto; scrollbar-color: #354340 transparent; scrollbar-width: thin; }
+.greeks-table { width: 100%; min-width: 780px; border-collapse: collapse; }
+.greeks-table th { padding: 9px 10px; border-bottom: 1px solid #2a3436; color: #788782; font-size: 8px; font-weight: 550; text-align: right; white-space: nowrap; }
+.greeks-table td { padding: 10px; border-bottom: 1px solid #202a2d; color: #b6c1b9; font-size: 8px; vertical-align: top; }
+.greeks-table td:first-child { width: 31%; }
+.greeks-table td:first-child > strong { display: flex; align-items: center; gap: 6px; color: #dce6dd; font-size: 9px; }
+.greeks-table td:first-child > strong span { display: inline-grid; width: 20px; height: 20px; place-items: center; border-radius: 6px; background: #192321; color: #b5da94; font-family: Inter, sans-serif; font-size: 11px; }
+.greeks-table td:first-child small, .greek-position small { display: block; margin-top: 4px; color: #75817b; font-size: 7px; line-height: 1.55; }
+.greeks-table .greek-number { color: #c5d3ca; font-family: Inter, sans-serif; font-size: 10px; white-space: nowrap; }
+.greek-position strong { color: #e0e9df; font-family: Inter, sans-serif; font-size: 9px; white-space: nowrap; }
+.greek-origin { display: inline-block; padding: 4px 6px; border: 1px solid #293330; border-radius: 6px; color: #96a59b; font-size: 7px; white-space: nowrap; }
+.greek-origin.estimated { border-color: rgba(210, 179, 113, .18); color: #d4be88; background: rgba(203, 164, 88, .045); }
+.greek-shock-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; }
+.greek-shock-heading > div { display: flex; flex-direction: column; gap: 4px; }
+.greek-shock-heading strong { color: #dce5dd; font-size: 9px; }
+.greek-shock-heading span { color: #718078; font-size: 7px; }
+.greek-shock-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+.greek-shock-card { display: flex; min-width: 0; flex-direction: column; gap: 6px; padding: 9px; border: 1px solid #252f31; border-radius: 8px; background: rgba(8, 13, 14, .4); }
+.greek-shock-card > span { color: #9aa69d; font-size: 8px; }
+.greek-shock-card > strong { overflow: hidden; color: #dfe9dd; font-family: Inter, sans-serif; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.greek-shock-card > small { color: #6c7a73; font-size: 7px; }
+.greeks-footnote { display: flex; align-items: flex-start; gap: 7px; margin-top: 11px; padding-top: 9px; border-top: 1px solid #222d31; color: #78857e; font-size: 8px; line-height: 1.75; }
+.greeks-footnote svg { flex: 0 0 auto; margin-top: 2px; color: #9cad8c; }
+@media (max-width: 1250px) {
+  .page-heading { flex-direction: column; align-items: stretch; }
+  .heading-actions { align-items: flex-end; gap: 10px; }
+  .asset-switch { max-width: min(100%, 760px); }
+}
+@media (max-width: 980px) {
+  .opportunity-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .opportunity-metric { padding: 11px; }
+  .review-candidate-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .greek-shock-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .heading-actions { flex-wrap: wrap; }
+  .asset-switch { width: 100%; max-width: 100%; flex: 1 1 100%; }
+  .opportunity-section, .greeks-section { margin-top: 23px; }
+  .opportunity-grid, .review-candidate-grid { grid-template-columns: 1fr; }
+  .opportunity-metric { min-height: 0; }
+  .opportunity-detail { min-height: 0; }
+  .opportunity-source { max-width: 46%; white-space: normal; line-height: 1.45; }
+  .watchlist-heading { align-items: flex-start; }
+  .watchlist-heading h3 { font-size: 10px; }
+  .watchlist-heading > span { font-size: 7px; }
+  .watchlist-method, .watchlist-caution { font-size: 7px; }
+  .greek-assumption { font-size: 7px; }
+  .greeks-panel { padding: 10px; }
+  .greek-shock-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mobile-bottom-nav { justify-content: space-between; overflow-x: auto; scrollbar-width: none; }
+  .mobile-bottom-nav::-webkit-scrollbar { display: none; }
+  .mobile-bottom-nav button { min-width: 0; }
+}
+@media (max-width: 430px) {
+  .asset-switch button { flex-basis: 64px; min-width: 64px; padding-right: 7px; padding-left: 7px; }
+  .opportunity-source { max-width: 43%; font-size: 7px; }
+  .watchlist-heading > span { max-width: 105px; white-space: normal; text-align: center; }
 }

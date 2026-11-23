@@ -14,6 +14,8 @@ export interface CsvImportResult {
   sourceTimeRange?: CsvTimestampRange;
 }
 
+export const MAX_CSV_FILE_BYTES = 5 * 1024 * 1024;
+
 function splitCsvLine(line: string, delimiter: string): string[] {
   const values: string[] = [];
   let current = '';
@@ -121,19 +123,22 @@ function parseExpiry(value: string | undefined): string | undefined {
 }
 
 function parseSymbol(symbol: string): { underlying?: Underlying; strike?: number; type?: OptionSide; expiry?: string } {
-  const match = symbol.toUpperCase().match(/^(BTC|ETH)-(\d{6})-([\d.]+)-([CP])$/);
+  const match = symbol.toUpperCase().match(/^([A-Z0-9]{2,16})-(\d{6})-(\d+(?:\.\d+)?)-([CP])$/);
   if (!match) return {};
   const [, base, compactDate, strikeText, kind] = match;
   const expiry = parseExpiry(compactDate);
+  const strike = Number(strikeText);
   return {
     underlying: base as Underlying,
-    strike: Number(strikeText),
+    strike: Number.isFinite(strike) && strike > 0 ? strike : undefined,
     type: kind === 'C' ? 'CALL' : 'PUT',
     expiry,
   };
 }
 
-export function parseOptionsCsv(text: string): CsvImportResult {
+export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvImportResult {
+  if (text.length > MAX_CSV_FILE_BYTES) return { quotes: [], warnings: ['حجم ملف CSV يتجاوز 5 MiB؛ اختصر الملف قبل استيراده.'] };
+  const importTime = Number.isFinite(referenceTime) ? referenceTime : Date.now();
   const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter((line) => line.trim());
   if (lines.length < 2) return { quotes: [], warnings: ['يجب أن يحتوي الملف على صف عناوين وصف بيانات واحد على الأقل.'] };
 
@@ -174,9 +179,9 @@ export function parseOptionsCsv(text: string): CsvImportResult {
     const symbol = readField(row, ['symbol', 'contract', 'instrument']) ?? '';
     const parsedSymbol = parseSymbol(symbol);
     const underlyingText = (readField(row, ['underlying', 'baseasset', 'asset']) ?? parsedSymbol.underlying ?? '').toUpperCase();
-    if (underlyingText !== 'BTC' && underlyingText !== 'ETH') {
+    if (!/^[A-Z0-9]{2,16}$/.test(underlyingText)) {
       counts.invalidRows += 1;
-      addRowWarning(`تم تجاهل الصف ${sourceRowNumber}: الأصل غير معروف أو غير مدعوم في هذه النسخة.`);
+      addRowWarning(`تم تجاهل الصف ${sourceRowNumber}: يلزم رمز أصل أساسي من 2 إلى 16 حرفاً أو رقماً.`);
       return;
     }
     const underlying = underlyingText as Underlying;
@@ -190,10 +195,12 @@ export function parseOptionsCsv(text: string): CsvImportResult {
     if (!spot) counts.missingSpot += 1;
     if (!type || !strike || !expiry || !spot) {
       counts.invalidRows += 1;
-      addRowWarning(`تم تجاهل الصف ${sourceRowNumber}: يلزم أصل مدعوم ونوع وخيارات انتهاء وتنفيذ وسعر أصل مرجعي موجب.`);
+      addRowWarning(`تم تجاهل الصف ${sourceRowNumber}: يلزم رمز أصل صالح ونوع عقد وتاريخ انتهاء وسعر تنفيذ وسعر مرجعي موجب للأصل.`);
       return;
     }
 
+    const timestampText = readField(row, ['timestamp', 'asof', 'quotetime', 'updatedat', 'updatetime', 'eventtime', 'datetime', 'time']);
+    const sourceTimestamp = timestampText ? parseTimestamp(timestampText) : undefined;
     const bidValue = parseNumber(readField(row, ['bid', 'bidprice', 'bestbid']), delimiter === ';');
     const askValue = parseNumber(readField(row, ['ask', 'askprice', 'bestask']), delimiter === ';');
     const markValue = parseNumber(readField(row, ['mark', 'markprice', 'mid', 'lastprice']), delimiter === ';');
@@ -218,7 +225,8 @@ export function parseOptionsCsv(text: string): CsvImportResult {
       return;
     }
 
-    const daysToExpiry = Math.max(0, (new Date(expiry).getTime() - Date.now()) / 86_400_000);
+    const valuationTime = sourceTimestamp?.getTime() ?? importTime;
+    const daysToExpiry = Math.max(0, (new Date(expiry).getTime() - valuationTime) / 86_400_000);
     const inputIv = parseVolatility(readField(row, ['iv', 'impliedvolatility', 'markiv', 'volatility']), delimiter === ';');
     const solvedIv = inputIv ?? impliedVolatility(observedPrice, spot, strike, daysToExpiry, type);
     if (!solvedIv) {
@@ -229,6 +237,7 @@ export function parseOptionsCsv(text: string): CsvImportResult {
     }
 
     const estimatedFields: string[] = [];
+    if (!sourceTimestamp) estimatedFields.push('daysToExpiry');
     if (inputIv === undefined) {
       counts.estimatedIv += 1;
       estimatedFields.push('iv');
@@ -247,16 +256,20 @@ export function parseOptionsCsv(text: string): CsvImportResult {
     const gammaValue = parseNumber(readField(row, ['gamma']), delimiter === ';');
     const thetaValue = parseNumber(readField(row, ['theta', 'thetaperday']), delimiter === ';');
     const vegaValue = parseNumber(readField(row, ['vega', 'vegaperpoint']), delimiter === ';');
-    if (deltaValue === undefined || gammaValue === undefined || thetaValue === undefined || vegaValue === undefined) {
+    const rhoValue = parseNumber(readField(row, ['rho', 'rhoperpoint']), delimiter === ';');
+    if (deltaValue === undefined || gammaValue === undefined || thetaValue === undefined || vegaValue === undefined || rhoValue === undefined) {
       counts.modeledGreeks += 1;
       if (deltaValue === undefined) estimatedFields.push('delta');
       if (gammaValue === undefined) estimatedFields.push('gamma');
       if (thetaValue === undefined) estimatedFields.push('theta');
       if (vegaValue === undefined) estimatedFields.push('vega');
+      if (rhoValue === undefined) estimatedFields.push('rho');
     }
 
     const openInterest = parseNonnegativeNumber(readField(row, ['openinterest', 'oi', 'sumopeninterest']), delimiter === ';') ?? null;
+    const openInterestUsd = parseNonnegativeNumber(readField(row, ['openinterestusd', 'oiusd', 'sumopeninterestusd']), delimiter === ';') ?? null;
     const volume = parseNonnegativeNumber(readField(row, ['volume', 'volume24h', 'qty']), delimiter === ';') ?? null;
+    const volumeQuote = parseNonnegativeNumber(readField(row, ['volumequote', 'volumeusd', 'turnover', 'amount']), delimiter === ';') ?? null;
     if (openInterest === null) counts.missingOpenInterest += 1;
     if (volume === null) counts.missingVolume += 1;
     const inputUnit = parsePositiveNumber(readField(row, ['unit', 'contractunit', 'multiplier']), delimiter === ';');
@@ -266,13 +279,12 @@ export function parseOptionsCsv(text: string): CsvImportResult {
       estimatedFields.push('unit');
     }
 
-    const timestampText = readField(row, ['timestamp', 'asof', 'quotetime', 'updatedat', 'updatetime', 'eventtime', 'datetime', 'time']);
     if (!timestampText) {
       counts.missingTimestamp += 1;
+    } else if (sourceTimestamp) {
+      timestamps.push(sourceTimestamp);
     } else {
-      const timestamp = parseTimestamp(timestampText);
-      if (timestamp) timestamps.push(timestamp);
-      else counts.invalidTimestamp += 1;
+      counts.invalidTimestamp += 1;
     }
 
     const fallbackId = `${underlying}-${expiry.slice(0, 10)}-${strike}-${type}-${sourceRowNumber}`;
@@ -297,10 +309,14 @@ export function parseOptionsCsv(text: string): CsvImportResult {
       gamma: gammaValue ?? model.gamma,
       theta: thetaValue ?? model.thetaPerDay,
       vega: vegaValue ?? model.vegaPerVolPoint,
+      rho: rhoValue ?? model.rhoPerRatePoint,
       openInterest,
+      openInterestUsd,
       volume,
+      volumeQuote,
       spot,
       unit,
+      sourceTimestamp: sourceTimestamp?.toISOString(),
       estimatedFields,
     });
   });
@@ -312,6 +328,10 @@ export function parseOptionsCsv(text: string): CsvImportResult {
   } else if (counts.missingTimestamp > 0 || counts.invalidTimestamp > 0) {
     summaryWarnings.push(`وقت مصدر صالح موجود في ${timestamps.length} من ${totalRows} صفاً فقط؛ قد تختلف حداثة العقود.`);
   }
+  const estimatedTimeRows = counts.missingTimestamp + counts.invalidTimestamp;
+  if (estimatedTimeRows > 0) summaryWarnings.push(`حُسبت مدة الانتهاء من وقت الاستيراد، لا من وقت السوق، في ${estimatedTimeRows} صف؛ اعتبرها تقديراً.`);
+  const futureTimestampRows = timestamps.filter((timestamp) => timestamp.getTime() > importTime + 5 * 60_000).length;
+  if (futureTimestampRows > 0) summaryWarnings.push(`وقت المصدر مستقبلي بأكثر من 5 دقائق في ${futureTimestampRows} صف؛ تحقّق من المنطقة الزمنية وساعة الجهاز.`);
   if (timestamps.length > 1) {
     const times = timestamps.map((timestamp) => timestamp.getTime());
     const rangeMinutes = (Math.max(...times) - Math.min(...times)) / 60_000;
@@ -326,7 +346,7 @@ export function parseOptionsCsv(text: string): CsvImportResult {
   if (counts.missingVolume > 0) summaryWarnings.push(`الحجم مفقود في ${counts.missingVolume} صف؛ ستظهر قيمته كغير متاحة.`);
   if (counts.defaultedUnit > 0) summaryWarnings.push(`لم تُحدد وحدة العقد في ${counts.defaultedUnit} صف؛ استُخدمت قيمة افتراضية 1، فتحقق من المضاعف قبل تفسير الربح والخسارة.`);
   if (counts.duplicateSymbols > 0) summaryWarnings.push(`تكرر رمز العقد في ${counts.duplicateSymbols} صف؛ قد تكون البيانات لقطات زمنية متعددة، فتحقق من التوقيت قبل استخدام السلسلة.`);
-  (['BTC', 'ETH'] as const).forEach((asset) => {
+  [...new Set(quotes.map((quote) => quote.underlying))].forEach((asset) => {
     const spots = quotes.filter((quote) => quote.underlying === asset).map((quote) => quote.spot).sort((a, b) => a - b);
     if (spots.length > 1) {
       const medianSpot = spots[Math.floor(spots.length / 2)];
@@ -353,7 +373,7 @@ export function parseOptionsCsv(text: string): CsvImportResult {
 }
 
 export function downloadCsvTemplate(): void {
-  const template = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,delta,gamma,theta,vega,openInterest,volume,spot,unit,timestamp';
+  const template = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,delta,gamma,theta,vega,rho,openInterest,openInterestUsd,volume,volumeQuote,spot,unit,timestamp';
   const blob = new Blob([template], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -363,11 +383,17 @@ export function downloadCsvTemplate(): void {
   URL.revokeObjectURL(url);
 }
 
+export function escapeCsvCell(value: string | number): string {
+  const text = String(value);
+  const safeText = typeof value === 'string' && /^[\u0000-\u0020\uFEFF]*[=+\-@]/.test(text) ? `'${text}` : text;
+  return `"${safeText.replace(/"/g, '""')}"`;
+}
+
 export function downloadCsv(filename: string, rows: Array<Record<string, string | number>>): void {
   if (!rows.length) return;
   const headers = Object.keys(rows[0]);
-  const quote = (value: string | number) => `"${String(value).replace(/"/g, '""')}"`;
-  const content = [headers.map(quote).join(','), ...rows.map((row) => headers.map((header) => quote(row[header] ?? '')).join(','))].join('\n');
+
+  const content = [headers.map(escapeCsvCell).join(','), ...rows.map((row) => headers.map((header) => escapeCsvCell(row[header] ?? '')).join(','))].join('\n');
   const blob = new Blob([`\uFEFF${content}`], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
