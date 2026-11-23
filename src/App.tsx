@@ -615,7 +615,7 @@ function App() {
 
           <section className="compliance-banner" aria-label="تنبيه تنظيمي وتعليمي">
             <div className="compliance-icon"><ShieldAlert size={18} /></div>
-            <div className="compliance-copy"><strong>وضع تحليلي وتجريبي</strong><span>مصدر البيانات موضح في الواجهة: Demo اصطناعي، CSV محلي، أو لقطة REST عامة من Binance عبر وسيط للقراءة فقط، وليست بثاً لحظياً. لا تمثل الأرقام توصية. إذا كنت في المملكة المتحدة، تحقّق من أهلية الوصول إلى مشتقات الأصول المشفرة.</span></div>
+            <div className="compliance-copy"><strong>وضع تحليلي وتجريبي</strong><span>مصدر البيانات موضح في الواجهة: Demo اصطناعي، CSV محلي، أو لقطة REST عامة من Binance عبر وسيط للقراءة فقط، وليست بثاً لحظياً. لا تمثل الأرقام توصية. تحقّق من أهلية الوصول إلى المنتجات المشتقة حسب بلدك والمنصة.</span></div>
             <a href="https://www.fca.org.uk/news/press-releases/fca-lift-ban-crypto-exchange-traded-notes" target="_blank" rel="noreferrer" className="fca-link">معلومات FCA <ExternalLink size={13} /></a>
           </section>
 
@@ -658,7 +658,7 @@ function App() {
                   </AreaChart>
                 </ResponsiveContainer>
               </div> : <EmptyState title="لا تتوفر سلسلة كافية" note="استورد صفوف خيارات تتضمن IV وسعر التنفيذ." />}
-              <div className="chart-footnote"><span>سعر التنفيذ (آلاف {underlying})</span><span>الابتسامة المعروضة من البيانات الحالية فقط</span></div>
+              <div className="chart-footnote"><span>سعر التنفيذ · USDT لكل {underlying}</span><span>الابتسامة المعروضة من البيانات الحالية فقط</span></div>
             </article>
 
             <article className="panel chart-panel term-panel">
