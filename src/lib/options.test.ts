@@ -125,7 +125,7 @@ test('spread is unknown when either market side is absent', () => {
 
 test('risk-neutral expiry metrics reproduce the Black–Scholes discounted-payoff identity', () => {
   const priced = blackScholes(100, 100, 365, 0.2, 'CALL', 0.05);
-  const metrics = getRiskNeutralExpiryMetrics(call, priced.price, 0.05);
+  const metrics = getRiskNeutralExpiryMetrics({ ...call, spot: 100, strike: 100, daysToExpiry: 365, iv: 0.2 }, priced.price, 0.05);
   assert.ok(metrics);
   assert.ok(Math.abs((metrics?.expectedIntrinsicPerUnit ?? 0) - priced.price * Math.exp(0.05)) < 1e-10);
   assert.ok(Math.abs(metrics?.modelValueGapPerUnit ?? 1) < 1e-10);
