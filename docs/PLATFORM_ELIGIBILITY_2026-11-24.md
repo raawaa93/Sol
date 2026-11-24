@@ -159,13 +159,13 @@ NautilusTrader مرشح محرك أحداث واختبار تاريخي متعد
 
 | المشروع | الاستخدام المقترح | الترخيص/الملحوظة |
 |---|---|---|
-| NautilusTrader — https://github.com/nautechsystems/nautilus_trader | محرك أحداث وبيانات/اختبار خيارات؛ يدعم options concepts وParquet catalogue | LGPL-3.0؛ يلزم تثبيت إصدار واختبار موصلات كل venue |
-| QuantLib — https://github.com/lballabio/QuantLib | مرجع التسعير والمنحنيات وGreeks واختبارات مستقلة | ترخيص QuantLib permissive/BSD-style؛ لا يجمع بيانات ولا ينفذ أوامر |
-| OpenBB — https://github.com/OpenBB-finance/OpenBB | طبقة بحث/بيانات ومزودات، لا مصدر خيارات مضمون بذاته | افحص الترخيص والوحدات/المزود قبل تضمين أي جزء؛ ليست OMS |
-| Optopsy — https://github.com/goldspanlabs/optopsy | فرز استراتيجيات options والبحث الأولي | AGPL-3.0؛ لا يُدمج داخل خدمة مغلقة دون مراجعة أثر copyleft |
-| OptionLab — https://github.com/rgaveiga/optionlab | تحليل payoff/probability لاستراتيجيات الخيارات | GPL-3.0؛ مناسب كأداة بحث معزولة لا كقلب النظام دون مراجعة الترخيص |
+| NautilusTrader — https://github.com/nautechsystems/nautilus_trader | محرك أحداث وبيانات/اختبار خيارات تقليدية وكريبتو؛ option-chain aggregation وGreeks وParquet catalogue | LGPL-3.0؛ قوي كمرشح للمحاكاة متعددة الأسواق. يجب الانتباه إلى أن محاكاة الخيارات الموثقة لا تحاكي L2 queue position بالكامل. |
+| QuantLib — https://github.com/lballabio/QuantLib | مرجع التسعير والمنحنيات وGreeks واختبارات مستقلة | Modified BSD / non-copyleft؛ مناسب كمحرك تحقق منفصل، لا يجمع بيانات ولا ينفذ أوامر |
+| Optopsy v2.3.0 — https://github.com/goldspanlabs/optopsy | 38 استراتيجية، محاكاة زمنية ومحافظ، رسوم، slippage، risk metrics، مزودات بيانات وParquet cache | AGPL-3.0؛ يتطلب Python 3.12–3.13، وبياناته التاريخية من مزود مثل EODHD تحتاج مفتاحاً/ترخيصاً. استخدمه كخدمة بحث معزولة لا تدمجه في التطبيق المغلق دون مراجعة قانونية |
+| OptionLab — https://github.com/rgaveiga/optionlab | تحليل payoff/probability وGreeks لاستراتيجيات الخيارات | GPL-3.0؛ أداة مساعدة/مرجعية، لا قلب نظام الإنتاج دون مراجعة الترخيص |
+| OpenBB — https://github.com/OpenBB-finance/OpenBB | طبقة بحث/بيانات ومزودات، لا مصدر خيارات مضمون بذاته | قيّم مزود البيانات والتغطية والترخيص لكل endpoint؛ ليست OMS ولا ضماناً لتوافر option chains |
 
-لا نختار مشروعاً بعدد النجوم فقط. قبل إضافة اعتماد: تحقق من نشاط الصيانة، إصدار مستقر، الاختبارات، التراخيص، تغطية الأدوات/الأسواق، دقة تنفيذ الأوامر والتسويات، وحجم الاعتماديات. لم يُدمج أي من هذه المشاريع في runtime حتى تاريخ المراجعة.
+لا نختار مشروعاً بعدد النجوم فقط. قبل إضافة اعتماد: تحقق من نشاط الصيانة، إصدار مستقر، الاختبارات، التراخيص، تغطية الأدوات/الأسواق، دقة تنفيذ الأوامر والتسويات، وحجم الاعتماديات. لم يُدمج أي من هذه المشاريع في runtime حتى تاريخ المراجعة. مصادر إضافية: https://nautilustrader.io/docs/latest/concepts/options/ ، https://github.com/goldspanlabs/optopsy/blob/main/pyproject.toml ، https://github.com/lballabio/QuantLib/blob/master/Docs/pages/index.docs ، https://github.com/rgaveiga/optionlab .
 
 ## 8. قرار التنفيذ ومراحل التوسع
 
