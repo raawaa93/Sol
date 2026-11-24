@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { applyBinanceBookTicker, applyBinanceOptionMarkPrice, BinanceMarketDataError, fetchBinanceDepth, fetchBinanceOptions, normalizeBinanceDepth, normalizeBinanceSnapshot, parseBinanceBookTickerMessage, parseBinanceOptionMarkPriceMessage } from './binance.ts';
+import { applyBinanceBookTicker, applyBinanceOptionMarkPrice, applyBinanceOptionTicker, BinanceMarketDataError, fetchBinanceDepth, fetchBinanceOptions, normalizeBinanceDepth, normalizeBinanceSnapshot, parseBinanceBookTickerMessage, parseBinanceOptionMarkPriceMessage, parseBinanceOptionTickerMessage } from './binance.ts';
 import { blackScholes, getMidPrice } from './options.ts';
 
 function compactDate(timestamp: number): string {
