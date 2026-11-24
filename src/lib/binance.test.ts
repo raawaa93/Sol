@@ -30,12 +30,12 @@ test('Binance time to expiry uses exchange server time rather than the browser c
   assert.equal(snapshot.quotes[0].underlyingKind, 'SPOT');
   assert.equal(snapshot.quotes[0].exerciseStyle, 'EUROPEAN');
   assert.equal(snapshot.quotes[0].settlementStyle, 'CASH');
-  assert.equal(snapshot.quotes[0].pricingStatus, 'SUPPORTED');
+  assert.equal(snapshot.quotes[0].pricingStatus, 'ASSUMED');
   assert.equal(snapshot.quotes[0].pricingModel, 'BLACK_SCHOLES_CARRY');
   assert.equal(snapshot.quotes[0].underlyingKind, 'SPOT');
   assert.equal(snapshot.quotes[0].exerciseStyle, 'EUROPEAN');
   assert.equal(snapshot.quotes[0].settlementStyle, 'CASH');
-  assert.equal(snapshot.quotes[0].pricingStatus, 'SUPPORTED');
+  assert.equal(snapshot.quotes[0].pricingStatus, 'ASSUMED');
   assert.equal(snapshot.quotes[0].pricingModel, 'BLACK_SCHOLES_CARRY');
 });
 
@@ -151,7 +151,7 @@ test('Binance normalizer avoids crossed bid/ask midpoints and preserves last-pri
   assert.ok(quote.estimatedFields?.includes('riskFreeRate'));
   assert.ok(!quote.estimatedFields?.includes('gamma'));
   assert.ok(!quote.estimatedFields?.includes('rho'));
-  assert.equal(quote.pricingStatus, 'SUPPORTED');
+  assert.equal(quote.pricingStatus, 'ASSUMED');
   assert.ok(Number.isFinite(quote.rho));
 });
 
