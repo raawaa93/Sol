@@ -783,7 +783,7 @@ function App() {
                   {assetChoices.map((item) => <option key={item} value={item}>{item} · {getUnderlyingName(item)}</option>)}
                 </select><ChevronDown size={13} /></label>
               ) : (
-                <div className="asset-switch" role="tablist" aria-label="الأصل الأساسي">
+                <div className="asset-switch" role="group" aria-label="الأصل الأساسي">
                   {assetChoices.map((item) => <button key={item} className={underlying === item ? 'selected' : ''} onClick={() => changeUnderlying(item)}>{item}<span>{getUnderlyingName(item)}</span></button>)}
                 </div>
               )}
@@ -882,12 +882,12 @@ function App() {
             <div className="scanner-layout">
               <article className="panel chain-panel">
                 <div className="chain-toolbar">
-                  <div className="option-tabs" role="tablist" aria-label="نوع الخيار">
-                    <button className={selectedType === 'CALL' ? 'active call-tab' : ''} disabled={!assetQuotes.some((quote) => quote.expiry === effectiveExpiry && quote.type === 'CALL')} onClick={() => {
+                  <div className="option-tabs" role="group" aria-label="نوع الخيار">
+                    <button type="button" aria-pressed={selectedType === 'CALL'} className={selectedType === 'CALL' ? 'active call-tab' : ''} disabled={!assetQuotes.some((quote) => quote.expiry === effectiveExpiry && quote.type === 'CALL')} onClick={() => {
                       const next = assetQuotes.find((quote) => quote.expiry === effectiveExpiry && quote.type === 'CALL');
                       if (next) { setSelectedType('CALL'); setSelectedId(next.id); }
                     }}>Call <span>شراء حق الصعود</span></button>
-                    <button className={selectedType === 'PUT' ? 'active put-tab' : ''} disabled={!assetQuotes.some((quote) => quote.expiry === effectiveExpiry && quote.type === 'PUT')} onClick={() => {
+                    <button type="button" aria-pressed={selectedType === 'PUT'} className={selectedType === 'PUT' ? 'active put-tab' : ''} disabled={!assetQuotes.some((quote) => quote.expiry === effectiveExpiry && quote.type === 'PUT')} onClick={() => {
                       const next = assetQuotes.find((quote) => quote.expiry === effectiveExpiry && quote.type === 'PUT');
                       if (next) { setSelectedType('PUT'); setSelectedId(next.id); }
                     }}>Put <span>شراء حق الهبوط</span></button>

@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://raawaa93.github.io/Sol/sitemap.xml

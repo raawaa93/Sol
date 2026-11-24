@@ -14,10 +14,18 @@ test('Demo explicitly labels synthetic data and asset switching updates the mark
   await expect(page.getByRole('heading', { name: 'مختبر الخيارات' })).toBeVisible();
   await expect(page.locator('#opportunities')).toContainText('بيانات اصطناعية للتجربة فقط');
 
-  const assetTabs = page.getByRole('tablist', { name: 'الأصل الأساسي' });
+  const assetTabs = page.getByRole('group', { name: 'الأصل الأساسي' });
   await assetTabs.getByRole('button', { name: /XRP/ }).click();
   await expect(page.locator('#overview-metrics')).toContainText('XRP/USDT');
   await expect(page.locator('#scanner')).toContainText('XRP');
+});
+
+test('option type selector exposes an accessible group and pressed state', async ({ page }) => {
+  const optionType = page.getByRole('group', { name: 'نوع الخيار' });
+  await expect(optionType).toBeVisible();
+  await expect(optionType.getByRole('button', { name: /Call/ })).toHaveAttribute('aria-pressed', 'true');
+  await optionType.getByRole('button', { name: /Put/ }).click();
+  await expect(optionType.getByRole('button', { name: /Put/ })).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('global instrument search and local watchlist work across reloads', async ({ page }) => {
