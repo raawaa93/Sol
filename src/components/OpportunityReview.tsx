@@ -119,15 +119,17 @@ export default function OpportunityReview({ quotes, market, underlying, dataMode
           <div><span className="section-kicker">REVIEW QUEUE · {underlying}</span><h3>عقود للتمحيص، لا للشراء التلقائي</h3></div>
           <span>{candidates.length ? `${candidates.length} عقود ثنائية الجانب` : 'لا توجد عروض مكتملة'}</span>
         </div>
-        <p className="watchlist-method">يفضّل الماسح استحقاق 20–40 يوماً و|Delta| بين 0.25 و0.75 فقط إذا لم تُعلّم الحقول كتقديرية؛ ثم يرتب وفق ضيق Bid/Ask، فالفائدة المفتوحة والحجم. هذا ترتيب أولي لا يدخل عمق دفتر الأوامر ولا يحسب ربحاً متوقعاً؛ افتح عقد Binance لمراجعة لقطة أفضل 20 مستوى والحجم الظاهر قبل الحكم على قابلية التنفيذ.</p>
+        <p className="watchlist-method">يفضّل الماسح استحقاق 20–40 يوماً و|Delta| بين 0.25 و0.75 فقط إذا لم تُعلّم الحقول كتقديرية؛ ثم يرتب وفق ضيق Bid/Ask، فالفائدة المفتوحة والحجم. إذا كانت Greeks مبنية على افتراضات فستُعلّم ولا تُستخدم لإنتاج احتمال ربح؛ افتح عقد Binance لمراجعة لقطة أفضل 20 مستوى والحجم الظاهر قبل الحكم على قابلية التنفيذ.</p>
         {candidates.length ? <div className="review-candidate-grid">
           {candidates.map((quote) => {
             const spread = getSpreadPct(quote);
             const spreadClass = getSpreadClass(spread);
             const modelInputsVerified = dataMode !== 'DEMO'
+              && quote.pricingStatus === 'SUPPORTED'
+              && quote.exerciseStyle === 'EUROPEAN'
               && quote.bid > 0 && quote.ask > 0 && quote.ask >= quote.bid
               && quote.unit > 0
-              && !['iv', 'daysToExpiry', 'spot', 'unit'].some((field) => isQuoteFieldEstimated(quote, field));
+              && !['iv', 'daysToExpiry', 'spot', 'unit', 'riskFreeRate', 'carryYield', 'forward'].some((field) => isQuoteFieldEstimated(quote, field));
             const modelMetrics = modelInputsVerified ? getRiskNeutralExpiryMetrics(quote, quote.ask) : null;
             const estimated = quote.estimatedFields?.length
               ? formatEstimatedFields(quote.estimatedFields.slice(0, 4))
@@ -140,10 +142,12 @@ export default function OpportunityReview({ quotes, market, underlying, dataMode
                   <ArrowUpLeft size={14} />
                 </span>
                 <strong className="review-symbol">{quote.symbol}</strong>
-                <span className="review-contract-meta">{formatAssetPrice(quote.strike, quote.spot)} · {Math.round(quote.daysToExpiry)} يوم · Δ {quote.delta.toFixed(2)}</span>
+                <span className="review-contract-meta">{formatAssetPrice(quote.strike, quote.underlyingKind === 'FUTURE' ? quote.forward ?? quote.spot : quote.spot)} · {Math.round(quote.daysToExpiry)} يوم · Δ {quote.delta.toFixed(2)}</span>
                 <span className="review-market-meta">IV {formatPercent(quote.iv)} · OI {quote.openInterest === null ? '—' : formatSmallNumber(quote.openInterest)} · حجم {quote.volume === null ? '—' : formatSmallNumber(quote.volume)}</span>
                 {modelMetrics && <span className="review-model-meta">احتمال الربح عند الانتهاء: {formatPercent(modelMetrics.probabilityOfProfit)} · EV محايد/عقد: {modelMetrics.expectedExpiryPnlPerUnit * quote.unit >= 0 ? '+' : ''}{formatSmallNumber(modelMetrics.expectedExpiryPnlPerUnit * quote.unit)} USDT</span>}
-                {modelMetrics && <small className="review-model-note">قياس محايد للمخاطر عند IV المدخل وr=0%، قبل الرسوم والانزلاق؛ ليس احتمالاً واقعياً ولا توقعاً للسوق. {quote.underlying === 'XAU' || quote.underlying === 'XAG' ? 'مرجع Black–Scholes على مؤشر TradFi؛ لا يدمج تمويل/أساس العقد أو ساعات السوق.' : ''}</small>}
+                {modelMetrics && <small className="review-model-note">قياس محايد للمخاطر وفق {quote.pricingModel === 'BLACK_76' ? 'Black–76' : 'Black–Scholes مع Carry'} وبالمعدل والـCarry المسجلين في العقد، قبل الرسوم والانزلاق؛ ليس احتمالاً واقعياً ولا توقعاً للسوق.</small>}
+                {quote.pricingStatus === 'ASSUMED' && <small className="review-estimated">Greeks مبنية على افتراضات: {quote.pricingReason ?? 'تحقق من المعدل والـcarry قبل الاعتماد عليها.'}</small>}
+                {quote.pricingStatus === 'OBSERVED_ONLY' && <small className="review-estimated">لا يوجد نموذج تسعير موثّق لهذا العقد؛ لا تُستخدم Greeks لتوليد احتمال ربح.</small>}
                 {estimated && <small className="review-estimated">حقول تقديرية: {estimated}</small>}
                 <span className="review-open">افتح العقد في الماسح</span>
               </button>
