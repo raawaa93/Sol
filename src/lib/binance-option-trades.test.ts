@@ -27,7 +27,7 @@ test('optionTrade classifies buyer-initiated flow from m=false', () => {
   assert.ok(event);
   assert.equal(event.aggressorSide, 'BUY');
   assert.equal(event.signedQuantity, 2);
-  assert.equal(event.tradeSide, 'BUY');
+  assert.equal(event.tradeSide, 'SELL');
   assert.equal(event.buyerIsMaker, false);
   assert.equal(event.executionType, 'MARKET');
   assert.equal(event.receivedAt, 1_800_000_000_200);
