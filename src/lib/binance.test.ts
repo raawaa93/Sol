@@ -284,3 +284,33 @@ test('Binance normalizer models a reference price only when IV is observed and n
   assert.ok(snapshot.quotes[0].markPrice > 0);
   assert.ok(snapshot.quotes[0].estimatedFields?.includes('markPrice'));
 });
+
+test('Binance commodity options preserve perpetual-index mechanics and do not receive spot Greeks', () => {
+  const now = Date.now();
+  const expiry = now + 14 * 86_400_000;
+  const code = compactDate(expiry);
+  const symbol = `XAU-${code}-4000-C`;
+  const snapshot = normalizeBinanceSnapshot({
+    fetchedAt: now,
+    exchangeInfo: {
+      serverTime: now,
+      optionContracts: [{ baseAsset: 'XAU', quoteAsset: 'USDT', underlying: 'XAUUSDT', settleAsset: 'USDT' }],
+      optionSymbols: [{
+        symbol, underlying: 'XAUUSDT', quoteAsset: 'USDT', side: 'CALL', strikePrice: 4000,
+        expiryDate: expiry, unit: 1, status: 'TRADING', contractType: 'TRADFI_OPTIONS', underlyingType: 'COMMODITY',
+      }],
+    },
+    marks: [{ symbol, markPrice: 25, markIV: 0.22, delta: 0.61, gamma: 0.001, theta: -1.2, vega: 4.2 }],
+    indices: [{ requestedUnderlying: 'XAUUSDT', item: { indexPrice: 3980, time: now } }],
+  });
+
+  assert.equal(snapshot.quotes.length, 1);
+  const quote = snapshot.quotes[0];
+  assert.equal(quote.underlyingKind, 'PERPETUAL');
+  assert.equal(quote.pricingStatus, 'OBSERVED_ONLY');
+  assert.equal(quote.pricingModel, undefined);
+  assert.ok(quote.pricingReason?.toLowerCase().includes('perpetual'));
+  assert.equal(quote.delta, 0);
+  assert.deepEqual(quote.unverifiedSourceGreeks, { delta: 0.61, gamma: 0.001, theta: -1.2, vega: 4.2 });
+});
+
