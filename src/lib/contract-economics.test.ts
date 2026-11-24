@@ -167,6 +167,26 @@ test('per-contract quoted premiums cannot also apply a non-unit premium multipli
   assert.equal(result.adapterReady, false);
 });
 
+
+test('rejects a missing deliverables array instead of treating it as empty', () => {
+  const malformed = standardEquity({
+    exercise: {
+      style: 'EUROPEAN',
+      settlement: 'CASH',
+      settlementCurrency: 'USD',
+      cashSettlement: {
+        formula: 'INTRINSIC_VALUE',
+        reference: 'SPOT',
+        currency: 'USD',
+        multiplier: 1,
+      },
+    } as unknown as ContractEconomics['exercise'],
+  });
+  const result = validateContractEconomics(malformed);
+  assert.ok(result.issues.includes('INVALID_DELIVERABLE'));
+  assert.equal(result.valid, false);
+});
+
 test('rejects invalid premium scale and missing provider provenance', () => {
   const result = validateContractEconomics(standardEquity({
     premium: { multiplier: 0, quoteCurrency: 'usd', priceUnit: 'PER_CONTRACT' },
