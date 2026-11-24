@@ -27,6 +27,11 @@ function appendSummary(markdown) {
   }
 }
 
+function annotate(level, title, message) {
+  const escaped = message.replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+  console.log(`::${level} title=${title}::${escaped}`);
+}
+
 async function requestJson(endpoint, params = {}) {
   const url = new URL(proxyUrl);
   url.searchParams.set('endpoint', endpoint);
@@ -57,6 +62,7 @@ function recordRegionRestriction(endpoint, response, payload) {
   const detail = typeof payload?.msg === 'string' ? payload.msg : 'Binance denied the request from the upstream region.';
   const line = `⚠️ ${endpoint}: proxy reached Binance, but upstream returned HTTP ${response.status} (regional/product restriction). Live data is not verified. ${detail}`;
   console.warn(line);
+  annotate('warning', 'Binance live data restricted', line);
   appendSummary(`### Live market-data smoke test\n\n${line}\n`);
 }
 
@@ -157,19 +163,23 @@ async function main() {
   const bidCount = validLevels(depth.bids);
   const askCount = validLevels(depth.asks);
   if (!bidCount && !askCount) {
-    const line = `⚠️ depth returned a valid REST response for ${target.symbol}, but no positive visible bid/ask levels. This does not confirm usable liquidity.`;
+    const line = `depth returned HTTP ${depthResult.response.status} for ${target.symbol}, but no positive visible bid/ask levels. This does not confirm usable liquidity.`;
     console.warn(line);
-    appendSummary(`### Live market-data smoke test\n\n${line}\n`);
+    annotate('warning', 'No visible order-book liquidity', line);
+    appendSummary(`### Live market-data smoke test\n\n⚠️ ${line}\n`);
     return;
   }
 
   const line = `PASS — published app shell HTTP ${pageResponse.status} (${pageMs} ms); live exchangeInfo/index/depth proxy responses were valid; depth for ${target.symbol} returned ${bidCount} bids and ${askCount} asks (${depthResult.elapsedMs} ms). This is a point-in-time REST check, not streaming or an execution guarantee.`;
   console.log(line);
+  annotate('notice', 'Live Binance market-data smoke', line);
   appendSummary(`### Live market-data smoke test\n\n${line}\n`);
 }
 
 main().catch((error) => {
-  console.error(error instanceof Error ? error.message : String(error));
-  appendSummary(`### Live market-data smoke test\n\nFAIL — ${error instanceof Error ? error.message : String(error)}\n`);
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(message);
+  annotate('error', 'Live market-data smoke failed', message);
+  appendSummary(`### Live market-data smoke test\n\nFAIL — ${message}\n`);
   process.exitCode = 1;
 });

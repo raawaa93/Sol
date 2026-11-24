@@ -32,6 +32,18 @@ const milliseconds = (id) => {
   return value === undefined ? 'n/a' : `${Math.round(value)} ms`;
 };
 const cls = auditValue('cumulative-layout-shift');
+const opportunities = Object.entries(report.audits ?? {})
+  .map(([id, audit]) => ({
+    id,
+    title: audit.title ?? id,
+    savingsMs: audit.details?.type === 'opportunity' ? audit.details.overallSavingsMs : undefined,
+  }))
+  .filter((item) => typeof item.savingsMs === 'number' && item.savingsMs > 0)
+  .sort((a, b) => b.savingsMs - a.savingsMs)
+  .slice(0, 3);
+const opportunitySummary = opportunities.length
+  ? opportunities.map((item) => `${item.title}: ${Math.round(item.savingsMs)} ms`).join('; ')
+  : 'no estimated Lighthouse opportunities with measurable time savings';
 const runCount = manifest.length;
 const label = process.env.LIGHTHOUSE_LABEL || 'Lighthouse';
 const line = [
@@ -47,8 +59,10 @@ const line = [
 ].join(' · ');
 
 console.log(line);
+console.log(`Top estimated audit savings: ${opportunitySummary}`);
 if (process.env.GITHUB_STEP_SUMMARY) {
-  fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n### ${label} Lighthouse baseline\n\n${line}\n`);
+  fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n### ${label} Lighthouse baseline\n\n${line}\n\nTop estimated audit savings: ${opportunitySummary}\n`);
 }
-const annotation = line.replace(/%/g, '%25').replace(/\r/g, ' ').replace(/\n/g, ' ');
+const annotation = `${line} · Top estimated audit savings: ${opportunitySummary}`
+  .replace(/%/g, '%25').replace(/\r/g, ' ').replace(/\n/g, ' ');
 console.log(`::notice title=${label} Lighthouse baseline::${annotation}`);
