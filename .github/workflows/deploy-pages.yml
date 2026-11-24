@@ -72,6 +72,8 @@ jobs:
     env:
       PUBLISHED_URL: ${{ needs.deploy.outputs.page_url }}
       BINANCE_PROXY_URL: https://oyoyozdugicmnkfhjovo.supabase.co/functions/v1/volterra-binance-market-data
+      # GitHub-hosted runners can egress from the US; do not probe Binance from this path.
+      BINANCE_UPSTREAM_SMOKE: 'false'
       LIGHTHOUSE_REPORT_DIR: .lighthouseci-production
       LIGHTHOUSE_LABEL: Published GitHub Pages
     steps:
