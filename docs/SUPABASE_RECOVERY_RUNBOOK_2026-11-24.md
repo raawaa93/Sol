@@ -1,6 +1,6 @@
 # Sol / Volterra Supabase recovery runbook
 
-**Checked:** 24 November 2026, 09:06 UTC  
+**Checked:** 24 November 2026, 09:43 UTC  
 **Project:** `Ghaiooth-core` / `oyoyozdugicmnkfhjovo`  
 **Repository:** `raawaa93/Sol` (public)  
 **Database:** PostgreSQL 17.11, Supabase Free
@@ -13,9 +13,9 @@ The live application schema is deliberately small:
 - `public.volterra_check_rate_limit(text, integer, integer)` — service-side RPC, `SECURITY DEFINER`, pinned `search_path`, executable only by `service_role`.
 - `volterra-binance-market-data` Edge Function — active v10; source is stored in `supabase/functions/volterra-binance-market-data/index.ts` and uses Supabase's injected `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` runtime values. No user-supplied API key is required by this public market-data proxy.
 - Six old Edge Function deployments are inert HTTP 410 handlers and still registered; they are not part of the Sol deploy path.
-- Current snapshot: 1 Auth user, 0 Storage objects, 72 ephemeral rate-limit rows (observed at 09:01 UTC; this count changes as requests arrive). The Auth user is not included in the standard CLI dump described below.
+- Current read-only check at 09:43 UTC: 78 ephemeral rate-limit rows (this count changes as requests arrive). The earlier audit recorded 1 Auth user and 0 Storage objects; those counts were not re-queried in this pass. The Auth user is not included in the standard CLI dump described below.
 
-The three tracked migrations rebuild the Sol application table/function and remove the two old application schemas. The 19 older remote migration records belong to retired systems and must not be copied into the active migration directory or blindly replayed.
+The repository currently tracks three Sol migrations; the live remote ledger contains 22 rows. The other 19 historical records belong to retired systems and must not be copied into the active migration directory or blindly replayed.
 
 
 ### Live access-control verification — 24 November 2026, 09:01 UTC
@@ -138,7 +138,11 @@ Repeat the repair command only for the 19 explicitly listed legacy versions. In 
 
 This repair has **not** been run. The history rows are intentionally retained until the dump and restore path are proven.
 
-## 8. Remaining blockers
+## 8. Mobile-only setup instructions
+
+For iPhone and Android tablet users without a local computer, follow [the mobile-first setup guide](MOBILE_BACKUP_SETUP_2026-11-24.md). It uses GitHub and Supabase browser pages and, only if free Codespaces quota is available, a temporary browser terminal to generate the age key. Do not enable paid Codespaces usage or expose the private identity.
+
+## 9. Remaining blockers
 
 - [ ] Repository owner configures `SUPABASE_DB_URL` as an Actions secret and `AGE_RECIPIENT` as an Actions variable; neither is visible/writable through the connected GitHub tools.
 - [ ] Generate an age key pair offline and keep the private identity outside GitHub.
@@ -149,6 +153,6 @@ This repair has **not** been run. The history rows are intentionally retained un
 - [ ] Protect `main` with PR + required checks. The repository currently has no rulesets and `main` is not protected; the connected GitHub tool cannot write repository administration settings.
 - [ ] Remove six retired Edge Function deployments if/when a Supabase delete-function action or authorized CLI/Management API path becomes available.
 
-## 9. Incident boundary
+## 10. Incident boundary
 
 The earlier `commerce` and `rawaa_store` schema deletion removed the two Telegram pairing/recipient rows. Those records are absent from the live database. No backup has been located in the connected project, Storage, or Library. This runbook does not recreate placeholders and does not claim the deleted records can be recovered. An external pre-cleanup backup, if one exists, must be located separately.
