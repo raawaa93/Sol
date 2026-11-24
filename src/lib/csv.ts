@@ -217,7 +217,7 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
     if (contractMultiplier !== undefined && inputUnit === undefined) {
       addRowWarning(`الصف ${sourceRowNumber}: contractMultiplier ليس بديلاً عن unit؛ استُخدمت قيمة unit الافتراضية 1 والمعلّمة كتقديرية.`);
     } else if (contractMultiplier !== undefined && inputUnit !== undefined && Math.abs(contractMultiplier - inputUnit) > Math.max(1e-9, inputUnit * 1e-9)) {
-      addRowWarning(`الصف ${sourceRowNumber}: contractMultiplier يختلف عن unit؛ تُحفظ القيمتان منفصلتين، لكن حسابات العقد الحالية تستخدم unit فقط ولا تمثل deliverables المعدّلة.`);
+      addRowWarning(`الصف ${sourceRowNumber}: contractMultiplier يختلف عن unit؛ تُحفظ القيمتان منفصلتين، لكننا نحجب P&L لكل عقد والكمية والمحاكاة التاريخية حتى يتوفر نموذج للتسليم والمضاعف.`);
     }
     const expiryTimezone = readField(row, ['expiryTimezone', 'timezone'])?.trim();
     const typeText = (readField(row, ['type', 'optiontype', 'side']) ?? parsedSymbol.type ?? '').toUpperCase();
