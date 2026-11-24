@@ -156,6 +156,63 @@ test('Binance normalizer avoids crossed bid/ask midpoints and preserves last-pri
 });
 
 
+test('Binance keeps ticker, index, and open-interest source timestamps separate', () => {
+  const now = Date.now();
+  const expiry = now + 30 * 86_400_000;
+  const symbol = `BTC-${compactDate(expiry)}-100000-C`;
+  const tickerTime = now - 1_000;
+  const indexTime = now - 2_000;
+  const openInterestTime = now - 60_000;
+  const snapshot = normalizeBinanceSnapshot({
+    fetchedAt: now,
+    exchangeInfo: {
+      serverTime: now,
+      optionContracts: [{ baseAsset: 'BTC', quoteAsset: 'USDT', underlying: 'BTCUSDT' }],
+      optionSymbols: [{
+        symbol, underlying: 'BTCUSDT', side: 'CALL', strikePrice: 100000,
+        expiryDate: expiry, unit: 1, status: 'TRADING',
+      }],
+    },
+    marks: [{ symbol, markPrice: 10, markIV: 0.5 }],
+    tickers: [{ symbol, bidPrice: 9, askPrice: 11, closeTime: tickerTime }],
+    indices: [{ requestedUnderlying: 'BTCUSDT', item: { indexPrice: 100000, time: indexTime } }],
+    openInterest: [{ symbol, sumOpenInterest: 2, timestamp: openInterestTime }],
+  });
+
+  const quote = snapshot.quotes[0];
+  assert.equal(quote.sourceTimestamp, new Date(tickerTime).toISOString());
+  assert.deepEqual(quote.sourceTimestamps, {
+    ticker: new Date(tickerTime).toISOString(),
+    index: new Date(indexTime).toISOString(),
+    openInterest: new Date(openInterestTime).toISOString(),
+  });
+});
+
+test('Binance does not substitute index time for a missing ticker timestamp', () => {
+  const now = Date.now();
+  const expiry = now + 30 * 86_400_000;
+  const symbol = `BTC-${compactDate(expiry)}-100000-C`;
+  const indexTime = now - 2_000;
+  const snapshot = normalizeBinanceSnapshot({
+    fetchedAt: now,
+    exchangeInfo: {
+      serverTime: now,
+      optionContracts: [{ baseAsset: 'BTC', quoteAsset: 'USDT', underlying: 'BTCUSDT' }],
+      optionSymbols: [{
+        symbol, underlying: 'BTCUSDT', side: 'CALL', strikePrice: 100000,
+        expiryDate: expiry, unit: 1, status: 'TRADING',
+      }],
+    },
+    marks: [{ symbol, markPrice: 10, markIV: 0.5 }],
+    tickers: [{ symbol, bidPrice: 9, askPrice: 11 }],
+    indices: [{ requestedUnderlying: 'BTCUSDT', item: { indexPrice: 100000, time: indexTime } }],
+  });
+
+  assert.equal(snapshot.quotes[0].sourceTimestamp, undefined);
+  assert.equal(snapshot.quotes[0].sourceTimestamps?.ticker, undefined);
+  assert.equal(snapshot.quotes[0].sourceTimestamps?.index, new Date(indexTime).toISOString());
+});
+
 test('Binance quote diagnostics distinguish missing bid, ask, and both sides', () => {
   const now = Date.now();
   const expiry = now + 30 * 86_400_000;
