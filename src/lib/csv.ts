@@ -213,6 +213,17 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
     const quoteAsset = readField(row, ['quoteAsset', 'quoteCurrency'])?.trim().toUpperCase();
     const settlementAsset = readField(row, ['settlementAsset', 'settleAsset', 'settlementCurrency'])?.trim().toUpperCase();
     const contractMultiplier = parsePositiveNumber(readField(row, ['contractMultiplier', 'multiplierValue']), delimiter === ';');
+    const inputUnit = parsePositiveNumber(readField(row, ['unit', 'contractunit', 'multiplier']), delimiter === ';');
+    if (contractMultiplier !== undefined && inputUnit === undefined) {
+      counts.invalidRows += 1;
+      addRowWarning(`تم تجاهل الصف ${sourceRowNumber}: لا يمكن استخدام contractMultiplier بديلاً عن unit؛ أدخل وحدة الأصل لكل عقد صراحةً.`);
+      return;
+    }
+    if (contractMultiplier !== undefined && inputUnit !== undefined && Math.abs(contractMultiplier - inputUnit) > Math.max(1e-9, inputUnit * 1e-9)) {
+      counts.invalidRows += 1;
+      addRowWarning(`تم تجاهل الصف ${sourceRowNumber}: contractMultiplier لا يساوي unit؛ العقود ذات التسليم/المضاعف المعدّل غير مدعومة حالياً.`);
+      return;
+    }
     const expiryTimezone = readField(row, ['expiryTimezone', 'timezone'])?.trim();
     const typeText = (readField(row, ['type', 'optiontype', 'side']) ?? parsedSymbol.type ?? '').toUpperCase();
     const type: OptionSide | undefined = typeText === 'C' || typeText === 'CALL' ? 'CALL'
@@ -334,8 +345,7 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
     const volumeQuote = parseNonnegativeNumber(readField(row, ['volumequote', 'volumeusd', 'turnover', 'amount']), delimiter === ';') ?? null;
     if (openInterest === null) counts.missingOpenInterest += 1;
     if (volume === null) counts.missingVolume += 1;
-    const inputUnit = parsePositiveNumber(readField(row, ['unit', 'contractunit', 'multiplier']), delimiter === ';');
-    const unit = inputUnit ?? contractMultiplier ?? 1;
+    const unit = inputUnit ?? 1;
     if (!inputUnit) {
       counts.defaultedUnit += 1;
       estimatedFields.push('unit');
