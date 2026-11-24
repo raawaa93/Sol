@@ -130,7 +130,7 @@ test('Binance preserves explicit crypto, commodity, and unknown contract metadat
   const expiry = now + 30 * 86_400_000;
   const code = compactDate(expiry);
   const instruments = [
-    { baseAsset: 'BTC', underlying: 'BTCUSDT', underlyingType: 'CRYPTO', contractType: 'CRYPTO_OPTIONS', assetClass: 'CRYPTO', kind: 'SPOT', pricing: 'ASSUMED' },
+    { baseAsset: 'BTC', underlying: 'BTCUSDT', underlyingType: 'CRYPTO', contractType: 'CRYPTO_OPTIONS', assetClass: 'CRYPTO', kind: 'SPOT', pricing: 'OBSERVED_ONLY' },
     { baseAsset: 'XAU', underlying: 'XAUUSDT', underlyingType: 'COMMODITY', contractType: 'TRADFI_OPTIONS', assetClass: 'METALS', kind: 'PERPETUAL', pricing: 'OBSERVED_ONLY' },
     { baseAsset: 'RAT', underlying: 'RATUSDT', underlyingType: 'UNKNOWN', contractType: 'UNKNOWN_OPTIONS', assetClass: 'UNKNOWN', kind: 'UNKNOWN', pricing: 'OBSERVED_ONLY' },
   ] as const;
@@ -179,11 +179,14 @@ test('Binance preserves explicit crypto, commodity, and unknown contract metadat
   const unknown = snapshot.quotes.find((item) => item.underlying === 'RAT');
   assert.equal(crypto?.exerciseStyle, 'EUROPEAN');
   assert.equal(crypto?.settlementStyle, 'CASH');
-  assert.equal(crypto?.pricingModel, 'BLACK_SCHOLES_CARRY');
+  assert.equal(crypto?.pricingModel, undefined);
+  assert.ok(crypto?.pricingReason?.includes('unit is underlying quantity per contract'));
+  assert.equal(crypto?.iv, 0.5);
   assert.equal(commodity?.exerciseStyle, 'EUROPEAN');
   assert.equal(commodity?.settlementStyle, 'CASH');
   assert.equal(commodity?.pricingModel, undefined);
   assert.ok(commodity?.pricingReason?.includes('Perpetual Contract Index'));
+  assert.ok(snapshot.warnings.some((warning) => warning.includes('مقياس القسط غير مفصول')));
   assert.equal(unknown?.exerciseStyle, undefined);
   assert.equal(unknown?.settlementStyle, undefined);
   assert.equal(unknown?.pricingModel, undefined);
