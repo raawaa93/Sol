@@ -227,6 +227,12 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       continue;
     }
 
+    const unit = positiveNumber(symbolInfo.unit);
+    if (!unit) {
+      missingUnit += 1;
+      skipped += 1;
+      continue;
+    }
     const hasUnitOnePremiumParity = unit === 1;
     const daysToExpiry = Math.max(0, (expiryDate - serverTime) / 86_400_000);
     const mark = markBySymbol.get(symbol);
@@ -335,12 +341,6 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
     const lotSizeFilter = filters?.find((filter) => ['LOT_SIZE', 'MARKET_LOT_SIZE'].includes(filter.filterType.toUpperCase()));
     const minQty = positiveNumber(symbolInfo.minQty) ?? positiveNumber(lotSizeFilter?.minQty);
     const maxQty = positiveNumber(symbolInfo.maxQty) ?? positiveNumber(lotSizeFilter?.maxQty);
-    const unit = positiveNumber(symbolInfo.unit);
-    if (!unit) {
-      missingUnit += 1;
-      skipped += 1;
-      continue;
-    }
     quotes.push({
       id: symbol,
       symbol,
