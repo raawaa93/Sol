@@ -69,13 +69,7 @@ export function mapBinanceStockOptionEconomics(
     },
     exercise: {
       style: 'UNKNOWN',
-      settlement: 'PHYSICAL',
-      settlementCurrency: 'USD',
-      aggregateExerciseCash: {
-        basis: 'STRIKE_MULTIPLIER',
-        currency: 'USD',
-        multiplier: contractSize,
-      },
+      settlement: 'UNKNOWN',
       deliverables,
     },
     provenance: {
