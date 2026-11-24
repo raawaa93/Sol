@@ -23,9 +23,9 @@ function getFormatter(precision: number, minimumFractionDigits = precision): Int
   return formatter;
 }
 
-export function formatNumber(value: number, precision: number): string {
+export function formatNumber(value: number, precision: number, minimumFractionDigits = precision): string {
   if (!Number.isFinite(value)) return '—';
-  return getFormatter(precision).format(value);
+  return getFormatter(precision, minimumFractionDigits).format(value);
 }
 
 function formatCurrency(value: number, currency: string | null | undefined, precision: number): string {
