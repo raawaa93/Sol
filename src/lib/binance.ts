@@ -312,7 +312,8 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
     const unit = positiveNumber(symbolInfo.unit);
     if (!unit) {
       missingUnit += 1;
-      estimatedFields.push('unit');
+      skipped += 1;
+      continue;
     }
     quotes.push({
       id: symbol,
@@ -325,7 +326,7 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       settlementStyle: settlementStyle === 'UNKNOWN' ? undefined : settlementStyle,
       quoteAsset: symbolInfo.quoteAsset ?? contractInfo?.quoteAsset,
       settlementAsset: contractInfo?.settleAsset,
-      contractMultiplier: positiveNumber(symbolInfo.unit) ?? 1,
+      contractMultiplier: unit,
       carryYield,
       riskFreeRate,
       pricingStatus: modelGreeks ? 'ASSUMED' : 'OBSERVED_ONLY',
@@ -354,7 +355,7 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       volume: finiteNumber(ticker?.volume) ?? null,
       volumeQuote: finiteNumber(ticker?.amount) ?? null,
       spot,
-      unit: unit ?? 1,
+      unit,
       contractStatus: symbolInfo.status ?? 'TRADING',
       minQty,
       maxQty,
@@ -375,7 +376,7 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
   if (missingBidAsk > 0) warnings.push(`Bid أو Ask غير متاح لـ${missingBidAsk} عقد؛ لم يُختلق الطرف الناقص والفارق غير متاح.`);
   if (crossedBidAsk > 0) warnings.push(`تعارض Bid/Ask في ${crossedBidAsk} عقد؛ استُبعد المنتصف من مرجع السعر.`);
   if (missingOpenInterest > 0) warnings.push(`الفائدة المفتوحة غير متاحة لـ${missingOpenInterest} عقد/استحقاق.`);
-  if (missingUnit > 0) warnings.push(`وحدة العقد غير موجودة في ${missingUnit} عقد؛ استُخدمت قيمة 1 افتراضياً.`);
+  if (missingUnit > 0) warnings.push(`وحدة العقد غير موجودة في ${missingUnit} عقد؛ استُبعدت هذه العقود بدلاً من افتراض مضاعف 1.`);
   if (missingRiskFreeRate > 0) warnings.push(`معدل الفائدة من Binance غير متاح لـ${missingRiskFreeRate} عقد؛ استُخدم 0% للنموذج.`);
   if (quotes.length) warnings.push('Gamma وTheta وVega وRho تقديرات Black–Scholes وليست Greeks مرصودة من Binance؛ تحقّق من الوحدات قبل استخدامها.');
   if (!quotes.length) {
