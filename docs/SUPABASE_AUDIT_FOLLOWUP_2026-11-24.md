@@ -97,7 +97,7 @@ The connected Supabase function-source retrieval action returned internal errors
 - The `cron.job` relation does not exist.
 - The Sol repository has one scheduled GitHub Actions workflow: a weekly local Lighthouse performance baseline. No Sol workflow schedules or invokes the Rawaa retention/outbox functions.
 - The only connected Activepieces flow is `Raawaa GitHub Workflow Control`; it is a manual-trigger flow that dispatches a workflow in the separate `ghith93/raawaa-autonomous-engine` repository. It is not a Sol scheduler, and it was not run or modified.
-- No invocation records for the Rawaa Edge Function IDs appeared in the available 30-day Edge Function log query; the returned records were for the Volterra function only.
+- No invocation records for the Rawaa Edge Function IDs appeared in the currently retained Edge Function logs; the returned records were for the Volterra function only. Because the project is on Free (one-day log retention), this is evidence only for the retained window, **not** a 30-day absence claim.
 
 This does not prove that no external scheduler exists. It does mean the available project/repository/automation evidence does not establish a working schedule for `rawaa-retention` or `rawaa-outbox`. Confirm the actual scheduler and its authentication before relying on automatic retention or notification delivery.
 
