@@ -343,16 +343,11 @@ export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptio
       optionTicker: new Date(eventTimestamp).toISOString(),
     },
   };
-  if (modelUpdate) {
-    if (modelUpdate.status === 'SUPPORTED') {
-      const { delta, gamma, thetaPerDay, vegaPerVolPoint, rhoPerRatePoint } = modelUpdate.greeks;
-      Object.assign(updated, { delta, gamma, theta: thetaPerDay, vega: vegaPerVolPoint, rho: rhoPerRatePoint });
-    } else {
-      updated.delta = updated.gamma = updated.theta = updated.vega = updated.rho = 0;
-      updated.pricingStatus = 'OBSERVED_ONLY';
-      delete updated.pricingModel;
-      updated.pricingReason = modelUpdate.reason;
-    }
+  if (modelUpdate?.status === 'SUPPORTED') {
+    const g = modelUpdate.greeks;
+    Object.assign(updated, { delta: g.delta, gamma: g.gamma, theta: g.thetaPerDay, vega: g.vegaPerVolPoint, rho: g.rhoPerRatePoint });
+  } else if (modelUpdate) {
+    Object.assign(updated, { delta: 0, gamma: 0, theta: 0, vega: 0, rho: 0, pricingStatus: 'OBSERVED_ONLY', pricingModel: undefined, pricingReason: modelUpdate.reason });
   }
   return updated;
 }
