@@ -56,8 +56,9 @@ export function getAdaptivePrecision(value: number): number {
 
 export function getAssetPricePrecision(referencePrice: number): number {
   const magnitude = Math.abs(referencePrice);
-  if (Number.isFinite(magnitude) && magnitude >= 100) return magnitude >= 10_000 ? 0 : 2;
-  return getAdaptivePrecision(referencePrice);
+  return Number.isFinite(magnitude) && magnitude >= 100
+    ? magnitude >= 10_000 ? 0 : 2
+    : getAdaptivePrecision(referencePrice);
 }
 
 function getFilterPrecision(
