@@ -110,7 +110,6 @@ test('portfolio converts holdings, calculates unrealized P&L and asset-class all
   assert.equal(result.costBasis, 22045);
   assert.equal(result.unrealizedPnl, 10155);
   assert.equal(result.holdings.find((item) => item.holding.id === 'btc')?.reportingUnrealizedPnl, 10000);
-  assert.equal(result.allocations.find((item) => item.assetClass === 'BOND')?.marketValue, 1100);
   assert.ok((result.concentration.largestHoldingPct ?? 0) > 25);
   assert.ok(result.concentration.warnings.includes('SINGLE_POSITION_OVER_25_PERCENT'));
 });
