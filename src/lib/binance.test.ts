@@ -793,8 +793,7 @@ test('Binance optionMarkPrice updates mark, IV and index while retaining source 
     estimatedFields: ['iv', 'markPrice', 'riskFreeRate', 'delta'],
   };
   const event = {
-    symbol: quote.symbol, eventTime: 1_800_000_001_000, markPrice: 5200, bestBid: 5100, bestAsk: 5300,
-    bestBidQuantity: 1.25, bestAskQuantity: 2.5, indexPrice: 101000,
+    symbol: quote.symbol, eventTime: 1_800_000_001_000, markPrice: 5200, indexPrice: 101000,
     bidIv: 0.58, askIv: 0.62, markIv: 0.60, riskFreeRate: 0.03,
     sourceGreeks: { delta: 0.99, gamma: 0.00004, theta: -30, vega: 55 },
   };
@@ -816,35 +815,75 @@ test('Binance optionMarkPrice updates mark, IV and index while retaining source 
   assert.equal(updated.ask, quote.ask);
   assert.equal(updated.bidAskSource, undefined, 'existing quote sides without live book ticker are not overwritten by a synthetic source marker');
 
-  const fallbackQuote = { ...quote, sourceTimestamps: undefined, bid: 0, ask: 0 };
-  const fallback = applyBinanceOptionMarkPrice(fallbackQuote, event);
-  assert.equal(fallback.bid, 5100);
-  assert.equal(fallback.ask, 5300);
-  assert.equal(fallback.bidQuantity, 1.25);
-  assert.equal(fallback.askQuantity, 2.5);
-  assert.equal(fallback.bidAskSource, 'OPTION_MARK_PRICE');
-
-  const partialQuote = { ...fallbackQuote, bid: 5050 };
-  const partial = applyBinanceOptionMarkPrice(partialQuote, event);
-  assert.equal(partial.bid, 5050, 'valid existing bid is preserved');
-  assert.equal(partial.ask, 5300, 'only the missing ask is filled');
-  assert.equal(partial.bidQuantity, undefined);
-  assert.equal(partial.askQuantity, 2.5);
-
-  const liveBookQuote = {
-    ...fallbackQuote,
-    sourceTimestamps: { bookTicker: '2026-11-24T10:00:00.000Z' },
-    bid: 5000,
-    ask: 5400,
-    bidQuantity: 3,
-    askQuantity: 4,
-    bidAskSource: 'BOOK_TICKER' as const,
-  };
-  const liveBook = applyBinanceOptionMarkPrice(liveBookQuote, event);
-  assert.equal(liveBook.bid, 5000);
-  assert.equal(liveBook.ask, 5400);
-  assert.equal(liveBook.bidAskSource, 'BOOK_TICKER');
-
   const stale = applyBinanceOptionMarkPrice(updated, { ...event, eventTime: event.eventTime - 1000, markPrice: 1 });
   assert.equal(stale, updated);
+});
+
+test('Binance Options ticker-by-underlying parser reads best book, IV, mark, volume and source Greeks', () => {
+  const payload = {
+    stream: 'btc@ticker@261225',
+    data: [{
+      e: '24hrTicker', E: 1_800_000_001_000, T: 1_800_000_000_900,
+      s: 'BTC-261225-100000-C', bo: '5100', ao: '5300', bq: '1.25', aq: '2.5',
+      b: '0.58', a: '0.62', vo: '0.60', mp: '5200',
+      V: '12.5', A: '65000', d: '0.51', g: '0.00003', t: '-20', v: '45',
+    }],
+  };
+  const events = parseBinanceOptionTickerMessage(payload);
+  assert.equal(events.length, 1);
+  assert.deepEqual(events[0], {
+    symbol: 'BTC-261225-100000-C',
+    eventTime: 1_800_000_001_000,
+    transactionTime: 1_800_000_000_900,
+    bestBid: 5100,
+    bestAsk: 5300,
+    bestBidQuantity: 1.25,
+    bestAskQuantity: 2.5,
+    bidIv: 0.58,
+    askIv: 0.62,
+    markIv: 0.60,
+    markPrice: 5200,
+    volume: 12.5,
+    volumeQuote: 65000,
+    sourceGreeks: { delta: 0.51, gamma: 0.00003, theta: -20, vega: 45 },
+  });
+});
+
+test('Binance Options ticker fills missing sides but never overrides BookTicker and retains source Greeks as unverified', () => {
+  const quote = {
+    id: 'BTC-261225-100000-C', symbol: 'BTC-261225-100000-C', underlying: 'BTC',
+    expiry: '2026-12-25T08:00:00.000Z', daysToExpiry: 30, strike: 100000, type: 'CALL' as const,
+    bid: 0, ask: 0, markPrice: 5000, iv: 0.5, delta: 0.5, gamma: 0, theta: 0, vega: 0, rho: 0,
+    openInterest: 0, volume: 0, spot: 100000, unit: 1,
+  };
+  const event = {
+    symbol: quote.symbol, eventTime: 1_800_000_001_000, transactionTime: 1_800_000_000_900,
+    bestBid: 5100, bestAsk: 5300, bestBidQuantity: 1.25, bestAskQuantity: 2.5,
+    bidIv: 0.58, askIv: 0.62, markIv: 0.60, markPrice: 5200, volume: 12.5, volumeQuote: 65000,
+    sourceGreeks: { delta: 0.99, gamma: 0.00004, theta: -30, vega: 55 },
+  };
+  const updated = applyBinanceOptionTicker(quote, event);
+  assert.equal(updated.bid, 5100);
+  assert.equal(updated.ask, 5300);
+  assert.equal(updated.bidQuantity, 1.25);
+  assert.equal(updated.askQuantity, 2.5);
+  assert.equal(updated.bidAskSource, 'OPTION_TICKER');
+  assert.equal(updated.iv, 0.60);
+  assert.equal(updated.ivStatus, 'OBSERVED');
+  assert.equal(updated.markPrice, 5200);
+  assert.equal(updated.volume, 12.5);
+  assert.equal(updated.volumeQuote, 65000);
+  assert.equal(updated.unverifiedSourceGreeks?.delta, 0.99);
+  assert.notEqual(updated.delta, 0.99);
+  assert.equal(updated.sourceTimestamps?.ticker, new Date(event.transactionTime).toISOString());
+
+  const bookQuote = {
+    ...quote, bid: 5000, ask: 5400,
+    sourceTimestamps: { bookTicker: new Date(event.eventTime).toISOString() },
+    bidAskSource: 'BOOK_TICKER' as const,
+  };
+  const bookUpdated = applyBinanceOptionTicker(bookQuote, event);
+  assert.equal(bookUpdated.bid, 5000);
+  assert.equal(bookUpdated.ask, 5400);
+  assert.equal(bookUpdated.bidAskSource, 'BOOK_TICKER');
 });
