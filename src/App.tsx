@@ -330,6 +330,7 @@ function App() {
     let socket: WebSocket | null = null;
     let retryTimer: number | undefined;
     let attempts = 0;
+    const subscriptionId = Math.floor(Date.now() % 2_147_483_647);
     let connect = () => {};
     const scheduleRetry = () => {
       if (!active) return;
@@ -352,17 +353,33 @@ function App() {
       }
       connection.onopen = () => {
         if (!active) return;
-        setOptionMarkStatus('connected');
         connection.send(JSON.stringify({
           method: 'SUBSCRIBE',
           params: [`${optionMarkTarget.toLowerCase()}@optionMarkPrice`],
-          id: Math.floor(Date.now() % 2_147_483_647),
+          id: subscriptionId,
         }));
       };
       connection.onmessage = (message) => {
         if (!active) return;
+        if (typeof message.data === 'string') {
+          try {
+            const acknowledgement = JSON.parse(message.data) as Record<string, unknown>;
+            if (acknowledgement.id === subscriptionId) {
+              if (acknowledgement.result === null && acknowledgement.code === undefined) {
+                setOptionMarkStatus('connected');
+              } else {
+                setOptionMarkStatus('reconnecting');
+                connection.close();
+                return;
+              }
+            }
+          } catch {
+            // The market event parser below rejects malformed payloads.
+          }
+        }
         const events = parseBinanceOptionMarkPriceMessage(message.data);
         if (!events.length) return;
+        setOptionMarkStatus('connected');
         setQuotes((current) => {
           const bySymbol = new Map(events.map((event) => [event.symbol, event]));
           return current.map((quote) => {
