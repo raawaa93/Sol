@@ -12,25 +12,33 @@ const binanceCrypto = {
   unit: 1,
 } as const;
 
-test('synthetic demo uses its explicit scalar contract scale', () => {
-  assert.equal(getContractScaleIssue(demo), undefined);
+test('synthetic Demo scale is trusted only in Demo mode', () => {
+  assert.equal(getContractScaleIssue(demo, 'DEMO'), undefined);
+  assert.equal(getContractScaleIssue(demo, 'CSV'), 'UNSUPPORTED_CONTRACT_SCALE');
 });
 
-test('documented Binance European cash-settled crypto uses exchange unit as contract scale', () => {
-  assert.equal(getContractScaleIssue(binanceCrypto), undefined);
+test('documented Binance European cash-settled crypto uses exchange unit in Binance mode', () => {
+  assert.equal(getContractScaleIssue(binanceCrypto, 'BINANCE'), undefined);
+  assert.equal(getContractScaleIssue({ ...binanceCrypto, venue: 'OTHER' }, 'BINANCE'), 'UNSUPPORTED_CONTRACT_SCALE');
+});
+
+test('CSV crypto requires a named non-Demo venue and explicit matching multiplier', () => {
+  assert.equal(getContractScaleIssue({ ...binanceCrypto, contractMultiplier: 1 }, 'CSV'), undefined);
+  assert.equal(getContractScaleIssue({ ...binanceCrypto, contractMultiplier: 1, venue: 'DEMO' }, 'CSV'), 'UNSUPPORTED_CONTRACT_SCALE');
+  assert.equal(getContractScaleIssue(binanceCrypto, 'CSV'), 'UNSUPPORTED_CONTRACT_SCALE');
 });
 
 test('estimated or missing contract unit blocks per-contract calculations', () => {
-  assert.equal(getContractScaleIssue({ ...binanceCrypto, estimatedFields: ['unit'] }), 'UNIT_UNVERIFIED');
-  assert.equal(getContractScaleIssue({ ...binanceCrypto, unit: 0 }), 'UNIT_UNVERIFIED');
+  assert.equal(getContractScaleIssue({ ...binanceCrypto, estimatedFields: ['unit'] }, 'BINANCE'), 'UNIT_UNVERIFIED');
+  assert.equal(getContractScaleIssue({ ...binanceCrypto, unit: 0 }, 'BINANCE'), 'UNIT_UNVERIFIED');
 });
 
 test('distinct contract multiplier blocks the scalar per-contract model', () => {
-  assert.equal(getContractScaleIssue({ ...binanceCrypto, contractMultiplier: 1000 }), 'MULTIPLIER_MISMATCH');
+  assert.equal(getContractScaleIssue({ ...binanceCrypto, contractMultiplier: 1000 }, 'BINANCE'), 'MULTIPLIER_MISMATCH');
   assert.match(getContractScaleIssueMessage('MULTIPLIER_MISMATCH'), /مقياس التسعير والتسليم غير ممثل/);
 });
 
-test('futures and commodity perpetual scale models remain blocked even with a unit', () => {
+test('futures and commodity perpetual scale models remain blocked even with matching units', () => {
   assert.equal(getContractScaleIssue({
     venue: 'CME',
     assetClass: 'ENERGY',
@@ -39,7 +47,7 @@ test('futures and commodity perpetual scale models remain blocked even with a un
     settlementStyle: 'PHYSICAL',
     unit: 1,
     contractMultiplier: 1,
-  }), 'UNSUPPORTED_CONTRACT_SCALE');
+  }, 'CSV'), 'UNSUPPORTED_CONTRACT_SCALE');
   assert.equal(getContractScaleIssue({
     venue: 'BINANCE',
     assetClass: 'METALS',
@@ -47,11 +55,11 @@ test('futures and commodity perpetual scale models remain blocked even with a un
     exerciseStyle: 'EUROPEAN',
     settlementStyle: 'CASH',
     unit: 1,
-  }), 'UNSUPPORTED_CONTRACT_SCALE');
+  }, 'BINANCE'), 'UNSUPPORTED_CONTRACT_SCALE');
   assert.match(getContractScaleIssueMessage('UNSUPPORTED_CONTRACT_SCALE'), /نموذج مقياس هذا السوق/);
 });
 
-test('CSV scale values alone do not establish a supported market-specific deliverable model', () => {
+test('CSV scale values alone do not establish a supported American equity deliverable model', () => {
   assert.equal(getContractScaleIssue({
     venue: 'CBOE',
     assetClass: 'EQUITY',
@@ -60,5 +68,5 @@ test('CSV scale values alone do not establish a supported market-specific delive
     settlementStyle: 'PHYSICAL',
     unit: 100,
     contractMultiplier: 100,
-  }), 'UNSUPPORTED_CONTRACT_SCALE');
+  }, 'CSV'), 'UNSUPPORTED_CONTRACT_SCALE');
 });
