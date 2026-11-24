@@ -146,6 +146,9 @@ test('CSV preserves perpetual underlying mechanics without converting them to sp
   const result = parseOptionsCsv(csv);
   assert.equal(result.quotes.length, 1, JSON.stringify(result.warnings));
   assert.equal(result.quotes[0].underlyingKind, 'PERPETUAL');
+  assert.equal(result.quotes[0].pricingStatus, 'OBSERVED_ONLY');
+  assert.equal(result.quotes[0].pricingModel, undefined);
+  assert.ok(result.quotes[0].pricingReason?.toLowerCase().includes('perpetual'));
 });
 
 test('CSV symbols and underlying codes support commodities and other multi-asset contracts', () => {
@@ -187,4 +190,29 @@ test('CSV without a source timestamp flags time to expiry as approximate', () =>
   assert.equal(result.quotes[0].daysToExpiry, 29);
   assert.ok(result.quotes[0].estimatedFields?.includes('daysToExpiry'));
   assert.ok(result.warnings.some((warning) => warning.includes('وقت الاستيراد')));
+});
+
+test('CSV routes explicit European futures options to Black-76 using the forward price', () => {
+  const csv = [
+    'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,spot,unit,timestamp,assetClass,venue,underlyingKind,forward,riskFreeRate,exerciseStyle,settlementStyle,quoteAsset,settlementAsset,contractMultiplier',
+    'CL-261230-70-C,CL,2026-12-30T08:00:00Z,70,CALL,2.0,2.2,2.1,20%,68.5,1,2026-11-24T02:00:00Z,ENERGY,CME,FUTURE,69,3%,EUROPEAN,PHYSICAL,USD,USD,1000',
+  ].join('\\n');
+  const result = parseOptionsCsv(csv);
+  assert.equal(result.quotes.length, 1);
+  assert.equal(result.quotes[0].pricingStatus, 'SUPPORTED');
+  assert.equal(result.quotes[0].pricingModel, 'BLACK_76');
+  assert.equal(result.quotes[0].forward, 69);
+  assert.ok(result.quotes[0].delta > 0 && result.quotes[0].delta < 1);
+});
+
+test('CSV does not apply a spot model to American equity options without a validated model', () => {
+  const csv = [
+    'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,spot,unit,timestamp,assetClass,venue,underlyingKind,exerciseStyle,settlementStyle',
+    'SPY-261230-700-C,SPY,2026-12-30T08:00:00Z,700,CALL,5.1,5.3,5.2,22%,690,100,2026-11-24T02:00:00Z,EQUITY,CBOE,SPOT,AMERICAN,PHYSICAL',
+  ].join('\\n');
+  const result = parseOptionsCsv(csv);
+  assert.equal(result.quotes.length, 1);
+  assert.equal(result.quotes[0].pricingStatus, 'OBSERVED_ONLY');
+  assert.equal(result.quotes[0].pricingModel, undefined);
+  assert.ok(result.quotes[0].pricingReason?.includes('European'));
 });
