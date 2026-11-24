@@ -434,7 +434,7 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
   if (counts.estimatedIv > 0) summaryWarnings.push(`استُنتج IV من السعر باستخدام نموذج محدد أو افتراض Black–Scholes قديم في ${counts.estimatedIv} صف؛ اعتبره تقديراً لا قيمة مرصودة.`);
   if (counts.missingQuoteSide > 0) summaryWarnings.push(`Bid أو Ask مفقود في ${counts.missingQuoteSide} صف؛ لم يُختلق الطرف الناقص، والفارق غير متاح لهذه الصفوف.`);
   if (counts.estimatedMark > 0) summaryWarnings.push(`حُسب Mark بنموذج Black–Scholes في ${counts.estimatedMark} صف لغياب Mark وغياب أحد طرفي السوق.`);
-  if (counts.modeledGreeks > 0) summaryWarnings.push(`Greeks غير متاحة في ${counts.modeledGreeks} صف لأن مواصفات العقد لا تسمح بنموذج موثّق؛ لن تُعرض كقيم صفرية صحيحة.`);
+  if (counts.modeledGreeks > 0) summaryWarnings.push(`توجد Greeks غير واردة من المصدر في ${counts.modeledGreeks} صف؛ حُسبت فقط عند توفر نموذج صريح، وإلا بقيت غير متاحة بدلاً من عرض أصفار مضللة.`);
   if (counts.missingOpenInterest > 0) summaryWarnings.push(`الفائدة المفتوحة مفقودة في ${counts.missingOpenInterest} صف؛ ستظهر كغير متاحة لا كصفر.`);
   if (counts.missingVolume > 0) summaryWarnings.push(`الحجم مفقود في ${counts.missingVolume} صف؛ ستظهر قيمته كغير متاحة.`);
   if (counts.defaultedUnit > 0) summaryWarnings.push(`لم تُحدد وحدة العقد في ${counts.defaultedUnit} صف؛ استُخدمت قيمة افتراضية 1، فتحقق من المضاعف قبل تفسير الربح والخسارة.`);
