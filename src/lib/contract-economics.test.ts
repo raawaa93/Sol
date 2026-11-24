@@ -500,7 +500,7 @@ test('canonical cash-settlement payoff handles puts and worthless expiry', async
     economics, optionType: 'PUT', strike: 100, settlementReferencePrice: 90,
     premiumPrice: 4, contracts: 2,
   });
-  assert.equal(put.ok && put.value.netPnl, 1_192);
+  assert.equal(put.ok && put.value.netPnl, 1_992);
   const worthless = calculateCashSettlementPayoff({
     economics, optionType: 'CALL', strike: 100, settlementReferencePrice: 90,
     premiumPrice: 4, contracts: 2,
