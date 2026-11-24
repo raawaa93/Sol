@@ -882,7 +882,7 @@ function App() {
             <div className="scanner-layout">
               <article className="panel chain-panel">
                 <div className="chain-toolbar">
-                  <div className="option-tabs" role="tablist" aria-label="نوع الخيار">
+                  <div className="option-tabs" role="group" aria-label="نوع الخيار">
                     <button className={selectedType === 'CALL' ? 'active call-tab' : ''} disabled={!assetQuotes.some((quote) => quote.expiry === effectiveExpiry && quote.type === 'CALL')} onClick={() => {
                       const next = assetQuotes.find((quote) => quote.expiry === effectiveExpiry && quote.type === 'CALL');
                       if (next) { setSelectedType('CALL'); setSelectedId(next.id); }
