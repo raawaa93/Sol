@@ -1,5 +1,5 @@
 import { Info } from 'lucide-react';
-import { estimateGreekPnl } from '../lib/options';
+import { estimateGreekPnl, getUnderlyingReferencePrice } from '../lib/options';
 import { formatSmallAmount, formatSmallNumber } from '../lib/format';
 import type { OptionQuote } from '../lib/types';
 
@@ -26,6 +26,7 @@ export default function GreeksPanel({ quote, quantity, dataMode }: GreeksPanelPr
   const pricingStatus = quote.pricingStatus ?? (dataMode === 'DEMO' ? 'ASSUMED' : 'OBSERVED_ONLY');
   const modelAvailable = pricingStatus !== 'OBSERVED_ONLY';
   const underlyingMoveLabel = quote.underlyingKind === 'FUTURE' ? 'Forward' : 'السعر المرجعي';
+  const underlyingReferencePrice = getUnderlyingReferencePrice(quote);
   const modelName = quote.pricingModel === 'BLACK_76' ? 'Black–76' : 'Black–Scholes مع Carry';
   const rows: Array<{
     key: GreekKey;
