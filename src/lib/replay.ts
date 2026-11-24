@@ -116,8 +116,11 @@ export function replayLongOptionSnapshots(
 
   const trades: OptionReplayTrade[] = [];
   for (const [symbol, rows] of grouped) {
-    rows.sort((a, b) => a.timestamp - b.timestamp);
-    const uniqueRows = rows.filter((row, index) => index === 0 || row.timestamp !== rows[index - 1].timestamp);
+    const latestByTimestamp = new Map<number, OptionQuote>();
+    rows.forEach((row) => latestByTimestamp.set(row.timestamp, row.quote));
+    const uniqueRows = [...latestByTimestamp.entries()]
+      .map(([timestamp, quote]) => ({ timestamp, quote }))
+      .sort((a, b) => a.timestamp - b.timestamp);
     let index = 0;
     while (index < uniqueRows.length - 1 && trades.length < maxTrades) {
       const entry = uniqueRows[index];
@@ -159,6 +162,7 @@ export function replayLongOptionSnapshots(
     if (trades.length >= maxTrades) break;
   }
 
+  trades.sort((a, b) => Date.parse(a.entryTimestamp) - Date.parse(b.entryTimestamp));
   const wins = trades.filter((trade) => trade.netPnl > 0).length;
   const losses = trades.filter((trade) => trade.netPnl < 0).length;
   const grossPnl = trades.reduce((sum, trade) => sum + trade.grossPnl, 0);
