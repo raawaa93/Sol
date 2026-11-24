@@ -106,6 +106,9 @@ export const DEMO_MARKETS: Record<Underlying, AssetSnapshot> = {
 };
 
 const EXPIRIES = [7, 14, 30, 60];
+const EXPIRY_CODE_FORMATTER = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'UTC', year: '2-digit', month: '2-digit', day: '2-digit',
+});
 const STRIKE_OFFSETS = [-0.12, -0.08, -0.05, -0.025, 0, 0.025, 0.05, 0.08, 0.12];
 const STRIKE_STEPS: Record<string, number> = {
   BTC: 1000,
@@ -140,13 +143,18 @@ function getStrikeStep(underlying: string, spot: number): number {
 
 export function createDemoQuotes(markets = DEMO_MARKETS): OptionQuote[] {
   const quotes: OptionQuote[] = [];
+  const expiries = EXPIRIES.map((days) => {
+    const expiry = makeExpiry(days);
+    const expiryCode = EXPIRY_CODE_FORMATTER.format(new Date(expiry)).split('/').reverse().join('');
+    return { days, expiry, expiryCode };
+  });
 
   (Object.keys(markets) as Underlying[]).forEach((underlying) => {
     const market = markets[underlying];
     const strikeStep = getStrikeStep(underlying, market.spot);
+    const strikeDecimals = Math.max(1, strikeStep.toString().split('.')[1]?.length ?? 1);
 
-    EXPIRIES.forEach((days) => {
-      const expiry = makeExpiry(days);
+    expiries.forEach(({ days, expiry, expiryCode }) => {
       const baseTermShift = days < 14 ? 0.045 : days > 30 ? -0.025 : 0;
 
       STRIKE_OFFSETS.forEach((offset) => {
@@ -154,10 +162,11 @@ export function createDemoQuotes(markets = DEMO_MARKETS): OptionQuote[] {
         const actualMoneyness = strike / market.spot - 1;
         const smile = Math.abs(actualMoneyness) * 0.46 + Math.max(-actualMoneyness, 0) * 0.28;
         const iv = Math.min(1.25, Math.max(0.2, (market.iv30 ?? 0.55) + baseTermShift + smile));
+        const distance = Math.abs(actualMoneyness);
+        const compactStrike = Number.isInteger(strike) ? String(strike) : strike.toFixed(strikeDecimals);
 
         (['CALL', 'PUT'] as const).forEach((type) => {
           const greeks = blackScholes(market.spot, strike, days, iv, type);
-          const distance = Math.abs(actualMoneyness);
           const spreadFraction = 0.015 + Math.min(distance * 0.45, 0.12) + (days < 14 ? 0.008 : 0);
           const halfSpread = Math.max(greeks.price * spreadFraction / 2, market.spot * 0.000025);
           const bid = Math.max(greeks.price - halfSpread, 0.000001);
@@ -167,10 +176,6 @@ export function createDemoQuotes(markets = DEMO_MARKETS): OptionQuote[] {
           const expiryBias = days === 30 ? 1.15 : days === 60 ? 0.78 : 0.58;
           const openInterest = Math.round((180 + directionalInterest * 950) * sideBias * expiryBias);
           const volume = Math.max(0, Math.round(openInterest * (0.025 + (1 - distance) * 0.035)));
-          const compactStrike = Number.isInteger(strike) ? String(strike) : strike.toFixed(Math.max(1, strikeStep.toString().split('.')[1]?.length ?? 1));
-          const expiryCode = new Intl.DateTimeFormat('en-GB', {
-            timeZone: 'UTC', year: '2-digit', month: '2-digit', day: '2-digit',
-          }).format(new Date(expiry)).split('/').reverse().join('');
           const symbol = `${underlying}-${expiryCode}-${compactStrike}-${type === 'CALL' ? 'C' : 'P'}`;
 
           quotes.push({
