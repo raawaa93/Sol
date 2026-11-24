@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { blackScholes, estimateGreekPnl, getBreakeven, getExpiryPnl, getExpectedMove, getMaxLoss, getSpreadPct, impliedVolatility, normalCdf } from './options.ts';
+import { blackScholes, estimateGreekPnl, getBreakeven, getExpiryPnl, getExpectedMove, getMaxLoss, getRiskNeutralExpiryMetrics, getSpreadPct, impliedVolatility, normalCdf } from './options.ts';
 import type { OptionQuote } from './types';
 
 const call: OptionQuote = {
@@ -120,4 +120,34 @@ test('implied volatility solver recovers the model input', () => {
 
 test('spread is unknown when either market side is absent', () => {
   assert.ok(Number.isNaN(getSpreadPct({ ...call, ask: 0 })));
+});
+
+
+test('risk-neutral expiry metrics reproduce the Black–Scholes discounted-payoff identity', () => {
+  const priced = blackScholes(100, 100, 365, 0.2, 'CALL', 0.05);
+  const metrics = getRiskNeutralExpiryMetrics({ ...call, spot: 100, strike: 100, daysToExpiry: 365, iv: 0.2 }, priced.price, 0.05);
+  assert.ok(metrics);
+  assert.ok(Math.abs((metrics?.expectedIntrinsicPerUnit ?? 0) - priced.price * Math.exp(0.05)) < 1e-10);
+  assert.ok(Math.abs(metrics?.modelValueGapPerUnit ?? 1) < 1e-10);
+  assert.ok(metrics?.probabilityInTheMoney !== undefined && metrics.probabilityInTheMoney > 0.5);
+});
+
+test('risk-neutral probability of profit uses the paid premium and differs from probability ITM', () => {
+  const quote = { ...call, spot: 100, strike: 100, daysToExpiry: 30, iv: 0.5 };
+  const metrics = getRiskNeutralExpiryMetrics(quote, 5);
+  assert.ok(metrics);
+  assert.ok((metrics?.probabilityOfProfit ?? 1) < (metrics?.probabilityInTheMoney ?? 0));
+  assert.ok((metrics?.breakevenPrice ?? 0) > quote.strike);
+  assert.ok((metrics?.expectedExpiryPnlPerUnit ?? 0) > 0);
+});
+
+test('risk-neutral put metrics handle impossible non-positive break-even and expiry', () => {
+  const expensivePut = getRiskNeutralExpiryMetrics({ ...put, strike: 10, spot: 100, daysToExpiry: 30, iv: 0.5 }, 12);
+  assert.equal(expensivePut?.probabilityOfProfit, 0);
+
+  const expired = getRiskNeutralExpiryMetrics({ ...call, spot: 110, strike: 100, daysToExpiry: 0 }, 5);
+  assert.equal(expired?.probabilityOfProfit, 1);
+  assert.equal(expired?.expectedExpiryPnlPerUnit, 5);
+  assert.equal(getRiskNeutralExpiryMetrics(call, -1), null);
+  assert.equal(getRiskNeutralExpiryMetrics({ ...call, iv: 0 }, 5), null);
 });

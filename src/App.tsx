@@ -33,6 +33,7 @@ import DeferredVolatilityCharts from './components/DeferredVolatilityCharts';
 import DeferredPayoffChart from './components/DeferredPayoffChart';
 import GreeksPanel from './components/GreeksPanel';
 import OpportunityReview from './components/OpportunityReview';
+import HistoricalReplayPanel from './components/HistoricalReplayPanel';
 import MarketDepthPanel from './components/MarketDepthPanel';
 import { DEMO_MARKETS, DEMO_QUOTES, getExpiryChoices } from './lib/demo';
 import { BinanceMarketDataError, fetchBinanceDepth, fetchBinanceOptions } from './lib/binance';
@@ -786,6 +787,8 @@ function App() {
               navigate('scanner');
             }}
           />
+
+          <HistoricalReplayPanel quotes={assetQuotes} dataMode={dataMode} underlying={underlying} />
 
           <DeferredVolatilityCharts
             smileData={smileData}
