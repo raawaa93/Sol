@@ -2,14 +2,33 @@ import { isQuoteFieldEstimated } from './quote-quality.ts';
 import type { OptionQuote } from './types.ts';
 
 export type ContractScaleIssue = 'UNIT_UNVERIFIED' | 'MULTIPLIER_MISMATCH' | 'UNSUPPORTED_CONTRACT_SCALE';
+export type ContractScaleSourceMode = 'DEMO' | 'CSV' | 'BINANCE';
+
+type ScaleMetadata = Pick<OptionQuote,
+  'unit' | 'contractMultiplier' | 'estimatedFields' | 'venue' | 'assetClass'
+  | 'underlyingKind' | 'exerciseStyle' | 'settlementStyle'
+>;
+
+function hasSupportedCryptoScaleProfile(quote: ScaleMetadata): boolean {
+  return quote.assetClass === 'CRYPTO'
+    && quote.underlyingKind === 'SPOT'
+    && quote.exerciseStyle === 'EUROPEAN'
+    && quote.settlementStyle === 'CASH';
+}
 
 /**
- * Explicit unit and multiplier agreement are necessary but not sufficient.
- * The current scalar P&L model is only enabled for synthetic Demo data and
- * the documented Binance European cash-settled crypto-options profile.
+ * Only the active app data mode may establish provenance. A CSV row can contain
+ * venue="DEMO" or venue="BINANCE"; those strings are user input, not proof that
+ * the row came from those sources.
+ *
+ * The current scalar P&L model is restricted to synthetic Demo fixtures and
+ * explicitly documented European cash-settled crypto spot contracts. For CSV,
+ * both unit and a matching contractMultiplier are required. Internal field
+ * consistency is not independent verification of exchange deliverables.
  */
 export function getContractScaleIssue(
-  quote: Pick<OptionQuote, 'unit' | 'contractMultiplier' | 'estimatedFields' | 'venue' | 'assetClass' | 'underlyingKind' | 'exerciseStyle' | 'settlementStyle'>,
+  quote: ScaleMetadata,
+  sourceMode: ContractScaleSourceMode = 'CSV',
 ): ContractScaleIssue | undefined {
   if (!Number.isFinite(quote.unit) || quote.unit <= 0 || isQuoteFieldEstimated(quote, 'unit')) {
     return 'UNIT_UNVERIFIED';
@@ -25,26 +44,29 @@ export function getContractScaleIssue(
     }
   }
 
-  const isSyntheticDemo = quote.venue === 'DEMO';
-  const isDocumentedBinanceCrypto = quote.venue === 'BINANCE'
-    && quote.assetClass === 'CRYPTO'
-    && quote.underlyingKind === 'SPOT'
-    && quote.exerciseStyle === 'EUROPEAN'
-    && quote.settlementStyle === 'CASH';
+  if (sourceMode === 'DEMO') {
+    return quote.venue === 'DEMO' ? undefined : 'UNSUPPORTED_CONTRACT_SCALE';
+  }
 
-  if (!isSyntheticDemo && !isDocumentedBinanceCrypto) {
+  if (!hasSupportedCryptoScaleProfile(quote)) {
     return 'UNSUPPORTED_CONTRACT_SCALE';
   }
 
-  return undefined;
+  if (sourceMode === 'BINANCE') {
+    return quote.venue === 'BINANCE' ? undefined : 'UNSUPPORTED_CONTRACT_SCALE';
+  }
+
+  // CSV metadata is user-supplied. Require a named non-Demo venue and an
+  // explicit matching multiplier; never trust venue labels as source identity.
+  const hasNamedVenue = Boolean(quote.venue && quote.venue !== 'DEMO');
+  const hasExplicitMultiplier = quote.contractMultiplier !== undefined;
+  return hasNamedVenue && hasExplicitMultiplier ? undefined : 'UNSUPPORTED_CONTRACT_SCALE';
 }
 
 export function getContractScaleIssueMessage(issue: ContractScaleIssue): string {
-  if (issue === 'UNIT_UNVERIFIED') {
-    return 'وحدة العقد غير موثّقة أو افتراضية؛ أوقفنا حسابات الكمية والربح والخسارة لكل عقد.';
-  }
-  if (issue === 'MULTIPLIER_MISMATCH') {
-    return 'يختلف contractMultiplier عن unit؛ مقياس التسعير والتسليم غير ممثل بعد، لذلك أوقفنا حسابات العقد والمحاكاة التاريخية.';
-  }
-  return 'لم يتم التحقق من نموذج مقياس هذا السوق والعقد؛ نعرض الأسعار المرصودة فقط ونوقف P&L لكل عقد والمحاكاة التاريخية إلى أن تتوفر بيانات المضاعف والتسليم المناسبة.';
+  return issue === 'UNIT_UNVERIFIED'
+    ? 'وحدة العقد غير موثّقة أو افتراضية؛ أوقفنا حسابات الكمية والربح والخسارة لكل عقد.'
+    : issue === 'MULTIPLIER_MISMATCH'
+      ? 'يختلف contractMultiplier عن unit؛ مقياس التسعير والتسليم غير ممثل بعد، لذلك أوقفنا حسابات العقد والمحاكاة التاريخية.'
+      : 'لم يتم التحقق من نموذج مقياس هذا السوق والعقد؛ نعرض الأسعار المرصودة فقط ونوقف P&L لكل عقد والمحاكاة التاريخية إلى أن تتوفر بيانات المضاعف والتسليم المناسبة.';
 }
