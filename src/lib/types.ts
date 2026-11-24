@@ -3,6 +3,54 @@ export type AssetClass = 'CRYPTO' | 'EQUITY' | 'INDEX' | 'RATES' | 'FX' | 'ENERG
 export type UnderlyingKind = 'SPOT' | 'FUTURE' | 'PERPETUAL' | 'INDEX' | 'FX_SPOT' | 'UNKNOWN';
 export type ExerciseStyle = 'EUROPEAN' | 'AMERICAN' | 'BERMUDAN' | 'UNKNOWN';
 export type SettlementStyle = 'CASH' | 'PHYSICAL' | 'UNKNOWN';
+export type ContractSettlementMechanic = SettlementStyle | 'FUTURE_DELIVERY';
+export type PremiumPriceUnit = 'PER_UNDERLYING_UNIT' | 'PER_CONTRACT';
+export type ContractEconomicsProvenanceStatus = 'PROVIDER_VERIFIED' | 'USER_ASSERTED' | 'SYNTHETIC_DEMO' | 'UNKNOWN';
+
+export type ContractDeliverable =
+  | { type: 'EQUITY' | 'UNDERLYING'; symbol: string; amount: number; currency?: string }
+  | { type: 'CASH'; currency: string; amount: number }
+  | { type: 'FUTURE'; symbol: string; amount: number; pointValue?: number };
+
+export type AggregateExerciseCash =
+  | { basis: 'STRIKE_MULTIPLIER'; currency: string; multiplier: number }
+  | { basis: 'FIXED'; currency: string; amount: number };
+
+export interface CashSettlementFormula {
+  formula: 'INTRINSIC_VALUE';
+  reference: 'SPOT' | 'FORWARD' | 'INDEX';
+  currency: string;
+  multiplier: number;
+}
+
+/**
+ * Canonical economic terms. Premium scale, exercise cash and the delivered
+ * package are deliberately independent; adapters must map source fields
+ * without inferring missing terms from a symbol or venue label.
+ */
+export interface ContractEconomics {
+  premium: {
+    multiplier: number;
+    quoteCurrency: string;
+    priceUnit: PremiumPriceUnit;
+  };
+  exercise: {
+    style: ExerciseStyle;
+    settlement: ContractSettlementMechanic;
+    aggregateExerciseCash?: AggregateExerciseCash;
+    settlementCurrency?: string;
+    deliverables: ContractDeliverable[];
+    cashSettlement?: CashSettlementFormula;
+  };
+  provenance: {
+    status: ContractEconomicsProvenanceStatus;
+    provider?: string;
+    sourceRef?: string;
+    retrievedAt?: string;
+    rawFields?: Record<string, string | number | boolean | null>;
+  };
+}
+
 export type Underlying = string;
 export type QuotePriceSource = 'MARK' | 'MID' | 'LAST' | 'BID' | 'ASK' | 'MODEL';
 export type PricingStatus = 'SUPPORTED' | 'ASSUMED' | 'OBSERVED_ONLY';
@@ -40,6 +88,8 @@ export interface OptionQuote {
   pricingReason?: string;
   quoteAsset?: string;
   settlementAsset?: string;
+  /** Canonical economics are optional until a trusted adapter supplies complete terms. */
+  contractEconomics?: ContractEconomics;
   /** Provider-supplied multiplier metadata; never assumed equal to `unit`. */
   contractMultiplier?: number;
   exerciseStyle?: ExerciseStyle;
