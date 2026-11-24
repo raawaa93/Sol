@@ -16,7 +16,7 @@ test('Demo explicitly labels synthetic data and asset switching updates the mark
 
   const assetTabs = page.getByRole('group', { name: 'الأصل الأساسي' });
   await assetTabs.getByRole('button', { name: /XRP/ }).click();
-  await expect(page.locator('#overview-metrics')).toContainText('XRP/USDT');
+  await expect(page.locator('#overview-metrics')).toContainText('XRP/USD');
   await expect(page.locator('#scanner')).toContainText('XRP');
 });
 
@@ -31,14 +31,14 @@ test('option type selector exposes an accessible group and pressed state', async
 test('global instrument search and local watchlist work across reloads', async ({ page }) => {
   const search = page.getByRole('searchbox', { name: 'ابحث عن رمز أو أصل' });
   await search.fill('XRP');
-  await expect(page.locator('#overview-metrics')).toContainText('XRP/USDT');
+  await expect(page.locator('#overview-metrics')).toContainText('XRP/USD');
   await page.getByRole('button', { name: 'إضافة XRP إلى المفضلة' }).click();
   const watchlist = page.getByRole('group', { name: 'الأصول المفضلة' });
   await expect(watchlist).toContainText('XRP');
   await page.reload();
   await expect(page.getByRole('group', { name: 'الأصول المفضلة' })).toContainText('XRP');
   await page.getByRole('group', { name: 'الأصول المفضلة' }).getByRole('button', { name: /XRP/ }).click();
-  await expect(page.locator('#overview-metrics')).toContainText('XRP/USDT');
+  await expect(page.locator('#overview-metrics')).toContainText('XRP/USD');
 });
 
 test('PAPER-only journal records and exports a local single-option scenario', async ({ page }) => {
