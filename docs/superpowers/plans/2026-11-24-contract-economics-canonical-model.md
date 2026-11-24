@@ -120,3 +120,19 @@ PR #127 merged as `c5272332ba0afca2ad01098314f3d834d7d70784`.
 - The corrected PR CI passed unit/property tests, mocked backup orchestration, production build, bundle budget and Playwright browser journeys. Project Context Guard and Lighthouse also passed on the PR head.
 
 **Scope clarification:** this is defense-in-depth for the risk-neutral EV/probability function only. It does not complete Phase 3 provider adapters or Phase 4 routing of premium cash, break-even, expiry payoff, max loss, Greeks, opportunity EV and replay through one canonical economics result. The legacy scalar path remains intentionally blocked for Binance `unit > 1`; no previously unsupported contract was enabled.
+
+
+### Binance Crypto Options reference adapter — merged 24 November 2026
+
+PR #128 merged as `b5acdf1fa0b9c3f963222863549968af26ac0f0f`.
+
+- Added `mapBinanceCryptoOptionEconomics`, which accepts only explicit `underlyingType=CRYPTO` and `contractType=CRYPTO_OPTIONS` source metadata.
+- Maps premium multiplier = 1 and price unit = PER_CONTRACT independently from Binance `unit`, which is mapped only to the cash-settlement intrinsic multiplier (underlying quantity per contract).
+- Maps quote and settlement assets separately; cross-currency terms remain unavailable without FX evidence.
+- Preserves source endpoint, server timestamp and raw contract fields as provider provenance.
+- Binance quote normalization attaches canonical economics only when product family and required fields are explicitly present. No inference from asset symbol or venue label is used for this adapter.
+- Tests cover unit 1, 100 and 1,000, premium cash parity, source-family rejection, missing fields and currency mismatch.
+
+Verification on PR head `5a62815cedf39fc6f4cb70624082c2c2ab0073f8`: CI passed (unit/property tests, mocked backup test, production build, bundle budgets and Playwright); Project Context Guard passed; Lighthouse completed successfully.
+
+**Scope boundary:** this is a reference/economics mapping adapter only. It does not enable the legacy scalar analytics for Binance unit > 1, and does not route payoff, break-even, max-loss, position Greeks, EV or replay through canonical economics. Model capability and production analytics routing remain separate work.
