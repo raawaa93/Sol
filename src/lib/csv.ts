@@ -1,4 +1,5 @@
-import type { OptionQuote, OptionSide, Underlying } from './types';
+import type { AssetClass, ExerciseStyle, OptionQuote, OptionSide, SettlementStyle, Underlying, UnderlyingKind } from './types';
+import { inferAssetClass, parseAssetClass } from './asset-class.ts';
 import { blackScholes, impliedVolatility } from './options.ts';
 
 export interface CsvTimestampRange {
@@ -185,6 +186,25 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
       return;
     }
     const underlying = underlyingText as Underlying;
+    const explicitAssetClass = readField(row, ['assetClass', 'assetCategory', 'category']);
+    const assetClass: AssetClass = explicitAssetClass ? parseAssetClass(explicitAssetClass) : inferAssetClass(underlying);
+    const venue = readField(row, ['venue', 'exchange', 'market'])?.trim().toUpperCase();
+    const underlyingKindText = readField(row, ['underlyingKind', 'underlyingType', 'instrumentKind'])?.trim().toUpperCase();
+    const underlyingKind: UnderlyingKind | undefined = underlyingKindText
+      ? (['SPOT', 'FUTURE', 'INDEX', 'FX_SPOT', 'UNKNOWN'].includes(underlyingKindText) ? underlyingKindText as UnderlyingKind : 'UNKNOWN')
+      : undefined;
+    const exerciseStyleText = readField(row, ['exerciseStyle', 'exerciseType'])?.trim().toUpperCase();
+    const exerciseStyle: ExerciseStyle | undefined = exerciseStyleText
+      ? (['EUROPEAN', 'AMERICAN', 'BERMUDAN', 'UNKNOWN'].includes(exerciseStyleText) ? exerciseStyleText as ExerciseStyle : 'UNKNOWN')
+      : undefined;
+    const settlementStyleText = readField(row, ['settlementStyle', 'settlementType'])?.trim().toUpperCase();
+    const settlementStyle: SettlementStyle | undefined = settlementStyleText
+      ? (['CASH', 'PHYSICAL', 'UNKNOWN'].includes(settlementStyleText) ? settlementStyleText as SettlementStyle : 'UNKNOWN')
+      : undefined;
+    const quoteAsset = readField(row, ['quoteAsset', 'quoteCurrency'])?.trim().toUpperCase();
+    const settlementAsset = readField(row, ['settlementAsset', 'settleAsset', 'settlementCurrency'])?.trim().toUpperCase();
+    const contractMultiplier = parsePositiveNumber(readField(row, ['contractMultiplier', 'multiplierValue']), delimiter === ';');
+    const expiryTimezone = readField(row, ['expiryTimezone', 'timezone'])?.trim();
     const typeText = (readField(row, ['type', 'optiontype', 'side']) ?? parsedSymbol.type ?? '').toUpperCase();
     const type: OptionSide | undefined = typeText === 'C' || typeText === 'CALL' ? 'CALL'
       : typeText === 'P' || typeText === 'PUT' ? 'PUT' : undefined;
@@ -297,6 +317,15 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
       id,
       symbol: displaySymbol,
       underlying,
+      assetClass,
+      venue,
+      underlyingKind,
+      quoteAsset,
+      settlementAsset,
+      contractMultiplier,
+      exerciseStyle,
+      settlementStyle,
+      expiryTimezone,
       expiry,
       daysToExpiry,
       strike,
