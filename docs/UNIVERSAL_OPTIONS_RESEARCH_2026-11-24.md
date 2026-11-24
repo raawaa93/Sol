@@ -176,7 +176,7 @@ Sources:
 
 Gate launched U.S. stock options on an initial nine U.S. underlyings (including NVDA, TSLA, AAPL, META, AMD, MU, AMZN, GOOGL and AVGO). Its product documentation describes USDT cash settlement and no delivery of the underlying shares. That is materially different from standard U.S. single-stock options, which commonly involve physical delivery of 100 shares on exercise/assignment.
 
-The Gate pages reviewed do not clearly establish that these contracts are listed on a U.S. options exchange or cleared through OCC. Do not label them OCC-listed or equivalent to CBOE/NYSE standard contracts without explicit contract documentation. Gate's global user agreement list did not expressly name Syria in the version reviewed, but the list is non-exhaustive and Gate states product availability can vary by region/account. Absence from the general list is not approval.
+The Gate pages reviewed do not clearly establish that these contracts are listed on a U.S. options exchange or cleared through OCC. Do not label them OCC-listed or equivalent to CBOE/NYSE standard contracts without explicit contract documentation. Gate's generic global agreement does not expressly name Syria in its published list, but the list is non-exhaustive; an older agreement PDF lists Syria, and the current Gate EU User Agreement (1 March 2026) explicitly lists Syria as Restricted. Absence from the generic list is not approval for a non-EU entity.
 
 **Decision:** Gate is an inquiry candidate only. Before use, obtain written confirmation for Syrian residence and the exact U.S. Stock Options product, and verify the counterparty, exchange/clearing status, settlement calculation, order types, short-writing permissions, fees, data API and withdrawal path.
 
@@ -309,9 +309,9 @@ Sources:
 - https://www.cboe.com/data/market-data-services
 
 
-## Gate Global — تصحيح أهلية وتقييم منتج الخيارات (24 نوفمبر 2026)
+## Gate Global وGate EU — تصحيح أهلية وتقييم منتج الخيارات (24 نوفمبر 2026)
 
-**الحالة الجغرافية:** اتفاقية Gate Global الحالية (صفحة User Agreement) تعرض قائمة Restricted Locations في البند 2.5 ولا تذكر سوريا ضمن القائمة المنشورة، لكنها تقول صراحةً إن القائمة غير حصرية وإن الخدمات قد تُقيّد حسب بلد الإقامة والمنتج. وثيقة Gate PDF أقدم من 2022 تذكر سوريا ضمن المناطق المقيدة. Gate US كيان أمريكي منفصل، واتفاقيته تشترط إقامة أمريكية وتذكر سوريا ضمن القيود؛ لا يجوز تعميم شروط Gate US على Gate Global. القرار: Gate Global ليس محظوراً مثبتاً ولا مقبولاً مثبتاً؛ يبقى **مرشح استفسار مكتوب**. لا تمويل قبل تأكيد Gate Support/Compliance أن مقيم سوريا يستطيع KYC واستخدام Crypto Options تحديداً.
+**الحالة الجغرافية:** اتفاقية Gate Global العامة لا تذكر سوريا في القائمة المنشورة، لكنها غير حصرية؛ وثيقة Gate PDF أقدم تذكر سوريا. اتفاقية Gate EU الحالية (1 مارس 2026) تذكر سوريا صراحة ضمن Restricted Locations، لذلك Gate EU غير متاح للمقيم السوري. Gate US كيان منفصل. القرار: Gate EU مستبعد؛ وأي كيان Gate غير أوروبي يبقى غير محسوم ولا يستخدم قبل تأكيد مكتوب من Compliance يحدد الكيان ويقبل الإقامة السورية وخيارات Crypto Options تحديداً.
 
 **قدرات Crypto Options التقنية المثبتة في الوثائق الرسمية:**
 - REST وWebSocket لقائمة الأصول الأساسية، تواريخ الانتهاء، العقود، تفاصيل العقد، دفتر الأوامر، الصفقات، mark price، index/forward price وGreeks/IV.
@@ -353,7 +353,7 @@ Sources:
 ### أهلية سوريا والمنصات البديلة
 
 - Binance نشرت FAQ تقول صراحةً إن السوريين المقيمين في سوريا يستطيعون التسجيل والتحقق، وتذكر Options ضمن المنتجات المتاحة. هذه موافقة عامة على المنتج وقت النشر، وليست ضماناً لكل منتج فرعي أُطلق لاحقاً؛ Stock Options خصوصاً يتطلب التحقق من ظهوره وصلاحيته داخل حساب KYC الحقيقي أو جواب دعم مكتوب.
-- Bybit وDeribit وOKX تذكر سوريا صراحةً ضمن المناطق المستبعدة/المقيدة. **Gate Global حالة مختلفة:** اتفاقيته الحالية لا تذكر سوريا في القائمة المنشورة لكنها تصفها بأنها غير حصرية، بينما اتفاقية أقدم تذكر سوريا؛ لذلك Gate Global مرشح استفسار مكتوب فقط، وليس منصة مقبولة أو محظورة مثبتة. Gate US كيان منفصل لا ينطبق على المقيم السوري. لا تستخدم VPN لتجاوز قيود أي منتج.
+- Bybit وDeribit وOKX تذكر سوريا صراحةً ضمن المناطق المستبعدة/المقيدة. **Gate EU مستبعد صراحةً** وفق اتفاقيته المحدثة في 1 مارس 2026؛ وأي كيان Gate غير أوروبي يبقى غير محسوم بسبب اختلاف الشروط العامة والإقليمية والوثيقة الأقدم. لا يستخدم Gate قبل تأكيد Compliance مكتوباً يذكر الإقامة السورية وCrypto Options والكيان القانوني. لا تستخدم VPN لتجاوز قيود أي منتج.
 - قائمة IBKR الرسمية للبلدان المتاحة لا تتضمن سوريا وقت الفحص؛ لا نفترض إمكانية فتح حساب أو تداول Cboe/CME من خلالها.
 - Paradex يذكر سوريا صراحة في Restricted Persons؛ لا يستخدم كبديل.
 - Hyperliquid HIP-3 perpetuals وHIP-4 outcome markets ليست Vanilla Options مدرجة؛ لا نضعها في قائمة منصات الخيارات القياسية مهما كانت نتيجة الوصول الجغرافي.
@@ -394,9 +394,9 @@ Sources:
 - NautilusTrader backtesting: https://nautechsystems.github.io/nautilus_docs/latest/concepts/backtesting/
 
 
-### Gate Global — حالة استفسار وليست حظراً مؤكداً أو موافقة
+### Gate — أهلية مرتبطة بالكيان القانوني
 
-اتفاقية Gate Global الحالية لا تذكر سوريا في قائمة Restricted Locations المنشورة، لكنها تصف القائمة بأنها غير حصرية وتسمح بقيود حسب المنتج/البلد؛ وثيقة أقدم تذكر سوريا صراحة. Gate US كيان أمريكي منفصل ويشترط إقامة أمريكية، ولا تنطبق شروطه تلقائياً على Gate Global. لذلك نصنف Gate Global مرشح استفسار مكتوب لتداول Crypto Options فقط، ولا نفتح حساباً ممولاً أو ننقل أموالاً قبل تأكيد امتثال مكتوب بقبول الإقامة السورية والمنتج المحدد. Gate يدعم خيارات كريبتو أوروبية وتسوية نقدية وواجهات REST/WS وأوامر market/limit/IOC/POC وIV order حسب وثائقه؛ هذه مرونة تقنية لا تعوض شرط الأهلية أو فحص السيولة والمضاعف والتسوية. خيارات Gate U.S. Stock Options منتج USDT cash-settled ولا يوجد دليل كافٍ أنها OCC-listed أو cleared مثل خيارات الأسهم الأمريكية القياسية؛ لا نساويهما.
+Gate EU غير متاح للمقيم السوري وفق الاتفاقية الأوروبية المحدثة في 1 مارس 2026. الاتفاقية العامة على gate.com لا تذكر سوريا في القائمة المنشورة لكنها غير حصرية، ووثيقة أقدم تذكر سوريا؛ لذلك لا نستنتج أهلية أي كيان غير أوروبي. لا نفتح حساباً ممولاً أو ننقل أموالاً قبل تأكيد امتثال مكتوب يحدد الكيان ويقبل الإقامة السورية وCrypto Options تحديداً. Gate يدعم خيارات كريبتو أوروبية وتسوية نقدية وواجهات REST/WS وأوامر market/limit/IOC/POC وIV order حسب وثائقه؛ هذه مرونة تقنية لا تعوض شرط الأهلية أو فحص السيولة والمضاعف والتسوية. خيارات Gate U.S. Stock Options منتج USDT cash-settled ولا يوجد دليل كافٍ أنها OCC-listed أو cleared مثل خيارات الأسهم الأمريكية القياسية؛ لا نساويهما.
 
 المصادر: https://www.gate.com/legal/user-agreement ، https://www.gate.com/docs/agreement.pdf ، https://www.gate.com/en-us/legal/user-agreement ، https://www.gate.com/docs/developers/apiv4/en/options/ ، https://www.gate.com/docs/developers/options/ws/en/ ، https://www.gate.com/help/other/optionsbasics/46255/european-options-settlement-methods-explained
 
