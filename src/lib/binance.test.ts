@@ -420,3 +420,34 @@ test('Binance contract metadata classifies newly listed crypto assets and leaves
   assert.equal(equity.pricingStatus, 'OBSERVED_ONLY');
   assert.equal(equity.pricingModel, undefined);
 });
+
+test('Binance explicit underlyingType overrides legacy base-asset heuristics', () => {
+  const now = Date.UTC(2026, 10, 24, 12);
+  const expiry = now + 30 * 86_400_000;
+  const symbol = `BTC-${compactDate(expiry)}-100-C`;
+  const snapshot = normalizeBinanceSnapshot({
+    fetchedAt: now,
+    exchangeInfo: {
+      serverTime: now,
+      optionContracts: [{
+        baseAsset: 'BTC', quoteAsset: 'USD', underlying: 'BTCUSD', settleAsset: 'USD',
+        contractType: 'TRADFI_OPTIONS', underlyingType: 'EQUITY',
+      }],
+      optionSymbols: [{
+        symbol, underlying: 'BTCUSD', side: 'CALL', strikePrice: 100, expiryDate: expiry, unit: 1,
+        status: 'TRADING', contractType: 'TRADFI_OPTIONS', underlyingType: 'EQUITY',
+      }],
+    },
+    marks: [{ symbol, markPrice: 7, markIV: 0.4 }],
+    indices: [{ requestedUnderlying: 'BTCUSD', item: { indexPrice: 100, time: now } }],
+  });
+
+  assert.equal(snapshot.quotes.length, 1);
+  const quote = snapshot.quotes[0];
+  assert.equal(quote.assetClass, 'EQUITY');
+  assert.equal(quote.underlyingKind, 'UNKNOWN');
+  assert.equal(quote.exerciseStyle, undefined);
+  assert.equal(quote.settlementStyle, undefined);
+  assert.equal(quote.pricingStatus, 'OBSERVED_ONLY');
+  assert.equal(quote.pricingModel, undefined);
+});
