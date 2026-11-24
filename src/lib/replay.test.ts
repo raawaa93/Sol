@@ -9,7 +9,7 @@ function quote(timestamp: string, overrides: Partial<OptionQuote> = {}): OptionQ
     symbol: 'XAU-261124-4000-C',
     underlying: 'BTC',
     assetClass: 'CRYPTO',
-    venue: 'BINANCE',
+    venue: 'TEST-CRYPTO-VENUE',
     underlyingKind: 'SPOT',
     exerciseStyle: 'EUROPEAN',
     settlementStyle: 'CASH',
