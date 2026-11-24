@@ -368,6 +368,7 @@ test('Binance contract metadata classifies newly listed crypto assets and leaves
   const cryptoSymbol = `AVAX-${code}-40-C`;
   const unknownSymbol = `ABC-${code}-100-C`;
   const equitySymbol = `NVDA-${code}-100-C`;
+  const explicitTypeSymbol = `BTC-${code}-100-C`;
   const snapshot = normalizeBinanceSnapshot({
     fetchedAt: now,
     exchangeInfo: {
@@ -376,31 +377,37 @@ test('Binance contract metadata classifies newly listed crypto assets and leaves
         { baseAsset: 'AVAX', quoteAsset: 'USDT', underlying: 'AVAXUSDT', settleAsset: 'USDT', contractType: 'CRYPTO_OPTIONS', underlyingType: 'CRYPTO' },
         { baseAsset: 'ABC', quoteAsset: 'USD', underlying: 'ABCUSD', settleAsset: 'USD', contractType: 'UNRECOGNIZED_OPTIONS', underlyingType: 'UNRECOGNIZED' },
         { baseAsset: 'NVDA', quoteAsset: 'USD', underlying: 'NVDAUSD', settleAsset: 'USD', contractType: 'TRADFI_OPTIONS', underlyingType: 'EQUITY' },
+        { baseAsset: 'BTC', quoteAsset: 'USD', underlying: 'BTCUSD', settleAsset: 'USD', contractType: 'TRADFI_OPTIONS', underlyingType: 'EQUITY' },
       ],
       optionSymbols: [
         { symbol: cryptoSymbol, underlying: 'AVAXUSDT', side: 'CALL', strikePrice: 40, expiryDate: expiry, unit: 1, status: 'TRADING', contractType: 'CRYPTO_OPTIONS', underlyingType: 'CRYPTO' },
         { symbol: unknownSymbol, underlying: 'ABCUSD', side: 'CALL', strikePrice: 100, expiryDate: expiry, unit: 1, status: 'TRADING', contractType: 'UNRECOGNIZED_OPTIONS', underlyingType: 'UNRECOGNIZED' },
         { symbol: equitySymbol, underlying: 'NVDAUSD', side: 'CALL', strikePrice: 100, expiryDate: expiry, unit: 1, status: 'TRADING', contractType: 'TRADFI_OPTIONS', underlyingType: 'EQUITY' },
+        { symbol: explicitTypeSymbol, underlying: 'BTCUSD', side: 'CALL', strikePrice: 100, expiryDate: expiry, unit: 1, status: 'TRADING', contractType: 'TRADFI_OPTIONS', underlyingType: 'EQUITY' },
       ],
     },
     marks: [
       { symbol: cryptoSymbol, markPrice: 5, markIV: 0.7 },
       { symbol: unknownSymbol, markPrice: 8, markIV: 0.3 },
       { symbol: equitySymbol, markPrice: 7, markIV: 0.4 },
+      { symbol: explicitTypeSymbol, markPrice: 7, markIV: 0.4 },
     ],
     indices: [
       { requestedUnderlying: 'AVAXUSDT', item: { indexPrice: 40, time: now } },
       { requestedUnderlying: 'ABCUSD', item: { indexPrice: 100, time: now } },
       { requestedUnderlying: 'NVDAUSD', item: { indexPrice: 100, time: now } },
+      { requestedUnderlying: 'BTCUSD', item: { indexPrice: 100, time: now } },
     ],
   });
 
   const crypto = snapshot.quotes.find((quote) => quote.symbol === cryptoSymbol);
   const unknown = snapshot.quotes.find((quote) => quote.symbol === unknownSymbol);
   const equity = snapshot.quotes.find((quote) => quote.symbol === equitySymbol);
+  const explicitType = snapshot.quotes.find((quote) => quote.symbol === explicitTypeSymbol);
   assert.ok(crypto);
   assert.ok(unknown);
   assert.ok(equity);
+  assert.ok(explicitType);
   assert.equal(crypto.assetClass, 'CRYPTO');
   assert.equal(crypto.underlyingKind, 'SPOT');
   assert.equal(crypto.exerciseStyle, 'EUROPEAN');
@@ -419,4 +426,9 @@ test('Binance contract metadata classifies newly listed crypto assets and leaves
   assert.equal(equity.settlementStyle, undefined);
   assert.equal(equity.pricingStatus, 'OBSERVED_ONLY');
   assert.equal(equity.pricingModel, undefined);
+  assert.equal(explicitType.assetClass, 'EQUITY');
+  assert.equal(explicitType.underlyingKind, 'UNKNOWN');
+  assert.equal(explicitType.exerciseStyle, undefined);
+  assert.equal(explicitType.settlementStyle, undefined);
+  assert.equal(explicitType.pricingStatus, 'OBSERVED_ONLY');
 });
