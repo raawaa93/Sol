@@ -254,6 +254,35 @@ test('mobile option chain renders compact cards and selects a contract without t
   expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.client + 1);
 });
 
+test('mobile Greeks and paper journal use readable cards instead of wide tables', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+
+  const greekList = page.locator('.greeks-mobile-list');
+  await greekList.scrollIntoViewIfNeeded();
+  await expect(greekList).toBeVisible();
+  await expect(page.locator('.greeks-table-wrap')).toBeHidden();
+  await expect(greekList.locator('.greeks-mobile-card')).toHaveCount(5);
+  await expect(greekList).toContainText('Delta');
+  await expect(greekList).toContainText('القيمة لكل عقد');
+  await expect(greekList).toContainText('حساسية الكمية الحالية');
+
+  await page.getByRole('button', { name: 'أضف إلى الدفتر التجريبي' }).click();
+  await page.locator('.mobile-bottom-nav').getByRole('button', { name: 'الدفتر' }).click();
+  const journalList = page.locator('.journal-mobile-list');
+  await expect(journalList).toBeVisible();
+  await expect(page.locator('.journal-table-wrap')).toBeHidden();
+  await expect(journalList.locator('.journal-mobile-card')).toHaveCount(1);
+  await expect(journalList).toContainText('PAPER ONLY');
+  await expect(journalList).toContainText('قسط الدخول');
+
+  const dimensions = await journalList.evaluate((element) => ({
+    client: element.clientWidth,
+    scroll: element.scrollWidth,
+  }));
+  expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.client + 1);
+});
+
 test('mobile layout has no document-level horizontal overflow', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();

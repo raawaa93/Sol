@@ -1077,7 +1077,24 @@ function App() {
             <div className="section-title-row"><div><span className="section-kicker">PAPER WORKSPACE</span><h2>الدفتر التجريبي</h2><p>سجل الفرضية والكمية والقسط قبل أن تقيم جودة القرار.</p></div><div className="journal-actions"><button className="button button-ghost" onClick={exportTrades}><Download size={14} /> تصدير CSV</button><button className="button button-ghost danger-ghost" onClick={() => { setTrades([]); notify('تم مسح الدفتر المحلي.'); }} disabled={!trades.length}><Trash2 size={14} /> مسح الدفتر</button></div></div>
             <article className="panel journal-panel">
               <div className="journal-summary"><div className="journal-summary-icon"><WalletCards size={18} /></div><div><strong>{trades.length} <span>صفقة تجريبية</span></strong><small>محفوظة محلياً في هذا المتصفح فقط</small></div><div className="journal-metric"><span>وضع التنفيذ</span><strong><i /> PAPER ONLY</strong></div><div className="journal-metric"><span>مفاتيح تداول</span><strong className="safe-label"><LockKeyhole size={13} /> غير مطلوبة</strong></div></div>
-              {trades.length ? <div className="journal-table-wrap"><table className="journal-table"><thead><tr><th>وقت التسجيل</th><th>العقد</th><th>Strike</th><th>كمية</th><th>قسط الدخول</th><th>السعر المرجعي وقتها</th><th>الحالة</th></tr></thead><tbody>{trades.map((trade) => <tr key={trade.id}><td>{formatDateTime(new Date(trade.createdAt))}</td><td><span className={`mini-type ${trade.type.toLowerCase()}`}>{trade.type}</span><strong>{trade.symbol}</strong></td><td>{formatAssetPrice(trade.strike, trade.spotAtEntry, trade.quoteAsset ?? null)}</td><td>{formatQuantity(trade.quantity, { quantityScale: trade.quantityPrecision })}</td><td>{formatOptionPrice(trade.entryPremium, { priceScale: trade.pricePrecision }, trade.quoteAsset ?? null)}</td><td>{formatAssetPrice(trade.spotAtEntry, trade.spotAtEntry, trade.quoteAsset ?? null)}</td><td><span className="paper-status"><i /> تجريبية</span></td></tr>)}</tbody></table></div> : <div className="journal-empty"><div className="journal-empty-icon"><BookOpen size={20} /></div><strong>لا توجد صفقات مسجلة بعد</strong><span>اختر عقداً من الماسح ثم أضفه إلى الدفتر. لن يتم إرسال أي أمر إلى أي منصة.</span><button className="text-button" onClick={() => navigate('scanner')}>ابدأ بتحليل عقد <ArrowUpLeft size={14} /></button></div>}
+              {trades.length ? <>
+                <div className="journal-table-wrap"><table className="journal-table"><thead><tr><th>وقت التسجيل</th><th>العقد</th><th>Strike</th><th>كمية</th><th>قسط الدخول</th><th>السعر المرجعي وقتها</th><th>الحالة</th></tr></thead><tbody>{trades.map((trade) => <tr key={trade.id}><td>{formatDateTime(new Date(trade.createdAt))}</td><td><span className={`mini-type ${trade.type.toLowerCase()}`}>{trade.type}</span><strong>{trade.symbol}</strong></td><td>{formatAssetPrice(trade.strike, trade.spotAtEntry, trade.quoteAsset ?? null)}</td><td>{formatQuantity(trade.quantity, { quantityScale: trade.quantityPrecision })}</td><td>{formatOptionPrice(trade.entryPremium, { priceScale: trade.pricePrecision }, trade.quoteAsset ?? null)}</td><td>{formatAssetPrice(trade.spotAtEntry, trade.spotAtEntry, trade.quoteAsset ?? null)}</td><td><span className="paper-status"><i /> تجريبية</span></td></tr>)}</tbody></table></div>
+                <div className="journal-mobile-list" role="list" aria-label="سجل الصفقات التجريبية">
+                  {trades.map((trade) => <article className="journal-mobile-card" role="listitem" key={trade.id}>
+                    <div className="journal-mobile-card-head">
+                      <span><span className={`mini-type ${trade.type.toLowerCase()}`}>{trade.type}</span><strong dir="ltr">{trade.symbol}</strong></span>
+                      <small>{formatDateTime(new Date(trade.createdAt))}</small>
+                    </div>
+                    <div className="journal-mobile-values">
+                      <div><small>Strike</small><strong>{formatAssetPrice(trade.strike, trade.spotAtEntry, trade.quoteAsset ?? null)}</strong></div>
+                      <div><small>الكمية</small><strong>{formatQuantity(trade.quantity, { quantityScale: trade.quantityPrecision })}</strong></div>
+                      <div><small>قسط الدخول</small><strong>{formatOptionPrice(trade.entryPremium, { priceScale: trade.pricePrecision }, trade.quoteAsset ?? null)}</strong></div>
+                      <div><small>السعر المرجعي</small><strong>{formatAssetPrice(trade.spotAtEntry, trade.spotAtEntry, trade.quoteAsset ?? null)}</strong></div>
+                    </div>
+                    <span className="paper-status"><i /> تجريبية · PAPER ONLY</span>
+                  </article>)}
+                </div>
+              </> : <div className="journal-empty"><div className="journal-empty-icon"><BookOpen size={20} /></div><strong>لا توجد صفقات مسجلة بعد</strong><span>اختر عقداً من الماسح ثم أضفه إلى الدفتر. لن يتم إرسال أي أمر إلى أي منصة.</span><button className="text-button" onClick={() => navigate('scanner')}>ابدأ بتحليل عقد <ArrowUpLeft size={14} /></button></div>}
             </article>
           </section>
 

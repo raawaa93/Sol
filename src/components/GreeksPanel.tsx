@@ -105,6 +105,22 @@ export default function GreeksPanel({ quote, quantity, dataMode }: GreeksPanelPr
             ))}</tbody>
           </table>
         </div>
+        <div className="greeks-mobile-list" role="list" aria-label="حساسية Greeks">
+          {rows.map((row) => (
+            <article className="greeks-mobile-card" role="listitem" key={row.key}>
+              <div className="greeks-mobile-card-head">
+                <strong><span>{row.symbol}</span>{row.label}</strong>
+                <span className={`greek-origin ${quote.estimatedFields?.includes(row.key) || pricingStatus === 'ASSUMED' || dataMode === 'DEMO' ? 'estimated' : ''}`}>{greekSource(row.key, quote, dataMode)}</span>
+              </div>
+              <div className="greeks-mobile-values">
+                <div><small>القيمة لكل عقد</small><strong dir="ltr">{modelAvailable ? formatSmallNumber(row.value) : '—'}</strong></div>
+                <div><small>حساسية الكمية الحالية</small><strong dir="ltr">{modelAvailable ? (row.amount ? formatSmallAmount(row.positionValue, quoteCurrency ?? null) : formatSmallNumber(row.positionValue)) : '—'}</strong></div>
+              </div>
+              <p>{row.meaning}</p>
+              <small className="greeks-mobile-unit">{row.positionUnit}</small>
+            </article>
+          ))}
+        </div>
 
         {modelAvailable ? <>
           <div className="greek-shock-heading"><div><strong>اختبار صدمات صغيرة</strong><span>تقدير P&amp;L للمركز الحالي، قبل الرسوم والانزلاق</span></div><span>{currencyLabel}</span></div>

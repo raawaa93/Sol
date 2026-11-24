@@ -365,6 +365,7 @@ h1, h2, h3, p { margin: 0; }
 .journal-metric > strong i { width: 5px; height: 5px; border-radius: 50%; background: #a9db7f; }
 .journal-metric > strong.safe-label { color: #a9b4ac; font-family: inherit; letter-spacing: 0; font-size: 8px; }
 .journal-table-wrap { overflow-x: auto; }
+.journal-mobile-list, .greeks-mobile-list { display: none; }
 .journal-table { min-width: 750px; }
 .journal-table th { padding: 10px 13px; background: #11181b; color: #75827f; text-align: right; font-size: 8px; font-weight: 550; white-space: nowrap; }
 .journal-table td { padding: 10px 13px; border-top: 1px solid #222d31; color: #9aa7a1; font-family: Inter, "Segoe UI", Tahoma, sans-serif; font-size: 9px; white-space: nowrap; }
@@ -648,6 +649,23 @@ h1, h2, h3, p { margin: 0; }
   .watchlist-method, .watchlist-caution { font-size: 7px; }
   .greek-assumption { font-size: 7px; }
   .greeks-panel { padding: 10px; }
+  .greeks-table-wrap, .journal-table-wrap { display: none; }
+  .greeks-mobile-list, .journal-mobile-list { display: grid; gap: 8px; }
+  .greeks-mobile-card, .journal-mobile-card { display: flex; min-width: 0; flex-direction: column; gap: 9px; padding: 10px; border: 1px solid #263330; border-radius: 9px; background: rgba(12, 19, 20, .8); }
+  .greeks-mobile-card-head, .journal-mobile-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .greeks-mobile-card-head > strong { display: flex; align-items: center; gap: 7px; color: #dce6dd; font-size: 10px; }
+  .greeks-mobile-card-head > strong span { display: inline-grid; width: 22px; height: 22px; place-items: center; border-radius: 6px; background: #192321; color: #b5da94; font-family: Inter, sans-serif; font-size: 12px; }
+  .greeks-mobile-card-head .greek-origin { max-width: 56%; white-space: normal; line-height: 1.4; text-align: left; }
+  .greeks-mobile-values, .journal-mobile-values { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+  .greeks-mobile-values > div, .journal-mobile-values > div { display: flex; min-width: 0; flex-direction: column; gap: 5px; padding: 8px; border: 1px solid #202c2b; border-radius: 7px; background: rgba(20, 29, 30, .7); }
+  .greeks-mobile-values small, .journal-mobile-values small { color: #788781; font-size: 8px; }
+  .greeks-mobile-values strong, .journal-mobile-values strong { overflow-wrap: anywhere; color: #dce6df; font-family: Inter, Arial, sans-serif; font-size: 10px; font-weight: 650; }
+  .greeks-mobile-card p { margin: 0; color: #9aa79f; font-size: 8px; line-height: 1.7; }
+  .greeks-mobile-unit { color: #77847d; font-size: 7px; line-height: 1.6; }
+  .journal-mobile-card-head > span { display: flex; min-width: 0; align-items: center; gap: 7px; }
+  .journal-mobile-card-head > span strong { overflow-wrap: anywhere; color: #dce6df; font-family: Inter, Arial, sans-serif; font-size: 9px; }
+  .journal-mobile-card-head > small { flex: 0 0 auto; color: #788781; font-size: 7px; text-align: left; }
+  .journal-mobile-card > .paper-status { align-self: flex-start; }
   .greek-shock-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .market-depth-panel { padding: 10px; }
   .depth-summary-grid, .depth-book-grid, .depth-fill-grid { grid-template-columns: 1fr; }
