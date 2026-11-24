@@ -25,6 +25,8 @@ function quote(overrides: Partial<OptionQuote> = {}): OptionQuote {
     volume: 20,
     spot: 100,
     unit: 1,
+    underlyingKind: 'SPOT', exerciseStyle: 'EUROPEAN', settlementStyle: 'CASH', carryYield: 0, riskFreeRate: 0.05,
+    pricingStatus: 'SUPPORTED', pricingModel: 'BLACK_SCHOLES_CARRY',
     ...overrides,
   };
 }
@@ -112,6 +114,13 @@ test('ATM term structure uses nearest-to-ATM strikes and compares front, near an
   assert.ok(Math.abs((context?.near.iv ?? 0) - 0.56) < 1e-12);
   assert.equal(context?.back?.daysToExpiry, 60);
   assert.equal(getTermStructureContext([]), null);
+});
+
+test('observed-only contracts are excluded from delta skew and ranked opportunities', () => {
+  const unsupportedCall = option('CALL', { pricingStatus: 'OBSERVED_ONLY', delta: 0.3 });
+  const supportedPut = option('PUT', { pricingStatus: 'SUPPORTED', delta: -0.3 });
+  assert.equal(getComparableDeltaSkew([unsupportedCall, supportedPut]), null);
+  assert.equal(getReviewCandidates([unsupportedCall], 1).length, 0);
 });
 
 test('review candidate delta preferences ignore model-derived deltas', () => {

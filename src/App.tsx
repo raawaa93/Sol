@@ -45,7 +45,7 @@ import { assessSnapshotFreshness, DEFAULT_SNAPSHOT_STALE_AFTER_MS } from './lib/
 import { isQuoteFieldEstimated } from './lib/quote-quality';
 import { downloadCsv, downloadCsvTemplate, MAX_CSV_FILE_BYTES, parseOptionsCsv } from './lib/csv';
 import type { CsvTimestampRange } from './lib/csv';
-import { buildScenarioSeries, getBreakeven, getExpectedMove, getMaxLoss, getMidPrice, getSpreadPct } from './lib/options';
+import { buildScenarioSeries, getBreakeven, getExpectedMove, getMaxLoss, getMidPrice, getSpreadPct, getUnderlyingReferencePrice } from './lib/options';
 import { formatAssetPrice, formatOptionPrice, formatQuantity, formatSmallNumber, getOptionPricePrecision, getQuantityPrecision } from './lib/format';
 import type { AssetClass, OptionQuote, OptionSide, PaperTrade, Underlying } from './lib/types';
 import { ASSET_CLASS_LABELS } from './lib/asset-class';
@@ -374,10 +374,13 @@ function App() {
   const totalCost = selectedPremium * safeQuantity * selectedQuote.unit + safeFees;
   const breakEven = getBreakeven(selectedQuote, selectedPremium, safeFees, safeQuantity);
   const maxLoss = getMaxLoss(selectedPremium, safeQuantity, selectedQuote.unit, safeFees);
-  const expectedMove = getExpectedMove(selectedQuote.spot, selectedQuote.iv, selectedQuote.daysToExpiry);
+  const hasModelGreeks = (selectedQuote.pricingStatus ?? (dataMode === 'DEMO' ? 'ASSUMED' : 'OBSERVED_ONLY')) !== 'OBSERVED_ONLY';
+  const underlyingReferencePrice = getUnderlyingReferencePrice(selectedQuote);
+  const expectedMove = hasModelGreeks ? getExpectedMove(underlyingReferencePrice, selectedQuote.iv, selectedQuote.daysToExpiry) : undefined;
   const scenarioSeries = useMemo(() => buildScenarioSeries(selectedQuote, selectedPremium, safeQuantity, safeFees), [safeFees, safeQuantity, selectedPremium, selectedQuote]);
   const rawAffordableQty = selectedPremium > 0 ? Math.floor(Math.max(0, safeRiskBudget - safeFees) / (selectedPremium * selectedQuote.unit) / quantityStep + 1e-9) * quantityStep : 0;
   const affordableQty = selectedQuote.maxQty === undefined ? rawAffordableQty : Math.min(rawAffordableQty, selectedQuote.maxQty);
+  const modelPriceLabel = selectedQuote.pricingModel === 'BLACK_76' ? 'Black–76' : 'Black–Scholes مع Carry';
   const spreadPct = getSpreadPct(selectedQuote);
   const quoteQuality = !Number.isFinite(spreadPct) ? 'غير متاح' : spreadPct <= 4 ? 'ضيق نسبياً' : spreadPct <= 10 ? 'متوسط' : 'واسع';
   const hasValidTwoSidedQuote = selectedQuote.bid > 0 && selectedQuote.ask >= selectedQuote.bid;
@@ -386,8 +389,8 @@ function App() {
       : selectedQuote.priceSource === 'LAST' ? 'آخر تداول من Binance'
         : selectedQuote.priceSource === 'BID' ? 'Bid فقط من Binance'
           : selectedQuote.priceSource === 'ASK' ? 'Ask فقط من Binance'
-            : selectedQuote.priceSource === 'MODEL' ? 'تقدير Black–Scholes · ليس سعراً مرصوداً'
-              : selectedQuote.estimatedFields?.includes('markPrice') ? 'تقدير Black–Scholes · ليس سعراً مرصوداً'
+            : selectedQuote.priceSource === 'MODEL' ? `تقدير ${modelPriceLabel} · ليس سعراً مرصوداً`
+              : selectedQuote.estimatedFields?.includes('markPrice') ? `تقدير ${modelPriceLabel} · ليس سعراً مرصوداً`
                 : 'سعر مرجعي من Binance';
   const priceBasis = dataMode === 'DEMO'
     ? 'منتصف Bid/Ask · بيانات محاكاة'
@@ -396,7 +399,7 @@ function App() {
       : dataMode === 'BINANCE'
         ? binancePriceBasis
         : selectedQuote.estimatedFields?.includes('markPrice') && selectedQuote.markPrice > 0
-          ? 'تقدير Black–Scholes · ليس سعراً مرصوداً'
+          ? `تقدير ${modelPriceLabel} · ليس سعراً مرصوداً`
           : selectedQuote.markPrice > 0
             ? 'Mark من الملف · طرف سوق ناقص'
             : selectedQuote.bid > 0
@@ -473,7 +476,7 @@ function App() {
       const preferredCalls = calls.filter((quote) => quote.daysToExpiry >= 20 && quote.daysToExpiry <= 40);
       const defaultQuote = [...(preferredCalls.length ? preferredCalls : calls)].sort((a, b) =>
         Math.abs(a.daysToExpiry - 30) - Math.abs(b.daysToExpiry - 30)
-        || Math.abs(a.strike - a.spot) - Math.abs(b.strike - b.spot),
+        || Math.abs(a.strike - getUnderlyingReferencePrice(a)) - Math.abs(b.strike - getUnderlyingReferencePrice(b)),
       )[0] ?? assetQuotes[0];
 
       setClockNow(snapshot.fetchedAt);
@@ -669,7 +672,7 @@ function App() {
       entryPremium: selectedPremium,
       pricePrecision: getOptionPricePrecision(selectedPremium, selectedQuote),
       fees: safeFees,
-      spotAtEntry: selectedQuote.spot,
+      spotAtEntry: underlyingReferencePrice,
       status: 'PAPER',
     };
     setTrades((current) => [newTrade, ...current]);
@@ -912,10 +915,11 @@ function App() {
                       {filteredQuotes.map((quote) => {
                         const spread = getSpreadPct(quote);
                         const isSelected = quote.id === selectedQuote.id;
-                        const moneyness = ((quote.strike / quote.spot) - 1) * 100;
+                        const quoteReferencePrice = getUnderlyingReferencePrice(quote);
+                        const moneyness = ((quote.strike / quoteReferencePrice) - 1) * 100;
                         return <tr key={quote.id} onClick={() => setSelectedId(quote.id)} className={isSelected ? 'selected-row' : ''}>
-                          <td><div className="contract-cell"><strong>{formatAssetPrice(quote.strike, quote.spot)}</strong><span className={`moneyness ${Math.abs(moneyness) < 2.6 ? 'atm' : ''}`}>{Math.abs(moneyness) < 2.6 ? 'ATM' : `${moneyness > 0 ? '+' : ''}${moneyness.toFixed(1)}%`}</span></div><span className="contract-symbol">{quote.symbol}</span></td>
-                          <td>{formatQuotePrice(quote.bid, quote)}</td><td>{formatQuotePrice(quote.ask, quote)}</td><td className="iv-cell">{formatPercent(quote.iv)}</td><td className={quote.delta >= 0 ? 'positive-text' : 'negative-text'}>{quote.delta.toFixed(3)}</td><td>{quote.openInterest === null ? '—' : formatSmallNumber(quote.openInterest)}</td><td>{quote.volume === null ? '—' : formatSmallNumber(quote.volume)}</td><td><span className={`spread-pill ${!Number.isFinite(spread) ? 'unknown' : spread > 8 ? 'wide' : spread > 4 ? 'medium' : 'tight'}`}>{Number.isFinite(spread) ? `${spread.toFixed(1)}%` : '—'}</span></td>
+                          <td><div className="contract-cell"><strong>{formatAssetPrice(quote.strike, quoteReferencePrice)}</strong><span className={`moneyness ${Math.abs(moneyness) < 2.6 ? 'atm' : ''}`}>{Math.abs(moneyness) < 2.6 ? 'ATM' : `${moneyness > 0 ? '+' : ''}${moneyness.toFixed(1)}%`}</span></div><span className="contract-symbol">{quote.symbol}</span></td>
+                          <td>{formatQuotePrice(quote.bid, quote)}</td><td>{formatQuotePrice(quote.ask, quote)}</td><td className="iv-cell">{formatPercent(quote.iv)}</td><td className={quote.delta >= 0 ? 'positive-text' : 'negative-text'}>{quote.pricingStatus === 'OBSERVED_ONLY' ? '—' : `${quote.delta.toFixed(3)}${quote.pricingStatus === 'ASSUMED' ? '*' : ''}`}</td><td>{quote.openInterest === null ? '—' : formatSmallNumber(quote.openInterest)}</td><td>{quote.volume === null ? '—' : formatSmallNumber(quote.volume)}</td><td><span className={`spread-pill ${!Number.isFinite(spread) ? 'unknown' : spread > 8 ? 'wide' : spread > 4 ? 'medium' : 'tight'}`}>{Number.isFinite(spread) ? `${spread.toFixed(1)}%` : '—'}</span></td>
                         </tr>;
                       })}
                     </tbody>
@@ -927,7 +931,7 @@ function App() {
 
               <aside className="panel quick-analysis" id="trade-lab">
                 <div className="analysis-header"><div><span className="section-kicker">CONTRACT REVIEW</span><h3>ملخص العقد</h3></div><span className="analysis-state"><span /> فحص فقط</span></div>
-                <div className="selected-contract-title"><div className={`contract-type-icon ${selectedQuote.type.toLowerCase()}`}>{selectedQuote.type === 'CALL' ? <TrendingUp size={17} /> : <TrendingDown size={17} />}</div><div><strong>{selectedQuote.underlying} {selectedQuote.type}</strong><span>{formatAssetPrice(selectedQuote.strike, selectedQuote.spot)} · ينتهي بعد {selectedQuote.daysToExpiry.toFixed(0)} يوم</span></div><button className="copy-symbol" onClick={() => { navigator.clipboard?.writeText(selectedQuote.symbol); notify('تم نسخ رمز العقد.'); }} title="نسخ رمز العقد">⧉</button></div>
+                <div className="selected-contract-title"><div className={`contract-type-icon ${selectedQuote.type.toLowerCase()}`}>{selectedQuote.type === 'CALL' ? <TrendingUp size={17} /> : <TrendingDown size={17} />}</div><div><strong>{selectedQuote.underlying} {selectedQuote.type}</strong><span>{formatAssetPrice(selectedQuote.strike, underlyingReferencePrice)} · ينتهي بعد {selectedQuote.daysToExpiry.toFixed(0)} يوم</span></div><button className="copy-symbol" onClick={() => { navigator.clipboard?.writeText(selectedQuote.symbol); notify('تم نسخ رمز العقد.'); }} title="نسخ رمز العقد">⧉</button></div>
                 {dataMode === 'BINANCE' && <div className="contract-specs"><span><small>وحدة العقد</small><b>{formatSmallNumber(selectedQuote.unit)} {selectedQuote.underlying}</b></span><span><small>حد الكمية</small><b>{selectedQuote.minQty === undefined ? '—' : formatQuantity(selectedQuote.minQty, selectedQuote)} – {selectedQuote.maxQty === undefined ? '—' : formatQuantity(selectedQuote.maxQty, selectedQuote)}</b></span><span><small>رسوم taker</small><b>{selectedQuote.takerFeeRate === undefined ? '—' : formatPercent(selectedQuote.takerFeeRate, 2)}</b></span></div>}
                 <div className="price-highlight"><span>{dataMode === 'BINANCE' ? 'سعر العقد المرجعي' : 'السعر المرجعي التقديري'}</span><strong>{formatOptionPrice(selectedPremium, selectedQuote)}</strong><small>{priceBasis}</small></div>
                 <div className="quote-row"><span>Bid <b>{formatQuotePrice(selectedQuote.bid, selectedQuote)}</b></span><span>Ask <b>{formatQuotePrice(selectedQuote.ask, selectedQuote)}</b></span></div>
@@ -971,27 +975,29 @@ function App() {
               <DeferredPayoffChart scenarioSeries={scenarioSeries} selectedQuote={selectedQuote} />
               <div className="scenario-side">
                 <div className="scenario-side-head"><span>نطاق الحركة الضمني التقريبي</span><CircleHelp size={14} /></div>
-                <div className="expected-move-value">±{formatAssetPrice(expectedMove, selectedQuote.spot)}</div>
-                <div className="expected-range"><span>{formatAssetPrice(Math.max(0, selectedQuote.spot - expectedMove), selectedQuote.spot)}</span><i /><span>{formatAssetPrice(selectedQuote.spot + expectedMove, selectedQuote.spot)}</span></div>
-                <p>تقريب 1σ من IV حتى الانتهاء. ليس توقعاً ولا احتمالاً مؤكداً.</p>
+                {expectedMove !== undefined ? <>
+                  <div className="expected-move-value">±{formatAssetPrice(expectedMove, underlyingReferencePrice)}</div>
+                  <div className="expected-range"><span>{formatAssetPrice(Math.max(0, underlyingReferencePrice - expectedMove), underlyingReferencePrice)}</span><i /><span>{formatAssetPrice(underlyingReferencePrice + expectedMove, underlyingReferencePrice)}</span></div>
+                  <p>تقريب 1σ من IV حتى الانتهاء. ليس توقعاً ولا احتمالاً مؤكداً.</p>
+                </> : <p>نطاق الحركة غير متاح: لا يوجد نموذج تسعير موثّق لهذا العقد. {selectedQuote.pricingReason}</p>}
                 <div className="scenario-divider" />
-                <div className="scenario-stat"><span>Delta</span><strong className={selectedQuote.delta >= 0 ? 'positive-text' : 'negative-text'}>{selectedQuote.delta.toFixed(3)}</strong><small>حساسية تقريبية لكل حركة وحدة</small></div>
-                <div className="scenario-stat"><span>Theta / يوم</span><strong className="negative-text">{formatMoney(selectedQuote.theta * safeQuantity * selectedQuote.unit)}</strong><small>تقدير النموذج، يتغير مع السوق</small></div>
-                <div className="scenario-stat"><span>Vega / نقطة تقلب</span><strong>{formatMoney(selectedQuote.vega * safeQuantity * selectedQuote.unit)}</strong><small>حساسية تقريبية لـ +1 نقطة مئوية</small></div>
+                <div className="scenario-stat"><span>Delta</span><strong className={hasModelGreeks && selectedQuote.delta >= 0 ? 'positive-text' : 'negative-text'}>{hasModelGreeks ? selectedQuote.delta.toFixed(3) : '—'}</strong><small>حساسية تقريبية لكل حركة وحدة</small></div>
+                <div className="scenario-stat"><span>Theta / يوم</span><strong className="negative-text">{hasModelGreeks ? formatMoney(selectedQuote.theta * safeQuantity * selectedQuote.unit) : '—'}</strong><small>تقدير النموذج، يتغير مع السوق</small></div>
+                <div className="scenario-stat"><span>Vega / نقطة تقلب</span><strong>{hasModelGreeks ? formatMoney(selectedQuote.vega * safeQuantity * selectedQuote.unit) : '—'}</strong><small>حساسية تقريبية لـ +1 نقطة مئوية</small></div>
               </div>
             </div>
           </section>
 
           <section className="model-strip">
-            <button className="model-toggle" onClick={() => setShowAssumptions((value) => !value)}><div className="model-icon"><Info size={16} /></div><div><strong>افتراضات النموذج وحدوده</strong><span>{dataMode === 'BINANCE' ? 'Binance REST snapshot · Mark/IV عند التوفر · بعض Greeks نموذجية' : dataMode === 'CSV' ? 'CSV محلي · Black–Scholes تقديري للقيم الناقصة' : 'Black–Scholes توضيحي · فائدة مفترضة 0% · تسوية أوروبية'}</span></div><ChevronDown className={showAssumptions ? 'rotated' : ''} size={16} /></button>
-            {showAssumptions && <div className="model-details">{dataMode === 'BINANCE' ? <><p>تمر طلبات Binance عبر وسيط Supabase عام محدود بواجهات بيانات السوق للقراءة فقط لتوافق CORS؛ يطلب exchangeInfo لاكتشاف العقود النشطة وmark/ticker/index وopenInterest لبيانات السوق. لا يخزن الوسيط مفاتيح API ولا يقبل مسارات حساب أو تداول، ولا يتجاوز قيود Binance الجغرافية. ما يظهر لقطة REST عند آخر تحديث وليس بثاً لحظياً؛ وقد تتغير العقود أو تتأخر البيانات أو تُحجب حسب الشبكة والمنطقة.</p><p>تُعرض Mark/IV وBid/Ask والمؤشر والفائدة المفتوحة عند توفرها. يستخدم التحليل Delta من Binance عند وجوده ويقدّر Gamma وTheta وVega وRho بنموذج Black–Scholes؛ ويعلّم القيم المستنتجة والافتراضات. Rho لكل نقطة مئوية من معدل سنوي مركب باستمرار، ووحدة `riskFreeInterest` تحتاج تحققاً من المصدر. قد تختلف وحدات العقد وGreeks عن افتراضات النموذج، لذا لا تُعاملها كقياسات تداول موثقة ولا تعتمد عليها مالياً.</p></> : <><p>{dataMode === 'DEMO' ? 'هذه نسخة محاكاة: بيانات الأسعار في وضع Demo مولدة وليست متصلة بـBinance. تسعير العرض يتم بنموذج Black–Scholes مبسط مع معدل فائدة 0%؛ وقد تختلف أسواق العملات المشفرة بسبب الابتسامة، القفزات، السيولة، التمويل، والفروقات بين السعر النظري وسعر التنفيذ.' : 'يستخدم المحلل في CSV السعر المتوسط من Bid/Ask إن توفرا، ويحسب القيم المفقودة تقريبياً. النتائج لا تشمل الرسوم تلقائياً إلا إذا أدخلتها؛ تحقّق من الوحدات والطوابع الزمنية.'}</p><p>لا يستخدم المختبر مصادر بديلة خفية ولا يخلط بيانات Demo ببيانات CSV أو Binance. لا تستخدم المحاكاة لاتخاذ قرار مالي مباشر.</p></>}</div>}
+            <button className="model-toggle" onClick={() => setShowAssumptions((value) => !value)}><div className="model-icon"><Info size={16} /></div><div><strong>افتراضات النموذج وحدوده</strong><span>{dataMode === 'BINANCE' ? 'Crypto: BSM مع Carry مفترض · Commodity: بيانات مرصودة فقط' : dataMode === 'CSV' ? 'توجيه النموذج حسب مواصفات العقد · الافتراضات ظاهرة' : 'Black–76 للعقود الآجلة وBSM مع Carry للـSpot · بيانات اصطناعية'}</span></div><ChevronDown className={showAssumptions ? 'rotated' : ''} size={16} /></button>
+            {showAssumptions && <div className="model-details">{dataMode === 'BINANCE' ? <><p>تمر طلبات Binance عبر وسيط Supabase عام محدود بواجهات بيانات السوق للقراءة فقط لتوافق CORS؛ يطلب exchangeInfo لاكتشاف العقود النشطة وmark/ticker/index وopenInterest لبيانات السوق. لا يخزن الوسيط مفاتيح API ولا يقبل مسارات حساب أو تداول، ولا يتجاوز قيود Binance الجغرافية. ما يظهر لقطة REST عند آخر تحديث وليس بثاً لحظياً؛ وقد تتغير العقود أو تتأخر البيانات أو تُحجب حسب الشبكة والمنطقة.</p><p>تُعرض Mark/IV وBid/Ask والمؤشر والفائدة المفتوحة عند توفرها. خيارات الكريبتو المعروفة تُنمذج كخيارات أوروبية على مؤشر Spot باستخدام Black–Scholes مع Carry، مع افتراض carry=0 إذا لم يتوفر من المصدر؛ لذلك تظهر بحالة «افتراض معلن». تُحفظ Greeks الخام من Binance للتدقيق فقط ولا تُخلط مع Greeks المحسوبة. أما Commodity/TradFi Options المرتبطة بمؤشر Perpetual، وأي نوع أصل غير معروف، فتعرض بيانات السوق المرصودة فقط وتُحجب Greeks والحركة الضمنية إلى أن يتوفر نموذج مثبت. لا نستخدم Black–Scholes تلقائياً على الذهب أو العقود الدائمة. Rho لكل نقطة مئوية من معدل سنوي مركب باستمرار، ووحدة `riskFreeInterest` تحتاج تحققاً من المصدر.</p></> : <><p>{dataMode === 'DEMO' ? 'هذه نسخة محاكاة: بيانات الأسعار مولدة وليست متصلة بمنصة. تستخدم Black–76 لعقود CL/BZ الآجلة وBlack–Scholes مع Carry لبقية الأصول، مع افتراض معدل فائدة وCarry يساويان 0%. كل القيم اصطناعية.' : 'يستخدم CSV نموذج Black–76 للعقود الآجلة فقط عند توفر Forward ومعدل فائدة ومواصفات أوروبية وتسوية صريحة؛ ويستخدم Black–Scholes مع Carry لعقود Spot/Index/FX عند إدخال المعدل والـCarry. العقود الأمريكية أو الدائمة أو غير المكتملة تبقى بيانات مرصودة فقط. ملفات CSV القديمة بلا مواصفات تستخدم BSM افتراضياً مع وسم واضح «افتراض معلن». تحقّق من الوحدات والطوابع الزمنية.'}</p><p>لا يستخدم المختبر مصادر بديلة خفية ولا يخلط بيانات Demo ببيانات CSV أو Binance. لا تستخدم المحاكاة لاتخاذ قرار مالي مباشر.</p></>}</div>}
           </section>
 
           <section className="section-anchor journal-section" id="journal">
             <div className="section-title-row"><div><span className="section-kicker">PAPER WORKSPACE</span><h2>الدفتر التجريبي</h2><p>سجل الفرضية والكمية والقسط قبل أن تقيم جودة القرار.</p></div><div className="journal-actions"><button className="button button-ghost" onClick={exportTrades}><Download size={14} /> تصدير CSV</button><button className="button button-ghost danger-ghost" onClick={() => { setTrades([]); notify('تم مسح الدفتر المحلي.'); }} disabled={!trades.length}><Trash2 size={14} /> مسح الدفتر</button></div></div>
             <article className="panel journal-panel">
               <div className="journal-summary"><div className="journal-summary-icon"><WalletCards size={18} /></div><div><strong>{trades.length} <span>صفقة تجريبية</span></strong><small>محفوظة محلياً في هذا المتصفح فقط</small></div><div className="journal-metric"><span>وضع التنفيذ</span><strong><i /> PAPER ONLY</strong></div><div className="journal-metric"><span>مفاتيح تداول</span><strong className="safe-label"><LockKeyhole size={13} /> غير مطلوبة</strong></div></div>
-              {trades.length ? <div className="journal-table-wrap"><table className="journal-table"><thead><tr><th>وقت التسجيل</th><th>العقد</th><th>Strike</th><th>كمية</th><th>قسط الدخول</th><th>Spot وقتها</th><th>الحالة</th></tr></thead><tbody>{trades.map((trade) => <tr key={trade.id}><td>{formatDateTime(new Date(trade.createdAt))}</td><td><span className={`mini-type ${trade.type.toLowerCase()}`}>{trade.type}</span><strong>{trade.symbol}</strong></td><td>{formatAssetPrice(trade.strike, trade.spotAtEntry)}</td><td>{formatQuantity(trade.quantity, { quantityScale: trade.quantityPrecision })}</td><td>{formatOptionPrice(trade.entryPremium, { priceScale: trade.pricePrecision })}</td><td>{formatAssetPrice(trade.spotAtEntry, trade.spotAtEntry)}</td><td><span className="paper-status"><i /> تجريبية</span></td></tr>)}</tbody></table></div> : <div className="journal-empty"><div className="journal-empty-icon"><BookOpen size={20} /></div><strong>لا توجد صفقات مسجلة بعد</strong><span>اختر عقداً من الماسح ثم أضفه إلى الدفتر. لن يتم إرسال أي أمر إلى أي منصة.</span><button className="text-button" onClick={() => navigate('scanner')}>ابدأ بتحليل عقد <ArrowUpLeft size={14} /></button></div>}
+              {trades.length ? <div className="journal-table-wrap"><table className="journal-table"><thead><tr><th>وقت التسجيل</th><th>العقد</th><th>Strike</th><th>كمية</th><th>قسط الدخول</th><th>السعر المرجعي وقتها</th><th>الحالة</th></tr></thead><tbody>{trades.map((trade) => <tr key={trade.id}><td>{formatDateTime(new Date(trade.createdAt))}</td><td><span className={`mini-type ${trade.type.toLowerCase()}`}>{trade.type}</span><strong>{trade.symbol}</strong></td><td>{formatAssetPrice(trade.strike, trade.spotAtEntry)}</td><td>{formatQuantity(trade.quantity, { quantityScale: trade.quantityPrecision })}</td><td>{formatOptionPrice(trade.entryPremium, { priceScale: trade.pricePrecision })}</td><td>{formatAssetPrice(trade.spotAtEntry, trade.spotAtEntry)}</td><td><span className="paper-status"><i /> تجريبية</span></td></tr>)}</tbody></table></div> : <div className="journal-empty"><div className="journal-empty-icon"><BookOpen size={20} /></div><strong>لا توجد صفقات مسجلة بعد</strong><span>اختر عقداً من الماسح ثم أضفه إلى الدفتر. لن يتم إرسال أي أمر إلى أي منصة.</span><button className="text-button" onClick={() => navigate('scanner')}>ابدأ بتحليل عقد <ArrowUpLeft size={14} /></button></div>}
             </article>
           </section>
 

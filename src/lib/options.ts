@@ -1,5 +1,10 @@
 import type { OptionGreeks, OptionQuote, OptionSide } from './types';
 
+export function getUnderlyingReferencePrice(quote: OptionQuote): number {
+  return quote.underlyingKind === 'FUTURE' ? quote.forward ?? quote.spot : quote.spot;
+}
+
+
 const SQRT_2 = Math.sqrt(2);
 const SQRT_2PI = Math.sqrt(2 * Math.PI);
 // Cephes rational coefficients for erf/erfc; attribution and license are in THIRD-PARTY-NOTICES.md.
@@ -226,17 +231,33 @@ export interface RiskNeutralExpiryMetrics {
 export function getRiskNeutralExpiryMetrics(
   quote: OptionQuote,
   entryPremium: number,
-  rate = 0,
+  rate?: number,
 ): RiskNeutralExpiryMetrics | null {
-  const { spot, strike, daysToExpiry, iv, type } = quote;
-  if (![spot, strike, daysToExpiry, iv, entryPremium, rate].every(Number.isFinite)
-    || spot <= 0 || strike <= 0 || daysToExpiry < 0 || iv <= 0 || iv > 5
-    || entryPremium < 0 || (type !== 'CALL' && type !== 'PUT')) return null;
+  const effectiveRate = rate ?? quote.riskFreeRate;
+  const isFuture = quote.underlyingKind === 'FUTURE';
+  const referencePrice = isFuture ? quote.forward : quote.spot;
+  const carryYield = isFuture ? 0 : quote.carryYield;
+  const { strike, daysToExpiry, iv, type } = quote;
+  if (effectiveRate === undefined || !Number.isFinite(effectiveRate)) return null;
+
+  if (quote.pricingStatus !== 'SUPPORTED' || quote.exerciseStyle !== 'EUROPEAN'
+    || !quote.settlementStyle
+    || !Number.isFinite(referencePrice) || referencePrice === undefined || referencePrice <= 0
+    || !Number.isFinite(strike) || strike <= 0
+    || !Number.isFinite(daysToExpiry) || daysToExpiry < 0
+    || !Number.isFinite(iv) || iv <= 0 || iv > 5
+    || !Number.isFinite(entryPremium) || entryPremium < 0
+    || (type !== 'CALL' && type !== 'PUT')) return null;
+
+  if (!isFuture && (!['SPOT', 'INDEX', 'FX_SPOT'].includes(quote.underlyingKind ?? '')
+    || !Number.isFinite(carryYield))) return null;
+  if (isFuture && quote.pricingModel !== 'BLACK_76') return null;
+  if (!isFuture && quote.pricingModel !== 'BLACK_SCHOLES_CARRY') return null;
 
   const time = daysToExpiry / 365;
   const breakevenPrice = type === 'CALL' ? strike + entryPremium : strike - entryPremium;
   if (time === 0) {
-    const intrinsic = type === 'CALL' ? Math.max(spot - strike, 0) : Math.max(strike - spot, 0);
+    const intrinsic = type === 'CALL' ? Math.max(referencePrice - strike, 0) : Math.max(strike - referencePrice, 0);
     const profitable = intrinsic > entryPremium;
     const inTheMoney = intrinsic > 0;
     return {
@@ -247,35 +268,37 @@ export function getRiskNeutralExpiryMetrics(
       modelPrice: intrinsic,
       modelValueGapPerUnit: intrinsic - entryPremium,
       breakevenPrice,
-      riskFreeRate: rate,
+      riskFreeRate: effectiveRate,
     };
   }
 
   const sigmaRootTime = iv * Math.sqrt(time);
   if (!Number.isFinite(sigmaRootTime) || sigmaRootTime <= 0) return null;
-  const drift = (rate - 0.5 * iv * iv) * time;
-  const d2AtStrike = (Math.log(spot / strike) + drift) / sigmaRootTime;
-  const probabilityInTheMoney = type === 'CALL'
-    ? normalCdf(d2AtStrike)
-    : normalCdf(-d2AtStrike);
+  const drift = (isFuture ? 0 : effectiveRate - (carryYield ?? 0)) - 0.5 * iv * iv;
+  const d2AtStrike = (Math.log(referencePrice / strike) + drift * time) / sigmaRootTime;
+  const d1AtStrike = d2AtStrike + sigmaRootTime;
+  const probabilityInTheMoney = type === 'CALL' ? normalCdf(d2AtStrike) : normalCdf(-d2AtStrike);
 
   let probabilityOfProfit = 0;
-  if (type === 'CALL') {
-    if (breakevenPrice > 0) {
-      const d2AtBreakeven = (Math.log(spot / breakevenPrice) + drift) / sigmaRootTime;
-      probabilityOfProfit = normalCdf(d2AtBreakeven);
-    }
-  } else if (breakevenPrice > 0) {
-    const d2AtBreakeven = (Math.log(spot / breakevenPrice) + drift) / sigmaRootTime;
-    probabilityOfProfit = normalCdf(-d2AtBreakeven);
+  if (breakevenPrice > 0) {
+    const d2AtBreakeven = (Math.log(referencePrice / breakevenPrice) + drift * time) / sigmaRootTime;
+    probabilityOfProfit = type === 'CALL' ? normalCdf(d2AtBreakeven) : normalCdf(-d2AtBreakeven);
   }
 
-  const d1 = d2AtStrike + sigmaRootTime;
-  const expectedSpot = spot * Math.exp(rate * time);
-  const expectedIntrinsicPerUnit = type === 'CALL'
-    ? expectedSpot * normalCdf(d1) - strike * normalCdf(d2AtStrike)
-    : strike * normalCdf(-d2AtStrike) - expectedSpot * normalCdf(-d1);
-  const modelPrice = blackScholes(spot, strike, daysToExpiry, iv, type, rate).price;
+  const expectedUnderlying = isFuture ? referencePrice : referencePrice * Math.exp((effectiveRate - (carryYield ?? 0)) * time);
+  const expectedIntrinsicPerUnit = Math.max(0, type === 'CALL'
+    ? expectedUnderlying * normalCdf(d1AtStrike) - strike * normalCdf(d2AtStrike)
+    : strike * normalCdf(-d2AtStrike) - expectedUnderlying * normalCdf(-d1AtStrike));
+
+  const discount = Math.exp(-effectiveRate * time);
+  const modelPrice = isFuture
+    ? discount * (type === 'CALL'
+      ? referencePrice * normalCdf(d1AtStrike) - strike * normalCdf(d2AtStrike)
+      : strike * normalCdf(-d2AtStrike) - referencePrice * normalCdf(-d1AtStrike))
+    : type === 'CALL'
+      ? referencePrice * Math.exp(-(carryYield ?? 0) * time) * normalCdf(d1AtStrike) - strike * discount * normalCdf(d2AtStrike)
+      : strike * discount * normalCdf(-d2AtStrike) - referencePrice * Math.exp(-(carryYield ?? 0) * time) * normalCdf(-d1AtStrike);
+
   const expectedExpiryPnlPerUnit = expectedIntrinsicPerUnit - entryPremium;
   const modelValueGapPerUnit = modelPrice - entryPremium;
 
@@ -288,7 +311,7 @@ export function getRiskNeutralExpiryMetrics(
     modelPrice,
     modelValueGapPerUnit,
     breakevenPrice,
-    riskFreeRate: rate,
+    riskFreeRate: effectiveRate,
   };
 }
 
@@ -326,8 +349,9 @@ export function getExpiryPnl(quote: OptionQuote, expirySpot: number, premiumPerU
 
 export function buildScenarioSeries(quote: OptionQuote, premium: number, quantity: number, fees: number) {
   const moves = [-0.2, -0.15, -0.1, -0.05, 0, 0.05, 0.1, 0.15, 0.2];
+  const referencePrice = getUnderlyingReferencePrice(quote);
   return moves.map((move) => {
-    const expirySpot = quote.spot * (1 + move);
+    const expirySpot = referencePrice * (1 + move);
     return {
       move,
       label: `${move > 0 ? '+' : ''}${Math.round(move * 100)}%`,
@@ -350,7 +374,8 @@ export interface GreekShock {
 
 /** Local first/second-order Greek P&L approximation. It excludes cross-Greeks, fees and execution effects. */
 export function estimateGreekPnl(quote: OptionQuote, quantity: number, shock: GreekShock): number {
-  const spotChange = quote.spot * (shock.spotMovePercent ?? 0) / 100;
+  const referencePrice = getUnderlyingReferencePrice(quote);
+  const spotChange = referencePrice * (shock.spotMovePercent ?? 0) / 100;
   const unitPnl = quote.delta * spotChange
     + 0.5 * quote.gamma * spotChange * spotChange
     + quote.vega * (shock.volatilityMovePoints ?? 0)

@@ -5,6 +5,8 @@ export type ExerciseStyle = 'EUROPEAN' | 'AMERICAN' | 'BERMUDAN' | 'UNKNOWN';
 export type SettlementStyle = 'CASH' | 'PHYSICAL' | 'UNKNOWN';
 export type Underlying = string;
 export type QuotePriceSource = 'MARK' | 'MID' | 'LAST' | 'BID' | 'ASK' | 'MODEL';
+export type PricingStatus = 'SUPPORTED' | 'ASSUMED' | 'OBSERVED_ONLY';
+export type PricingModelName = 'BLACK_SCHOLES_CARRY' | 'BLACK_76';
 
 export interface OptionFilter {
   filterType: string;
@@ -17,7 +19,7 @@ export interface OptionFilter {
 }
 
 export interface UnverifiedSourceGreeks {
-  /** Raw exchange values kept for diagnostics only; units are not normalised or used in calculations. */
+  /** Raw source values kept for diagnostics only; units are not normalised or used in calculations. */
   delta?: number;
   gamma?: number;
   theta?: number;
@@ -31,6 +33,11 @@ export interface OptionQuote {
   assetClass?: AssetClass;
   venue?: string;
   underlyingKind?: UnderlyingKind;
+  forward?: number;
+  carryYield?: number;
+  pricingStatus?: PricingStatus;
+  pricingModel?: PricingModelName;
+  pricingReason?: string;
   quoteAsset?: string;
   settlementAsset?: string;
   contractMultiplier?: number;

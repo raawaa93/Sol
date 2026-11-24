@@ -1,5 +1,5 @@
 import type { OptionFilter, OptionQuote, OptionSide, Underlying } from './types.ts';
-import { blackScholes, impliedVolatility } from './options.ts';
+import { impliedVolatilityForContract, priceOption } from './pricing-model.ts';
 import { inferAssetClass } from './asset-class.ts';
 
 const BINANCE_OPTIONS_API = 'https://eapi.binance.com';
@@ -10,6 +10,8 @@ interface BinanceOptionContract {
   quoteAsset?: string;
   underlying?: string;
   settleAsset?: string;
+  contractType?: string;
+  underlyingType?: string;
 }
 
 interface BinanceOptionSymbol {
@@ -28,6 +30,8 @@ interface BinanceOptionSymbol {
   quantityScale?: string | number;
   status?: string;
   filters?: OptionFilter[];
+  contractType?: string;
+  underlyingType?: string;
 }
 
 interface BinanceExchangeInfo {
@@ -245,16 +249,42 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
     const observedRiskFreeRate = finiteNumber(mark?.riskFreeInterest);
     const riskFreeRate = observedRiskFreeRate ?? 0;
     const referencePrice = twoSidedMid ?? observedMark ?? lastPrice ?? oneSidedQuote;
-    const iv = observedIv ?? impliedVolatility(referencePrice ?? 0, spot, strike, daysToExpiry, type, riskFreeRate);
-    if (!iv) {
+    const contractInfo = fixture.exchangeInfo.optionContracts?.find((contract) => contract.underlying?.toUpperCase() === indexKey);
+    const contractType = (symbolInfo.contractType ?? contractInfo?.contractType ?? '').toUpperCase();
+    const underlyingType = (symbolInfo.underlyingType ?? contractInfo?.underlyingType ?? '').toUpperCase();
+    const isCommodity = contractType === 'TRADFI_OPTIONS' || underlyingType === 'COMMODITY';
+    const isCrypto = !isCommodity && (underlyingType === 'CRYPTO' || ['BTC', 'ETH', 'BNB', 'XRP', 'DOGE', 'SOL'].includes(baseAsset));
+    const underlyingKind = isCommodity ? 'PERPETUAL' as const : isCrypto ? 'SPOT' as const : 'UNKNOWN' as const;
+    const exerciseStyle = isCommodity || isCrypto ? 'EUROPEAN' as const : 'UNKNOWN' as const;
+    const settlementStyle = isCommodity || isCrypto ? 'CASH' as const : 'UNKNOWN' as const;
+    const carryYield = isCrypto ? 0 : undefined;
+    const pricingInputs = {
+      underlyingKind,
+      exerciseStyle,
+      settlementStyle,
+      spot,
+      strike,
+      daysToExpiry,
+      type,
+      rate: riskFreeRate,
+      carryYield,
+    };
+    const iv = observedIv ?? (isCrypto && referencePrice !== undefined
+      ? impliedVolatilityForContract(referencePrice, pricingInputs)
+      : undefined);
+    if (iv === undefined) {
       skipped += 1;
       continue;
     }
 
-    const model = blackScholes(spot, strike, daysToExpiry, iv, type, riskFreeRate);
+    const pricingResult = isCrypto ? priceOption({ ...pricingInputs, volatility: iv })
+      : { status: 'UNSUPPORTED' as const, reason: isCommodity
+        ? 'Underlying is the Binance TradFi Perpetual Contract Index; no validated spot or futures pricing model is applied.'
+        : 'Underlying type and contract mechanics are not validated for analytical pricing.' };
+    const modelGreeks = pricingResult.status === 'SUPPORTED' ? pricingResult.greeks : undefined;
     const priceSource = observedMark ? 'MARK' : twoSidedMid ? 'MID' : lastPrice ? 'LAST' : bid > 0 && !crossedQuote ? 'BID' : ask > 0 && !crossedQuote ? 'ASK' : 'MODEL';
-    const markPrice = observedPrice ?? model.price;
-    if (markPrice <= 0) {
+    const markPrice = observedPrice ?? modelGreeks?.price;
+    if (markPrice === undefined || markPrice <= 0) {
       skipped += 1;
       continue;
     }
@@ -271,10 +301,7 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       missingRiskFreeRate += 1;
       estimatedFields.push('riskFreeRate');
     }
-    // Delta is dimensionless. Model Greeks use per-day theta and per 1-point vega/rho units.
-    const delta = sourceGreeks.delta ?? model.delta;
-    if (sourceGreeks.delta === undefined) estimatedFields.push('delta');
-    estimatedFields.push('gamma', 'theta', 'vega', 'rho');
+    if (!modelGreeks) estimatedFields.push('delta', 'gamma', 'theta', 'vega', 'rho');
 
     const expiry = new Date(expiryDate).toISOString();
     const timestamp = ticker?.closeTime ?? indexTimestampByUnderlying.get(indexKey);
@@ -285,7 +312,8 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
     const unit = positiveNumber(symbolInfo.unit);
     if (!unit) {
       missingUnit += 1;
-      estimatedFields.push('unit');
+      skipped += 1;
+      continue;
     }
     quotes.push({
       id: symbol,
@@ -293,6 +321,17 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       underlying: baseAsset,
       assetClass: inferAssetClass(baseAsset),
       venue: 'BINANCE',
+      underlyingKind,
+      exerciseStyle: exerciseStyle === 'UNKNOWN' ? undefined : exerciseStyle,
+      settlementStyle: settlementStyle === 'UNKNOWN' ? undefined : settlementStyle,
+      quoteAsset: symbolInfo.quoteAsset ?? contractInfo?.quoteAsset,
+      settlementAsset: contractInfo?.settleAsset,
+      contractMultiplier: unit,
+      carryYield,
+      riskFreeRate,
+      pricingStatus: modelGreeks ? 'ASSUMED' : 'OBSERVED_ONLY',
+      pricingModel: pricingResult.status === 'SUPPORTED' ? pricingResult.model : undefined,
+      pricingReason: pricingResult.status === 'SUPPORTED' ? 'Crypto carry yield is assumed to be 0%; confirm this approximation against the venue index and funding/carry mechanics.' : pricingResult.reason,
       expiry,
       daysToExpiry,
       strike,
@@ -302,21 +341,21 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       markPrice,
       priceSource,
       iv,
+      forward: undefined,
       bidIv,
       askIv,
       unverifiedSourceGreeks: hasSourceGreeks ? sourceGreeks : undefined,
-      delta,
-      gamma: model.gamma,
-      theta: model.thetaPerDay,
-      vega: model.vegaPerVolPoint,
-      rho: model.rhoPerRatePoint,
+      delta: modelGreeks?.delta ?? 0,
+      gamma: modelGreeks?.gamma ?? 0,
+      theta: modelGreeks?.thetaPerDay ?? 0,
+      vega: modelGreeks?.vegaPerVolPoint ?? 0,
+      rho: modelGreeks?.rhoPerRatePoint ?? 0,
       openInterest: finiteNumber(openInterest?.sumOpenInterest) ?? null,
       openInterestUsd: finiteNumber(openInterest?.sumOpenInterestUsd) ?? null,
       volume: finiteNumber(ticker?.volume) ?? null,
       volumeQuote: finiteNumber(ticker?.amount) ?? null,
       spot,
-      unit: unit ?? 1,
-      quoteAsset: symbolInfo.quoteAsset,
+      unit,
       contractStatus: symbolInfo.status ?? 'TRADING',
       minQty,
       maxQty,
@@ -324,7 +363,6 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       takerFeeRate: finiteNumber(symbolInfo.takerFeeRate),
       priceScale: finiteNumber(symbolInfo.priceScale),
       quantityScale: finiteNumber(symbolInfo.quantityScale),
-      riskFreeRate,
       filters,
       sourceTimestamp: timestamp ? new Date(timestamp).toISOString() : undefined,
       estimatedFields,
@@ -338,7 +376,7 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
   if (missingBidAsk > 0) warnings.push(`Bid أو Ask غير متاح لـ${missingBidAsk} عقد؛ لم يُختلق الطرف الناقص والفارق غير متاح.`);
   if (crossedBidAsk > 0) warnings.push(`تعارض Bid/Ask في ${crossedBidAsk} عقد؛ استُبعد المنتصف من مرجع السعر.`);
   if (missingOpenInterest > 0) warnings.push(`الفائدة المفتوحة غير متاحة لـ${missingOpenInterest} عقد/استحقاق.`);
-  if (missingUnit > 0) warnings.push(`وحدة العقد غير موجودة في ${missingUnit} عقد؛ استُخدمت قيمة 1 افتراضياً.`);
+  if (missingUnit > 0) warnings.push(`وحدة العقد غير موجودة في ${missingUnit} عقد؛ استُبعدت هذه العقود بدلاً من افتراض مضاعف 1.`);
   if (missingRiskFreeRate > 0) warnings.push(`معدل الفائدة من Binance غير متاح لـ${missingRiskFreeRate} عقد؛ استُخدم 0% للنموذج.`);
   if (quotes.length) warnings.push('Gamma وTheta وVega وRho تقديرات Black–Scholes وليست Greeks مرصودة من Binance؛ تحقّق من الوحدات قبل استخدامها.');
   if (!quotes.length) {

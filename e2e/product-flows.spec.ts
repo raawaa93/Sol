@@ -182,7 +182,7 @@ test('Binance order-book UI is exercised only with a deterministic mocked REST s
 
   const sourceGreeks = page.locator('.source-greek-raw');
   await expect(sourceGreeks).toBeVisible();
-  await expect(sourceGreeks).toContainText('قيم Greeks الخام من Binance لأغراض التدقيق فقط');
+  await expect(sourceGreeks).toContainText('قيم Greeks الخام من المصدر لأغراض التدقيق فقط');
   await sourceGreeks.locator('summary').click();
   await expect(sourceGreeks).toContainText('لم تُطبع وحداتها');
   await expect(page.locator('.data-status')).toContainText('عمر الاستلام');

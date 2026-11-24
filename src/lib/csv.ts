@@ -1,6 +1,7 @@
 import type { AssetClass, ExerciseStyle, OptionQuote, OptionSide, SettlementStyle, Underlying, UnderlyingKind } from './types';
 import { inferAssetClass, parseAssetClass } from './asset-class.ts';
 import { blackScholes, impliedVolatility } from './options.ts';
+import { impliedVolatilityForContract, priceOption } from './pricing-model.ts';
 
 export interface CsvTimestampRange {
   earliest: string;
@@ -80,6 +81,15 @@ function parseVolatility(value: string | undefined, decimalComma = false): numbe
   if (parsed === undefined) return undefined;
   const volatility = hasPercent || parsed > 5 ? parsed / 100 : parsed;
   return volatility > 0 && volatility <= 5 ? volatility : undefined;
+}
+
+function parseRate(value: string | undefined, decimalComma = false): number | undefined {
+  if (!value) return undefined;
+  const hasPercent = value.includes('%');
+  const parsed = parseNumber(value, decimalComma);
+  if (parsed === undefined) return undefined;
+  const rate = hasPercent ? parsed / 100 : parsed;
+  return Number.isFinite(rate) && Math.abs(rate) <= 1 ? rate : undefined;
 }
 
 function makeUtcDate(year: number, month: number, day: number, hour = 8, minute = 0, second = 0): Date | undefined {
@@ -210,7 +220,11 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
       : typeText === 'P' || typeText === 'PUT' ? 'PUT' : undefined;
     const strike = parsePositiveNumber(readField(row, ['strike', 'strikeprice', 'exerciseprice']), delimiter === ';') ?? parsedSymbol.strike;
     const expiry = parseExpiry(readField(row, ['expiry', 'expiration', 'expirydate', 'expirationdate'])) ?? parsedSymbol.expiry;
-    const spot = parsePositiveNumber(readField(row, ['spot', 'spotprice', 'indexprice', 'underlyingprice']), delimiter === ';');
+    const forward = parsePositiveNumber(readField(row, ['forward', 'forwardprice', 'futuresprice']), delimiter === ';');
+    const spotInput = parsePositiveNumber(readField(row, ['spot', 'spotprice', 'indexprice', 'underlyingprice']), delimiter === ';');
+    const spot = spotInput ?? (underlyingKind === 'FUTURE' ? forward : undefined);
+    const carryYield = parseRate(readField(row, ['carryYield', 'dividendYield', 'foreignRate']), delimiter === ';');
+    const riskFreeRate = parseRate(readField(row, ['riskFreeRate', 'riskFree', 'interestRate', 'rate']), delimiter === ';');
 
     if (!spot) counts.missingSpot += 1;
     if (!type || !strike || !expiry || !spot) {
@@ -248,11 +262,31 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
     const valuationTime = sourceTimestamp?.getTime() ?? importTime;
     const daysToExpiry = Math.max(0, (new Date(expiry).getTime() - valuationTime) / 86_400_000);
     const inputIv = parseVolatility(readField(row, ['iv', 'impliedvolatility', 'markiv', 'volatility']), delimiter === ';');
-    const solvedIv = inputIv ?? impliedVolatility(observedPrice, spot, strike, daysToExpiry, type);
-    if (!solvedIv) {
+    const hasContractMetadata = Boolean(underlyingKind || exerciseStyle || settlementStyle || explicitAssetClass || venue || quoteAsset || settlementAsset || contractMultiplier || expiryTimezone);
+    const pricingInputs = {
+      underlyingKind,
+      exerciseStyle,
+      settlementStyle,
+      spot,
+      forward,
+      strike,
+      daysToExpiry,
+      type,
+      rate: riskFreeRate ?? Number.NaN,
+      carryYield,
+    };
+    let solvedIv = inputIv;
+    if (solvedIv === undefined) {
+      if (hasContractMetadata) {
+        solvedIv = impliedVolatilityForContract(observedPrice, pricingInputs);
+      } else {
+        solvedIv = impliedVolatility(observedPrice, spot, strike, daysToExpiry, type, riskFreeRate ?? 0);
+      }
+    }
+    if (solvedIv === undefined) {
       counts.missingIv += 1;
       counts.invalidRows += 1;
-      addRowWarning(`تم تجاهل الصف ${sourceRowNumber}: لا يوجد IV صالح، وتعذّر استنتاجه من السعر ضمن حدود النموذج.`);
+      addRowWarning(`تم تجاهل الصف ${sourceRowNumber}: لا يوجد IV مرصود، وتعذّر استنتاجه دون افتراض نموذج غير مثبت لمواصفات العقد.`);
       return;
     }
 
@@ -264,10 +298,30 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
     }
     if (bid === 0 || ask === 0) counts.missingQuoteSide += 1;
 
-    const model = blackScholes(spot, strike, daysToExpiry, solvedIv, type);
+    const modelResult = priceOption({ ...pricingInputs, volatility: solvedIv });
+    const legacyModel = !hasContractMetadata
+      ? blackScholes(spot, strike, daysToExpiry, solvedIv, type, riskFreeRate ?? 0)
+      : undefined;
+    const modelGreeks = modelResult.status === 'SUPPORTED' ? modelResult.greeks : legacyModel;
+    const pricingStatus = modelResult.status === 'SUPPORTED' ? 'SUPPORTED' as const
+      : legacyModel ? 'ASSUMED' as const : 'OBSERVED_ONLY' as const;
+    const pricingModel = modelResult.status === 'SUPPORTED' ? modelResult.model
+      : legacyModel ? 'BLACK_SCHOLES_CARRY' as const : undefined;
+    const pricingReason = modelResult.status === 'SUPPORTED' ? undefined
+      : legacyModel ? 'Legacy CSV lacks explicit contract mechanics; Black–Scholes with the stated/default rate and zero carry is an assumption only.'
+        : underlyingKind === 'PERPETUAL' ? 'Perpetual underlyings are not supported by a validated pricing model.'
+          : exerciseStyle === 'AMERICAN' || exerciseStyle === 'BERMUDAN' ? 'American/Bermudan exercise is not supported by the current European analytical models.'
+            : modelResult.reason;
+
     const hasObservedTwoSidedQuote = bid > 0 && ask > 0;
-    const markPrice = observedMark || (hasObservedTwoSidedQuote ? (bid + ask) / 2 : model.price);
-    if (!observedMark && !hasObservedTwoSidedQuote) {
+    const markPrice = observedMark || (hasObservedTwoSidedQuote ? (bid + ask) / 2 : observedPrice || modelGreeks?.price || 0);
+    const priceSource = observedMark ? 'MARK' as const : hasObservedTwoSidedQuote ? 'MID' as const : observedPrice > 0 ? bid > 0 ? 'BID' as const : ask > 0 ? 'ASK' as const : 'LAST' as const : 'MODEL' as const;
+    if (markPrice <= 0) {
+      counts.invalidRows += 1;
+      addRowWarning(`تم تجاهل الصف ${sourceRowNumber}: لا يوجد Mark/Bid/Ask مرصود، ولا يوجد نموذج صالح لتقدير السعر.`);
+      return;
+    }
+    if (!observedMark && !hasObservedTwoSidedQuote && modelGreeks) {
       counts.estimatedMark += 1;
       estimatedFields.push('markPrice');
     }
@@ -293,7 +347,7 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
     if (openInterest === null) counts.missingOpenInterest += 1;
     if (volume === null) counts.missingVolume += 1;
     const inputUnit = parsePositiveNumber(readField(row, ['unit', 'contractunit', 'multiplier']), delimiter === ';');
-    const unit = inputUnit ?? 1;
+    const unit = inputUnit ?? contractMultiplier ?? 1;
     if (!inputUnit) {
       counts.defaultedUnit += 1;
       estimatedFields.push('unit');
@@ -320,6 +374,12 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
       assetClass,
       venue,
       underlyingKind,
+      forward,
+      carryYield,
+      riskFreeRate,
+      pricingStatus,
+      pricingModel,
+      pricingReason,
       quoteAsset,
       settlementAsset,
       contractMultiplier,
@@ -333,12 +393,16 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
       bid,
       ask,
       markPrice,
+      priceSource,
       iv: solvedIv,
-      delta: deltaValue ?? model.delta,
-      gamma: gammaValue ?? model.gamma,
-      theta: thetaValue ?? model.thetaPerDay,
-      vega: vegaValue ?? model.vegaPerVolPoint,
-      rho: rhoValue ?? model.rhoPerRatePoint,
+      delta: pricingStatus === 'SUPPORTED' ? modelGreeks?.delta ?? deltaValue ?? 0 : deltaValue ?? modelGreeks?.delta ?? 0,
+      gamma: pricingStatus === 'SUPPORTED' ? modelGreeks?.gamma ?? gammaValue ?? 0 : gammaValue ?? modelGreeks?.gamma ?? 0,
+      theta: pricingStatus === 'SUPPORTED' ? modelGreeks?.thetaPerDay ?? thetaValue ?? 0 : thetaValue ?? modelGreeks?.thetaPerDay ?? 0,
+      vega: pricingStatus === 'SUPPORTED' ? modelGreeks?.vegaPerVolPoint ?? vegaValue ?? 0 : vegaValue ?? modelGreeks?.vegaPerVolPoint ?? 0,
+      rho: pricingStatus === 'SUPPORTED' ? modelGreeks?.rhoPerRatePoint ?? rhoValue ?? 0 : rhoValue ?? modelGreeks?.rhoPerRatePoint ?? 0,
+      unverifiedSourceGreeks: [deltaValue, gammaValue, thetaValue, vegaValue].some((value) => value !== undefined)
+        ? { delta: deltaValue, gamma: gammaValue, theta: thetaValue, vega: vegaValue }
+        : undefined,
       openInterest,
       openInterestUsd,
       volume,
@@ -367,10 +431,10 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
     if (rangeMinutes > 5) summaryWarnings.push(`أوقات المصدر غير متزامنة؛ يمتد تفاوت الطوابع الزمنية إلى ${rangeMinutes.toFixed(0)} دقيقة.`);
   }
   if (counts.missingSpot > 0) summaryWarnings.push(`رُفض ${counts.missingSpot} صفاً لغياب السعر المرجعي للأصل؛ لم يُستخدم سعر Demo كبديل.`);
-  if (counts.estimatedIv > 0) summaryWarnings.push(`استُنتج IV من السعر ونموذج Black–Scholes في ${counts.estimatedIv} صف؛ اعتبره تقديراً لا قيمة مرصودة.`);
+  if (counts.estimatedIv > 0) summaryWarnings.push(`استُنتج IV من السعر باستخدام نموذج محدد أو افتراض Black–Scholes قديم في ${counts.estimatedIv} صف؛ اعتبره تقديراً لا قيمة مرصودة.`);
   if (counts.missingQuoteSide > 0) summaryWarnings.push(`Bid أو Ask مفقود في ${counts.missingQuoteSide} صف؛ لم يُختلق الطرف الناقص، والفارق غير متاح لهذه الصفوف.`);
   if (counts.estimatedMark > 0) summaryWarnings.push(`حُسب Mark بنموذج Black–Scholes في ${counts.estimatedMark} صف لغياب Mark وغياب أحد طرفي السوق.`);
-  if (counts.modeledGreeks > 0) summaryWarnings.push(`حُسبت Greeks ناقصة بالنموذج في ${counts.modeledGreeks} صف؛ الفائدة المفترضة 0%.`);
+  if (counts.modeledGreeks > 0) summaryWarnings.push(`توجد Greeks غير واردة من المصدر في ${counts.modeledGreeks} صف؛ حُسبت فقط عند توفر نموذج صريح، وإلا بقيت غير متاحة بدلاً من عرض أصفار مضللة.`);
   if (counts.missingOpenInterest > 0) summaryWarnings.push(`الفائدة المفتوحة مفقودة في ${counts.missingOpenInterest} صف؛ ستظهر كغير متاحة لا كصفر.`);
   if (counts.missingVolume > 0) summaryWarnings.push(`الحجم مفقود في ${counts.missingVolume} صف؛ ستظهر قيمته كغير متاحة.`);
   if (counts.defaultedUnit > 0) summaryWarnings.push(`لم تُحدد وحدة العقد في ${counts.defaultedUnit} صف؛ استُخدمت قيمة افتراضية 1، فتحقق من المضاعف قبل تفسير الربح والخسارة.`);
@@ -402,7 +466,7 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
 }
 
 export function downloadCsvTemplate(): void {
-  const template = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,delta,gamma,theta,vega,rho,openInterest,openInterestUsd,volume,volumeQuote,spot,unit,timestamp,assetClass,venue,underlyingKind,quoteAsset,settlementAsset,contractMultiplier,exerciseStyle,settlementStyle,expiryTimezone';
+  const template = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,delta,gamma,theta,vega,rho,openInterest,openInterestUsd,volume,volumeQuote,spot,forward,unit,timestamp,assetClass,venue,underlyingKind,carryYield,riskFreeRate,quoteAsset,settlementAsset,contractMultiplier,exerciseStyle,settlementStyle,expiryTimezone';
   const blob = new Blob([template], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');

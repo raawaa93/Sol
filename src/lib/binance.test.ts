@@ -27,6 +27,16 @@ test('Binance time to expiry uses exchange server time rather than the browser c
 
   assert.equal(snapshot.quotes.length, 1);
   assert.equal(snapshot.quotes[0].daysToExpiry, 30);
+  assert.equal(snapshot.quotes[0].underlyingKind, 'SPOT');
+  assert.equal(snapshot.quotes[0].exerciseStyle, 'EUROPEAN');
+  assert.equal(snapshot.quotes[0].settlementStyle, 'CASH');
+  assert.equal(snapshot.quotes[0].pricingStatus, 'ASSUMED');
+  assert.equal(snapshot.quotes[0].pricingModel, 'BLACK_SCHOLES_CARRY');
+  assert.equal(snapshot.quotes[0].underlyingKind, 'SPOT');
+  assert.equal(snapshot.quotes[0].exerciseStyle, 'EUROPEAN');
+  assert.equal(snapshot.quotes[0].settlementStyle, 'CASH');
+  assert.equal(snapshot.quotes[0].pricingStatus, 'ASSUMED');
+  assert.equal(snapshot.quotes[0].pricingModel, 'BLACK_SCHOLES_CARRY');
 });
 
 test('Binance snapshot normalizer merges the active option universe and public market feeds', () => {
@@ -63,7 +73,7 @@ test('Binance snapshot normalizer merges the active option universe and public m
   assert.equal(snapshot.quotes[0].minQty, 0.01);
   assert.equal(snapshot.quotes[0].maxQty, 100);
   assert.equal(snapshot.quotes[0].priceSource, 'MARK');
-  assert.equal(snapshot.quotes[0].delta, 0.61);
+  assert.equal(snapshot.quotes[0].delta, blackScholes(snapshot.quotes[0].spot, snapshot.quotes[0].strike, snapshot.quotes[0].daysToExpiry, snapshot.quotes[0].iv, 'CALL', 0.02).delta);
   assert.equal(snapshot.quotes[0].bidIv, 0.52);
   assert.equal(snapshot.quotes[0].askIv, 0.58);
   assert.deepEqual(snapshot.quotes[0].unverifiedSourceGreeks, {
@@ -139,8 +149,9 @@ test('Binance normalizer avoids crossed bid/ask midpoints and preserves last-pri
   assert.equal(getMidPrice(quote), 111);
   assert.ok(snapshot.warnings.some((warning) => warning.includes('تعارض Bid/Ask')));
   assert.ok(quote.estimatedFields?.includes('riskFreeRate'));
-  assert.ok(quote.estimatedFields?.includes('gamma'));
-  assert.ok(quote.estimatedFields?.includes('rho'));
+  assert.ok(!quote.estimatedFields?.includes('gamma'));
+  assert.ok(!quote.estimatedFields?.includes('rho'));
+  assert.equal(quote.pricingStatus, 'ASSUMED');
   assert.ok(Number.isFinite(quote.rho));
 });
 
@@ -283,4 +294,64 @@ test('Binance normalizer models a reference price only when IV is observed and n
   assert.equal(snapshot.quotes[0].priceSource, 'MODEL');
   assert.ok(snapshot.quotes[0].markPrice > 0);
   assert.ok(snapshot.quotes[0].estimatedFields?.includes('markPrice'));
+});
+
+test('Binance commodity options preserve perpetual-index mechanics and do not receive spot Greeks', () => {
+  const now = Date.now();
+  const expiry = now + 14 * 86_400_000;
+  const code = compactDate(expiry);
+  const symbol = `XAU-${code}-4000-C`;
+  const snapshot = normalizeBinanceSnapshot({
+    fetchedAt: now,
+    exchangeInfo: {
+      serverTime: now,
+      optionContracts: [{ baseAsset: 'XAU', quoteAsset: 'USDT', underlying: 'XAUUSDT', settleAsset: 'USDT', contractType: 'TRADFI_OPTIONS', underlyingType: 'COMMODITY' }],
+      optionSymbols: [{
+        symbol, underlying: 'XAUUSDT', quoteAsset: 'USDT', side: 'CALL', strikePrice: 4000,
+        expiryDate: expiry, unit: 1, status: 'TRADING',
+      }],
+    },
+    marks: [{ symbol, markPrice: 25, markIV: 0.22, delta: 0.61, gamma: 0.001, theta: -1.2, vega: 4.2 }],
+    indices: [{ requestedUnderlying: 'XAUUSDT', item: { indexPrice: 3980, time: now } }],
+  });
+
+  assert.equal(snapshot.quotes.length, 1);
+  const quote = snapshot.quotes[0];
+  assert.equal(quote.underlyingKind, 'PERPETUAL');
+  assert.equal(quote.pricingStatus, 'OBSERVED_ONLY');
+  assert.equal(quote.pricingModel, undefined);
+  assert.ok(quote.pricingReason?.toLowerCase().includes('perpetual'));
+  assert.equal(quote.delta, 0);
+  assert.deepEqual(quote.unverifiedSourceGreeks, { delta: 0.61, gamma: 0.001, theta: -1.2, vega: 4.2 });
+});
+
+
+
+test('Binance normalizer excludes contracts with unknown contract unit instead of assuming multiplier one', () => {
+  const now = Date.now();
+  const expiry = now + 30 * 86_400_000;
+  const code = compactDate(expiry);
+  const validSymbol = `BTC-${code}-100000-C`;
+  const missingUnitSymbol = `BTC-${code}-100000-P`;
+  const snapshot = normalizeBinanceSnapshot({
+    fetchedAt: now,
+    exchangeInfo: {
+      serverTime: now,
+      optionContracts: [{ baseAsset: 'BTC', quoteAsset: 'USDT', underlying: 'BTCUSDT', settleAsset: 'USDT', contractType: 'CRYPTO_OPTIONS', underlyingType: 'CRYPTO' }],
+      optionSymbols: [
+        { symbol: validSymbol, underlying: 'BTCUSDT', side: 'CALL', strikePrice: 100000, expiryDate: expiry, unit: 1, status: 'TRADING' },
+        { symbol: missingUnitSymbol, underlying: 'BTCUSDT', side: 'PUT', strikePrice: 100000, expiryDate: expiry, status: 'TRADING' },
+      ],
+    },
+    marks: [
+      { symbol: validSymbol, markPrice: 1200, markIV: 0.55 },
+      { symbol: missingUnitSymbol, markPrice: 1100, markIV: 0.56 },
+    ],
+    indices: [{ requestedUnderlying: 'BTCUSDT', item: { indexPrice: 100000, time: now } }],
+  });
+
+  assert.equal(snapshot.quotes.length, 1);
+  assert.equal(snapshot.quotes[0].symbol, validSymbol);
+  assert.equal(snapshot.quotes[0].unit, 1);
+  assert.ok(snapshot.warnings.some((warning) => warning.includes('استُبعدت هذه العقود')));
 });

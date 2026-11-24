@@ -13,6 +13,9 @@ export interface GreeksPanelProps {
 }
 
 function greekSource(key: GreekKey, quote: OptionQuote, dataMode: DataMode): string {
+  if (quote.pricingStatus === 'OBSERVED_ONLY') return 'غير متاح · لا يوجد نموذج موثّق';
+  if (quote.pricingStatus === 'ASSUMED') return `نموذج ${quote.pricingModel === 'BLACK_76' ? 'Black–76' : 'Black–Scholes مع Carry'} · افتراضات معلنة`;
+  if (quote.pricingStatus === 'SUPPORTED') return quote.pricingModel === 'BLACK_76' ? 'Black–76 · نموذج العقود الآجلة' : 'Black–Scholes مع Carry';
   if (dataMode === 'DEMO') return 'Black–Scholes · محاكاة';
   if (quote.estimatedFields?.includes(key)) return 'مقدّر بالنموذج';
   return dataMode === 'BINANCE' ? 'قيمة المصدر · دون تحقق مستقل' : 'قيمة ملف CSV · تحقق من الوحدة';
@@ -20,6 +23,10 @@ function greekSource(key: GreekKey, quote: OptionQuote, dataMode: DataMode): str
 
 export default function GreeksPanel({ quote, quantity, dataMode }: GreeksPanelProps) {
   const positionUnits = Math.max(0, Number.isFinite(quantity) ? quantity : 0) * quote.unit;
+  const pricingStatus = quote.pricingStatus ?? (dataMode === 'DEMO' ? 'ASSUMED' : 'OBSERVED_ONLY');
+  const modelAvailable = pricingStatus !== 'OBSERVED_ONLY';
+  const underlyingMoveLabel = quote.underlyingKind === 'FUTURE' ? 'Forward' : 'السعر المرجعي';
+  const modelName = quote.pricingModel === 'BLACK_76' ? 'Black–76' : 'Black–Scholes مع Carry';
   const rows: Array<{
     key: GreekKey;
     label: string;
@@ -33,13 +40,13 @@ export default function GreeksPanel({ quote, quantity, dataMode }: GreeksPanelPr
     {
       key: 'delta', label: 'Delta', symbol: 'Δ', value: quote.delta,
       positionValue: quote.delta * positionUnits,
-      positionUnit: 'USDT تقريباً لكل +1 USDT في Spot', amount: true,
+      positionUnit: `USDT تقريباً لكل +1 في ${underlyingMoveLabel}`, amount: true,
       meaning: 'تغير محلي تقريبي في علاوة الخيار مع حركة الأصل بوحدة واحدة.',
     },
     {
       key: 'gamma', label: 'Gamma', symbol: 'Γ', value: quote.gamma,
       positionValue: quote.gamma * positionUnits,
-      positionUnit: 'تغير Delta لكل +1 USDT في Spot', amount: false,
+      positionUnit: `تغير Delta لكل +1 في ${underlyingMoveLabel}`, amount: false,
       meaning: 'سرعة تغير Delta؛ حد تقوس من الدرجة الثانية في صدمة السعر.',
     },
     {
@@ -62,8 +69,8 @@ export default function GreeksPanel({ quote, quantity, dataMode }: GreeksPanelPr
     },
   ];
   const scenarios = [
-    { label: 'Spot +1%', detail: 'Δ + ½Γ محلياً', shock: { spotMovePercent: 1 } },
-    { label: 'Spot −1%', detail: 'Δ + ½Γ محلياً', shock: { spotMovePercent: -1 } },
+    { label: `${underlyingMoveLabel} +1%`, detail: 'Δ + ½Γ محلياً', shock: { spotMovePercent: 1 } },
+    { label: `${underlyingMoveLabel} −1%`, detail: 'Δ + ½Γ محلياً', shock: { spotMovePercent: -1 } },
     { label: 'IV +1 نقطة', detail: 'Vega فقط', shock: { volatilityMovePoints: 1 } },
     { label: 'مرور يوم', detail: 'Theta فقط', shock: { daysElapsed: 1 } },
     { label: 'معدل +1 نقطة', detail: 'Rho فقط', shock: { riskFreeRateMovePoints: 1 } },
@@ -81,33 +88,37 @@ export default function GreeksPanel({ quote, quantity, dataMode }: GreeksPanelPr
       </div>
 
       <article className="panel greeks-panel">
+        {pricingStatus === 'OBSERVED_ONLY' && <div className="greeks-footnote"><Info size={14} /><span>تتوفر بيانات السوق وIV، لكن مواصفات هذا العقد لا تسمح حالياً بحساب Greeks موثوقة. لن نستخدم أصفاراً مصطنعة أو نموذج Spot بديل. {quote.pricingReason ?? 'أدخل مواصفات عقد كاملة أو بيانات Greeks موثقة.'}</span></div>}
+        {pricingStatus === 'ASSUMED' && <div className="greeks-footnote"><Info size={14} /><span>القيم التالية محسوبة بنموذج {modelName} مع افتراضات غير مرصودة بالكامل. {quote.pricingReason ?? 'تحقق من معدل الفائدة والـcarry ومواصفات التسوية قبل الاعتماد عليها.'}</span></div>}
         <div className="greeks-table-wrap">
           <table className="greeks-table">
             <thead><tr><th>Greek</th><th>القيمة لكل عقد / وحدة</th><th>حساسية الكمية الحالية</th><th>المصدر</th></tr></thead>
             <tbody>{rows.map((row) => (
               <tr key={row.key}>
                 <td><strong><span>{row.symbol}</span>{row.label}</strong><small>{row.meaning}</small></td>
-                <td className="greek-number" dir="ltr">{formatSmallNumber(row.value)}</td>
-                <td className="greek-position"><strong dir="ltr">{row.amount ? formatSmallAmount(row.positionValue) : formatSmallNumber(row.positionValue)}</strong><small>{row.positionUnit}</small></td>
-                <td><span className={`greek-origin ${quote.estimatedFields?.includes(row.key) || dataMode === 'DEMO' ? 'estimated' : ''}`}>{greekSource(row.key, quote, dataMode)}</span></td>
+                <td className="greek-number" dir="ltr">{modelAvailable ? formatSmallNumber(row.value) : '—'}</td>
+                <td className="greek-position"><strong dir="ltr">{modelAvailable ? (row.amount ? formatSmallAmount(row.positionValue) : formatSmallNumber(row.positionValue)) : '—'}</strong><small>{row.positionUnit}</small></td>
+                <td><span className={`greek-origin ${quote.estimatedFields?.includes(row.key) || pricingStatus === 'ASSUMED' || dataMode === 'DEMO' ? 'estimated' : ''}`}>{greekSource(row.key, quote, dataMode)}</span></td>
               </tr>
             ))}</tbody>
           </table>
         </div>
 
-        <div className="greek-shock-heading"><div><strong>اختبار صدمات صغيرة</strong><span>تقدير P&amp;L للمركز الحالي، قبل الرسوم والانزلاق</span></div><span>USDT</span></div>
-        <div className="greek-shock-grid">
-          {scenarios.map((scenario) => (
-            <div className="greek-shock-card" key={scenario.label}>
-              <span>{scenario.label}</span>
-              <strong dir="ltr">{formatSmallAmount(estimateGreekPnl(quote, quantity, scenario.shock))}</strong>
-              <small>{scenario.detail}</small>
-            </div>
-          ))}
-        </div>
-        <div className="greeks-footnote"><Info size={14} /><span>ΔP تقريب محلي: Delta·ΔSpot + ½Gamma·ΔSpot² + Vega·ΔIV + Theta·الأيام + Rho·Δالفائدة، مضروباً في الكمية ووحدة العقد. يفترض ثبات العوامل الأخرى ويهمل Vanna/Charm والتفاعلات والابتسامة والتقلب المحقق والرسوم والتنفيذ؛ لا تجمعه مع سيناريو الانتهاء كأنه توقع. {dataMode === 'BINANCE' ? 'Delta قد يأتي من Binance، أما Gamma/Theta/Vega/Rho فتحسب بنموذج Black–Scholes؛ ووحدة معدل الفائدة تحتاج تحققاً.' : dataMode === 'CSV' ? 'وحدات Greeks الواردة في CSV يجب أن تتبع القالب؛ الحقول الناقصة مقدّرة.' : 'كل مدخلات Demo والأسعار اصطناعية، والـGreeks محسوبة بنموذج Black–Scholes.'}</span></div>
+        {modelAvailable ? <>
+          <div className="greek-shock-heading"><div><strong>اختبار صدمات صغيرة</strong><span>تقدير P&amp;L للمركز الحالي، قبل الرسوم والانزلاق</span></div><span>USDT</span></div>
+          <div className="greek-shock-grid">
+            {scenarios.map((scenario) => (
+              <div className="greek-shock-card" key={scenario.label}>
+                <span>{scenario.label}</span>
+                <strong dir="ltr">{formatSmallAmount(estimateGreekPnl(quote, quantity, scenario.shock))}</strong>
+                <small>{scenario.detail}</small>
+              </div>
+            ))}
+          </div>
+          <div className="greeks-footnote"><Info size={14} /><span>ΔP تقريب محلي: Delta·Δ{underlyingMoveLabel} + ½Gamma·Δ{underlyingMoveLabel}² + Vega·ΔIV + Theta·الأيام + Rho·Δالفائدة، مضروباً في الكمية ووحدة العقد. يفترض ثبات العوامل الأخرى ويهمل Vanna/Charm والتفاعلات والابتسامة والتقلب المحقق والرسوم والتنفيذ؛ لا تجمعه مع سيناريو الانتهاء كأنه توقع.</span></div>
+        </> : null}
         {quote.unverifiedSourceGreeks && <details className="source-greek-raw">
-          <summary>قيم Greeks الخام من Binance لأغراض التدقيق فقط</summary>
+          <summary>قيم Greeks الخام من المصدر لأغراض التدقيق فقط</summary>
           <p>لا تدخل هذه القيم في حساب الحساسية. يحتفظ بها المختبر كما وردت؛ لم تُطبع وحداتها أو تُثبت مقابل مضاعف كل عقد.</p>
           <div className="source-greek-values" dir="ltr">
             {(['delta', 'gamma', 'theta', 'vega'] as const).map((key) => {

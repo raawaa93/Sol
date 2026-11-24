@@ -178,3 +178,31 @@ export function priceOption(request: PricingRequest): PricingResult {
     reason: 'The underlying mechanics are not supported by a validated pricing model.',
   };
 }
+
+/** Solve IV using the same validated contract model used for Greeks. */
+export function impliedVolatilityForContract(
+  marketPrice: number,
+  request: Omit<PricingRequest, 'volatility'>,
+): number | undefined {
+  if (!Number.isFinite(marketPrice) || marketPrice <= 0 || request.daysToExpiry <= 0) return undefined;
+
+  let low = 0.000001;
+  let high = 5;
+  const lowResult = priceOption({ ...request, volatility: low });
+  const highResult = priceOption({ ...request, volatility: high });
+  if (lowResult.status !== 'SUPPORTED' || highResult.status !== 'SUPPORTED') return undefined;
+
+  const tolerance = Math.max(1e-8, marketPrice * 1e-8);
+  if (marketPrice < lowResult.greeks.price - tolerance || marketPrice > highResult.greeks.price + tolerance) return undefined;
+
+  for (let iteration = 0; iteration < 100; iteration += 1) {
+    const middle = (low + high) / 2;
+    const result = priceOption({ ...request, volatility: middle });
+    if (result.status !== 'SUPPORTED') return undefined;
+    if (Math.abs(result.greeks.price - marketPrice) <= tolerance) return middle;
+    if (result.greeks.price < marketPrice) low = middle;
+    else high = middle;
+  }
+
+  return (low + high) / 2;
+}

@@ -1,5 +1,5 @@
 import type { AssetSnapshot, OptionQuote, Underlying } from './types';
-import { blackScholes } from './options.ts';
+import { priceOption } from './pricing-model.ts';
 import { inferAssetClass } from './asset-class.ts';
 
 /** Synthetic teaching values only; none of these spot prices or market statistics are live. */
@@ -167,7 +167,26 @@ export function createDemoQuotes(markets = DEMO_MARKETS): OptionQuote[] {
         const compactStrike = Number.isInteger(strike) ? String(strike) : strike.toFixed(strikeDecimals);
 
         (['CALL', 'PUT'] as const).forEach((type) => {
-          const greeks = blackScholes(market.spot, strike, days, iv, type);
+          const isFuture = underlying === 'CL' || underlying === 'BZ';
+          const underlyingKind = isFuture ? 'FUTURE' as const : 'SPOT' as const;
+          const exerciseStyle = 'EUROPEAN' as const;
+          const settlementStyle = isFuture ? 'PHYSICAL' as const : 'CASH' as const;
+          const forward = isFuture ? market.spot : undefined;
+          const pricing = priceOption({
+            underlyingKind,
+            exerciseStyle,
+            settlementStyle,
+            spot: isFuture ? undefined : market.spot,
+            forward,
+            strike,
+            daysToExpiry: days,
+            volatility: iv,
+            type,
+            rate: 0,
+            carryYield: isFuture ? undefined : 0,
+          });
+          if (pricing.status !== 'SUPPORTED') return;
+          const greeks = pricing.greeks;
           const spreadFraction = 0.015 + Math.min(distance * 0.45, 0.12) + (days < 14 ? 0.008 : 0);
           const halfSpread = Math.max(greeks.price * spreadFraction / 2, market.spot * 0.000025);
           const bid = Math.max(greeks.price - halfSpread, 0.000001);
@@ -184,6 +203,19 @@ export function createDemoQuotes(markets = DEMO_MARKETS): OptionQuote[] {
             symbol,
             underlying,
             assetClass: inferAssetClass(underlying),
+            venue: 'DEMO',
+            underlyingKind,
+            forward,
+            carryYield: isFuture ? undefined : 0,
+            riskFreeRate: 0,
+            pricingStatus: 'ASSUMED',
+            pricingModel: pricing.model,
+            pricingReason: 'Synthetic teaching data; rates and carry are assumed to be zero.',
+            exerciseStyle,
+            settlementStyle,
+            quoteAsset: 'USD',
+            settlementAsset: 'USD',
+            contractMultiplier: 1,
             expiry,
             daysToExpiry: days,
             strike,
@@ -191,6 +223,7 @@ export function createDemoQuotes(markets = DEMO_MARKETS): OptionQuote[] {
             bid,
             ask,
             markPrice: greeks.price,
+            priceSource: 'MODEL',
             iv,
             delta: greeks.delta,
             gamma: greeks.gamma,
