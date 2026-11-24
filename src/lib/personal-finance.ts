@@ -80,7 +80,7 @@ function assertNonNegativeFinite(amount: number, label: string): void {
 }
 
 function validTimestamp(value: string, label: string): void {
-  if (!/^\\d{4}-\\d{2}-\\d{2}T/.test(value) || !Number.isFinite(Date.parse(value))) {
+  if (!/^\d{4}-\d{2}-\d{2}T/.test(value) || !Number.isFinite(Date.parse(value))) {
     throw new Error(`${label} must be a valid ISO timestamp`);
   }
 }
