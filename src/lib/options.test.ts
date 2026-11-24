@@ -7,7 +7,7 @@ import { priceOption } from './pricing-model.ts';
 const call: OptionQuote = {
   id: 'BTC-test-C', symbol: 'BTC-test-C', underlying: 'BTC', expiry: '2026-12-30T08:00:00.000Z',
   daysToExpiry: 30, strike: 100, type: 'CALL', bid: 4.9, ask: 5.1, markPrice: 5,
-  iv: 0.4, delta: 0.5, gamma: 0.01, theta: -0.1, vega: 0.2, rho: 0.03, openInterest: 10, volume: 4, spot: 100, unit: 1,
+  iv: 0.4, delta: 0.5, gamma: 0.01, theta: -0.1, vega: 0.2, rho: 0.03, openInterest: 10, volume: 4, spot: 100, unit: 1, venue: 'DEMO',
   underlyingKind: 'SPOT', exerciseStyle: 'EUROPEAN', settlementStyle: 'CASH', carryYield: 0, riskFreeRate: 0.05,
   pricingStatus: 'SUPPORTED', pricingModel: 'BLACK_SCHOLES_CARRY',
 };
@@ -128,7 +128,7 @@ test('spread is unknown when either market side is absent', () => {
 
 test('risk-neutral expiry metrics reproduce the Black–Scholes discounted-payoff identity', () => {
   const priced = blackScholes(100, 100, 365, 0.2, 'CALL', 0.05);
-  const metrics = getRiskNeutralExpiryMetrics({ ...call, spot: 100, strike: 100, daysToExpiry: 365, iv: 0.2 }, priced.price, 0.05);
+  const metrics = getRiskNeutralExpiryMetrics({ ...call, spot: 100, strike: 100, daysToExpiry: 365, iv: 0.2 }, priced.price, 0.05, 'DEMO');
   assert.ok(metrics);
   assert.ok(Math.abs((metrics?.expectedIntrinsicPerUnit ?? 0) - priced.price * Math.exp(0.05)) < 1e-10);
   assert.ok(Math.abs(metrics?.modelValueGapPerUnit ?? 1) < 1e-10);
@@ -161,20 +161,20 @@ test('risk-neutral futures-option metrics use Black-76 and the forward distribut
   });
   assert.equal(model.status, 'SUPPORTED');
   if (model.status !== 'SUPPORTED') return;
-  const metrics = getRiskNeutralExpiryMetrics(future, model.greeks.price);
+  const metrics = getRiskNeutralExpiryMetrics(future, model.greeks.price, undefined, 'DEMO');
   assert.ok(metrics);
   assert.ok(Math.abs((metrics?.expectedIntrinsicPerUnit ?? 0) - model.greeks.price * Math.exp(0.05)) < 1e-10);
   assert.ok(Math.abs(metrics?.modelValueGapPerUnit ?? 1) < 1e-10);
 });
 
 test('risk-neutral expiry metrics reject observed-only and non-European contracts', () => {
-  assert.equal(getRiskNeutralExpiryMetrics({ ...call, pricingStatus: 'OBSERVED_ONLY' }, 5), null);
-  assert.equal(getRiskNeutralExpiryMetrics({ ...call, exerciseStyle: 'AMERICAN' }, 5), null);
+  assert.equal(getRiskNeutralExpiryMetrics({ ...call, pricingStatus: 'OBSERVED_ONLY' }, 5, undefined, 'DEMO'), null);
+  assert.equal(getRiskNeutralExpiryMetrics({ ...call, exerciseStyle: 'AMERICAN' }, 5, undefined, 'DEMO'), null);
 });
 
 test('risk-neutral probability of profit uses the paid premium and differs from probability ITM', () => {
   const quote = { ...call, spot: 100, strike: 100, daysToExpiry: 30, iv: 0.5 };
-  const metrics = getRiskNeutralExpiryMetrics(quote, 5);
+  const metrics = getRiskNeutralExpiryMetrics(quote, 5, undefined, 'DEMO');
   assert.ok(metrics);
   assert.ok((metrics?.probabilityOfProfit ?? 1) < (metrics?.probabilityInTheMoney ?? 0));
   assert.ok((metrics?.breakevenPrice ?? 0) > quote.strike);
@@ -182,12 +182,32 @@ test('risk-neutral probability of profit uses the paid premium and differs from 
 });
 
 test('risk-neutral put metrics handle impossible non-positive break-even and expiry', () => {
-  const expensivePut = getRiskNeutralExpiryMetrics({ ...put, strike: 10, spot: 100, daysToExpiry: 30, iv: 0.5 }, 12);
+  const expensivePut = getRiskNeutralExpiryMetrics({ ...put, strike: 10, spot: 100, daysToExpiry: 30, iv: 0.5 }, 12, undefined, 'DEMO');
   assert.equal(expensivePut?.probabilityOfProfit, 0);
 
-  const expired = getRiskNeutralExpiryMetrics({ ...call, spot: 110, strike: 100, daysToExpiry: 0 }, 5);
+  const expired = getRiskNeutralExpiryMetrics({ ...call, spot: 110, strike: 100, daysToExpiry: 0 }, 5, undefined, 'DEMO');
   assert.equal(expired?.probabilityOfProfit, 1);
   assert.equal(expired?.expectedExpiryPnlPerUnit, 5);
-  assert.equal(getRiskNeutralExpiryMetrics(call, -1), null);
-  assert.equal(getRiskNeutralExpiryMetrics({ ...call, iv: 0 }, 5), null);
+  assert.equal(getRiskNeutralExpiryMetrics(call, -1, undefined, 'DEMO'), null);
+  assert.equal(getRiskNeutralExpiryMetrics({ ...call, iv: 0 }, 5, undefined, 'DEMO'), null);
+});
+
+
+test('risk-neutral metrics enforce contract-scale guard for direct callers', () => {
+  const binanceUnitOne: OptionQuote = {
+    ...call,
+    venue: 'BINANCE',
+    assetClass: 'CRYPTO',
+    underlyingKind: 'SPOT',
+    exerciseStyle: 'EUROPEAN',
+    settlementStyle: 'CASH',
+    quoteAsset: 'USDT',
+    settlementAsset: 'USDT',
+    unit: 1,
+  };
+  assert.ok(getRiskNeutralExpiryMetrics(binanceUnitOne, 5, undefined, 'BINANCE'));
+
+  const binanceUnitHundred = { ...binanceUnitOne, unit: 100 };
+  assert.equal(getRiskNeutralExpiryMetrics(binanceUnitHundred, 5, undefined, 'BINANCE'), null);
+  assert.equal(getRiskNeutralExpiryMetrics({ ...binanceUnitOne, unit: 100, contractMultiplier: 100 }, 5, undefined, 'BINANCE'), null);
 });

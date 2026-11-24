@@ -1,4 +1,5 @@
 import type { OptionGreeks, OptionQuote, OptionSide } from './types';
+import { getContractScaleIssue, type ContractScaleSourceMode } from './contract-scale.ts';
 
 export function getUnderlyingReferencePrice(quote: OptionQuote): number {
   return quote.underlyingKind === 'FUTURE' ? quote.forward ?? quote.spot : quote.spot;
@@ -231,8 +232,10 @@ export interface RiskNeutralExpiryMetrics {
 export function getRiskNeutralExpiryMetrics(
   quote: OptionQuote,
   entryPremium: number,
-  rate?: number,
+  rate: number | undefined,
+  sourceMode: ContractScaleSourceMode,
 ): RiskNeutralExpiryMetrics | null {
+  if (getContractScaleIssue(quote, sourceMode) !== undefined) return null;
   const effectiveRate = rate ?? quote.riskFreeRate;
   const isFuture = quote.underlyingKind === 'FUTURE';
   const referencePrice = isFuture ? quote.forward : quote.spot;
