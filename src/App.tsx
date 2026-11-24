@@ -37,7 +37,7 @@ import OpportunityReview from './components/OpportunityReview';
 import HistoricalReplayPanel from './components/HistoricalReplayPanel';
 import MarketDepthPanel from './components/MarketDepthPanel';
 import { DEMO_MARKETS, DEMO_QUOTES, getExpiryChoices } from './lib/demo';
-import { BinanceMarketDataError, fetchBinanceDepth, fetchBinanceOptions } from './lib/binance';
+import { applyBinanceBookTicker, BinanceMarketDataError, fetchBinanceDepth, fetchBinanceOptions, parseBinanceBookTickerMessage } from './lib/binance';
 import type { BinanceDepthSnapshot, BinanceOptionsSnapshot } from './lib/binance';
 import { getAtmTermStructure } from './lib/analysis';
 import { getLatestQuotePerContract, getMarketSnapshotFromQuotes } from './lib/market';
@@ -232,6 +232,8 @@ function App() {
   const [binanceDepthLoading, setBinanceDepthLoading] = useState(false);
   const [binanceDepthError, setBinanceDepthError] = useState('');
   const [binanceDepthRefreshKey, setBinanceDepthRefreshKey] = useState(0);
+  const [bookTickerStatus, setBookTickerStatus] = useState<'idle' | 'connecting' | 'connected' | 'reconnecting'>('idle');
+  const [bookTickerUpdates, setBookTickerUpdates] = useState(0);
   const [importedAt, setImportedAt] = useState<Date | null>(null);
   const [sourceTimeRange, setSourceTimeRange] = useState<CsvTimestampRange | null>(null);
   const [activeView, setActiveView] = useState('overview');
@@ -262,6 +264,66 @@ function App() {
   const effectiveExpiry = selectedExpiryExists ? selectedExpiry : expiryChoices.find((item) => item.days >= 20 && item.days <= 40)?.value ?? expiryChoices[0]?.value ?? '';
 
   useEffect(() => {
+    if (dataMode !== 'BINANCE' || !bookTickerTargets.length) {
+      setBookTickerStatus('idle');
+      return;
+    }
+
+    let active = true;
+    let socket: WebSocket | null = null;
+    let retryTimer: number | undefined;
+    let attempts = 0;
+
+    const scheduleRetry = () => {
+      if (!active) return;
+      attempts += 1;
+      setBookTickerStatus('reconnecting');
+      const delay = Math.min(30_000, 3_000 * (2 ** Math.min(attempts - 1, 3)));
+      retryTimer = window.setTimeout(connect, delay);
+    };
+
+    const connect = () => {
+      if (!active) return;
+      setBookTickerStatus(attempts === 0 ? 'connecting' : 'reconnecting');
+      try {
+        socket = new WebSocket('wss://fstream.binance.com/public/stream');
+      } catch {
+        scheduleRetry();
+        return;
+      }
+      socket.onopen = () => {
+        if (!active || !socket) return;
+        setBookTickerStatus('connected');
+        socket.send(JSON.stringify({
+          method: 'SUBSCRIBE',
+          params: bookTickerTargets.map((symbol) => `${symbol.toLowerCase()}@bookTicker`),
+          id: Math.floor(Date.now() % 2_147_483_647),
+        }));
+      };
+      socket.onmessage = (event) => {
+        if (!active) return;
+        const ticker = parseBinanceBookTickerMessage(event.data);
+        if (!ticker) return;
+        setQuotes((current) => current.map((quote) => quote.symbol === ticker.symbol
+          ? applyBinanceBookTicker(quote, ticker)
+          : quote));
+        setBookTickerUpdates((current) => current + 1);
+      };
+      socket.onerror = () => {
+        if (active) socket?.close();
+      };
+      socket.onclose = () => scheduleRetry();
+    };
+
+    connect();
+    return () => {
+      active = false;
+      if (retryTimer !== undefined) window.clearTimeout(retryTimer);
+      socket?.close();
+    };
+  }, [bookTickerTargets, dataMode]);
+
+  useEffect(() => {
     if (dataMode !== 'BINANCE' || !binanceSnapshot) return;
     const ageMs = Date.now() - binanceSnapshot.fetchedAt;
     const delayMs = Number.isFinite(ageMs)
@@ -282,6 +344,13 @@ function App() {
     .sort((a, b) => a.localeCompare(b)), [classQuotes]);
   const scopedQuotes = useMemo(() => classQuotes.filter((quote) => venueFilter === 'ALL' || quote.venue === venueFilter), [classQuotes, venueFilter]);
   const assetQuotes = useMemo(() => scopedQuotes.filter((quote) => quote.underlying === underlying), [scopedQuotes, underlying]);
+  const bookTickerCandidates = useMemo(() => dataMode === 'BINANCE' && binanceSnapshot
+    ? binanceSnapshot.quotes
+      .filter((quote) => quote.underlying === underlying && quote.expiry === effectiveExpiry && quote.type === selectedType
+        && (quote.bid <= 0 || quote.ask <= 0 || quote.ask < quote.bid))
+      .sort((a, b) => Math.abs(a.strike - getUnderlyingReferencePrice(a)) - Math.abs(b.strike - getUnderlyingReferencePrice(b)))
+    : [], [binanceSnapshot, dataMode, effectiveExpiry, selectedType, underlying]);
+  const bookTickerTargets = useMemo(() => bookTickerCandidates.slice(0, 180).map((quote) => quote.symbol), [bookTickerCandidates]);
   const assetChoices = useMemo(() => [...new Set(scopedQuotes.map((quote) => quote.underlying))]
     .sort((a, b) => a.localeCompare(b)), [scopedQuotes]);
   const market = useMemo(() => dataMode === 'DEMO' ? DEMO_MARKETS[underlying] : getMarketSnapshotFromQuotes(scopedQuotes, underlying), [dataMode, scopedQuotes, underlying]);
