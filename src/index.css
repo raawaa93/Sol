@@ -630,3 +630,33 @@ h1, h2, h3, p { margin: 0; }
   .opportunity-source { max-width: 43%; font-size: 7px; }
   .watchlist-heading > span { max-width: 105px; white-space: normal; text-align: center; }
 }
+
+
+.replay-section { margin-top: 26px; }
+.replay-status { display: inline-flex; align-items: center; gap: 6px; padding: 6px 8px; border: 1px solid #283532; border-radius: 7px; color: #a9c695; font-size: 8px; white-space: nowrap; }
+.replay-panel { padding: 14px; }
+.replay-controls { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; }
+.replay-controls label { display: flex; min-width: 0; flex-direction: column; gap: 6px; color: #9ba99f; font-size: 8px; }
+.replay-controls input { width: 100%; min-width: 0; padding: 8px; border: 1px solid #2b3935; border-radius: 7px; outline: none; background: #0d1415; color: #e1e9e2; font: 10px Inter, sans-serif; }
+.replay-controls input:focus { border-color: #8eb576; }
+.replay-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 13px; }
+.replay-metrics article { display: flex; min-width: 0; flex-direction: column; gap: 6px; padding: 10px; border: 1px solid #263331; border-radius: 8px; background: rgba(8, 13, 14, .35); }
+.replay-metrics article span { color: #819087; font-size: 8px; }
+.replay-metrics article strong { color: #dce7df; font: 600 12px Inter, sans-serif; overflow-wrap: anywhere; }
+.replay-positive { color: #a9d28a !important; }
+.replay-negative { color: #e99a8c !important; }
+.replay-trades-wrap { overflow-x: auto; margin-top: 13px; }
+.replay-trades { width: 100%; min-width: 650px; border-collapse: collapse; }
+.replay-trades th, .replay-trades td { padding: 9px 8px; border-bottom: 1px solid #24302e; color: #aab7ae; font-size: 8px; text-align: right; white-space: nowrap; }
+.replay-trades th { color: #76857c; font-weight: 550; }
+.replay-trades td:first-child { font-family: Inter, sans-serif; color: #d7e1d9; }
+.replay-empty { display: flex; flex-direction: column; gap: 6px; padding: 18px 10px; color: #85938a; text-align: center; }
+.replay-empty strong { color: #c0cbc3; font-size: 9px; }
+.replay-empty span { font-size: 8px; line-height: 1.6; }
+.replay-footnote { display: flex; align-items: flex-start; gap: 7px; margin-top: 12px; padding-top: 10px; border-top: 1px solid #26312f; color: #a18e6b; font-size: 8px; line-height: 1.7; }
+.replay-footnote svg { flex: 0 0 auto; margin-top: 2px; }
+@media (max-width: 760px) {
+  .replay-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .replay-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .replay-section { margin-top: 22px; }
+}
