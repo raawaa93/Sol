@@ -24,11 +24,11 @@
 
 ## Phase 2 — Premium cost and exercise payoff primitives
 
-- [ ] Implement premium cost using only premium multiplier.
-- [ ] Implement deliverable-package valuation by component and currency.
-- [ ] Implement aggregate exercise cash independently of premium multiplier.
-- [ ] Add standard 100-share and adjusted 10-share-plus-cash test vectors.
-- [ ] Block cross-currency totals without explicit FX conversion evidence.
+- [x] Implement premium cost using only premium multiplier.
+- [x] Implement deliverable-package valuation by component and currency.
+- [x] Implement aggregate exercise cash independently of premium multiplier.
+- [x] Add standard 100-share and adjusted 10-share-plus-cash test vectors.
+- [x] Block cross-currency totals without explicit FX conversion evidence.
 
 ## Phase 3 — Provider adapters
 
@@ -75,3 +75,23 @@ The adapter work must preserve the differences between Binance's two Options pro
 - Stock Options documentation also states that the product has separate account enablement/KYC steps, uses USD quote prices and USDC order payment, and does not provide option quotes/Greeks from its reference-data endpoints. This adapter is reference-data only until those capabilities and account permissions are separately verified. Source: https://developers.binance.me/en/docs/products/stock-options/introduction
 
 **Implementation consequence:** the Phase 3 Crypto Options adapter must not invent a premium multiplier from unit; it must keep any unsupported premium scale fail-closed until a documented price-cost formula and source fixture establish the mapping. The Stock Options reference adapter is the positive test case for independent premium multiplier, contractSize and multi-component deliverables. No signed account requests, order routes, or live trading are in scope.
+
+
+### Phase 2 implementation and verification — 24 November 2026
+
+Added `src/lib/contract-economics-calculations.ts` with three pure calculation primitives:
+
+- `calculatePremiumCash`: quoted premium × premium multiplier × contract count + fees; it does not read deliverable amount or exercise-cash multiplier.
+- `valueDeliverablePackage`: values equity/underlying components using exact symbol and matching-currency reference prices, preserves explicit cash components, and returns component-level values. Futures remain blocked pending a futures-specific adapter.
+- `calculateAggregateExerciseCash`: resolves source-defined strike multiplier or fixed per-contract cash independently of the premium multiplier.
+
+Regression vectors cover standard 100-share equity, adjusted 10-share-plus-cash, separate premium/exercise multipliers, fixed exercise cash, and explicit rejection of cross-currency totals without FX evidence. The calculation API requires `adapterReady`; it does not enable calculations for user-asserted, synthetic, unknown, incomplete, or cross-currency terms.
+
+Verification on commit `171c0b762eb79ce5d0592060a7f66f03a03278d9`:
+- CI completed successfully, including unit/property tests, mocked backup encryption/orchestration, production build, bundle budgets and Playwright browser journeys.
+- Project Context Guard passed.
+- GitHub Pages deployment and published-site market-data proxy smoke test passed.
+- Published-site Lighthouse representative run: Performance 98, Accessibility 100, Best Practices 100, SEO 100, Agentic Browsing 100. Other two published-site samples were 81 and 99 Performance; all three scored 100 in the other four categories. Lighthouse scores vary with runner load.
+- The accessibility-tree defect found in the previous published report was fixed; the new published report confirms the agentic accessibility-tree audit passes.
+
+No existing P&L, Greeks, opportunity EV, replay, CSV import/export or production calculation paths have been switched to these primitives yet. That remains Phase 4/5 work; no claim of full analytics integration is made.
