@@ -233,7 +233,8 @@ Sources:
 
 | Venue / product | Product classification | Syria evidence | Operational decision |
 |---|---|---|---|
-| Gate Global Crypto Options | European, cash-settled crypto options; REST/WS, IV/market/limit order paths, short/margin telemetry | Current global ToS does not name Syria in the non-exhaustive list; older 2022 PDF does; no current written Syria approval found | Inquiry-only candidate; no funding before written compliance approval |
+| Gate EU Crypto Options | European, cash-settled crypto options; REST/WS, IV/market/limit order paths | EU User Agreement (1 Mar 2026) explicitly lists Syria in Restricted Locations | Exclude for Syrian resident |
+| Gate Global Crypto Options (non-EU entity) | European, cash-settled crypto options; REST/WS, IV/market/limit order paths, short/margin telemetry | Current global ToS list does not name Syria but is non-exhaustive; older 2022 PDF does; no current written Syria approval | Inquiry-only; identify contracting entity and get written compliance approval before any funding |
 | Bitget Stock+ | Separate U.S. securities sub-account with options features | General Bitget account accepts Syria, but June 2026 Stock+ launch report lists Syria among exclusions | Do not use; require written Stock+ eligibility confirmation |
 | Paradex | On-chain order-book options/perpetual venue | Official Restricted Persons page explicitly names Syria; Terms prohibit VPN circumvention | Exclude |
 | Hyperliquid HIP-4 | Binary/outcome contracts, not vanilla options; HIP-3 are perpetuals | Broad sanctions/export-control terms and independent live test reported Syria trading gate | Exclude as execution; do not misclassify HIP-3/4 as options |
@@ -251,7 +252,7 @@ Sources:
 ### Venue selection for the actual user
 
 1. **Conditional primary:** Binance, because its official Syria FAQ explicitly lists Options and permits eligible Syrian residents to register/KYC. This is not evidence that every option family or API permission is active. Verify the actual product and permissions in the real Syrian KYC account.
-2. **No currently confirmed second execution venue:** Deribit, Bybit, OKX and Paradex list Syria restrictions; Hyperliquid's trading gate has been observed blocking Syria; Bitget Stock+ is reported to exclude Syria; IBKR and AMP do not establish eligibility. **Gate Global is inquiry-only** because its current non-exhaustive list and older agreement conflict. Optimus and Ironbeam remain inquiry-only.
+2. **No currently confirmed second execution venue:** Deribit, Bybit, OKX and Paradex list Syria restrictions; Hyperliquid's trading gate has been observed blocking Syria; Bitget Stock+ is reported to exclude Syria; IBKR and AMP do not establish eligibility. **Gate EU is explicitly excluded**; Gate Global/non-EU remains inquiry-only because its current non-exhaustive list and older agreement conflict. Optimus and Ironbeam remain inquiry-only.
 3. **Research architecture:** venue-neutral canonical contracts, separate adapter per exchange/FCM, common provenance/freshness, normalized multiplier/currency/settlement, independent pricing and risk engines, and no cross-venue equivalence unless contract terms prove it.
 4. **No VPN workaround:** use VPN only for connectivity/privacy where lawful and allowed; do not route execution through another country to misrepresent residence or defeat a venue's terms.
 
@@ -399,3 +400,18 @@ Sources:
 اتفاقية Gate Global الحالية لا تذكر سوريا في قائمة Restricted Locations المنشورة، لكنها تصف القائمة بأنها غير حصرية وتسمح بقيود حسب المنتج/البلد؛ وثيقة أقدم تذكر سوريا صراحة. Gate US كيان أمريكي منفصل ويشترط إقامة أمريكية، ولا تنطبق شروطه تلقائياً على Gate Global. لذلك نصنف Gate Global مرشح استفسار مكتوب لتداول Crypto Options فقط، ولا نفتح حساباً ممولاً أو ننقل أموالاً قبل تأكيد امتثال مكتوب بقبول الإقامة السورية والمنتج المحدد. Gate يدعم خيارات كريبتو أوروبية وتسوية نقدية وواجهات REST/WS وأوامر market/limit/IOC/POC وIV order حسب وثائقه؛ هذه مرونة تقنية لا تعوض شرط الأهلية أو فحص السيولة والمضاعف والتسوية. خيارات Gate U.S. Stock Options منتج USDT cash-settled ولا يوجد دليل كافٍ أنها OCC-listed أو cleared مثل خيارات الأسهم الأمريكية القياسية؛ لا نساويهما.
 
 المصادر: https://www.gate.com/legal/user-agreement ، https://www.gate.com/docs/agreement.pdf ، https://www.gate.com/en-us/legal/user-agreement ، https://www.gate.com/docs/developers/apiv4/en/options/ ، https://www.gate.com/docs/developers/options/ws/en/ ، https://www.gate.com/help/other/optionsbasics/46255/european-options-settlement-methods-explained
+
+
+### Gate EU — استبعاد صريح، مع فصل الكيانات
+
+اتفاقية Gate Technology Ltd الأوروبية (آخر تحديث 1 مارس 2026) تسمي سوريا صراحةً في قائمة Restricted Locations بالبند 4.2 وتعيد شرط عدم الإقامة في المناطق المقيدة بالبند 5.1(v). هذا نص رسمي مباشر؛ Gate EU ليس مسار تنفيذ للمستخدم السوري. لا يجوز تعميمه على Gate Global غير الأوروبي، كما لا يجوز تعميم عدم ذكر سوريا في قائمة Gate Global على Gate EU. Gate Global يبقى غير محسوم ويتطلب موافقة مكتوبة تحدد الكيان القانوني الذي سيفتح الحساب ويقدم Crypto Options. Gate Event Contracts منتج منفصل ولا يخلط بخيارات الكريبتو العادية.
+
+المصدر الرسمي: https://eu.gate.com/en-eu/legal/user-agreement (البند 4.2، تحديث 1 مارس 2026)؛ https://www.gate.com/legal/user-agreement ؛ https://www.gate.com/es/help/event-contracts/faq/100616
+
+### سيولة خيارات الكريبتو — Orbit Markets Q3 2026
+
+تقرير Orbit Markets المنشور 27 أكتوبر 2026 يقدّر متوسط الحجم اليومي في Q3 2026 بنحو 7.33 مليار دولار عبر أكبر ثماني قنوات/منصات: Deribit 28.6%، IBIT ETF options 27.6%، Bybit 19.3%، Binance 13.2% (نحو 0.97 مليار دولار ADV)، OKX 8.2%، Bullish 1.3%، Derive 1.1%، وCME 0.6%. IBIT هي خيارات ETF أمريكية وليست منصة كريبتو أصلية؛ التقرير يضعها في قناة تقليدية منفصلة. بين منصات الكريبتو الأصلية المدرجة، Binance خلف Deribit وBybit ومتقدمة على OKX في هذه العينة. Gate لم تظهر ضمن أكبر ثماني منصات في هذا الجدول؛ هذا لا يثبت أن حجمها صفر، لكنه لا يقدم دليلاً على سيولة مماثلة.
+
+**القرار:** Deribit وBybit وOKX أعلى حجماً في العينة لكن شروطها تستبعد سوريا؛ Binance هي أفضل خيار تنفيذ كريبتو مثبت الأهلية حالياً ضمن المجموعة التي فُحصت. لا ننتقل إلى Gate Global بسبب مرونة API وحدها. إذا أكد Gate Global الأهلية كتابةً، نختبر 30 يوماً على Demo/Paper ونقيس spread، depth، OI، volume، partial fills، ورسوم التنفيذ لكل عقد قبل أي تمويل.
+
+المصدر الثانوي: https://www.orbitmarkets.io/post/current-state-of-the-crypto-options-market (27 Oct 2026؛ بيانات Q3 2026؛ ليس قياساً لحظياً ولا يثبت حجم Gate الصفري).
