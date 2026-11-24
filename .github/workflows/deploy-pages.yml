@@ -5,6 +5,9 @@ on:
     branches:
       - main
       - arena/5d011bc6-sol
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
   workflow_dispatch:
 
 permissions:
