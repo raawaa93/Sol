@@ -270,3 +270,15 @@ The retained Edge Function logs show 50 requests during 07:00:20–07:00:27 UTC 
 - No restorable backup has been verified. The Free project has no automated daily/downloadable backup feature in the connected plan record; external backups outside connected sources remain unknown.
 - The earlier deletion of `commerce` and `rawaa_store` and their two Telegram rows remains irreversible from the current project state alone. No placeholder records were recreated and no additional destructive database action was taken.
 - No legacy function was deleted because the connected Supabase tool surface does not provide a delete operation. No paid plan, add-on, or new project was created.
+
+
+## Connected project inventory and cleanup — 24 November 2026, 07:38 UTC
+
+This is a cross-system inventory of the connected surfaces available in this session; it is not a claim that every external account on the internet was accessible.
+
+- **GitHub:** the installed GitHub connection exposes `raawaa93/Sol` as the only installed repository. The repository had 73 branch refs (including `main`) and 56 merged pull requests at this check. A comparison of branch tips against merged PR head SHAs identified 49 unprotected branch refs whose current tip exactly matched a merged PR head. The first 10 deletion attempts through the connected Activepieces GitHub action were rejected with `Permission denied deleting the branch`; no branch was deleted. Branches with unmerged PRs or post-merge changes were not targeted. Do not claim branch cleanup completed.
+- **Activepieces:** the connected `Ghith's Project` contained one enabled manual flow, `Raawaa GitHub Workflow Control`, which dispatched `task-runner.yml` in the separate `ghith93/raawaa-autonomous-engine` repository. It had no production runs and was not a Sol dependency. Under the Sol-only project scope, that flow was permanently deleted; a read-back confirmed the project now has zero flows. The Activepieces project container and its GitHub connection remain; no project-delete action was exposed.
+- **Notion:** keyword search for Volterra/Sol returned one generic Execution Manager page, not a Sol project specification or decision log. It remains a general process reference.
+- **Other access limits:** no Cloudflare account connector or Binance private-account connector was available in the connected tool inventory. Public Binance market data was checked through the Sol proxy only; no account keys, signed requests, or order endpoints were used.
+
+No additional Supabase project, paid service, subscription, or cloud resource was created. The connected Supabase project remains the sole backend for Sol.
