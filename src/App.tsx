@@ -217,6 +217,7 @@ function App() {
   const [binanceLoading, setBinanceLoading] = useState(false);
   const [binanceError, setBinanceError] = useState('');
   const [binanceAccessRestricted, setBinanceAccessRestricted] = useState(false);
+  const [binanceDirectMode, setBinanceDirectMode] = useState(false);
   const [clockNow, setClockNow] = useState(() => Date.now());
   const [binanceDepth, setBinanceDepth] = useState<BinanceDepthSnapshot | null>(null);
   const [binanceDepthLoading, setBinanceDepthLoading] = useState(false);
@@ -318,8 +319,8 @@ function App() {
       return;
     }
 
-    const proxyUrl = import.meta.env.VITE_BINANCE_PROXY_URL;
-    if (!proxyUrl) {
+    const proxyUrl = binanceDirectMode ? undefined : import.meta.env.VITE_BINANCE_PROXY_URL;
+    if (!proxyUrl && !binanceDirectMode) {
       setBinanceDepth(null);
       setBinanceDepthError('عنوان وسيط Binance غير مهيأ في هذا البناء.');
       setBinanceDepthLoading(false);
@@ -348,7 +349,7 @@ function App() {
       active = false;
       controller.abort();
     };
-  }, [binanceDepthRefreshKey, binanceSnapshot?.fetchedAt, dataMode, selectedQuote.symbol]);
+  }, [binanceDepthRefreshKey, binanceSnapshot?.fetchedAt, binanceDirectMode, dataMode, selectedQuote.symbol]);
 
   useEffect(() => {
     if (filteredQuotes.length && !filteredQuotes.some((quote) => quote.id === selectedId)) setSelectedId(filteredQuotes[0].id);
@@ -472,7 +473,27 @@ function App() {
     setBinanceError('');
     setBinanceAccessRestricted(false);
     try {
-      const snapshot = await fetchBinanceOptions(import.meta.env.VITE_BINANCE_PROXY_URL);
+      const proxyUrl = import.meta.env.VITE_BINANCE_PROXY_URL;
+      let snapshot;
+      let usedDirectConnection = false;
+      try {
+        snapshot = await fetchBinanceOptions(proxyUrl);
+      } catch (proxyError) {
+        if (!(proxyError instanceof BinanceMarketDataError && proxyError.status === 451)) throw proxyError;
+        try {
+          // This is a plain public-data request from the user's current browser
+          // network. It does not alter IP, region, residence, or account identity.
+          snapshot = await fetchBinanceOptions();
+          usedDirectConnection = true;
+        } catch (directError) {
+          if (requestId !== binanceRequestId.current) return;
+          setBinanceDirectMode(false);
+          setBinanceAccessRestricted(true);
+          const detail = directError instanceof Error ? directError.message : String(directError);
+          setBinanceError(`أعاد وسيط الخادم HTTP 451، ثم لم تنجح محاولة الاتصال المباشر من متصفحك إلى Binance. قد تمنع الشبكة الطلب أو تمنع CORS قراءة الاستجابة. هذا لا يثبت منع حسابك أو المقيمين في سوريا، ولا يغيّر عنوان IP أو منطقة التنفيذ. صفحة Binance تذكر إتاحة الخيارات عموماً وفق KYC والامتثال، دون ضمان كل منتج فرعي أو صلاحيات الحساب. التفاصيل: ${detail}`);
+          return;
+        }
+      }
       if (requestId !== binanceRequestId.current) return;
       const nextUnderlying = snapshot.availableAssets.includes(underlying)
         ? underlying
@@ -487,6 +508,7 @@ function App() {
 
       setClockNow(snapshot.fetchedAt);
       setBinanceSnapshot(snapshot);
+      setBinanceDirectMode(usedDirectConnection);
       setQuotes(snapshot.quotes);
       setDataMode('BINANCE');
       setAssetClassFilter('ALL');
@@ -503,12 +525,12 @@ function App() {
         setQuantity(defaultQuote.minQty ?? getQuantityStep(defaultQuote));
       }
       setSearchQuery('');
-      notify(`تم تحميل بيانات ${integerFormat.format(snapshot.quotes.length)} من أصل ${integerFormat.format(snapshot.activeSymbols)} عقد نشط من Binance.`);
+      notify(usedDirectConnection ? `تم تحميل ${integerFormat.format(snapshot.quotes.length)} عقد من Binance مباشرة عبر شبكة جهازك.` : `تم تحميل بيانات ${integerFormat.format(snapshot.quotes.length)} من أصل ${integerFormat.format(snapshot.activeSymbols)} عقد نشط من Binance.`);
     } catch (error) {
       if (requestId !== binanceRequestId.current) return;
       if (error instanceof BinanceMarketDataError && error.status === 451) {
         setBinanceAccessRestricted(true);
-        setBinanceError('أعادت Binance HTTP 451 لطلب بيانات السوق الصادر من خادم الوسيط. هذا رفض لمسار الخادم فقط؛ لا يختبر عنوان IP أو جلسة حسابك، ولا يثبت منع المقيمين في سوريا. تذكر صفحة Binance للمقيمين في سوريا تداول الخيارات ضمن المنتجات المتاحة عموماً وفق KYC والامتثال، لكنها لا تضمن تفعيل كل منتج فرعي أو صلاحية حسابك. لن نغيّر منطقة تنفيذ الوسيط لتجاوز رفض المصدر. استخدم Demo أو CSV أو مصدراً مرخصاً ومتاحاً لك.');
+        setBinanceError('أعاد طلب Binance المباشر HTTP 451 من شبكة متصفحك. هذا يصف الطلب العام الحالي فقط؛ لا يثبت منع حسابك أو المقيمين في سوريا. تذكر صفحة Binance إتاحة الخيارات عموماً وفق KYC والامتثال، لكنها لا تضمن كل منتج فرعي أو صلاحيات الحساب. لم نغيّر IP أو منطقة التنفيذ.');
         return;
       }
       setBinanceAccessRestricted(false);
@@ -623,6 +645,7 @@ function App() {
     invalidateBinanceRequest();
     setBinanceError('');
     setBinanceAccessRestricted(false);
+    setBinanceDirectMode(false);
     setQuotes(DEMO_QUOTES);
     setDataMode('DEMO');
     setAssetClassFilter('ALL');
