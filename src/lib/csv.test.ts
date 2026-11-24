@@ -311,7 +311,7 @@ test('CSV v2 import restores canonical economics as user-asserted, never provide
   const csv = [
     headers.map(escapeCsvCell).join(','),
     values.map(escapeCsvCell).join(','),
-  ].join('\\n');
+  ].join('\n');
   const result = parseOptionsCsv(csv, Date.parse('2026-11-24T09:01:00Z'));
 
   assert.equal(result.quotes.length, 1, result.warnings.join(' '));
