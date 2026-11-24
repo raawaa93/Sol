@@ -20,6 +20,19 @@ test('Demo explicitly labels synthetic data and asset switching updates the mark
   await expect(page.locator('#scanner')).toContainText('XRP');
 });
 
+test('global instrument search and local watchlist work across reloads', async ({ page }) => {
+  const search = page.getByRole('searchbox', { name: 'ابحث عن رمز أو أصل' });
+  await search.fill('XRP');
+  await expect(page.locator('#overview-metrics')).toContainText('XRP/USDT');
+  await page.getByRole('button', { name: 'إضافة XRP إلى المفضلة' }).click();
+  const watchlist = page.getByRole('group', { name: 'الأصول المفضلة' });
+  await expect(watchlist).toContainText('XRP');
+  await page.reload();
+  await expect(page.getByRole('group', { name: 'الأصول المفضلة' })).toContainText('XRP');
+  await page.getByRole('group', { name: 'الأصول المفضلة' }).getByRole('button', { name: /XRP/ }).click();
+  await expect(page.locator('#overview-metrics')).toContainText('XRP/USDT');
+});
+
 test('PAPER-only journal records and exports a local single-option scenario', async ({ page }) => {
   await page.getByRole('button', { name: 'أضف إلى الدفتر التجريبي' }).click();
   await expect(page.getByText('أضيفت الصفقة إلى الدفتر التجريبي فقط.')).toBeVisible();
