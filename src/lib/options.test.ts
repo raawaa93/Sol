@@ -142,6 +142,7 @@ test('risk-neutral futures-option metrics use Black-76 and the forward distribut
     forward: 100,
     spot: 97,
     daysToExpiry: 365,
+    iv: 0.2,
     exerciseStyle: 'EUROPEAN' as const,
     settlementStyle: 'PHYSICAL' as const,
     carryYield: undefined,
