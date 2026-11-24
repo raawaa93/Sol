@@ -27,6 +27,8 @@ test('CSV import reads a quote, percent-formatted IV and source timestamp', () =
 
   assert.equal(result.quotes.length, 1);
   assert.equal(result.quotes[0].underlying, 'BTC');
+  assert.equal(result.quotes[0].pricingStatus, 'OBSERVED_ONLY');
+  assert.equal(result.quotes[0].pricingModel, undefined);
   assert.equal(result.quotes[0].type, 'CALL');
   assert.equal(result.quotes[0].strike, 95_000);
   assert.ok(Math.abs(result.quotes[0].iv - 0.58) < 1e-8);
@@ -107,18 +109,32 @@ test('duplicate contract symbols get stable unique row ids and a quality warning
   assert.ok(result.warnings.some((warning) => warning.includes('تكرر رمز العقد')));
 });
 
-test('missing IV is solved from the observed market price and flagged as estimated', () => {
+test('missing IV is solved only when explicit European spot contract mechanics are supplied', () => {
   const expiry = new Date(Date.now() + 30 * 86_400_000).toISOString();
   const marketPrice = blackScholes(100, 100, 30, 0.4, 'CALL').price;
   const csv = [
-    header,
-    `sample,BTC,${expiry},100,CALL,${marketPrice * 0.99},${marketPrice * 1.01},, ,,,,,1,1,100,1,2026-11-23T14:00:00Z`,
+    'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,delta,gamma,theta,vega,openInterest,volume,spot,unit,timestamp,assetClass,venue,underlyingKind,exerciseStyle,settlementStyle,carryYield,riskFreeRate',
+    'sample,BTC,' + expiry + ',100,CALL,' + (marketPrice * 0.99) + ',' + (marketPrice * 1.01) + ',,,,,,,1,1,100,1,2026-11-23T14:00:00Z,CRYPTO,BINANCE,SPOT,EUROPEAN,CASH,0%,0%',
   ].join('\n');
   const result = parseOptionsCsv(csv);
   assert.equal(result.quotes.length, 1);
   assert.ok(Math.abs(result.quotes[0].iv - 0.4) < 0.01);
   assert.ok(result.quotes[0].estimatedFields?.includes('iv'));
+  assert.equal(result.quotes[0].pricingStatus, 'SUPPORTED');
+  assert.equal(result.quotes[0].pricingModel, 'BLACK_SCHOLES_CARRY');
   assert.ok(result.warnings.some((warning) => warning.includes('استُنتج IV')));
+});
+
+test('CSV without explicit contract mechanics does not infer IV or Greeks from a generic Black-Scholes fallback', () => {
+  const expiry = new Date(Date.now() + 30 * 86_400_000).toISOString();
+  const marketPrice = blackScholes(100, 100, 30, 0.4, 'CALL').price;
+  const csv = [
+    header,
+    'sample,BTC,' + expiry + ',100,CALL,' + (marketPrice * 0.99) + ',' + (marketPrice * 1.01) + ',, ,,,,,1,1,100,1,2026-11-23T14:00:00Z',
+  ].join('\n');
+  const result = parseOptionsCsv(csv);
+  assert.equal(result.quotes.length, 0);
+  assert.ok(result.warnings.some((warning) => warning.includes('لا يوجد IV مرصود')));
 });
 
 test('CSV preserves explicit asset class and venue for traditional listed options', () => {
