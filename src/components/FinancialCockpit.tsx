@@ -54,7 +54,6 @@ export default function FinancialCockpit() {
   const [fxDate, setFxDate] = useState(today);
   const [period, setPeriod] = useState(monthNow);
   const [holdingSymbol, setHoldingSymbol] = useState('');
-  const [holdingName, setHoldingName] = useState('');
   const [holdingClass, setHoldingClass] = useState<PortfolioAssetClass>('EQUITY');
   const [holdingQuantity, setHoldingQuantity] = useState('1');
   const [holdingCost, setHoldingCost] = useState('0');
@@ -128,7 +127,7 @@ export default function FinancialCockpit() {
 
   const addHolding = () => {
     const holding: PortfolioHolding = {
-      id: makeId(), symbol: holdingSymbol.trim().toUpperCase(), name: holdingName.trim(), assetClass: holdingClass,
+      id: makeId(), symbol: holdingSymbol.trim().toUpperCase(), assetClass: holdingClass,
       quantity: Number(holdingQuantity), averageCost: Number(holdingCost), marketPrice: Number(holdingPrice),
       currency: holdingCurrency.trim().toUpperCase(), contractMultiplier: Number(holdingMultiplier),
       quoteSource: holdingSource.trim(), priceObservedAt: stamp(holdingDate),
@@ -136,7 +135,7 @@ export default function FinancialCockpit() {
     try {
       calculatePortfolio([...ledger.holdings, holding], currency, ledger.fxRates);
       setLedger(current => ({ ...current, holdings: [...current.holdings, holding] }));
-      setHoldingSymbol(''); setHoldingName(''); setHoldingQuantity('1'); setHoldingCost('0'); setHoldingPrice('0');
+      setHoldingSymbol(''); setHoldingQuantity('1'); setHoldingCost('0'); setHoldingPrice('0');
       setHoldingSource(''); setNotice('تمت إضافة المركز إلى المحفظة المحلية، وأُدرجت قيمته السوقية ضمن الأصول.');
     } catch (error) { setNotice(error instanceof Error ? error.message : 'تعذر إضافة المركز.'); }
   };
@@ -205,7 +204,7 @@ export default function FinancialCockpit() {
         <div className="portfolio-layout">
           <form className="finance-form portfolio-form" onSubmit={event => { event.preventDefault(); addHolding(); }}>
             <h4>إضافة مركز استثماري</h4>
-            <div className="finance-form-row"><label>الرمز<input value={holdingSymbol} onChange={event => setHoldingSymbol(event.target.value.toUpperCase())} placeholder="مثال: BTC أو SPY" required /></label><label>الاسم<input value={holdingName} onChange={event => setHoldingName(event.target.value)} placeholder="اسم الأصل أو العقد" required /></label></div>
+            <label>الرمز / اسم الأصل<input value={holdingSymbol} onChange={event => setHoldingSymbol(event.target.value.toUpperCase())} placeholder="مثال: BTC أو SPY" required /></label>
             <label>فئة الأصل<select value={holdingClass} onChange={event => setHoldingClass(event.target.value as PortfolioAssetClass)}><option value="EQUITY">أسهم</option><option value="ETF">صناديق ETF</option><option value="CRYPTO">عملات رقمية</option><option value="BOND">سندات</option><option value="COMMODITY">سلع</option><option value="OPTION">عقود خيارات</option><option value="CASH">نقد</option><option value="OTHER">أخرى</option></select></label>
             <div className="finance-form-row"><label>الكمية / عدد العقود<input type="number" min="0.00000001" step="any" value={holdingQuantity} onChange={event => setHoldingQuantity(event.target.value)} required /></label><label>مضاعف العقد<input type="number" min="0.00000001" step="any" value={holdingMultiplier} onChange={event => setHoldingMultiplier(event.target.value)} required /></label></div>
             <div className="finance-form-row"><label>متوسط تكلفة الوحدة<input type="number" min="0" step="any" value={holdingCost} onChange={event => setHoldingCost(event.target.value)} required /></label><label>السعر الحالي / Mark<input type="number" min="0" step="any" value={holdingPrice} onChange={event => setHoldingPrice(event.target.value)} required /></label></div>
@@ -223,7 +222,7 @@ export default function FinancialCockpit() {
         <div className="portfolio-holdings">
           <h4>المراكز المسجلة</h4>
           {portfolio.value?.holdings.length ? portfolio.value.holdings.map(item => <div className="portfolio-holding-row" key={item.holding.id}>
-            <div className="portfolio-holding-main"><b>{item.holding.symbol} <span>{item.holding.assetClass}</span></b><small>{item.holding.name} · {item.holding.quantity} × {item.holding.contractMultiplier} · {item.holding.currency}</small><small>السعر: {item.holding.marketPrice} · المصدر: {item.holding.quoteSource} · {item.holding.priceObservedAt.slice(0,10)}</small></div>
+            <div className="portfolio-holding-main"><b>{item.holding.symbol} <span>{item.holding.assetClass}</span></b><small>{item.holding.quantity} × {item.holding.contractMultiplier} · {item.holding.currency}</small><small>السعر: {item.holding.marketPrice} · المصدر: {item.holding.quoteSource} · {item.holding.priceObservedAt.slice(0,10)}</small></div>
             <div className="portfolio-holding-value"><strong>{money(item.reportingMarketValue, currency)}</strong><small className={(item.reportingUnrealizedPnl ?? 0) >= 0 ? 'portfolio-positive' : 'portfolio-negative'}>غير محقق: {money(item.reportingUnrealizedPnl, currency)}</small><small>الوزن: {item.weightPct === null ? 'غير مكتمل' : item.weightPct.toFixed(1) + '%'}</small></div>
             <button type="button" aria-label={'حذف ' + item.holding.symbol} onClick={() => setLedger(current => ({ ...current, holdings: current.holdings.filter(row => row.id !== item.holding.id) }))}>×</button>
           </div>) : <p className="finance-empty">لا توجد مراكز استثمارية مسجلة.</p>}
