@@ -264,6 +264,56 @@ function App() {
   const effectiveExpiry = selectedExpiryExists ? selectedExpiry : expiryChoices.find((item) => item.days >= 20 && item.days <= 40)?.value ?? expiryChoices[0]?.value ?? '';
 
   useEffect(() => {
+    if (dataMode !== 'BINANCE' || !binanceSnapshot) return;
+    const ageMs = Date.now() - binanceSnapshot.fetchedAt;
+    const delayMs = Number.isFinite(ageMs)
+      ? Math.max(0, DEFAULT_SNAPSHOT_STALE_AFTER_MS - ageMs + 1)
+      : 0;
+    const timer = window.setTimeout(() => setClockNow(Date.now()), delayMs);
+    return () => window.clearTimeout(timer);
+  }, [binanceSnapshot?.fetchedAt, dataMode]);
+
+  useEffect(() => {
+    if (effectiveExpiry && effectiveExpiry !== selectedExpiry) setSelectedExpiry(effectiveExpiry);
+  }, [effectiveExpiry, selectedExpiry]);
+
+  const availableAssetClasses = useMemo(() => [...new Set(quotes.map((quote) => quote.assetClass ?? 'UNKNOWN'))]
+    .sort((a, b) => a.localeCompare(b)), [quotes]);
+  const classQuotes = useMemo(() => quotes.filter((quote) => assetClassFilter === 'ALL' || quote.assetClass === assetClassFilter), [assetClassFilter, quotes]);
+  const venueChoices = useMemo(() => [...new Set(classQuotes.map((quote) => quote.venue).filter((venue): venue is string => Boolean(venue)))]
+    .sort((a, b) => a.localeCompare(b)), [classQuotes]);
+  const scopedQuotes = useMemo(() => classQuotes.filter((quote) => venueFilter === 'ALL' || quote.venue === venueFilter), [classQuotes, venueFilter]);
+  const assetQuotes = useMemo(() => scopedQuotes.filter((quote) => quote.underlying === underlying), [scopedQuotes, underlying]);
+  const bookTickerCandidates = useMemo(() => dataMode === 'BINANCE' && binanceSnapshot
+    ? binanceSnapshot.quotes
+      .filter((quote) => quote.underlying === underlying && quote.expiry === effectiveExpiry && quote.type === selectedType
+        && (quote.bid <= 0 || quote.ask <= 0 || quote.ask < quote.bid))
+      .sort((a, b) => Math.abs(a.strike - getUnderlyingReferencePrice(a)) - Math.abs(b.strike - getUnderlyingReferencePrice(b)))
+    : [], [binanceSnapshot, dataMode, effectiveExpiry, selectedType, underlying]);
+  const bookTickerTargets = useMemo(() => bookTickerCandidates.slice(0, 180).map((quote) => quote.symbol), [bookTickerCandidates]);
+  const assetChoices = useMemo(() => [...new Set(scopedQuotes.map((quote) => quote.underlying))]
+    .sort((a, b) => a.localeCompare(b)), [scopedQuotes]);
+  const market = useMemo(() => dataMode === 'DEMO' ? DEMO_MARKETS[underlying] : getMarketSnapshotFromQuotes(scopedQuotes, underlying), [dataMode, scopedQuotes, underlying]);
+  const filteredQuotes = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return assetQuotes
+      .filter((quote) => quote.expiry === effectiveExpiry && quote.type === selectedType)
+      .filter((quote) => !query || quote.symbol.toLowerCase().includes(query) || String(quote.strike).includes(query))
+      .sort((a, b) => a.strike - b.strike);
+  }, [assetQuotes, effectiveExpiry, searchQuery, selectedType]);
+
+  const selectedQuote = useMemo(() => {
+    const chosen = scopedQuotes.find((quote) => quote.id === selectedId);
+    if (chosen && chosen.underlying === underlying && chosen.expiry === effectiveExpiry && chosen.type === selectedType) return chosen;
+    return filteredQuotes[0]
+      ?? assetQuotes.find((quote) => quote.expiry === effectiveExpiry && quote.type === selectedType)
+      ?? assetQuotes[0]
+      ?? scopedQuotes[0]
+      ?? quotes[0]
+      ?? DEMO_QUOTES[0];
+  }, [assetQuotes, effectiveExpiry, filteredQuotes, quotes, scopedQuotes, selectedId, selectedType, underlying]);
+
+  useEffect(() => {
     if (dataMode !== 'BINANCE' || !bookTickerTargets.length) {
       setBookTickerStatus('idle');
       return;
@@ -324,56 +374,6 @@ function App() {
       socket?.close();
     };
   }, [bookTickerTargets, dataMode]);
-
-  useEffect(() => {
-    if (dataMode !== 'BINANCE' || !binanceSnapshot) return;
-    const ageMs = Date.now() - binanceSnapshot.fetchedAt;
-    const delayMs = Number.isFinite(ageMs)
-      ? Math.max(0, DEFAULT_SNAPSHOT_STALE_AFTER_MS - ageMs + 1)
-      : 0;
-    const timer = window.setTimeout(() => setClockNow(Date.now()), delayMs);
-    return () => window.clearTimeout(timer);
-  }, [binanceSnapshot?.fetchedAt, dataMode]);
-
-  useEffect(() => {
-    if (effectiveExpiry && effectiveExpiry !== selectedExpiry) setSelectedExpiry(effectiveExpiry);
-  }, [effectiveExpiry, selectedExpiry]);
-
-  const availableAssetClasses = useMemo(() => [...new Set(quotes.map((quote) => quote.assetClass ?? 'UNKNOWN'))]
-    .sort((a, b) => a.localeCompare(b)), [quotes]);
-  const classQuotes = useMemo(() => quotes.filter((quote) => assetClassFilter === 'ALL' || quote.assetClass === assetClassFilter), [assetClassFilter, quotes]);
-  const venueChoices = useMemo(() => [...new Set(classQuotes.map((quote) => quote.venue).filter((venue): venue is string => Boolean(venue)))]
-    .sort((a, b) => a.localeCompare(b)), [classQuotes]);
-  const scopedQuotes = useMemo(() => classQuotes.filter((quote) => venueFilter === 'ALL' || quote.venue === venueFilter), [classQuotes, venueFilter]);
-  const assetQuotes = useMemo(() => scopedQuotes.filter((quote) => quote.underlying === underlying), [scopedQuotes, underlying]);
-  const bookTickerCandidates = useMemo(() => dataMode === 'BINANCE' && binanceSnapshot
-    ? binanceSnapshot.quotes
-      .filter((quote) => quote.underlying === underlying && quote.expiry === effectiveExpiry && quote.type === selectedType
-        && (quote.bid <= 0 || quote.ask <= 0 || quote.ask < quote.bid))
-      .sort((a, b) => Math.abs(a.strike - getUnderlyingReferencePrice(a)) - Math.abs(b.strike - getUnderlyingReferencePrice(b)))
-    : [], [binanceSnapshot, dataMode, effectiveExpiry, selectedType, underlying]);
-  const bookTickerTargets = useMemo(() => bookTickerCandidates.slice(0, 180).map((quote) => quote.symbol), [bookTickerCandidates]);
-  const assetChoices = useMemo(() => [...new Set(scopedQuotes.map((quote) => quote.underlying))]
-    .sort((a, b) => a.localeCompare(b)), [scopedQuotes]);
-  const market = useMemo(() => dataMode === 'DEMO' ? DEMO_MARKETS[underlying] : getMarketSnapshotFromQuotes(scopedQuotes, underlying), [dataMode, scopedQuotes, underlying]);
-  const filteredQuotes = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    return assetQuotes
-      .filter((quote) => quote.expiry === effectiveExpiry && quote.type === selectedType)
-      .filter((quote) => !query || quote.symbol.toLowerCase().includes(query) || String(quote.strike).includes(query))
-      .sort((a, b) => a.strike - b.strike);
-  }, [assetQuotes, effectiveExpiry, searchQuery, selectedType]);
-
-  const selectedQuote = useMemo(() => {
-    const chosen = scopedQuotes.find((quote) => quote.id === selectedId);
-    if (chosen && chosen.underlying === underlying && chosen.expiry === effectiveExpiry && chosen.type === selectedType) return chosen;
-    return filteredQuotes[0]
-      ?? assetQuotes.find((quote) => quote.expiry === effectiveExpiry && quote.type === selectedType)
-      ?? assetQuotes[0]
-      ?? scopedQuotes[0]
-      ?? quotes[0]
-      ?? DEMO_QUOTES[0];
-  }, [assetQuotes, effectiveExpiry, filteredQuotes, quotes, scopedQuotes, selectedId, selectedType, underlying]);
 
   useEffect(() => {
     if (dataMode !== 'BINANCE') {
