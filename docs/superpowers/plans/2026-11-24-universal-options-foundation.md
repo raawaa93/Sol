@@ -95,9 +95,9 @@
 - At narrow widths, show strike, bid/ask, IV and Delta first; reveal OI, volume, spread and Greeks in a detail panel.
 - Preserve keyboard focus and visible selection.
 
-- [ ] Add 390px Playwright assertions for no clipped primary controls and accessible labels.
+- [x] Add 390px Playwright assertions for no document-level horizontal overflow, accessible selectors, 44px primary touch targets and keyboard focus visibility.
 - [ ] Verify the test fails before implementation.
-- [ ] Implement compact mobile layout.
+- [x] Implement compact mobile cards for the option chain, Greek sensitivities and PAPER journal (PRs #76/#78); this follow-up raises primary toolbar/navigation targets to at least 44px.
 - [ ] Run all tests and Lighthouse.
 
 ### Task 5: Pricing-model guard
@@ -130,3 +130,10 @@ Keep the feature behind no hidden live-trading capability. Merge only after CI, 
 - CSV without exercise/settlement/underlying model metadata no longer receives a generic Black–Scholes IV solve or Greeks. Observed IV and observed market quotes remain available with `OBSERVED_ONLY`; no synthetic model is substituted.
 - Explicit European spot inputs with rate and carry continue to route to Black–Scholes with Carry; explicit futures inputs route to Black–76; perpetual, American/Bermudan and unknown mechanics remain unsupported.
 - Regression coverage added for missing metadata, supported explicit inputs, and Binance crypto/commodity/unknown metadata classification.
+
+
+### Mobile accessibility follow-up — 24 November 2026
+
+- The mobile chain, Greek and journal card layouts were already shipped in PRs #76 and #78. The follow-up adds 44px minimum height to the option-type tabs, expiry selector, strike search control and bottom-navigation buttons.
+- Playwright now checks 390px primary-control labels, target dimensions, keyboard focus visibility and document/card horizontal overflow.
+- The test-first red run has not yet been captured for the new touch-target assertion; CI verification is pending on this branch. Physical-device and screen-reader validation remain outstanding.
