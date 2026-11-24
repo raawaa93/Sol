@@ -40,8 +40,6 @@ async function requestJson(endpoint, params = {}) {
   const startedAt = performance.now();
   const response = await fetch(url, {
     method: 'GET',
-    // GitHub-hosted runners are US-based. Force the nearest supported Supabase
-    // region to Syria so this production check does not test US egress by accident.
     headers: { Accept: 'application/json', Origin: pageOrigin },
     signal: timeoutSignal(),
   });
@@ -206,7 +204,6 @@ async function main() {
   }
   if (!assetGroups.size) throw new Error('exchangeInfo did not identify any active option underlyings.');
 
-  const finiteTimestamp = (value) => finitePositive(value);
   const chooseRepresentative = (symbols, spot) => [...symbols].sort((a, b) => {
     const daysA = (Number(a.expiryDate) - serverTime) / 86_400_000;
     const daysB = (Number(b.expiryDate) - serverTime) / 86_400_000;
