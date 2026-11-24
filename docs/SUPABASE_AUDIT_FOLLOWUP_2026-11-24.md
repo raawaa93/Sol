@@ -282,3 +282,41 @@ This is a cross-system inventory of the connected surfaces available in this ses
 - **Other access limits:** no Cloudflare account connector or Binance private-account connector was available in the connected tool inventory. Public Binance market data was checked through the Sol proxy only; no account keys, signed requests, or order endpoints were used.
 
 No additional Supabase project, paid service, subscription, or cloud resource was created. The connected Supabase project remains the sole backend for Sol.
+
+
+## Live revalidation — 24 November 2026, 07:45 UTC
+
+This section supersedes the earlier state descriptions above where they conflict. Historical observations are retained as an audit trail.
+
+### Current database state
+
+- Project `Ghaioooth-core` (`oyoyozdugicmnkfhjovo`) remains `ACTIVE_HEALTHY`, PostgreSQL 17.11, Free plan.
+- The current application schema contains exactly one application table: `public.volterra_rate_limit_windows`. The only application function is `public.volterra_check_rate_limit(text, integer, integer)`. No `commerce` or `rawaa_store` schema, old control-plane table, or old application function remains in the live application schemas.
+- Current counts: 58 rate-limit rows (ephemeral), 1 Auth user, 0 Storage objects. These counts are snapshots, not durable invariants.
+- ACL verification: direct SELECT is denied to `anon`, `authenticated`, and `service_role` on the rate-limit table; EXECUTE is denied to `anon` and `authenticated`, and allowed only to `service_role` on the RPC. Keep this boundary unchanged.
+- Edge Functions: Volterra market-data proxy is ACTIVE v10 with gateway JWT disabled for its public browser-facing read-only route. Six legacy functions remain registered ACTIVE but are verified retired HTTP 410 handlers with gateway JWT enabled. No delete action is available through the connected Supabase tools.
+
+### Migration ledger correction
+
+The remote ledger has 22 rows, not 21. The repository contains exactly three active Sol migrations:
+
+- `20261123160346_volterra_shared_rate_limits.sql`
+- `20261123160830_volterra_lock_down_rate_limit_table.sql`
+- `20261124052328_remove_non_sol_legacy_schemas_20261124.sql`
+
+The other 19 ledger rows are historical migrations for the removed autonomous-control-plane, Rawaa, Telegram, marketing, and Commerce schemas. Their SQL statements remain in the remote `supabase_migrations.schema_migrations` ledger, but their application objects are absent from the current database. The repository is intentionally not repopulating those legacy migration files under `supabase/migrations`, because doing so would make a clean replay recreate non-Sol systems before later cleanup. Do not run `supabase db reset` or blindly replay the remote-only history.
+
+The 19 remote-only versions are: `20261005000026`, `20261005010256`, `20261005010323`, `20261005040030`, `20261005062950`, `20261005063553`, `20261005080319`, `20261005080509`, `20261005081121`, `20261006040130`, `20261006040213`, `20261006044012`, `20261029220654`, `20261029224159`, `20261030033946`, `20261030134505`, `20261106104317`, `20261106111321`, and `20261106181603`.
+
+No migration history rows were deleted or rewritten during this revalidation. The next reconciliation must use the documented Supabase CLI `migration repair --status reverted` workflow only after a fresh schema dump and a second verification that all 19 legacy effects are absent. That operation deletes history records; it does not reverse SQL objects.
+
+### Advisor status
+
+- Security: one INFO finding for RLS enabled/no policy on the private rate-limit table (intentional) and one WARN for leaked-password protection disabled.
+- Performance: no findings.
+- Health: no findings.
+- Supabase documentation states leaked-password protection is Pro+ only. The Free plan warning is therefore a known plan limitation; do not upgrade solely to silence it. Maintain strong minimum password settings if Auth password sign-in is enabled.
+
+### Backup and public-repository boundary
+
+The GitHub repository is public. Never commit database dumps, Auth data, rate-limit rows, or unencrypted backup artifacts to it. Supabase Free has no automatic daily backups; the supported no-cost route is a manual CLI logical dump using a database connection string and Docker. The required database password is not available through the connected tools, so no dump or restore test has been completed. See the new recovery runbook for exact scope, exclusions, and the one-time credential boundary.
