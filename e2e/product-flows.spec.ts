@@ -435,3 +435,43 @@ test('shows local legal eligibility warning in the compliance banner', async ({ 
   await expect(banner).toContainText('للمقيمين في سوريا');
   await expect(banner).toContainText('البحث والمحاكاة فقط');
 });
+
+
+test('local portfolio tracks holdings, updates net worth, persists and exports a complete backup', async ({ page }) => {
+  await page.locator('.side-nav').getByRole('button', { name: 'المركز المالي' }).click();
+  const finance = page.locator('#finance');
+  await expect(finance.getByRole('heading', { name: 'المركز المالي الشخصي' })).toBeVisible();
+  await finance.getByLabel('الرمز').fill('BTC');
+  await finance.getByLabel('الاسم').fill('Bitcoin');
+  await finance.getByLabel('فئة الأصل').selectOption('CRYPTO');
+  await finance.getByLabel('الكمية / عدد العقود').fill('0.5');
+  await finance.getByLabel('مضاعف العقد').fill('1');
+  await finance.getByLabel('متوسط تكلفة الوحدة').fill('40000');
+  await finance.getByLabel('السعر الحالي / Mark').fill('60000');
+  await finance.getByLabel('العملة').last().fill('USD');
+  await finance.getByLabel('مصدر السعر').fill('Playwright deterministic fixture');
+  await finance.getByRole('button', { name: 'إضافة إلى المحفظة' }).click();
+
+  const portfolio = finance.locator('.portfolio-panel');
+  await expect(portfolio).toContainText('BTC');
+  await expect(portfolio).toContainText('30,000 USD');
+  await expect(finance.locator('.finance-metrics article').first()).toContainText('30,000 USD');
+
+  const downloadPromise = page.waitForEvent('download');
+  await finance.getByRole('button', { name: 'تصدير نسخة احتياطية' }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe('sol-financial-backup.json');
+  const stream = await download.createReadStream();
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
+  const backup = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  expect(backup.version).toBe(2);
+  expect(backup.holdings[0].symbol).toBe('BTC');
+
+  await page.reload();
+  await page.locator('.side-nav').getByRole('button', { name: 'المركز المالي' }).click();
+  await expect(page.locator('#finance .portfolio-panel')).toContainText('BTC');
+  await page.locator('#finance .portfolio-panel').getByRole('button', { name: 'حذف BTC' }).click();
+  await expect(page.locator('#finance .portfolio-panel')).toContainText('لا توجد مراكز استثمارية مسجلة');
+  await expect(page.locator('#finance .finance-metrics article').first()).toContainText('0 USD');
+});
