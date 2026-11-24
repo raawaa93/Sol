@@ -157,8 +157,8 @@ test('CSV import stays local and replays only an explicitly scaled supported cry
   await expect(page.locator('#overview-metrics')).toContainText('BTC');
   await expect(page.locator('#scanner')).toContainText('BTC-custom-P');
   await expect(page.locator('#historical-replay')).toContainText('إعادة تشغيل تاريخية محافظة');
-  await expect(page.locator('#historical-replay .replay-trades tbody tr')).toHaveCount(1);
-  await expect(page.locator('#historical-replay')).toContainText('+8');
+  await expect(page.locator('#historical-replay .replay-trades tbody tr')).toHaveCount(0);
+  await expect(page.locator('#historical-replay')).toContainText('مقياس عقد غير متحقق 2');
 });
 
 test('Binance order-book UI is exercised only with a deterministic mocked REST snapshot', async ({ page }) => {
@@ -365,7 +365,7 @@ test('mobile Greeks and paper journal use readable cards instead of wide tables'
   await expect(page.locator('.greeks-table-wrap')).toBeHidden();
   await expect(greekList.locator('.greeks-mobile-card')).toHaveCount(5);
   await expect(greekList).toContainText('Delta');
-  await expect(greekList).toContainText('القيمة لكل عقد');
+  await expect(greekList).toContainText('القيمة لكل وحدة مرجعية');
   await expect(greekList).toContainText('حساسية الكمية الحالية');
 
   await page.getByRole('button', { name: 'أضف إلى الدفتر التجريبي' }).click();
