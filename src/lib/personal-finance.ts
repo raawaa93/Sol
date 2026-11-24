@@ -267,3 +267,132 @@ export function calculateMonthlyCashFlow(
     fxUsage: [...fxUsage.values()],
   };
 }
+
+
+export type PortfolioAssetClass = 'EQUITY' | 'ETF' | 'CRYPTO' | 'BOND' | 'COMMODITY' | 'OPTION' | 'CASH' | 'OTHER';
+
+export interface PortfolioHolding {
+  id: string;
+  symbol: string;
+  assetClass: PortfolioAssetClass;
+  quantity: number;
+  averageCost: number;
+  marketPrice: number;
+  currency: string;
+  /** Exchange contract multiplier; use 1 for spot assets and the verified multiplier for listed contracts. */
+  contractMultiplier: number;
+  quoteSource: string;
+  priceObservedAt: string;
+}
+
+export interface PortfolioHoldingAnalysis {
+  holding: PortfolioHolding;
+  reportingMarketValue: number | null;
+  reportingUnrealizedPnl: number | null;
+  weightPct: number | null;
+}
+
+export interface PortfolioSummary {
+  reportingCurrency: string;
+  complete: boolean;
+  missingFxCurrencies: string[];
+  marketValue: number | null;
+  costBasis: number | null;
+  unrealizedPnl: number | null;
+  holdings: PortfolioHoldingAnalysis[];
+  allocations: Array<{ assetClass: PortfolioAssetClass; weightPct: number | null }>;
+  concentration: {
+    largestHoldingPct: number | null;
+    warnings: Array<'SINGLE_POSITION_OVER_25_PERCENT'>;
+  };
+}
+
+/** Calculates a holdings snapshot from manually sourced prices. It does not estimate volatility, beta, VaR, or expected returns. */
+export function calculatePortfolio(
+  holdings: PortfolioHolding[],
+  reportingCurrency: string,
+  fxRates: FxRate[] = [],
+): PortfolioSummary {
+  const target = normalizeCurrency(reportingCurrency);
+  validateFxRates(fxRates);
+  const ids = new Set<string>();
+  const missing = new Set<string>();
+  const classTotals = new Map<PortfolioAssetClass, number>();
+  let marketValue = 0;
+  let costBasis = 0;
+
+  const analyses = holdings.map((holding): PortfolioHoldingAnalysis => {
+    if (!holding.id.trim() || ids.has(holding.id)) throw new Error('Holding IDs must be non-empty and unique');
+    ids.add(holding.id);
+    const symbol = holding.symbol.trim().toUpperCase();
+    if (!/^[A-Z0-9._:-]{1,32}$/.test(symbol)) throw new Error('Holding symbol is invalid');
+    if (!['EQUITY', 'ETF', 'CRYPTO', 'BOND', 'COMMODITY', 'OPTION', 'CASH', 'OTHER'].includes(holding.assetClass)) {
+      throw new Error('Unsupported portfolio asset class');
+    }
+    assertNonNegativeFinite(holding.quantity, 'Holding quantity');
+    if (holding.quantity === 0) throw new Error('Holding quantity must be greater than zero');
+    assertNonNegativeFinite(holding.averageCost, 'Average cost');
+    assertNonNegativeFinite(holding.marketPrice, 'Market price');
+    assertNonNegativeFinite(holding.contractMultiplier, 'Contract multiplier');
+    if (holding.contractMultiplier === 0) throw new Error('Contract multiplier must be greater than zero');
+    const currency = normalizeCurrency(holding.currency);
+    if (!holding.quoteSource.trim()) throw new Error('Quote source is required');
+    validTimestamp(holding.priceObservedAt, 'Price observation time');
+
+    const multiplier = holding.quantity * holding.contractMultiplier;
+    const nativeMarketValue = multiplier * holding.marketPrice;
+    const nativeCostBasis = multiplier * holding.averageCost;
+    const marketConversion = getConversion(nativeMarketValue, currency, target, fxRates);
+    const costConversion = getConversion(nativeCostBasis, currency, target, fxRates);
+    if (!marketConversion || !costConversion) missing.add(currency);
+    const convertedMarketValue = marketConversion?.amount ?? null;
+    const convertedCostBasis = costConversion?.amount ?? null;
+    const convertedPnl = convertedMarketValue === null || convertedCostBasis === null
+      ? null : convertedMarketValue - convertedCostBasis;
+
+    if (convertedMarketValue !== null) {
+      marketValue += convertedMarketValue;
+      classTotals.set(holding.assetClass, (classTotals.get(holding.assetClass) ?? 0) + convertedMarketValue);
+    }
+    if (convertedCostBasis !== null) costBasis += convertedCostBasis;
+
+    return {
+      holding,
+      reportingMarketValue: convertedMarketValue,
+      reportingUnrealizedPnl: convertedPnl,
+      weightPct: null,
+    };
+  });
+
+  const complete = missing.size === 0;
+  const convertedTotal = complete ? marketValue : null;
+  const convertedCost = complete ? costBasis : null;
+  const withWeights = analyses.map((item) => ({
+    ...item,
+    weightPct: complete && marketValue > 0 && item.reportingMarketValue !== null
+      ? (item.reportingMarketValue / marketValue) * 100 : null,
+  }));
+  const sortedWeights = complete
+    ? withWeights.map((item) => item.weightPct ?? 0).sort((a, b) => b - a)
+    : [];
+  const allocationRows = [...classTotals.entries()].sort(([a], [b]) => a.localeCompare(b));
+  const allocations = allocationRows.map(([assetClass, value]) => ({
+    assetClass,
+    weightPct: complete && marketValue > 0 ? (value / marketValue) * 100 : null,
+  }));
+  const largestHoldingPct = complete && sortedWeights.length ? sortedWeights[0] : null;
+  const warnings: PortfolioSummary['concentration']['warnings'] = [];
+  if (largestHoldingPct !== null && largestHoldingPct > 25) warnings.push('SINGLE_POSITION_OVER_25_PERCENT');
+
+  return {
+    reportingCurrency: target,
+    complete,
+    missingFxCurrencies: [...missing].sort(),
+    marketValue: convertedTotal,
+    costBasis: convertedCost,
+    unrealizedPnl: complete ? marketValue - costBasis : null,
+    holdings: withWeights,
+    allocations,
+    concentration: { largestHoldingPct, warnings },
+  };
+}

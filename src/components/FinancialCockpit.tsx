@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { calculateMonthlyCashFlow, calculateNetWorth } from '../lib/personal-finance';
-import type { CashFlowTransaction, FinancialBalance, FxRate } from '../lib/personal-finance';
+import { calculateMonthlyCashFlow, calculateNetWorth, calculatePortfolio } from '../lib/personal-finance';
+import type { CashFlowTransaction, FinancialBalance, FxRate, PortfolioAssetClass, PortfolioHolding } from '../lib/personal-finance';
 import './FinancialCockpit.css';
 
-type Ledger = { balances: FinancialBalance[]; transactions: CashFlowTransaction[]; fxRates: FxRate[] };
+type Ledger = { balances: FinancialBalance[]; transactions: CashFlowTransaction[]; fxRates: FxRate[]; holdings: PortfolioHolding[] };
 const STORAGE_KEY = 'sol-financial-ledger-v1';
 const today = () => new Date().toISOString().slice(0, 10);
 const monthNow = () => today().slice(0, 7);
 const stamp = (date: string) => `${date}T12:00:00.000Z`;
-const emptyLedger: Ledger = { balances: [], transactions: [], fxRates: [] };
+const emptyLedger: Ledger = { balances: [], transactions: [], fxRates: [], holdings: [] };
 
 function loadLedger(): Ledger {
   try {
@@ -19,6 +19,7 @@ function loadLedger(): Ledger {
       balances: Array.isArray(value.balances) ? value.balances : [],
       transactions: Array.isArray(value.transactions) ? value.transactions : [],
       fxRates: Array.isArray(value.fxRates) ? value.fxRates : [],
+      holdings: Array.isArray(value.holdings) ? value.holdings : [],
     };
   } catch {
     return emptyLedger;
@@ -52,6 +53,15 @@ export default function FinancialCockpit() {
   const [fxSource, setFxSource] = useState('');
   const [fxDate, setFxDate] = useState(today);
   const [period, setPeriod] = useState(monthNow);
+  const [holdingSymbol, setHoldingSymbol] = useState('');
+  const [holdingClass, setHoldingClass] = useState<PortfolioAssetClass>('EQUITY');
+  const [holdingQuantity, setHoldingQuantity] = useState('1');
+  const [holdingCost, setHoldingCost] = useState('0');
+  const [holdingPrice, setHoldingPrice] = useState('0');
+  const [holdingCurrency, setHoldingCurrency] = useState('USD');
+  const [holdingMultiplier, setHoldingMultiplier] = useState('1');
+  const [holdingSource, setHoldingSource] = useState('');
+  const [holdingDate, setHoldingDate] = useState(today);
   const [notice, setNotice] = useState('');
 
   useEffect(() => {
@@ -59,8 +69,17 @@ export default function FinancialCockpit() {
     catch { setNotice('تعذر الحفظ المحلي؛ صدّر نسخة احتياطية قبل مغادرة الصفحة.'); }
   }, [ledger]);
 
+  const portfolio = useMemo(() => {
+    try { return { value: calculatePortfolio(ledger.holdings, currency, ledger.fxRates), error: '' }; }
+    catch (error) { return { value: null, error: error instanceof Error ? error.message : 'تعذر حساب المحفظة' }; }
+  }, [currency, ledger]);
   const netWorth = useMemo(() => {
-    try { return { value: calculateNetWorth(ledger.balances, currency, ledger.fxRates), error: '' }; }
+    try {
+      const holdingBalances: FinancialBalance[] = ledger.holdings.map(item => ({
+        id: 'portfolio:' + item.id, kind: 'ASSET', amount: item.quantity * item.contractMultiplier * item.marketPrice,
+        currency: item.currency, asOf: item.priceObservedAt,
+      }));
+      return { value: calculateNetWorth([...ledger.balances, ...holdingBalances], currency, ledger.fxRates), error: '' }; }
     catch (error) { return { value: null, error: error instanceof Error ? error.message : 'تعذر حساب صافي الثروة' }; }
   }, [currency, ledger]);
   const cashFlow = useMemo(() => {
@@ -106,8 +125,23 @@ export default function FinancialCockpit() {
     setFxRate(''); setFxSource(''); setNotice('تم تحديث سعر الصرف ومصدره في السجل المحلي.');
   };
 
+  const addHolding = () => {
+    const holding: PortfolioHolding = {
+      id: makeId(), symbol: holdingSymbol.trim().toUpperCase(), assetClass: holdingClass,
+      quantity: Number(holdingQuantity), averageCost: Number(holdingCost), marketPrice: Number(holdingPrice),
+      currency: holdingCurrency.trim().toUpperCase(), contractMultiplier: Number(holdingMultiplier),
+      quoteSource: holdingSource.trim(), priceObservedAt: stamp(holdingDate),
+    };
+    try {
+      calculatePortfolio([...ledger.holdings, holding], currency, ledger.fxRates);
+      setLedger(current => ({ ...current, holdings: [...current.holdings, holding] }));
+      setHoldingSymbol(''); setHoldingQuantity('1'); setHoldingCost('0'); setHoldingPrice('0');
+      setHoldingSource(''); setNotice('تمت إضافة المركز إلى المحفظة المحلية، وأُدرجت قيمته السوقية ضمن الأصول.');
+    } catch (error) { setNotice(error instanceof Error ? error.message : 'تعذر إضافة المركز.'); }
+  };
+
   const exportBackup = () => {
-    const blob = new Blob([JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), reportingCurrency: currency, ...ledger }, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify({ version: 2, exportedAt: new Date().toISOString(), reportingCurrency: currency, ...ledger }, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'sol-financial-backup.json'; anchor.click();
     URL.revokeObjectURL(url); setNotice('تم إنشاء ملف النسخة الاحتياطية.');
@@ -118,10 +152,12 @@ export default function FinancialCockpit() {
     try {
       const parsed = JSON.parse(await file.text()) as Partial<Ledger>;
       if (!Array.isArray(parsed.balances) || !Array.isArray(parsed.transactions) || !Array.isArray(parsed.fxRates)) throw new Error('صيغة النسخة غير مكتملة');
+      const holdings = Array.isArray(parsed.holdings) ? parsed.holdings as PortfolioHolding[] : [];
       // Validate imported records with the same deterministic domain functions before accepting them.
       calculateNetWorth(parsed.balances, currency, parsed.fxRates);
       calculateMonthlyCashFlow(parsed.transactions, monthNow(), currency, parsed.fxRates);
-      setLedger({ balances: parsed.balances, transactions: parsed.transactions, fxRates: parsed.fxRates });
+      calculatePortfolio(holdings, currency, parsed.fxRates);
+      setLedger({ balances: parsed.balances, transactions: parsed.transactions, fxRates: parsed.fxRates, holdings });
       setNotice('تم استيراد النسخة والتحقق من سلامة سجلاتها.');
     } catch (error) { setNotice(error instanceof Error ? `رفض الاستيراد: ${error.message}` : 'تعذر استيراد النسخة.'); }
   };
@@ -141,6 +177,7 @@ export default function FinancialCockpit() {
         </div>
       </div>
       <div className="finance-privacy-note"><strong>خصوصية السجل:</strong> البيانات تحفظ في Local Storage على هذا المتصفح فقط، وليست مشفرة ولا تزامن بين الأجهزة. لا تدخل كلمات مرور أو أرقام حسابات أو بيانات بطاقات. صدّر نسخة احتياطية بنفسك؛ مسح بيانات المتصفح قد يحذف السجل.</div>
+      <div className="finance-privacy-note"><strong>ملاحظة المحفظة:</strong> المراكز الاستثمارية المسجلة أدناه تُضاف تلقائياً إلى الأصول وصافي الثروة. لا تسجل الاستثمار نفسه مرة ثانية في قسم الأصول. الأسعار يدوية وليست بثاً حياً.</div>
       <div className="finance-toolbar">
         <label>عملة التقرير<select value={currency} onChange={event => setCurrency(event.target.value.toUpperCase())}><option>USD</option><option>EUR</option><option>GBP</option><option>SYP</option><option>USDT</option></select></label>
         <label>شهر التدفق النقدي<input type="month" value={period} onChange={event => setPeriod(event.target.value)} /></label>
@@ -151,9 +188,45 @@ export default function FinancialCockpit() {
         <article><span>صافي الثروة</span><strong>{money(netWorth.value?.netWorth ?? null, currency)}</strong><small>{netWorth.value?.complete ? 'كل العملات محولة' : 'الإجمالي محجوب حتى اكتمال أسعار الصرف'}</small></article>
         <article><span>صافي التدفق النقدي</span><strong>{money(cashFlow.value?.netCashFlow ?? null, currency)}</strong><small>{period}</small></article>
       </div>
-      {(netWorth.error || cashFlow.error) && <p className="finance-error">{netWorth.error || cashFlow.error}</p>}
+      {(netWorth.error || cashFlow.error || portfolio.error) && <p className="finance-error">{netWorth.error || cashFlow.error || portfolio.error}</p>}
       {netWorth.value && !netWorth.value.complete && <p className="finance-warning">أسعار صرف مفقودة: {netWorth.value.missingFxCurrencies.join('، ')}. لن يعرض Sol إجمالي ثروة مضللاً.</p>}
       {cashFlow.value && !cashFlow.value.complete && <p className="finance-warning">أسعار صرف مفقودة للتدفق النقدي: {cashFlow.value.missingFxCurrencies.join('، ')}.</p>}
+      <section className="portfolio-panel" aria-labelledby="portfolio-heading">
+        <div className="portfolio-heading"><div><h3 id="portfolio-heading">محفظة الاستثمارات</h3><p>تقييم المراكز وتكلفة الشراء والربح أو الخسارة غير المحققة وتوزيع الأصول</p></div><span>{ledger.holdings.length} مركز</span></div>
+        <div className="portfolio-metrics">
+          <article><span>القيمة السوقية</span><strong>{money(portfolio.value?.marketValue ?? null, currency)}</strong></article>
+          <article><span>تكلفة الشراء</span><strong>{money(portfolio.value?.costBasis ?? null, currency)}</strong></article>
+          <article><span>الربح / الخسارة غير المحققة</span><strong className={(portfolio.value?.unrealizedPnl ?? 0) >= 0 ? 'portfolio-positive' : 'portfolio-negative'}>{money(portfolio.value?.unrealizedPnl ?? null, currency)}</strong></article>
+          <article><span>أكبر مركز</span><strong>{portfolio.value?.concentration.largestHoldingPct === null || portfolio.value?.concentration.largestHoldingPct === undefined ? 'غير متاح' : portfolio.value.concentration.largestHoldingPct.toFixed(1) + '%'}</strong></article>
+        </div>
+        {portfolio.value && !portfolio.value.complete && <p className="finance-warning">لا يمكن توحيد قيمة المحفظة بسبب أسعار صرف ناقصة: {portfolio.value.missingFxCurrencies.join('، ')}. القيم الإجمالية والأوزان محجوبة حتى إدخال أسعار الصرف.</p>}
+        {portfolio.value?.concentration.warnings.length ? <div className="finance-warning"><strong>تنبيهات تركّز:</strong> {portfolio.value.concentration.warnings.map(() => 'مركز واحد يتجاوز 25%').join(' · ')}. هذه حدود تنبيه ثابتة وليست توصيات بيع أو شراء.</div> : null}
+        <div className="portfolio-layout">
+          <form className="finance-form portfolio-form" onSubmit={event => { event.preventDefault(); addHolding(); }}>
+            <h4>إضافة مركز استثماري</h4>
+            <label>الرمز / اسم الأصل<input value={holdingSymbol} onChange={event => setHoldingSymbol(event.target.value.toUpperCase())} placeholder="مثال: BTC أو SPY" required /></label>
+            <label>فئة الأصل<select value={holdingClass} onChange={event => setHoldingClass(event.target.value as PortfolioAssetClass)}><option value="EQUITY">أسهم</option><option value="ETF">صناديق ETF</option><option value="CRYPTO">عملات رقمية</option><option value="BOND">سندات</option><option value="COMMODITY">سلع</option><option value="OPTION">عقود خيارات</option><option value="CASH">نقد</option><option value="OTHER">أخرى</option></select></label>
+            <div className="finance-form-row"><label>الكمية / عدد العقود<input type="number" min="0.00000001" step="any" value={holdingQuantity} onChange={event => setHoldingQuantity(event.target.value)} required /></label><label>مضاعف العقد<input type="number" min="0.00000001" step="any" value={holdingMultiplier} onChange={event => setHoldingMultiplier(event.target.value)} required /></label></div>
+            <div className="finance-form-row"><label>متوسط تكلفة الوحدة<input type="number" min="0" step="any" value={holdingCost} onChange={event => setHoldingCost(event.target.value)} required /></label><label>السعر الحالي / Mark<input type="number" min="0" step="any" value={holdingPrice} onChange={event => setHoldingPrice(event.target.value)} required /></label></div>
+            <div className="finance-form-row"><label>العملة<input value={holdingCurrency} onChange={event => setHoldingCurrency(event.target.value.toUpperCase())} maxLength={12} required /></label><label>تاريخ رصد السعر<input type="date" value={holdingDate} onChange={event => setHoldingDate(event.target.value)} required /></label></div>
+            <label>مصدر السعر<input value={holdingSource} onChange={event => setHoldingSource(event.target.value)} placeholder="كشف وسيط، بورصة، سعر يدوي..." required /></label>
+            <button className="button button-primary" type="submit">إضافة إلى المحفظة</button>
+          </form>
+          <div className="portfolio-side">
+            <article className="panel portfolio-allocations"><h4>توزيع المحفظة حسب فئة الأصل</h4>
+              {portfolio.value?.allocations.length ? portfolio.value.allocations.map(item => <div className="portfolio-allocation" key={item.assetClass}><div><b>{item.assetClass}</b><span>{item.weightPct === null ? 'غير مكتمل' : item.weightPct.toFixed(1) + '%'}</span></div><div className="portfolio-bar"><i style={{ width: (item.weightPct ?? 0) + '%' }} /></div></div>) : <p className="finance-empty">أضف مراكز لعرض التوزيع.</p>}
+            </article>
+          </div>
+        </div>
+        <div className="portfolio-holdings">
+          <h4>المراكز المسجلة</h4>
+          {portfolio.value?.holdings.length ? portfolio.value.holdings.map(item => <div className="portfolio-holding-row" key={item.holding.id}>
+            <div className="portfolio-holding-main"><b>{item.holding.symbol} <span>{item.holding.assetClass}</span></b><small>{item.holding.quantity} × {item.holding.contractMultiplier} · {item.holding.currency}</small><small>السعر: {item.holding.marketPrice} · المصدر: {item.holding.quoteSource} · {item.holding.priceObservedAt.slice(0,10)}</small></div>
+            <div className="portfolio-holding-value"><strong>{money(item.reportingMarketValue, currency)}</strong><small className={(item.reportingUnrealizedPnl ?? 0) >= 0 ? 'portfolio-positive' : 'portfolio-negative'}>غير محقق: {money(item.reportingUnrealizedPnl, currency)}</small><small>الوزن: {item.weightPct === null ? 'غير مكتمل' : item.weightPct.toFixed(1) + '%'}</small></div>
+            <button type="button" aria-label={'حذف ' + item.holding.symbol} onClick={() => setLedger(current => ({ ...current, holdings: current.holdings.filter(row => row.id !== item.holding.id) }))}>×</button>
+          </div>) : <p className="finance-empty">لا توجد مراكز استثمارية مسجلة.</p>}
+        </div>
+      </section>
       <div className="finance-entry-grid">
         <form className="finance-form" onSubmit={event => { event.preventDefault(); addBalance(); }}>
           <h3>إضافة أصل أو التزام</h3>
@@ -188,7 +261,7 @@ export default function FinancialCockpit() {
           {ledger.transactions.length ? ledger.transactions.slice().sort((a,b)=>b.occurredAt.localeCompare(a.occurredAt)).map(item => <div className="finance-ledger-row" key={item.id}><span><b>{item.category}</b><small>{item.kind === 'INCOME' ? 'دخل' : item.kind === 'EXPENSE' ? 'مصروف' : 'تحويل'} · {item.occurredAt.slice(0,10)}</small></span><strong>{money(item.amount,item.currency)}</strong><button aria-label="حذف الحركة" onClick={() => setLedger(current => ({...current,transactions:current.transactions.filter(row=>row.id!==item.id)}))}>×</button></div>) : <p className="finance-empty">لم تسجل حركات بعد.</p>}
         </article>
       </div>
-      <div className="finance-footer-actions"><span>{ledger.fxRates.length} سعر صرف محفوظ · {cashFlow.value?.excludedTransfers ?? 0} تحويل داخلي مستبعد من صافي التدفق</span><button type="button" className="button button-ghost danger-ghost" onClick={clearLedger}>حذف السجل المحلي بالكامل</button></div>
+      <div className="finance-footer-actions"><span>{ledger.fxRates.length} سعر صرف محفوظ · {ledger.holdings.length} مركز استثماري · {cashFlow.value?.excludedTransfers ?? 0} تحويل داخلي مستبعد من صافي التدفق</span><button type="button" className="button button-ghost danger-ghost" onClick={clearLedger}>حذف السجل المحلي بالكامل</button></div>
       {notice && <p className="finance-notice" role="status">{notice}<button type="button" onClick={() => setNotice('')}>إغلاق</button></p>}
     </section>
   );
