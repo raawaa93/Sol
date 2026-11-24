@@ -233,7 +233,7 @@ Sources:
 
 | Venue / product | Product classification | Syria evidence | Operational decision |
 |---|---|---|---|
-| Gate Global Crypto Options | European, cash-settled crypto options; REST/WS, IV/market/limit order paths, short/margin telemetry | Current global ToS does not name Syria in the non-exhaustive list; older 2022 PDF does; no current written Syria approval found | Inquiry-only candidate; no funding before written compliance approval |
+| Gate Global Crypto Options | European, cash-settled crypto options; REST/WS, IV/market/limit order paths, short/margin telemetry | Gate EU agreement (1 Mar 2026) explicitly lists Syria; generic global ToS differs; older PDF also lists Syria; no non-EU written approval found | Gate EU excluded; other Gate entity unresolved and inquiry-only; no funding |
 | Bitget Stock+ | Separate U.S. securities sub-account with options features | General Bitget account accepts Syria, but June 2026 Stock+ launch report lists Syria among exclusions | Do not use; require written Stock+ eligibility confirmation |
 | Paradex | On-chain order-book options/perpetual venue | Official Restricted Persons page explicitly names Syria; Terms prohibit VPN circumvention | Exclude |
 | Hyperliquid HIP-4 | Binary/outcome contracts, not vanilla options; HIP-3 are perpetuals | Broad sanctions/export-control terms and independent live test reported Syria trading gate | Exclude as execution; do not misclassify HIP-3/4 as options |
@@ -251,7 +251,7 @@ Sources:
 ### Venue selection for the actual user
 
 1. **Conditional primary:** Binance, because its official Syria FAQ explicitly lists Options and permits eligible Syrian residents to register/KYC. This is not evidence that every option family or API permission is active. Verify the actual product and permissions in the real Syrian KYC account.
-2. **No currently confirmed second execution venue:** Deribit, Bybit, OKX and Paradex list Syria restrictions; Hyperliquid's trading gate has been observed blocking Syria; Bitget Stock+ is reported to exclude Syria; IBKR and AMP do not establish eligibility. **Gate Global is inquiry-only** because its current non-exhaustive list and older agreement conflict. Optimus and Ironbeam remain inquiry-only.
+2. **No currently confirmed second execution venue:** Deribit, Bybit, OKX and Paradex list Syria restrictions; Hyperliquid's trading gate has been observed blocking Syria; Bitget Stock+ is reported to exclude Syria; IBKR and AMP do not establish eligibility. **Gate EU is explicitly excluded**; Gate Global/non-EU entity is unresolved because its generic terms differ from Gate EU and the older agreement. Optimus and Ironbeam remain inquiry-only.
 3. **Research architecture:** venue-neutral canonical contracts, separate adapter per exchange/FCM, common provenance/freshness, normalized multiplier/currency/settlement, independent pricing and risk engines, and no cross-venue equivalence unless contract terms prove it.
 4. **No VPN workaround:** use VPN only for connectivity/privacy where lawful and allowed; do not route execution through another country to misrepresent residence or defeat a venue's terms.
 
@@ -334,3 +334,13 @@ Sources:
 - Gate Options WebSocket: https://www.gate.com/docs/developers/options/ws/en/
 - Gate European cash-settlement Help: https://www.gate.com/help/other/optionsbasics/46255/european-options-settlement-methods-explained
 - Gate crypto-options trading guide (5 Nov 2026): https://www.gate.com/learn/articles/how-to-trade-crypto-options-on-gate
+
+
+### تصحيح أهلية Gate EU — مصدر رسمي أحدث
+
+اتفاقية Gate Technology Ltd الأوروبية المنشورة على eu.gate.com، والمحدثة في 1 مارس 2026، تسمي سوريا صراحةً ضمن Restricted Locations في البند 4.2 (وتعيد شرط الإقامة في البند 5.1.v). لذلك لا يجوز أن نستنتج من صفحة Gate Global العامة التي لا تعرض سوريا في قائمتها أن المستخدم السوري مقبول. Gate لديها كيانات/اتفاقيات إقليمية متعددة؛ يجب تحديد الكيان الذي سيبرم العقد مع المستخدم. **Gate EU: ممنوع للمقيم السوري حسب الاتفاقية. Gate Global غير الأوروبي: غير مثبت، ولا يُستخدم حتى تأكيد كتابي من Compliance يحدد الكيان ويوافق على الإقامة السورية وخيارات Crypto Options تحديداً.** كما أن اتفاقية Gate Event Contracts تذكر سوريا ضمن Excluded Jurisdictions، ولا يجوز خلطها مع Crypto Options.
+
+المصادر الرسمية:
+- Gate EU User Agreement (1 March 2026): https://eu.gate.com/en-eu/legal/user-agreement
+- Gate Event Contracts Agreement: https://www.gate.com/es/help/event-contracts/faq/100616
+- Gate Global User Agreement: https://www.gate.com/legal/user-agreement
