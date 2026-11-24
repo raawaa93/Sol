@@ -30,6 +30,10 @@ test('CSV crypto requires a named non-Demo venue and explicit matching multiplie
   assert.equal(getContractScaleIssue(binanceCrypto, 'CSV'), 'UNSUPPORTED_CONTRACT_SCALE');
 });
 
+test('different quote and settlement currencies block scalar per-contract P&L', () => {
+  assert.equal(getContractScaleIssue({ ...binanceCrypto, settlementAsset: 'USDC' }, 'BINANCE'), 'UNSUPPORTED_CONTRACT_SCALE');
+});
+
 test('estimated or missing contract unit blocks per-contract calculations', () => {
   assert.equal(getContractScaleIssue({ ...binanceCrypto, estimatedFields: ['unit'] }, 'BINANCE'), 'UNIT_UNVERIFIED');
   assert.equal(getContractScaleIssue({ ...binanceCrypto, unit: 0 }, 'BINANCE'), 'UNIT_UNVERIFIED');
