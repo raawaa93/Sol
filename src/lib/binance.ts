@@ -245,7 +245,7 @@ export function parseBinanceOptionMarkPriceMessage(payload: unknown): BinanceOpt
   });
 }
 
-/** Parse Binance Options ticker-by-underlying events/** Parse Binance Options ticker-by-underlying events (raw or combined stream payloads). */
+/** Parse Binance Options ticker-by-underlying events (raw or combined stream payloads). */
 export function parseBinanceOptionTickerMessage(payload: unknown): BinanceOptionTickerEvent[] {
   let decoded = payload;
   if (typeof decoded === 'string') {
