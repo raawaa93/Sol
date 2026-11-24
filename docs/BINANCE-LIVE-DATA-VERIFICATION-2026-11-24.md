@@ -90,3 +90,25 @@ Filtering the same 24-hour window to deployment version `10` changes the interpr
 - None of these results establishes account-level Options permission, legal permission to trade from Syria, or access to every Binance options sub-product.
 
 The next meaningful end-to-end check remains a direct user-device/browser session on the intended Syrian network path, with the app's source status and the resulting HTTP outcome observed together. Do not treat the server-side log classification alone as that confirmation.
+
+
+## CI egress isolation — 24 November 2026, 12:55 UTC
+
+The latest 24-hour log aggregation for deployed function version 10 showed:
+- SY caller classification → Supabase Edge \`eu-west-2\`: 50 HTTP 200 requests (07:00:20–07:00:27 UTC).
+- GB caller classification → \`eu-west-2\`: 169 HTTP 200 requests (06:54:11–10:34:52 UTC).
+- US caller classification → US Edge regions: HTTP 451 responses, including 13 requests through \`us-west-1\` up to 12:48 UTC.
+- The six US-classified HTTP 200 requests in \`eu-central-2\` came from older versions 8 and 9, not the current version 10.
+
+The US requests use the GitHub-hosted \`node\` user-agent and are CI smoke-test traffic. They are not requests from the Syrian mobile network. The published production-audit job was therefore changed to validate the published page and assets without calling Binance from GitHub-hosted infrastructure. This prevents a US CI egress result from being repeatedly presented as the user's live-market result.
+
+The active app still requests the global Binance Options host through the read-only Supabase proxy. Supabase's automatic edge routing remains enabled; no \`x-region\` override, region spoofing, proxy rotation, or alternate jurisdiction was introduced.
+
+The historical Syrian network result remains 50/50 HTTP 200 from a Cloudflare-classified SY / Damascus / Syriatel request path through Supabase Edge \`eu-west-2\`. This is a verified historical network result, not a guarantee of current connectivity or account-level product permissions. The next live confirmation must come from the intended browser and network, not from a US CI runner.
+
+### Cache and stored-data audit
+
+- The frontend does not persist Binance market snapshots in \`localStorage\` or IndexedDB. Its local persistent keys are the watchlist and paper-trade journal; these are user-owned data and were not deleted.
+- The Edge Function's response cache is in-memory and per-isolate, with endpoint TTLs of 2–60 seconds. It stores only successful upstream responses; HTTP 451 responses are not cached.
+- The active proxy's upstream host is fixed to \`https://eapi.binance.com\`. The active frontend direct fallback uses the same global Options host. No \`api.binance.us\` endpoint or Binance.US provider is present in the inspected active runtime files.
+- The Supabase Edge function's version 10 is active and its deployed source uses \`eapi.binance.com\`. No production secrets, database records, or user journal data were changed.
