@@ -91,6 +91,9 @@ export function parseContractEconomicsCsvV2(fields: ContractEconomicsCsvFields):
   const style = nonEmpty(fields.exerciseStyleCanonical)?.toUpperCase() as ExerciseStyle | undefined;
   const settlement = nonEmpty(fields.settlementMechanic)?.toUpperCase() as ContractSettlementMechanic | undefined;
   const settlementCurrency = nonEmpty(fields.settlementCurrency)?.toUpperCase();
+  if (!multiplier || !quoteCurrency || !priceUnit || !style || !settlement || !settlementCurrency || !nonEmpty(fields.deliverablesJson)) {
+    return { warning: 'CSV v2 is missing required premium, exercise, currency or deliverable fields; canonical terms were not imported.' };
+  }
   let deliverables: DeliverableComponent[] | undefined;
   try {
     const parsed: unknown = JSON.parse(fields.deliverablesJson ?? '');
