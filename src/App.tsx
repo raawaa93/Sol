@@ -113,7 +113,7 @@ function formatTimestampAge(timestamp: number, now = Date.now()): string {
   const ageMs = now - timestamp;
   if (!Number.isFinite(ageMs)) return 'وقت الجلب غير صالح';
   if (assessSnapshotFreshness(timestamp, now) === 'future') return 'وقت الاستلام مستقبلي؛ تحقّق';
-  return formatAge(Math.max(0, ageMs), 'عمر الاستلام');
+  return formatAge(ageMs, 'عمر الاستلام');
 }
 
 function formatPercent(value: number, digits = 1): string {
