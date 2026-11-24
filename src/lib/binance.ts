@@ -315,21 +315,18 @@ export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptio
   const useTickerBid = !bookTickerFresh && event.bestBid !== undefined;
   const useTickerAsk = !bookTickerFresh && event.bestAsk !== undefined;
   const sourceHasGreeks = Object.values(event.sourceGreeks).some((value) => value !== undefined);
-  const observedFields = [
-    ...(event.markIv !== undefined ? ['iv'] : []),
-    ...(event.bidIv !== undefined ? ['bidIv'] : []),
-    ...(event.askIv !== undefined ? ['askIv'] : []),
-    ...(event.markPrice !== undefined ? ['markPrice'] : []),
-  ];
   const modelUpdate = event.markIv !== undefined && quote.pricingStatus === 'ASSUMED' && quote.pricingModel
     ? priceOption({ ...quote, volatility: event.markIv, rate: quote.riskFreeRate ?? Number.NaN })
     : undefined;
-  const greekFields = ['delta', 'gamma', 'theta', 'vega', 'rho'];
   const updated: OptionQuote = {
     ...quote,
     ...(quote.estimatedFields ? {
-      estimatedFields: quote.estimatedFields.filter((field) => !observedFields.includes(field)
-        && (!modelUpdate || !greekFields.includes(field))),
+      estimatedFields: quote.estimatedFields.filter((field) =>
+        (field !== 'iv' || event.markIv === undefined)
+        && (field !== 'bidIv' || event.bidIv === undefined)
+        && (field !== 'askIv' || event.askIv === undefined)
+        && (field !== 'markPrice' || event.markPrice === undefined)
+        && (!modelUpdate || !['delta', 'gamma', 'theta', 'vega', 'rho'].includes(field))),
     } : {}),
     ...(useTickerBid ? { bid: event.bestBid, ...(event.bestBidQuantity !== undefined ? { bidQuantity: event.bestBidQuantity } : {}) } : {}),
     ...(useTickerAsk ? { ask: event.bestAsk, ...(event.bestAskQuantity !== undefined ? { askQuantity: event.bestAskQuantity } : {}) } : {}),
