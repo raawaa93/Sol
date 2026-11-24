@@ -44,7 +44,8 @@ export function getIvRvSpread(market: AssetSnapshot | null): number | null {
 /** Compare unestimated put/call IV at approximately matched 25-delta wings on one expiry. */
 export function getComparableDeltaSkew(quotes: OptionQuote[], targetAbsDelta = 0.25): DeltaSkewComparison | null {
   if (!Number.isFinite(targetAbsDelta) || targetAbsDelta <= 0 || targetAbsDelta >= 1) return null;
-  const rows = getLatestQuotePerContract(quotes).filter((quote) => Number.isFinite(quote.daysToExpiry)
+  const rows = getLatestQuotePerContract(quotes).filter((quote) => quote.pricingStatus === 'SUPPORTED'
+    && Number.isFinite(quote.daysToExpiry)
     && quote.daysToExpiry > 0
     && !isQuoteFieldEstimated(quote, 'daysToExpiry')
     && !isQuoteFieldEstimated(quote, 'iv')
@@ -198,7 +199,8 @@ function compareReviewQuality(a: OptionQuote, b: OptionQuote): number {
 export function getReviewCandidates(quotes: OptionQuote[], limit = 3): OptionQuote[] {
   const count = Math.max(1, Math.floor(limit));
   const unique = getLatestQuotePerContract(quotes);
-  const validQuotes = unique.filter((quote) => quote.bid > 0 && quote.ask > 0 && quote.ask >= quote.bid
+  const validQuotes = unique.filter((quote) => quote.pricingStatus !== 'OBSERVED_ONLY'
+    && quote.bid > 0 && quote.ask > 0 && quote.ask >= quote.bid
     && Number.isFinite(getSpreadPct(quote)));
   if (!validQuotes.length) return [];
 
