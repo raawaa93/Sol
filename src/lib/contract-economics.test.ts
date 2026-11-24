@@ -315,3 +315,120 @@ test('currency identifiers support settlement assets without implying cross-asse
   assert.equal(usdc.valid, true, JSON.stringify(usdc));
   assert.equal(usdc.adapterReady, true);
 });
+
+
+test('premium cash uses only the premium multiplier and adds fees once', async () => {
+  const { calculatePremiumCash } = await import('./contract-economics-calculations.ts');
+  const economics = standardEquity({
+    premium: { multiplier: 100, quoteCurrency: 'USD', priceUnit: 'PER_UNDERLYING_UNIT' },
+    exercise: {
+      style: 'AMERICAN',
+      settlement: 'PHYSICAL',
+      aggregateExerciseCash: { basis: 'STRIKE_MULTIPLIER', currency: 'USD', multiplier: 100 },
+      settlementCurrency: 'USD',
+      deliverables: [{ type: 'EQUITY', symbol: 'NVDA', amount: 10, currency: 'USD' }],
+    },
+  });
+  const result = calculatePremiumCash({ economics, premiumPrice: 2.5, contracts: 2, fees: 1.25 });
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.value.premiumAmount, 500);
+    assert.equal(result.value.amount, 501.25);
+    assert.equal(result.value.currency, 'USD');
+  }
+});
+
+test('deliverable package values adjusted equity and fixed cash independently', async () => {
+  const { valueDeliverablePackage } = await import('./contract-economics-calculations.ts');
+  const economics = standardEquity({
+    exercise: {
+      style: 'AMERICAN',
+      settlement: 'PHYSICAL',
+      aggregateExerciseCash: { basis: 'FIXED', currency: 'USD', amount: 5000 },
+      settlementCurrency: 'USD',
+      deliverables: [
+        { type: 'EQUITY', symbol: 'NVDA', amount: 10, currency: 'USD' },
+        { type: 'CASH', currency: 'USD', amount: 25 },
+      ],
+    },
+  });
+  const result = valueDeliverablePackage(economics, { NVDA: { price: 500, currency: 'USD' } });
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.value.components[0].value, 5000);
+    assert.equal(result.value.components[1].value, 25);
+    assert.equal(result.value.totalsByCurrency.USD, 5025);
+  }
+});
+
+test('deliverable package never combines different currencies', async () => {
+  const { valueDeliverablePackage } = await import('./contract-economics-calculations.ts');
+  const economics = standardEquity({
+    exercise: {
+      style: 'AMERICAN',
+      settlement: 'PHYSICAL',
+      aggregateExerciseCash: { basis: 'FIXED', currency: 'USD', amount: 5000 },
+      settlementCurrency: 'USD',
+      deliverables: [
+        { type: 'EQUITY', symbol: 'NVDA', amount: 10, currency: 'USD' },
+        { type: 'CASH', currency: 'USDC', amount: 25 },
+      ],
+    },
+  });
+  const result = valueDeliverablePackage(economics, { NVDA: { price: 500, currency: 'USD' } });
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.value.totalsByCurrency.USD, 5000);
+    assert.equal(result.value.totalsByCurrency.USDC, 25);
+    assert.equal(Object.keys(result.value.totalsByCurrency).length, 2);
+  }
+});
+
+test('aggregate exercise cash uses its own multiplier, not the premium multiplier', async () => {
+  const { calculateAggregateExerciseCash } = await import('./contract-economics-calculations.ts');
+  const economics = standardEquity({
+    premium: { multiplier: 100, quoteCurrency: 'USD', priceUnit: 'PER_UNDERLYING_UNIT' },
+    exercise: {
+      style: 'AMERICAN',
+      settlement: 'PHYSICAL',
+      aggregateExerciseCash: { basis: 'STRIKE_MULTIPLIER', currency: 'USD', multiplier: 10 },
+      settlementCurrency: 'USD',
+      deliverables: [{ type: 'EQUITY', symbol: 'NVDA', amount: 10, currency: 'USD' }],
+    },
+  });
+  const result = calculateAggregateExerciseCash(economics, 50, 2);
+  assert.equal(result.ok, true);
+  if (result.ok) assert.equal(result.value.amount, 1000);
+});
+
+test('exercise cash with a fixed basis does not depend on the supplied strike', async () => {
+  const { calculateAggregateExerciseCash } = await import('./contract-economics-calculations.ts');
+  const economics = standardEquity({
+    exercise: {
+      style: 'AMERICAN',
+      settlement: 'PHYSICAL',
+      aggregateExerciseCash: { basis: 'FIXED', currency: 'USD', amount: 425 },
+      settlementCurrency: 'USD',
+      deliverables: [{ type: 'EQUITY', symbol: 'NVDA', amount: 10, currency: 'USD' }],
+    },
+  });
+  const result = calculateAggregateExerciseCash(economics, 999, 3);
+  assert.equal(result.ok, true);
+  if (result.ok) assert.equal(result.value.amount, 1275);
+});
+
+test('future deliverables remain blocked without a futures-specific valuation adapter', async () => {
+  const { valueDeliverablePackage } = await import('./contract-economics-calculations.ts');
+  const economics = standardEquity({
+    exercise: {
+      style: 'EUROPEAN',
+      settlement: 'FUTURE_DELIVERY',
+      aggregateExerciseCash: { basis: 'STRIKE_MULTIPLIER', currency: 'USD', multiplier: 1 },
+      settlementCurrency: 'USD',
+      deliverables: [{ type: 'FUTURE', symbol: 'CL', amount: 1, currency: 'USD', pointValue: 1000 }],
+    },
+  });
+  const result = valueDeliverablePackage(economics, {});
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.reason, 'FUTURE_DELIVERY_REQUIRES_ADAPTER');
+});
