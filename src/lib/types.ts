@@ -10,7 +10,7 @@ export type ContractEconomicsProvenanceStatus = 'PROVIDER_VERIFIED' | 'USER_ASSE
 export type ContractDeliverable =
   | { type: 'EQUITY' | 'UNDERLYING'; symbol: string; amount: number; currency?: string }
   | { type: 'CASH'; currency: string; amount: number }
-  | { type: 'FUTURE'; symbol: string; amount: number; pointValue?: number };
+  | { type: 'FUTURE'; symbol: string; amount: number; currency?: string; pointValue?: number };
 
 export type AggregateExerciseCash =
   | { basis: 'STRIKE_MULTIPLIER'; currency: string; multiplier: number }
