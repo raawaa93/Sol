@@ -3,7 +3,7 @@ import { isQuoteFieldEstimated } from './quote-quality.ts';
 import type { AssetSnapshot, OptionQuote, Underlying } from './types';
 
 function contractKey(quote: OptionQuote): string {
-  return `${quote.underlying}|${quote.expiry}|${quote.strike}|${quote.type}`;
+  return `${quote.venue ?? 'UNKNOWN'}|${quote.symbol}|${quote.underlying}|${quote.expiry}|${quote.strike}|${quote.type}|${quote.underlyingKind ?? 'UNKNOWN'}|${quote.contractMultiplier ?? quote.unit}`;
 }
 
 function timestampOf(quote: OptionQuote): number {
@@ -28,7 +28,7 @@ export function getMarketSnapshotFromQuotes(quotes: OptionQuote[], underlying: U
   const rows = getLatestQuotePerContract(quotes.filter((quote) => quote.underlying === underlying));
   if (!rows.length) return null;
 
-  const spots = rows.map((quote) => quote.spot).sort((a, b) => a - b);
+  const referencePrices = rows.map((quote) => quote.underlyingKind === 'FUTURE' ? quote.forward ?? quote.spot : quote.spot).sort((a, b) => a - b);
   const near30Iv = rows
     .filter((quote) => quote.daysToExpiry >= 20 && quote.daysToExpiry <= 40
       && !isQuoteFieldEstimated(quote, 'daysToExpiry')
@@ -39,7 +39,7 @@ export function getMarketSnapshotFromQuotes(quotes: OptionQuote[], underlying: U
   const oiRows = rows.filter((quote) => quote.openInterestUsd != null || quote.openInterest !== null);
   const volumeRows = rows.filter((quote) => quote.volumeQuote != null || quote.volume !== null);
   const openInterestUsd = oiRows.length
-    ? oiRows.reduce((sum, quote) => sum + (quote.openInterestUsd ?? (quote.openInterest ?? 0) * quote.spot * quote.unit), 0)
+    ? oiRows.reduce((sum, quote) => sum + (quote.openInterestUsd ?? (quote.openInterest ?? 0) * (quote.underlyingKind === 'FUTURE' ? quote.forward ?? quote.spot : quote.spot) * quote.unit), 0)
     : null;
   const volume24hUsd = volumeRows.length
     ? volumeRows.reduce((sum, quote) => sum + (quote.volumeQuote ?? (quote.volume ?? 0) * getMidPrice(quote) * quote.unit), 0)
@@ -47,7 +47,7 @@ export function getMarketSnapshotFromQuotes(quotes: OptionQuote[], underlying: U
 
   return {
     underlying,
-    spot: spots[Math.floor(spots.length / 2)],
+    spot: referencePrices[Math.floor(referencePrices.length / 2)],
     dayChangePct: 0,
     iv30: near30Iv.length ? near30Iv[Math.floor(near30Iv.length / 2)] : null,
     rv30: null,
