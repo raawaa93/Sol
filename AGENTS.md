@@ -11,9 +11,9 @@
 - A VPN may be necessary for ordinary internet connectivity. Treat VPN egress IP as network routing only; it does not change residence, KYC, legal jurisdiction, tax residence, sanctions screening or venue eligibility.
 - Never recommend false addresses, false residence, borrowed accounts, VPN geofencing evasion, proxy rotation or other circumvention of platform restrictions.
 - Check eligibility against truthful residence and identity, exact contracting legal entity, product-specific terms and account-level permissions. A country absent from a public list is not proof of acceptance.
-- As of 2026-11-24, Binance's Syria-specific FAQ says Syrian residents may register and verify subject to KYC/compliance and explicitly lists Options trading. The FAQ predates the July 2026 Commodity/TradFi Options launch: it supports general Crypto Options eligibility, but does not prove XAU/XAG Commodity Options are enabled for every Syrian account. Verify each product and each writing permission in the real account or with Binance Support. Crypto Options writing is currently limited to BTC and ETH, requires margin and can be liquidated; BNB/XRP/SOL/DOGE writing is unavailable. Commodity Options are retail long-only. Ordinary Binance accounts lack portfolio-margin/risk netting across Options/Futures/Margin, so do not assume spread legs offset margin. Binance Options supports Limit orders only. Treat Binance as a conditional single-leg/limited-options venue, not an all-asset options venue.
+- Binance's Syria FAQ confirms account registration/KYC subject to compliance, but its enumerated product list does not explicitly name Options. Do not claim product-level eligibility from the general account FAQ; verify Crypto Options, Commodity/TradFi Options and Stock Options separately in the real Syrian KYC account or with written support confirmation. Crypto Options writing is currently limited to BTC and ETH, requires margin and can be liquidated; BNB/XRP/SOL/DOGE writing is unavailable. Commodity Options are retail long-only. Ordinary Binance accounts lack portfolio-margin/risk netting across Options/Futures/Margin, so do not assume spread legs offset margin. Binance Options supports Limit orders only.
 - Bitget's general platform FAQ says Syrian residents may register and complete KYC, but Stock+ is a separate securities sub-account. A June 2026 launch report lists Syria among Stock+ excluded jurisdictions; current Stock+ terms do not publish a clear country appendix. Treat Stock+ as unavailable/unverified until Bitget/Parsa confirms in writing.
-- **Gate EU is explicitly unavailable to Syrian residents.** Its User Agreement updated 1 March 2026 names Syria in Restricted Locations. A generic Gate Global agreement omits Syria from its published list, while an older Gate PDF lists it; this entity-specific conflict does not prove access to a non-EU entity. Treat any non-EU Gate entity as unverified until Gate Compliance identifies the contracting entity and confirms Syrian residence plus Crypto Options access in writing. Gate's options API is technically capable, but no comparable options liquidity evidence has been established. Never use VPN/IP masking to bypass an eligibility decision.
+- **Gate EU is explicitly unavailable to Syrian residents.** Its latest User Agreement located in this review, updated 23 September 2026 names Syria in Restricted Locations. A generic Gate Global agreement omits Syria from its published list, while an older Gate PDF lists it; this entity-specific conflict does not prove access to a non-EU entity. Treat any non-EU Gate entity as unverified until Gate Compliance identifies the contracting entity and confirms Syrian residence plus Crypto Options access in writing. Gate's options API is technically capable, but no comparable options liquidity evidence has been established. Never use VPN/IP masking to bypass an eligibility decision.
 - Bitget's general account FAQ welcomes Syrian residents, but Bitget Stock+ is a separate securities sub-account. The June 2026 launch coverage lists Syria among Stock+ excluded jurisdictions; do not infer Stock+ eligibility from general Bitget access.
 - Paradex's official Restricted Persons page explicitly names Syria; its Terms of Service state that it makes no exceptions and prohibit VPN use to circumvent restrictions.
 - Hyperliquid's interface applies a legal/location gate; third-party live testing in October 2026 reported Syria blocked. Its HIP-4 outcome markets are binary/event contracts, not vanilla listed options. Do not treat public Hyperliquid market-data reachability as permission to trade.
@@ -56,7 +56,7 @@ Keep the multi-asset scope, Syrian residence, VPN connectivity distinction, plat
 
 ### أهلية سوريا والمنصات البديلة
 
-- Binance نشرت FAQ تقول صراحةً إن السوريين المقيمين في سوريا يستطيعون التسجيل والتحقق، وتذكر Options ضمن المنتجات المتاحة. هذه موافقة عامة على المنتج وقت النشر، وليست ضماناً لكل منتج فرعي أُطلق لاحقاً؛ Stock Options خصوصاً يتطلب التحقق من ظهوره وصلاحيته داخل حساب KYC الحقيقي أو جواب دعم مكتوب.
+- Binance نشرت FAQ تقول إن السوريين المقيمين في سوريا يستطيعون التسجيل والتحقق وفق KYC والامتثال، لكن قائمة المنتجات المسماة فيها لا تذكر Options صراحةً. لا تستنتج أهلية الخيارات من أهلية الحساب؛ تحقق من كل خط منتج وصلاحية داخل الحساب أو كتابةً.
 - Bybit وDeribit وOKX تذكر سوريا صراحةً ضمن المناطق المستبعدة/المقيدة. **Gate Global حالة مختلفة:** اتفاقيته الحالية لا تذكر سوريا في القائمة المنشورة لكنها تصفها بأنها غير حصرية، بينما اتفاقية أقدم تذكر سوريا؛ لذلك Gate Global مرشح استفسار مكتوب فقط، وليس منصة مقبولة أو محظورة مثبتة. Gate US كيان منفصل لا ينطبق على المقيم السوري. لا تستخدم VPN لتجاوز قيود أي منتج.
 - قائمة IBKR الرسمية للبلدان المتاحة لا تتضمن سوريا وقت الفحص؛ لا نفترض إمكانية فتح حساب أو تداول Cboe/CME من خلالها.
 - Paradex يذكر سوريا صراحة في Restricted Persons؛ لا يستخدم كبديل.
@@ -96,3 +96,31 @@ Keep the multi-asset scope, Syrian residence, VPN connectivity distinction, plat
 - QuantLib: https://www.quantlib.org/
 - NautilusTrader options: https://nautechsystems.github.io/nautilus_docs/latest/concepts/options/
 - NautilusTrader backtesting: https://nautechsystems.github.io/nautilus_docs/latest/concepts/backtesting/
+
+
+## Mandatory Syria legal gate
+
+## تنبيه قانوني محلي جوهري — سوريا (مراجعة 24 نوفمبر 2026)
+
+### ما تقوله الجهات السورية المنشور
+
+- **17 يونيو 2025 — هيئة الأوراق والأسواق المالية السورية:** حذرت من منصات ومكاتب الفوركس والعملات الرقمية غير المرخصة، وذكرت أن القوانين السارية لا تتيح ترخيص هذا النوع من النشاط، وأن ممارسة النشاط قد تعرض القائمين عليه للمساءلة. المصدر الصحفي الذي نقل التنويه الرسمي: https://www.syria-ex.com/display_art.php?catId=2&id=52563
+- **19 أغسطس 2025 — مصرف سوريا المركزي:** وفق بيان نقله الإعلام الرسمي (سانا)، وصف العملات الرقمية بأنها غير قانونية وغير معتمدة، وقال إن عمليات البيع أو الشراء بها باطلة قانونياً، ودعا إلى عدم التعامل أو الاستثمار أو التداول بها بأي شكل. المصدر الرسمي المنشور عبر سانا: https://sana.sy/economy/2266992/
+- **15 أكتوبر 2026 — سانا عن المصرف المركزي:** أعلن المصرف إجراءات قانونية ضد أنشطة الصرافة والحوالات غير المرخصة، استناداً إلى متطلبات الترخيص. هذا خبر عن الصرافة والتحويلات غير المرخصة، وليس حكماً خاصاً بعقود الخيارات، لكنه يؤكد أن الامتثال المحلي والتنفيذ المالي ليسا أمراً شكلياً. https://sana.sy/en/economic/2350967/
+
+لم أعثر في البحث حتى 24 نوفمبر 2026 على نص رسمي أحدث يلغي أو يوضح صراحةً هذين التحذيرين بالنسبة إلى تداول العملات الرقمية عبر منصات أجنبية أو عقود الخيارات المشتقة منها.
+
+### ما لا يجوز استنتاجه
+
+- Binance قد تسمح لمقيم سوري بالتسجيل واجتياز KYC؛ هذا لا يساوي تصريحاً من القانون السوري بالتداول.
+- خيارات Crypto Options وCommodity Options لدى Binance تسوى بـUSDT وترتبط بأصول رقمية/مؤشرات مرجعية. التحذير السوري من التعامل بالعملات الرقمية يجعل هذا المسار **عالي المخاطر القانونية**، لكن لم أعثر على قرار رسمي يشرح تصنيف عقد الخيار نفسه بالتحديد؛ لا نصنفه قطعاً من دون رأي قانوني مختص.
+- لم أعثر على قرار سوري منشور يشرح صراحةً وضع خيارات الأسهم الأمريكية أو خيارات المؤشرات والعقود الآجلة المدرجة في البورصات الأجنبية. غياب النص المحدد ليس موافقة.
+- رفع العقوبات الأمريكية الشاملة عن سوريا لا يلغي القوانين المحلية السورية، ولا يلزم كل منصة بقبول المقيمين، ولا يثبت قانونية منتج مشتق معين.
+
+### بوابة التشغيل الملزمة
+
+**لا تفعّل تداولاً حقيقياً ولا تموّل حساباً بهدف تنفيذ خيارات من داخل سوريا قبل الحصول على توضيح قانوني محلي مكتوب من محامٍ سوري مختص أو الجهة التنظيمية ذات الصلة.** يبقى Volterra في وضع قراءة البيانات العامة والتحليل وPaper Trading فقط. هذا قيد امتثال، لا عائق برمجي.
+
+### تصحيح أهلية Binance
+
+FAQ Binance المنشور في 12 يونيو 2025 يثبت أن المقيمين السوريين يمكنهم التسجيل والتحقق وفق KYC والامتثال، ويقول إنهم يستطيعون الوصول إلى مجموعة واسعة من المنتجات. لكن قائمة المنتجات المسماة في الصفحة (P2P، COIN-M، USDⓈ-M Futures، Convert/Block Trade، Margin، Spot، Copy Trading، Alpha، Wallet) **لا تسمي Options صراحةً**. لذلك لا نستخدم الصفحة كدليل صريح على أهلية Options؛ يجب التحقق من تفعيل Crypto Options لكل حساب ومن Commodity/Stock Options كلٌ على حدة أو الحصول على جواب دعم مكتوب. المصدر: https://www.binance.com/en/support/faq/detail/863795c36a224bd7aa7d677996328ff9
