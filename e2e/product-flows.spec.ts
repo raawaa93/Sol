@@ -302,7 +302,7 @@ test('mobile primary controls meet touch-target and keyboard-focus requirements'
 
   await expect(page.getByRole('group', { name: 'نوع الخيار' })).toBeVisible();
   await expect(page.getByRole('combobox', { name: 'تاريخ الانتهاء' })).toBeVisible();
-  await expect(page.getByRole('searchbox', { name: 'سعر التنفيذ أو الرمز' })).toBeVisible();
+  await expect(page.getByPlaceholder('سعر التنفيذ أو الرمز')).toBeVisible();
 
   const targets = [
     page.locator('.option-tabs button').first(),
