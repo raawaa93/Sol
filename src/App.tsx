@@ -972,10 +972,10 @@ function App() {
                 <div className="price-highlight"><span>{dataMode === 'BINANCE' ? 'سعر العقد المرجعي' : 'السعر المرجعي التقديري'}</span><strong>{formatOptionPrice(selectedPremium, selectedQuote)}</strong><small>{priceBasis}</small></div>
                 <div className="quote-row"><span>Bid <b>{formatQuotePrice(selectedQuote.bid, selectedQuote)}</b></span><span>Ask <b>{formatQuotePrice(selectedQuote.ask, selectedQuote)}</b></span></div>
                 {dataMode === 'BINANCE' && <div className="source-time-panel" aria-label="توقيتات مصادر بيانات العقد">
-                  <div><span>إغلاق نافذة Ticker</span><strong>{formatSourceTimestamp(selectedQuote.sourceTimestamps?.ticker)}</strong><small>{formatSourceTimestampAge(selectedQuote.sourceTimestamps?.ticker)}</small></div>
+                  <div><span>آخر تداول ضمن 24 ساعة · Ticker</span><strong>{formatSourceTimestamp(selectedQuote.sourceTimestamps?.ticker)}</strong><small>{formatSourceTimestampAge(selectedQuote.sourceTimestamps?.ticker)}</small></div>
                   <div><span>مؤشر الأصل · Index</span><strong>{formatSourceTimestamp(selectedQuote.sourceTimestamps?.index)}</strong><small>{formatSourceTimestampAge(selectedQuote.sourceTimestamps?.index)}</small></div>
                   <div><span>الفائدة المفتوحة · OI</span><strong>{formatSourceTimestamp(selectedQuote.sourceTimestamps?.openInterest)}</strong><small>{formatSourceTimestampAge(selectedQuote.sourceTimestamps?.openInterest)}</small></div>
-                  <small>العمر هو الزمن المنقضي منذ التوقيت المنشور لكل نقطة، ولا يثبت حداثة تدفق الأسعار. closeTime يحدد إغلاق نافذة Ticker وليس بالضرورة وقت آخر صفقة. هذه ليست أوقات استلام التطبيق؛ وMark Price لا يتضمن توقيتاً مستقلاً موثقاً في هذه الاستجابة.</small>
+                  <small>العمر هو الزمن المنقضي منذ التوقيت المنشور لكل نقطة، ولا يثبت حداثة تدفق الأسعار. closeTime هو وقت آخر صفقة حدثت ضمن نافذة 24 ساعة، ولا يثبت حداثة بقية حقول Ticker. هذه ليست أوقات استلام التطبيق؛ وMark Price لا يتضمن توقيتاً مستقلاً موثقاً في هذه الاستجابة.</small>
                 </div>}
                 {dataMode === 'BINANCE' && <div className="iv-source-range" aria-label="قيم IV المتاحة للعقد">
                   <span>Bid IV <b>{selectedQuote.bidIv === undefined ? '—' : formatPercent(selectedQuote.bidIv)}</b></span>
