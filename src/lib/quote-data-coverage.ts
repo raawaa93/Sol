@@ -67,6 +67,8 @@ export function getQuoteDataCoverage(quotes: OptionQuote[]): QuoteDataCoverage {
     providerVerifiedEconomics: 0,
     bookTickerAvailable: 0,
     liveMarkPriceAvailable: 0,
+    liveOptionTickerAvailable: 0,
+    bestBookQuantitiesAvailable: 0,
     bidIvAvailable: 0,
     askIvAvailable: 0,
     optionTickerBookAvailable: 0,
