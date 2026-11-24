@@ -805,7 +805,7 @@ function App() {
 
           <section className="compliance-banner" aria-label="تنبيه تنظيمي وتعليمي">
             <div className="compliance-icon"><ShieldAlert size={18} /></div>
-            <div className="compliance-copy"><strong>وضع تحليلي وتجريبي</strong><span>مصدر البيانات موضح في الواجهة: Demo اصطناعي، CSV محلي، أو لقطة REST عامة من Binance عبر وسيط للقراءة فقط، وليست بثاً لحظياً. لا تمثل الأرقام توصية. تحقّق من أهلية الوصول إلى المنتجات المشتقة حسب بلدك والمنصة.</span></div>
+            <div className="compliance-copy"><strong>وضع تحليلي وتجريبي</strong><span>مصدر البيانات موضح في الواجهة: Demo اصطناعي، CSV محلي، أو لقطة REST عامة من Binance عبر وسيط للقراءة فقط، وليست بثاً لحظياً. لا تمثل الأرقام توصية. أهلية الحساب لدى المنصة لا تعني أن التداول مسموح قانونياً في بلد الإقامة. للمقيمين في سوريا، الوضع القانوني لتداول العملات الرقمية والمشتقات المرتبطة بها يحتاج تحققاً مستقلاً؛ استخدم البحث والمحاكاة فقط ولا تموّل حساباً أو تنفّذ صفقة قبل مراجعة قانونية محلية.</span></div>
             <a href="https://www.fca.org.uk/news/press-releases/fca-lift-ban-crypto-exchange-traded-notes" target="_blank" rel="noreferrer" className="fca-link">معلومات FCA <ExternalLink size={13} /></a>
           </section>
 
