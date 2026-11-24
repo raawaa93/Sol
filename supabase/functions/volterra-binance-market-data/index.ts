@@ -192,7 +192,7 @@ async function hashClientAddress(address: string, secret: string): Promise<strin
   return [...new Uint8Array(signature)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-async function checkRateLimit(request: Request): Promise<RateLimitDecision> {
+async function checkRateLimit(request: Request, checkSharedLimiter = true): Promise<RateLimitDecision> {
   const supabaseUrl = getRuntimeEnv('SUPABASE_URL');
   const serviceRoleKey = getRuntimeEnv('SUPABASE_SERVICE_ROLE_KEY');
   if (!supabaseUrl || !serviceRoleKey) {
@@ -215,6 +215,12 @@ async function checkRateLimit(request: Request): Promise<RateLimitDecision> {
   const localRetryAfter = getLocalRateLimitRetryAfter(clientHash);
   if (localRetryAfter !== null) {
     return { limited: true, retryAfterSeconds: localRetryAfter, unavailable: false };
+  }
+
+  // Cached responses do not reach the upstream API. Keep the per-isolate client
+  // guard, but avoid a database round-trip for every hot-cache read.
+  if (!checkSharedLimiter) {
+    return { limited: false, retryAfterSeconds: RATE_WINDOW_SECONDS, unavailable: false };
   }
 
   const controller = new AbortController();
@@ -287,7 +293,12 @@ export async function handleRequest(request: Request): Promise<Response> {
     return jsonResponse({ error: message }, 400, origin);
   }
 
-  const rateLimit = await checkRateLimit(request);
+  const now = Date.now();
+  const cacheKey = upstreamUrl.toString();
+  const cached = responseCache.get(cacheKey);
+  const hasFreshCache = Boolean(cached && cached.expiresAt > now);
+
+  const rateLimit = await checkRateLimit(request, !hasFreshCache);
   if (rateLimit.limited) {
     const response = jsonResponse({ error: 'Rate limit exceeded. Please wait before retrying.' }, 429, origin);
     response.headers.set('Retry-After', String(rateLimit.retryAfterSeconds));
@@ -299,10 +310,7 @@ export async function handleRequest(request: Request): Promise<Response> {
     return response;
   }
 
-  const now = Date.now();
-  const cacheKey = upstreamUrl.toString();
-  const cached = responseCache.get(cacheKey);
-  if (cached && cached.expiresAt > now) {
+  if (hasFreshCache && cached) {
     return jsonResponse(JSON.parse(cached.body), cached.status, origin, cacheControlFor(getCacheSeconds(endpoint)));
   }
   if (cached) responseCache.delete(cacheKey);

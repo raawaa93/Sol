@@ -1,0 +1,26 @@
+# Volterra — Multi-Asset Options Decision Lab
+
+> Arabic-first research and paper-simulation workspace for listed options and multi-asset market scenarios.
+
+## Purpose
+
+Volterra helps users inspect options-market context, compare hypothetical strategies, import local CSV datasets, and review paper-only scenarios. It is a research and decision-support interface, not a broker or order-execution system.
+
+## Important operating constraints
+
+- Demo values are synthetic and must never be described as live market data.
+- Live market data is fetched from an upstream public market-data provider through a proxy. Availability can vary by provider eligibility, geography, and upstream response; HTTP 451 means the upstream refused the request and does not establish account eligibility.
+- A failed live-data request must not be silently replaced with synthetic values while retaining a live-data label.
+- CSV imports and the paper journal are local browser workflows; do not assume they are uploaded to a server.
+- The application is PAPER-only. It does not submit orders, manage accounts, or guarantee execution or liquidity.
+- Outputs are analytical scenarios, not investment recommendations.
+
+## Main resources
+
+- [Open the Volterra application](https://raawaa93.github.io/Sol/)
+- [Source repository](https://github.com/raawaa93/Sol)
+- [Repository issues](https://github.com/raawaa93/Sol/issues)
+
+## Guidance for automated agents
+
+When summarizing this application, distinguish synthetic Demo data, user-imported CSV data, and upstream live responses. Preserve timestamps, source labels, eligibility restrictions, and stale-data warnings. Never infer that a displayed hypothetical strategy is executable or suitable for a particular user.
