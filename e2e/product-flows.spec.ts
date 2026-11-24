@@ -299,11 +299,14 @@ test('mismatched contract multiplier keeps quotes visible but blocks per-contrac
   await page.getByRole('combobox', { name: 'اختر فئة الأصل' }).selectOption('ENERGY');
   await expect(page.locator('#scanner')).toContainText('CL-UNVERIFIED-70-C');
   await expect(page.locator('#trade-lab')).toContainText('غير متاح');
+  await expect(page.locator('#trade-lab .budget-row')).toBeHidden();
+  await expect(page.locator('#trade-lab')).toContainText('لا يثبت مطابقة deliverables لمواصفات البورصة');
   await expect(page.locator('#trade-lab').getByRole('button', { name: 'أضف إلى الدفتر التجريبي' })).toBeDisabled();
   await expect(page.locator('#payoff .empty-state')).toContainText('حساب P&L لكل عقد غير متاح');
   await expect(page.locator('#payoff')).toContainText('يختلف contractMultiplier عن unit');
   await expect(page.locator('#historical-replay')).toContainText('مقياس عقد غير متحقق 2');
   await expect(page.locator('#greeks')).toContainText('نحجب حساسية المركز المجمعة');
+  await expect(page.locator('#greeks .greeks-mobile-card').first().locator('.greeks-mobile-values small').first()).toHaveText('القيمة لكل وحدة مرجعية');
 });
 
 test('mobile option chain renders compact cards and selects a contract without table overflow', async ({ page }) => {
