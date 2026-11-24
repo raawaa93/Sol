@@ -7,7 +7,14 @@ function quote(timestamp: string, overrides: Partial<OptionQuote> = {}): OptionQ
   return {
     id: 'XAU-261124-4000-C',
     symbol: 'XAU-261124-4000-C',
-    underlying: 'XAU',
+    underlying: 'BTC',
+    assetClass: 'CRYPTO',
+    venue: 'TEST-CRYPTO-VENUE',
+    underlyingKind: 'SPOT',
+    exerciseStyle: 'EUROPEAN',
+    settlementStyle: 'CASH',
+    quoteAsset: 'USDT',
+    settlementAsset: 'USDT',
     expiry: '2026-11-25T21:00:00.000Z',
     daysToExpiry: 1,
     strike: 4000,
@@ -25,6 +32,7 @@ function quote(timestamp: string, overrides: Partial<OptionQuote> = {}): OptionQ
     volume: 10,
     spot: 4000,
     unit: 1,
+    contractMultiplier: 1,
     sourceTimestamp: timestamp,
     ...overrides,
   };
@@ -78,6 +86,31 @@ test('replay refuses missing timestamps, invalid units, mismatched contract scal
   assert.equal(result.skipped.invalidQuote, 1);
   assert.equal(result.skipped.wideSpread, 1);
   assert.equal(result.trades.length, 0);
+});
+
+
+test('CSV replay rejects a user-supplied DEMO venue label as source provenance', () => {
+  const result = replayLongOptionSnapshots([
+    quote('2026-11-24T10:00:00.000Z', { venue: 'DEMO' }),
+    quote('2026-11-24T11:00:00.000Z', { venue: 'DEMO' }),
+  ], config);
+  assert.equal(result.trades.length, 0);
+  assert.equal(result.skipped.invalidContractScale, 2);
+});
+
+test('CSV replay rejects American physical equity even with matching numeric scales', () => {
+  const result = replayLongOptionSnapshots([
+    quote('2026-11-24T10:00:00.000Z', {
+      venue: 'CBOE', assetClass: 'EQUITY', underlyingKind: 'SPOT',
+      exerciseStyle: 'AMERICAN', settlementStyle: 'PHYSICAL',
+    }),
+    quote('2026-11-24T11:00:00.000Z', {
+      venue: 'CBOE', assetClass: 'EQUITY', underlyingKind: 'SPOT',
+      exerciseStyle: 'AMERICAN', settlementStyle: 'PHYSICAL',
+    }),
+  ], config);
+  assert.equal(result.trades.length, 0);
+  assert.equal(result.skipped.invalidContractScale, 2);
 });
 
 test('replay does not look ahead beyond the exit grace window and avoids overlapping trades', () => {
