@@ -212,8 +212,8 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
       : undefined;
     const quoteAsset = readField(row, ['quoteAsset', 'quoteCurrency'])?.trim().toUpperCase();
     const settlementAsset = readField(row, ['settlementAsset', 'settleAsset', 'settlementCurrency'])?.trim().toUpperCase();
-    const contractMultiplier = parsePositiveNumber(readField(row, ['contractMultiplier', 'multiplierValue']), delimiter === ';');
-    const inputUnit = parsePositiveNumber(readField(row, ['unit', 'contractunit', 'multiplier']), delimiter === ';');
+    const contractMultiplier = parsePositiveNumber(readField(row, ['contractMultiplier', 'multiplierValue', 'multiplier']), delimiter === ';');
+    const inputUnit = parsePositiveNumber(readField(row, ['unit', 'contractunit']), delimiter === ';');
     if (contractMultiplier !== undefined && inputUnit === undefined) {
       counts.invalidRows += 1;
       addRowWarning(`تم تجاهل الصف ${sourceRowNumber}: لا يمكن استخدام contractMultiplier بديلاً عن unit؛ أدخل وحدة الأصل لكل عقد صراحةً.`);
