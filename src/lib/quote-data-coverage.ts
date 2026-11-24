@@ -14,6 +14,8 @@ export interface QuoteDataCoverage {
   providerVerifiedEconomics: number;
   bookTickerAvailable: number;
   liveMarkPriceAvailable: number;
+  liveOptionTickerAvailable: number;
+  bestBookQuantitiesAvailable: number;
   bidIvAvailable: number;
   askIvAvailable: number;
   optionTickerBookAvailable: number;
@@ -45,6 +47,8 @@ export function getQuoteDataCoverage(quotes: OptionQuote[]): QuoteDataCoverage {
     }
     if (quote.sourceTimestamps?.bookTicker) coverage.bookTickerAvailable += 1;
     if (quote.sourceTimestamps?.markPrice) coverage.liveMarkPriceAvailable += 1;
+    if (quote.sourceTimestamps?.ticker) coverage.liveOptionTickerAvailable += 1;
+    if (Number.isFinite(quote.bidQuantity) && Number.isFinite(quote.askQuantity)) coverage.bestBookQuantitiesAvailable += 1;
     if (Number.isFinite(quote.bidIv) && (quote.bidIv ?? 0) > 0) coverage.bidIvAvailable += 1;
     if (Number.isFinite(quote.askIv) && (quote.askIv ?? 0) > 0) coverage.askIvAvailable += 1;
     if (quote.bidAskSource === 'OPTION_TICKER') coverage.optionTickerBookAvailable += 1;
