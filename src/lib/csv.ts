@@ -345,7 +345,7 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
     if (openInterest === null) counts.missingOpenInterest += 1;
     if (volume === null) counts.missingVolume += 1;
     const inputUnit = parsePositiveNumber(readField(row, ['unit', 'contractunit', 'multiplier']), delimiter === ';');
-    const unit = inputUnit ?? 1;
+    const unit = inputUnit ?? contractMultiplier ?? 1;
     if (!inputUnit) {
       counts.defaultedUnit += 1;
       estimatedFields.push('unit');
