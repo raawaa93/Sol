@@ -42,7 +42,8 @@ export interface DeliverablePackageValue {
 }
 function finiteNonNegative(value: number): boolean { return Number.isFinite(value) && value >= 0; }
 function finitePositive(value: number): boolean { return Number.isFinite(value) && value > 0; }
-function readinessFailure(economics: ContractEconomics): EconomicsCalculationResult<true> | undefined {
+type CalculationFailure = { ok: false; reason: EconomicsCalculationFailure; details?: string[] };
+function readinessFailure(economics: ContractEconomics): CalculationFailure | undefined {
   const validation = validateContractEconomics(economics);
   if (!validation.valid || !validation.adapterReady) {
     return { ok: false, reason: 'CONTRACT_NOT_ADAPTER_READY', details: [...validation.issues, ...validation.unsupportedReasons] };
