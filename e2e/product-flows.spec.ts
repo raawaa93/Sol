@@ -14,7 +14,7 @@ test('Demo explicitly labels synthetic data and asset switching updates the mark
   await expect(page.getByRole('heading', { name: 'مختبر الخيارات' })).toBeVisible();
   await expect(page.locator('#opportunities')).toContainText('بيانات اصطناعية للتجربة فقط');
 
-  const assetTabs = page.getByRole('tablist', { name: 'الأصل الأساسي' });
+  const assetTabs = page.getByRole('group', { name: 'الأصل الأساسي' });
   await assetTabs.getByRole('button', { name: /XRP/ }).click();
   await expect(page.locator('#overview-metrics')).toContainText('XRP/USDT');
   await expect(page.locator('#scanner')).toContainText('XRP');
