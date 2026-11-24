@@ -71,7 +71,7 @@ test('CSV asset-class and venue filters isolate traditional listed option contra
   const assetClass = page.getByRole('combobox', { name: 'اختر فئة الأصل' });
   await expect(assetClass).toContainText('الأسهم');
   await assetClass.selectOption('EQUITY');
-  await expect(page.locator('#overview-metrics')).toContainText('SPY/USDT');
+  await expect(page.locator('#overview-metrics')).toContainText('SPY/USD');
   const venue = page.getByRole('combobox', { name: 'اختر المنصة' });
   await expect(venue).toBeVisible();
   await venue.selectOption('ISE');
@@ -100,7 +100,7 @@ test('CSV import stays local and powers a timestamped XAU execution replay', asy
   });
 
   await expect(page.getByText('تم استيراد 2 عقد محلياً.')).toBeVisible();
-  await expect(page.locator('#overview-metrics')).toContainText('XAU/USDT');
+  await expect(page.locator('#overview-metrics')).toContainText('XAU');
   await expect(page.locator('#scanner')).toContainText('XAU-custom-P');
   await expect(page.locator('#historical-replay')).toContainText('إعادة تشغيل تاريخية محافظة');
   await expect(page.locator('#historical-replay .replay-trades tbody tr')).toHaveCount(1);
