@@ -296,7 +296,10 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
     const modelGreeks = modelResult.status === 'SUPPORTED' ? modelResult.greeks : undefined;
     const pricingStatus = modelResult.status === 'SUPPORTED' ? 'SUPPORTED' as const : 'OBSERVED_ONLY' as const;
     const pricingModel = modelResult.status === 'SUPPORTED' ? modelResult.model : undefined;
-    const pricingReason = modelResult.status === 'SUPPORTED' ? undefined : modelResult.reason;
+    const pricingReason = modelResult.status === 'SUPPORTED' ? undefined
+      : underlyingKind === 'PERPETUAL' ? 'Perpetual underlyings are not supported by a validated pricing model.'
+        : exerciseStyle === 'AMERICAN' || exerciseStyle === 'BERMUDAN' ? 'American/Bermudan exercise is not supported by the current European analytical models.'
+          : modelResult.reason;
 
     const hasObservedTwoSidedQuote = bid > 0 && ask > 0;
     const markPrice = observedMark || (hasObservedTwoSidedQuote ? (bid + ask) / 2 : observedPrice || modelGreeks?.price || 0);
