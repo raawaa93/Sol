@@ -324,15 +324,16 @@ function App() {
     let retryTimer: number | undefined;
     let attempts = 0;
 
+    let connect = () => {};
     const scheduleRetry = () => {
       if (!active) return;
       attempts += 1;
       setBookTickerStatus('reconnecting');
       const delay = Math.min(30_000, 3_000 * (2 ** Math.min(attempts - 1, 3)));
-      retryTimer = window.setTimeout(connect, delay);
+      retryTimer = window.setTimeout(() => connect(), delay);
     };
 
-    const connect = () => {
+    connect = () => {
       if (!active) return;
       setBookTickerStatus(attempts === 0 ? 'connecting' : 'reconnecting');
       let connection: WebSocket;
