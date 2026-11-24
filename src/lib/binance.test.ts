@@ -751,12 +751,9 @@ test('Binance bookTicker updates only BBO fields and records its own source time
 
 test('Binance Options optionMarkPrice parser handles combined event payloads', () => {
   const events = parseBinanceOptionMarkPriceMessage(JSON.stringify({
-    stream: 'btcusdt@optionMarkPrice',
+    stream: 'btc@markPrice',
     data: [{
-      e: 'markPrice', E: 1_800_000_001_000, s: 'BTC-261225-100000-C',
-      mp: '5200', i: '101000', bo: '5100', ao: '5300', bq: '1.25', aq: '2.5',
-      b: '0.58', a: '0.62', vo: '0.60', rf: '0.02',
-      d: '0.99', g: '0.00004', t: '-30', v: '55',
+      e: 'markPrice', E: 1_800_000_001_000, s: 'BTC-261225-100000-C', mp: '5200',
     }],
   }));
   assert.equal(events.length, 1);
@@ -764,22 +761,12 @@ test('Binance Options optionMarkPrice parser handles combined event payloads', (
     symbol: 'BTC-261225-100000-C',
     eventTime: 1_800_000_001_000,
     markPrice: 5200,
-    bestBid: 5100,
-    bestAsk: 5300,
-    bestBidQuantity: 1.25,
-    bestAskQuantity: 2.5,
-    indexPrice: 101000,
-    bidIv: 0.58,
-    askIv: 0.62,
-    markIv: 0.60,
-    riskFreeRate: 0.02,
-    sourceGreeks: { delta: 0.99, gamma: 0.00004, theta: -30, vega: 55 },
   });
   assert.deepEqual(parseBinanceOptionMarkPriceMessage('{bad-json'), []);
   assert.deepEqual(parseBinanceOptionMarkPriceMessage({ e: 'markPriceUpdate', s: 'BTC-TEST-C', E: 1, mp: 1 }), []);
 });
 
-test('Binance optionMarkPrice updates mark, IV and index while retaining source Greeks as unverified', () => {
+test('Binance markPrice adapter updates only mark price and rejects stale events', () => {
   const quote = {
     id: 'BTC-261225-100000-C', symbol: 'BTC-261225-100000-C', underlying: 'BTC',
     expiry: '2026-12-25T08:00:00.000Z', daysToExpiry: 30, strike: 100000, type: 'CALL' as const,
@@ -792,29 +779,12 @@ test('Binance optionMarkPrice updates mark, IV and index while retaining source 
     sourceTimestamps: { markPrice: '2026-11-24T10:00:00.000Z' },
     estimatedFields: ['iv', 'markPrice', 'riskFreeRate', 'delta'],
   };
-  const event = {
-    symbol: quote.symbol, eventTime: 1_800_000_001_000, markPrice: 5200, indexPrice: 101000,
-    bidIv: 0.58, askIv: 0.62, markIv: 0.60, riskFreeRate: 0.03,
-    sourceGreeks: { delta: 0.99, gamma: 0.00004, theta: -30, vega: 55 },
-  };
+  const event = { symbol: quote.symbol, eventTime: 1_800_000_001_000, markPrice: 5200 };
   const updated = applyBinanceOptionMarkPrice(quote, event);
   assert.equal(updated.markPrice, 5200);
   assert.equal(updated.priceSource, 'MARK');
-  assert.equal(updated.iv, 0.60);
-  assert.equal(updated.ivStatus, 'OBSERVED');
-  assert.equal(updated.bidIv, 0.58);
-  assert.equal(updated.askIv, 0.62);
-  assert.equal(updated.spot, 101000);
-  assert.equal(updated.riskFreeRate, 0.03);
-  assert.deepEqual(updated.estimatedFields, ['delta']);
+  assert.deepEqual(updated.estimatedFields, ['iv', 'riskFreeRate', 'delta']);
   assert.equal(updated.sourceTimestamps?.markPrice, new Date(event.eventTime).toISOString());
-  assert.equal(updated.sourceTimestamps?.index, new Date(event.eventTime).toISOString());
-  assert.equal(updated.unverifiedSourceGreeks?.delta, 0.99);
-  assert.notEqual(updated.delta, 0.99);
-  assert.equal(updated.bid, quote.bid);
-  assert.equal(updated.ask, quote.ask);
-  assert.equal(updated.bidAskSource, undefined, 'existing quote sides without live book ticker are not overwritten by a synthetic source marker');
-
   const stale = applyBinanceOptionMarkPrice(updated, { ...event, eventTime: event.eventTime - 1000, markPrice: 1 });
   assert.equal(stale, updated);
 });
