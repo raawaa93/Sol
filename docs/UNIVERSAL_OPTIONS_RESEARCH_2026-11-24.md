@@ -6,7 +6,7 @@
 
 ## 1. Executive decision
 
-1. Keep Binance as the first **technical data candidate** for the products it lists; do not treat it as cleared for live execution from Syria until local legal status and account-level product permissions are confirmed. Binance's Syria-specific FAQ says Syrian residents may register and verify subject to KYC/compliance, but its enumerated product list does not explicitly name Options. It is not proof of Crypto, Commodity or Stock Options eligibility; confirm each product and permission separately.
+1. Keep Binance as the first **technical data candidate** for the products it lists; do not treat it as cleared for live execution from Syria until local legal status and account-level product permissions are confirmed. Binance's Syria-specific FAQ says Syrian residents may register and verify subject to KYC/compliance, and explicitly includes Options trading among the available product families. This establishes general product availability, not a guarantee that every sub-product or account permission is enabled.
 2. Binance is not a universal options venue. Its currently documented product families include crypto options and commodity options (currently XAUUSDT and XAGUSDT in the first batch). This is not a substitute for the full listed equity, index, rates, FX, energy and agricultural options markets.
 3. Deribit, Bybit and OKX explicitly restrict Syria in the reviewed current terms. Do not attempt to use them from Syria through VPN/IP masking.
 4. AMP Futures explicitly excludes Syria in its official high-risk country image. Optimus Futures and Ironbeam describe international account opening but do not publish Syria-specific acceptance; they remain unverified prospects, not approved routes. IBKR's current eligibility information does not establish acceptance of a Syrian resident.
@@ -32,7 +32,7 @@ A perpetual, future, CFD, tokenized stock, binary contract, prediction market or
 
 ### Binance
 
-Binance's Syria-specific help article, published 12 June 2025, states that Syrian nationals residing in Syria may register and verify if they pass KYC and compliance checks. The products enumerated on that page do not explicitly name Options. It also says that previous blocked accounts may require support review.
+Binance's Syria-specific help article, published 12 June 2025, states that Syrian nationals residing in Syria may register and verify if they pass KYC and compliance checks. The FAQ explicitly lists Options trading among the available products, subject to KYC and compliance checks. It also says that previous blocked accounts may require support review.
 
 This is positive, first-party evidence for the general Options service. It does **not** establish that every newly launched sub-product or every short-option permission is enabled for each account.
 
@@ -58,7 +58,15 @@ This is positive, first-party evidence for the general Options service. It does 
 
 **Fees:** use the current Options fee page and account-specific rate at execution time. Promotional or regional rates can change; do not hard-code a fee from an old screenshot or marketing page.
 
-**Conclusion:** Binance is a useful initial technical data source for long single-leg options on products enabled for the account; this does not clear live trading from Syria under local law. It is not an institutional multi-leg options workstation: ordinary accounts lack cross-product risk netting, short-writing is restricted, and only limit orders are supported. It is not the whole options universe. Confirm in the actual Syrian KYC account whether both Crypto Options and Commodity/TradFi Options are enabled before funding or trading those products.
+**Conclusion:** Binance's Syria FAQ explicitly includes Options trading, while exact availability, permissions and contract mechanics can still differ by product and account. This does not override local legal requirements. It is not an institutional multi-leg options workstation: ordinary accounts lack cross-product risk netting, short-writing is restricted, and only limit orders are supported. It is not the whole options universe. Confirm in the actual Syrian KYC account whether both Crypto Options and Commodity/TradFi Options are enabled before funding or trading those products.
+
+
+
+### HTTP 451 and execution-region diagnostics
+
+The Binance public Options API uses the global host `https://eapi.binance.com`; there is no separate `Binance Syria`, `Binance.US` or UK-only Options API host for this product. The Syria FAQ explicitly lists Options trading. A 451 returned to the app's Supabase proxy is a denial of that server-side request, not an authenticated check of the user's Syrian Binance account.
+
+Supabase Edge Functions normally execute close to the caller. GitHub-hosted CI runners are in the United States, so a CI request can execute in a US edge region even though the Supabase database project is in `eu-west-1` (Ireland). For the Volterra public-data proxy, use Supabase's supported Frankfurt region (`eu-central-1`) as the closest listed region to Syria; this is infrastructure routing, not a claim that Supabase has a Syrian region and not a change to the user's declared residence. Production smoke tests must verify the returned `x-sb-edge-region` header. If Binance still returns 451 from Frankfurt, report it as an upstream egress denial and do not infer the user's account eligibility from it.
 
 ### Other crypto venues
 
@@ -250,7 +258,7 @@ Sources:
 
 ### Venue selection for the actual user
 
-1. **Technical/data candidate only, not cleared for live trading from Syria:** Binance accepts Syrian resident registration subject to KYC, but the Syria FAQ does not explicitly list Options in its enumerated product list. More importantly, Syrian Central Bank and Securities Authority statements raise a serious domestic-law issue for crypto and FX activity. Keep Volterra read-only/Paper until local legal status is clarified; verify each Binance product separately.
+1. **Technical/data candidate only, not cleared for live trading from Syria:** Binance accepts Syrian resident registration subject to KYC, but the Syria FAQ explicitly lists Options trading among the products available to Syrian residents. More importantly, Syrian Central Bank and Securities Authority statements raise a serious domestic-law issue for crypto and FX activity. Keep Volterra read-only/Paper until local legal status is clarified; verify each Binance product separately.
 2. **No currently confirmed second execution venue:** Deribit, Bybit, OKX and Paradex list Syria restrictions; Hyperliquid's trading gate has been observed blocking Syria; Bitget Stock+ is reported to exclude Syria; IBKR and AMP do not establish eligibility. **Gate EU is explicitly excluded**; a non-EU Gate entity remains unresolved because regional terms differ and no written Syrian approval exists. Optimus and Ironbeam remain inquiry-only.
 3. **Research architecture:** venue-neutral canonical contracts, separate adapter per exchange/FCM, common provenance/freshness, normalized multiplier/currency/settlement, independent pricing and risk engines, and no cross-venue equivalence unless contract terms prove it.
 4. **No VPN workaround:** use VPN only for connectivity/privacy where lawful and allowed; do not route execution through another country to misrepresent residence or defeat a venue's terms.
@@ -323,7 +331,7 @@ Sources:
 
 **مقارنة عملية مع Binance:**
 - Gate أقوى تقنياً في مرونة أوامر الخيارات (market/IV/IOC/POC) وواجهات WS/REST والـshort/margin telemetry الموثقة.
-- Binance أوضح في السماح بالتسجيل السوري العام، لكن FAQ لا تسمي Options صراحةً؛ لديها بيانات/منتجات كريبتو وXAU/XAG، مع قيود الكتابة والهامش والأوامر كما هو موثق. لا نوصي بتنفيذ حي من سوريا حتى توضيح القانون المحلي.
+- Binance أوضح في السماح بالتسجيل السوري العام، لكن FAQ الرسمية تسمي Options صراحةً؛ لديها بيانات/منتجات كريبتو وXAU/XAG، مع قيود الكتابة والهامش والأوامر كما هو موثق. لا نوصي بتنفيذ حي من سوريا حتى توضيح القانون المحلي.
 - لا نختار Gate بدلاً من Binance حتى يصل تأكيد أهلية مكتوب من Gate Global؛ وإذا أكدوا القبول، نختبر حساب Demo/Simulated Trading ونقارن السيولة والرسوم والمضاعفات والتسوية وعمق السوق قبل أي تمويل.
 
 المصادر:
@@ -352,7 +360,7 @@ Sources:
 
 ### أهلية سوريا والمنصات البديلة
 
-- Binance نشرت FAQ تقول إن السوريين المقيمين في سوريا يستطيعون التسجيل والتحقق وفق KYC، لكن قائمة المنتجات المسماة فيها لا تذكر Options صراحةً. لا تستنتج أهلية الخيارات من أهلية الحساب؛ تحقق من كل منتج على حدة، مع بقاء القانون المحلي مانعاً للتنفيذ الحي حتى يتضح.
+- Binance نشرت FAQ تقول إن السوريين المقيمين في سوريا يستطيعون التسجيل والتحقق وفق KYC، وتدرج Options صراحةً ضمن المنتجات المتاحة. لا تستنتج أهلية الخيارات من أهلية الحساب؛ تحقق من كل منتج على حدة، مع بقاء القانون المحلي مانعاً للتنفيذ الحي حتى يتضح.
 - Bybit وDeribit وOKX تذكر سوريا صراحةً ضمن المناطق المستبعدة/المقيدة. **Gate Global حالة مختلفة:** اتفاقيته الحالية لا تذكر سوريا في القائمة المنشورة لكنها تصفها بأنها غير حصرية، بينما اتفاقية أقدم تذكر سوريا؛ لذلك Gate Global مرشح استفسار مكتوب فقط، وليس منصة مقبولة أو محظورة مثبتة. Gate US كيان منفصل لا ينطبق على المقيم السوري. لا تستخدم VPN لتجاوز قيود أي منتج.
 - قائمة IBKR الرسمية للبلدان المتاحة لا تتضمن سوريا وقت الفحص؛ لا نفترض إمكانية فتح حساب أو تداول Cboe/CME من خلالها.
 - Paradex يذكر سوريا صراحة في Restricted Persons؛ لا يستخدم كبديل.
@@ -453,5 +461,5 @@ Sources:
 
 ### تصحيح أهلية Binance
 
-FAQ Binance المنشور في 12 يونيو 2025 يثبت أن المقيمين السوريين يمكنهم التسجيل والتحقق وفق KYC والامتثال، ويقول إنهم يستطيعون الوصول إلى مجموعة واسعة من المنتجات. لكن قائمة المنتجات المسماة في الصفحة (P2P، COIN-M، USDⓈ-M Futures، Convert/Block Trade، Margin، Spot، Copy Trading، Alpha، Wallet) **لا تسمي Options صراحةً**. لذلك لا نستخدم الصفحة كدليل صريح على أهلية Options؛ يجب التحقق من تفعيل Crypto Options لكل حساب ومن Commodity/Stock Options كلٌ على حدة أو الحصول على جواب دعم مكتوب. المصدر: https://www.binance.com/en/support/faq/detail/863795c36a224bd7aa7d677996328ff9
+FAQ Binance المنشور في 12 يونيو 2025 يثبت أن المقيمين السوريين يمكنهم التسجيل والتحقق وفق KYC والامتثال، ويقول إنهم يستطيعون الوصول إلى مجموعة واسعة من المنتجات. لكن قائمة المنتجات المسماة في الصفحة (P2P، COIN-M، USDⓈ-M Futures، Convert/Block Trade، Margin، Spot، Copy Trading، Alpha، Wallet) **تسمي Options صراحةً**. لذلك تُعد الصفحة دليلاً على الإتاحة العامة للخيارات للمقيمين السوريين؛ يجب التحقق من تفعيل Crypto Options لكل حساب ومن Commodity/Stock Options كلٌ على حدة أو الحصول على جواب دعم مكتوب. المصدر: https://www.binance.com/en/support/faq/detail/863795c36a224bd7aa7d677996328ff9
 
