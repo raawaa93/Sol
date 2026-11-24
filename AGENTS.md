@@ -95,3 +95,6 @@ Keep the multi-asset scope, Syrian residence, VPN connectivity distinction, plat
 - QuantLib: https://www.quantlib.org/
 - NautilusTrader options: https://nautechsystems.github.io/nautilus_docs/latest/concepts/options/
 - NautilusTrader backtesting: https://nautechsystems.github.io/nautilus_docs/latest/concepts/backtesting/
+
+- **Gate entity split:** Gate EU's 1 March 2026 User Agreement explicitly lists Syria as a Restricted Location; exclude Gate EU. Gate Global's current generic list is non-exhaustive and differs from the older 2022 agreement, so it remains inquiry-only pending written compliance approval for the exact contracting entity and Crypto Options product. Never conflate regional Gate entities or use VPN to bypass restrictions.
+- **Liquidity before API-feature ranking:** Orbit Markets' Q3 2026 secondary report lists Binance at $0.97bn ADV / 13.2% of the eight-channel total, with Deribit and Bybit ahead; Gate is not listed. Absence from that table is not proof of zero volume. Compare contract-level spread/depth/OI/volume/fill quality before switching venues.
