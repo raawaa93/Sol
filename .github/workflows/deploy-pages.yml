@@ -84,18 +84,15 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-playwright-
-      - name: Install Chromium for production checks
-        run: npx playwright install --with-deps chromium
       - name: Configure Lighthouse Chrome path
         run: |
-          CHROME_PATH="$(node --input-type=module -e 'import { chromium } from "@playwright/test"; process.stdout.write(chromium.executablePath())')"
+          CHROME_PATH="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          if [ -z "$CHROME_PATH" ]; then
+            echo "No runner-provided browser found; installing Playwright Chromium as a fallback."
+            npx playwright install --with-deps chromium
+            CHROME_PATH="$(node --input-type=module -e 'import { chromium } from "@playwright/test"; process.stdout.write(chromium.executablePath())')"
+          fi
+          "$CHROME_PATH" --version
           echo "CHROME_PATH=$CHROME_PATH" >> "$GITHUB_ENV"
       - name: Verify published app and live market-data proxy
         run: npm run smoke:production
