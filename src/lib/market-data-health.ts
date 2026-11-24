@@ -25,10 +25,10 @@ export function assessSnapshotFreshness(
 
 
 /**
- * Formats an exchange-provided event timestamp as elapsed time.
- * This is event age (e.g. last trade age), not a claim about feed freshness.
+ * Formats an exchange-provided timestamp as elapsed time.
+ * Timestamp age is not proof of upstream feed freshness or last-trade time.
  */
-export function formatSourceEventAge(timestamp: string | undefined, now = Date.now()): string {
+export function formatSourceTimestampAge(timestamp: string | undefined, now = Date.now()): string {
   if (!timestamp) return 'غير متاح';
   const sourceTime = Date.parse(timestamp);
   if (!Number.isFinite(sourceTime) || !Number.isFinite(now)) return 'وقت غير صالح';
