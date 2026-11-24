@@ -130,3 +130,35 @@ test('reference type mismatch is rejected instead of substituting spot or forwar
   }, { settlementReferencePrice: 120, premiumPrice: 1.25, contracts: 1 });
   assert.equal(result.ok, false);
 });
+
+
+test('canonical cash expiry scenarios use settlement multiplier and never legacy unit', async () => {
+  const { buildQuoteCashExpiryScenarioSeries } = await import('./quote-economics.ts');
+  const quote = { ...baseQuote, unit: 999 };
+  const scenarios = buildQuoteCashExpiryScenarioSeries(quote, 1.25, 3, 0.5);
+  assert.ok(scenarios);
+  assert.equal(scenarios.length, 9);
+  const flat = scenarios.find((point) => point.move === 0);
+  assert.ok(flat);
+  assert.equal(flat.pnl, -38);
+  const upTwenty = scenarios.find((point) => point.move === 0.2);
+  assert.ok(upTwenty);
+  assert.equal(upTwenty.pnl, 5962);
+});
+
+test('canonical cash expiry scenarios fail closed for unverified or mismatched terms', async () => {
+  const { buildQuoteCashExpiryScenarioSeries } = await import('./quote-economics.ts');
+  const unverified = {
+    ...baseQuote,
+    contractEconomics: {
+      ...baseQuote.contractEconomics!,
+      provenance: { status: 'UNKNOWN' as const },
+    },
+  };
+  assert.equal(buildQuoteCashExpiryScenarioSeries(unverified, 1.25, 1), null);
+  assert.equal(buildQuoteCashExpiryScenarioSeries({
+    ...baseQuote,
+    underlyingKind: 'FUTURE',
+    forward: 100,
+  }, 1.25, 1), null);
+});
