@@ -99,3 +99,17 @@ test('replay returns no statistical metrics for invalid configuration or empty h
   assert.equal(empty.trades.length, 0);
   assert.equal(empty.profitFactor, null);
 });
+
+
+test('portfolio drawdown follows source-time order across different option symbols', () => {
+  const result = replayLongOptionSnapshots([
+    quote('2026-11-24T10:30:00.000Z', { symbol: 'B', id: 'B', ask: 10, bid: 9 }),
+    quote('2026-11-24T11:30:00.000Z', { symbol: 'B', id: 'B', ask: 21, bid: 20 }),
+    quote('2026-11-24T10:00:00.000Z', { symbol: 'A', id: 'A', ask: 10, bid: 9 }),
+    quote('2026-11-24T11:00:00.000Z', { symbol: 'A', id: 'A', ask: 6, bid: 5 }),
+    quote('2026-11-24T12:00:00.000Z', { symbol: 'C', id: 'C', ask: 10, bid: 9 }),
+    quote('2026-11-24T13:00:00.000Z', { symbol: 'C', id: 'C', ask: 3, bid: 2 }),
+  ], config);
+  assert.deepEqual(result.trades.map((trade) => trade.symbol), ['A', 'B', 'C']);
+  assert.equal(result.maxDrawdown, 8);
+});
