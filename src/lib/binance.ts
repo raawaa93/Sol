@@ -278,8 +278,7 @@ export function parseBinanceOptionTickerMessage(payload: unknown): BinanceOption
       theta: finiteNumber(data.t as string | number | undefined),
       vega: finiteNumber(data.v as string | number | undefined),
     };
-    if ([bestBid, bestAsk, bidIv, askIv, markIv, markPrice, volume, volumeQuote, ...Object.values(sourceGreeks)]
-      .every((value) => value === undefined)) return [];
+    if (![bestBid, bestAsk, bidIv, askIv, markIv, markPrice, volume, volumeQuote, ...Object.values(sourceGreeks)].some(Number.isFinite)) return [];
     return [{
       symbol: data.s,
       eventTime,
@@ -314,7 +313,7 @@ export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptio
     && eventTimestamp - bookTickerTimestamp <= 5_000;
   const useTickerBid = !bookTickerFresh && event.bestBid !== undefined;
   const useTickerAsk = !bookTickerFresh && event.bestAsk !== undefined;
-  const sourceHasGreeks = Object.values(event.sourceGreeks).some((value) => value !== undefined);
+  const sourceHasGreeks = Object.values(event.sourceGreeks).some(Number.isFinite);
   const modelUpdate = event.markIv !== undefined && quote.pricingStatus === 'ASSUMED' && quote.pricingModel
     ? priceOption({ ...quote, volatility: event.markIv, rate: quote.riskFreeRate ?? Number.NaN })
     : undefined;
@@ -482,7 +481,7 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       theta: finiteNumber(mark?.theta),
       vega: finiteNumber(mark?.vega),
     };
-    const hasSourceGreeks = Object.values(sourceGreeks).some((value) => value !== undefined);
+    const hasSourceGreeks = Object.values(sourceGreeks).some(Number.isFinite);
     const observedRiskFreeRate = finiteNumber(mark?.riskFreeInterest);
     const riskFreeRate = observedRiskFreeRate ?? 0;
     const referencePrice = twoSidedMid ?? observedMark ?? lastPrice ?? oneSidedQuote;
