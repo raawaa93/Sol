@@ -896,6 +896,7 @@ test('Binance live observed IV recalculates only previously assumed model Greeks
   assert.notEqual(updated.delta, event.sourceGreeks.delta);
   assert.deepEqual(updated.estimatedFields, []);
   assert.equal(updated.pricingStatus, 'ASSUMED');
+  assert.equal(updated.pricingModel, quote.pricingModel);
   assert.equal(updated.unverifiedSourceGreeks?.delta, 0.99);
 });
 
