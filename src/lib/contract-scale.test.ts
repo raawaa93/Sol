@@ -9,6 +9,8 @@ const binanceCrypto = {
   underlyingKind: 'SPOT',
   exerciseStyle: 'EUROPEAN',
   settlementStyle: 'CASH',
+  quoteAsset: 'USDT',
+  settlementAsset: 'USDT',
   unit: 1,
 } as const;
 
