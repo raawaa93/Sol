@@ -1,4 +1,8 @@
 export type OptionSide = 'CALL' | 'PUT';
+export type AssetClass = 'CRYPTO' | 'EQUITY' | 'INDEX' | 'RATES' | 'FX' | 'ENERGY' | 'METALS' | 'AGRICULTURE' | 'OTHER' | 'UNKNOWN';
+export type UnderlyingKind = 'SPOT' | 'FUTURE' | 'INDEX' | 'FX_SPOT' | 'UNKNOWN';
+export type ExerciseStyle = 'EUROPEAN' | 'AMERICAN' | 'BERMUDAN' | 'UNKNOWN';
+export type SettlementStyle = 'CASH' | 'PHYSICAL' | 'UNKNOWN';
 export type Underlying = string;
 export type QuotePriceSource = 'MARK' | 'MID' | 'LAST' | 'BID' | 'ASK' | 'MODEL';
 
@@ -24,6 +28,15 @@ export interface OptionQuote {
   id: string;
   symbol: string;
   underlying: Underlying;
+  assetClass?: AssetClass;
+  venue?: string;
+  underlyingKind?: UnderlyingKind;
+  quoteAsset?: string;
+  settlementAsset?: string;
+  contractMultiplier?: number;
+  exerciseStyle?: ExerciseStyle;
+  settlementStyle?: SettlementStyle;
+  expiryTimezone?: string;
   expiry: string;
   daysToExpiry: number;
   strike: number;
@@ -53,7 +66,6 @@ export interface OptionQuote {
   volumeQuote?: number | null;
   spot: number;
   unit: number;
-  quoteAsset?: string;
   contractStatus?: string;
   minQty?: number;
   maxQty?: number;
