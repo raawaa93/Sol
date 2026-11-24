@@ -18,6 +18,14 @@ export interface FxRate {
   observedAt: string;
 }
 
+export interface FxUsage {
+  sourceCurrency: string;
+  reportingCurrency: string;
+  rate: number;
+  source: string;
+  observedAt: string;
+}
+
 export interface ConvertedAmount {
   amount: number;
   sourceCurrency: string;
@@ -35,7 +43,7 @@ export interface NetWorthSummary {
   complete: boolean;
   missingFxCurrencies: string[];
   byCurrency: Array<{ currency: string; assets: number; liabilities: number; netWorth: number }>;
-  convertedBalances: Array<FinancialBalance & { reportingAmount: number | null; fxRate: number | null }>;
+  convertedBalances: Array<FinancialBalance & { reportingAmount: number | null; fxRate: number | null; fxSource: string | null; fxObservedAt: string | null }>;\n  fxUsage: FxUsage[];
 }
 
 export interface CashFlowTransaction {
@@ -81,7 +89,7 @@ function validateFxRates(rates: FxRate[]): void {
     const base = normalizeCurrency(item.baseCurrency);
     const quote = normalizeCurrency(item.quoteCurrency);
     if (base === quote) throw new Error('FX pair currencies must be different');
-    const pair = `${base}/${quote}`;
+    const pair = [base, quote].sort().join('/');
     if (pairs.has(pair)) throw new Error(`Duplicate FX pair: ${pair}`);
     pairs.add(pair);
     assertNonNegativeFinite(item.rate, 'FX rate');
@@ -187,7 +195,7 @@ export function calculateMonthlyCashFlow(
   validateFxRates(fxRates);
   const ids = new Set<string>();
   const missing = new Set<string>();
-  const categories = new Map<string, { INCOME: number; EXPENSE: number }>();
+  const categories = new Map<string, { INCOME: number; EXPENSE: number }>();\n  const fxUsage = new Map<string, FxUsage>();
   let income = 0;
   let expenses = 0;
   let excludedTransfers = 0;
