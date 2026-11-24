@@ -23,6 +23,7 @@
 - As of 2026-11-24, reviewed terms explicitly list Syria as restricted for Deribit, Bybit and OKX. Interactive Brokers' available-country list does not include Syria and its FAQ excludes sanctioned/high-risk countries. Do not route this user to these venues unless official policies change and eligibility is confirmed in writing.
 - Traditional multi-asset options require an accepting broker/FCM. CME's exchange catalogue is not a retail account. AMP Futures' official restricted-country image explicitly lists Syria, so AMP says it will not open accounts for residents located there. Optimus Futures advertises international customers and options on futures but retains country restrictions; Syria-specific approval is unconfirmed.
 - Detailed market/platform decision and provider-neutral architecture: `docs/UNIVERSAL_OPTIONS_RESEARCH_2026-11-24.md`.
+- Current Syrian residency, VPN, and US/EU/UK sanctions context: `docs/SYRIA_RESIDENCY_AND_SANCTIONS_2026-11-24.md`.
 - Revalidate platform and product eligibility before every new execution integration and after material terms/regulatory changes.
 
 ## Trading, data and safety boundaries
