@@ -72,3 +72,17 @@ test('cash flow validates period and transaction identity', () => {
   assert.throws(() => calculateMonthlyCashFlow([], '2026-13', 'USD'), /YYYY-MM/);
   assert.throws(() => calculateMonthlyCashFlow([transactions[0], transactions[0]], '2026-11', 'USD', fx), /unique/);
 });
+
+test('FX inputs reject duplicate pairs, zero rates and missing source provenance', () => {
+  const duplicate = [...fx, fx[0]];
+  assert.throws(() => calculateNetWorth(balances, 'USD', duplicate), /Duplicate FX pair/);
+  assert.throws(() => calculateNetWorth(balances, 'USD', [{ ...fx[0], rate: 0 }]), /greater than zero/);
+  assert.throws(() => calculateMonthlyCashFlow([], '2026-11', 'USD', [{ ...fx[0], source: ' ' }]), /source is required/);
+});
+
+test('balance and cash-flow dates require ISO timestamps', () => {
+  assert.throws(() => calculateNetWorth([{ ...balances[0], asOf: 'Nov 24, 2026' }], 'USD'), /ISO timestamp/);
+  assert.throws(() => calculateMonthlyCashFlow([
+    { ...transactions[0], occurredAt: 'Nov 1, 2026' },
+  ], '2026-11', 'USD'), /ISO timestamp/);
+});
