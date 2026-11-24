@@ -322,19 +322,7 @@ export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptio
     ...(event.markPrice !== undefined ? ['markPrice'] : []),
   ];
   const modelUpdate = event.markIv !== undefined && quote.pricingStatus === 'ASSUMED' && quote.pricingModel
-    ? priceOption({
-      underlyingKind: quote.underlyingKind,
-      exerciseStyle: quote.exerciseStyle,
-      settlementStyle: quote.settlementStyle,
-      spot: quote.spot,
-      forward: quote.forward,
-      strike: quote.strike,
-      daysToExpiry: quote.daysToExpiry,
-      volatility: event.markIv,
-      type: quote.type,
-      rate: quote.riskFreeRate ?? Number.NaN,
-      carryYield: quote.carryYield,
-    })
+    ? priceOption({ ...quote, volatility: event.markIv, rate: quote.riskFreeRate ?? Number.NaN })
     : undefined;
   const greekFields = ['delta', 'gamma', 'theta', 'vega', 'rho'];
   const updated: OptionQuote = {
