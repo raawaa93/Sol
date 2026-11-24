@@ -282,9 +282,9 @@ export function applyBinanceOptionMarkPrice(quote: OptionQuote, event: BinanceOp
   const rate = event.riskFreeRate ?? quote.riskFreeRate ?? 0;
   const sourceHasGreeks = Object.values(event.sourceGreeks).some((value) => value !== undefined);
   const hasBookTicker = Boolean(quote.sourceTimestamps?.bookTicker);
-  const markPriceBookFallback = !hasBookTicker && (
-    event.bestBid !== undefined || event.bestAsk !== undefined
-  );
+  const useMarkBidFallback = !hasBookTicker && !(quote.bid > 0) && event.bestBid !== undefined;
+  const useMarkAskFallback = !hasBookTicker && !(quote.ask > 0) && event.bestAsk !== undefined;
+  const markPriceBookFallback = useMarkBidFallback || useMarkAskFallback;
   const observedFields = [
     ...(event.markPrice !== undefined ? ['markPrice'] : []),
     ...(event.markIv !== undefined ? ['iv'] : []),
@@ -294,10 +294,10 @@ export function applyBinanceOptionMarkPrice(quote: OptionQuote, event: BinanceOp
     ...quote,
     ...(quote.estimatedFields ? { estimatedFields: quote.estimatedFields.filter((field) => !observedFields.includes(field)) } : {}),
     ...(markPriceBookFallback ? {
-      ...(event.bestBid !== undefined ? { bid: event.bestBid } : {}),
-      ...(event.bestAsk !== undefined ? { ask: event.bestAsk } : {}),
-      ...(event.bestBidQuantity !== undefined ? { bidQuantity: event.bestBidQuantity } : {}),
-      ...(event.bestAskQuantity !== undefined ? { askQuantity: event.bestAskQuantity } : {}),
+      ...(useMarkBidFallback ? { bid: event.bestBid } : {}),
+      ...(useMarkAskFallback ? { ask: event.bestAsk } : {}),
+      ...(useMarkBidFallback && event.bestBidQuantity !== undefined ? { bidQuantity: event.bestBidQuantity } : {}),
+      ...(useMarkAskFallback && event.bestAskQuantity !== undefined ? { askQuantity: event.bestAskQuantity } : {}),
       bidAskSource: 'OPTION_MARK_PRICE' as const,
     } : {}),
     ...(event.markPrice !== undefined ? { markPrice: event.markPrice, priceSource: 'MARK' as const } : {}),
