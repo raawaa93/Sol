@@ -224,7 +224,7 @@ export function parseBinanceOptionMarkPriceMessage(payload: unknown): BinanceOpt
   return candidates.flatMap((candidate): BinanceOptionMarkPriceEvent[] => {
     if (!candidate || typeof candidate !== 'object') return [];
     const data = candidate as Record<string, unknown>;
-    if (data.e !== 'optionMarkPrice' || typeof data.s !== 'string' || !data.s) return [];
+    if (data.e !== 'markPrice' || typeof data.s !== 'string' || !data.s) return [];
     const eventTime = finiteNumber(data.E as string | number | undefined);
     if (eventTime === undefined || eventTime <= 0) return [];
     const markPrice = positiveNumber(data.mp as string | number | undefined);
