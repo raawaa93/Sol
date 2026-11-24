@@ -21,6 +21,7 @@ import {
   RefreshCw,
   Search,
   ShieldAlert,
+  Star,
   Target,
   Trash2,
   TrendingDown,
@@ -146,6 +147,16 @@ function isPaperTrade(value: unknown): value is PaperTrade {
     && trade.status === 'PAPER';
 }
 
+function loadWatchlist(): string[] {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem('volterra-watchlist-v1') ?? '[]');
+    if (!Array.isArray(parsed)) return [];
+    return [...new Set(parsed.filter((item): item is string => typeof item === 'string' && /^[A-Z0-9._-]{1,24}$/.test(item)))].slice(0, 50);
+  } catch {
+    return [];
+  }
+}
+
 function loadPaperTrades(): PaperTrade[] {
   try {
     const value = localStorage.getItem('volterra-paper-trades-v1');
@@ -215,6 +226,8 @@ function App() {
   const [selectedExpiry, setSelectedExpiry] = useState(() => DEMO_QUOTES.find((quote) => quote.underlying === 'BTC' && quote.daysToExpiry === 30)?.expiry ?? DEMO_QUOTES[0].expiry);
   const [selectedId, setSelectedId] = useState(() => DEMO_QUOTES.find((quote) => quote.underlying === 'BTC' && quote.daysToExpiry === 30 && quote.type === 'CALL' && Math.abs(quote.delta - 0.5) < 0.1)?.id ?? DEMO_QUOTES[0].id);
   const [searchQuery, setSearchQuery] = useState('');
+  const [instrumentSearch, setInstrumentSearch] = useState('');
+  const [watchlist, setWatchlist] = useState<string[]>(loadWatchlist);
   const [quantity, setQuantity] = useState(0.01);
   const [riskBudget, setRiskBudget] = useState(100);
   const [fees, setFees] = useState(0);
@@ -226,6 +239,10 @@ function App() {
   const uploadRef = useRef<HTMLInputElement>(null);
   const binanceRequestId = useRef(0);
   const binanceDepthRequestId = useRef(0);
+
+  useEffect(() => {
+    try { localStorage.setItem('volterra-watchlist-v1', JSON.stringify(watchlist)); } catch { /* Local storage may be unavailable in private browsing. */ }
+  }, [watchlist]);
 
   const expiryChoices = useMemo(() => getExpiryChoices(quotes, underlying), [quotes, underlying]);
   const selectedExpiryExists = expiryChoices.some((item) => item.value === selectedExpiry);
@@ -523,6 +540,21 @@ function App() {
 
   const changeUnderlying = (next: Underlying) => selectUnderlyingFromQuotes(next, scopedQuotes);
 
+  const handleInstrumentSearch = (value: string) => {
+    setInstrumentSearch(value);
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) return;
+    const match = assetChoices.find((item) => item.toLowerCase() === normalized
+      || getUnderlyingName(item).toLowerCase() === normalized
+      || `${item} · ${getUnderlyingName(item)}`.toLowerCase() === normalized);
+    if (match) changeUnderlying(match);
+  };
+
+  const toggleWatchlist = (symbol: string) => setWatchlist((current) => current.includes(symbol)
+    ? current.filter((item) => item !== symbol)
+    : current.length < 50 ? [...current, symbol] : current);
+  const visibleWatchlist = watchlist.filter((symbol) => assetChoices.includes(symbol));
+
   const changeAssetClass = (next: AssetClass | 'ALL') => {
     const nextQuotes = quotes.filter((quote) => next === 'ALL' || quote.assetClass === next);
     const nextUnderlying = nextQuotes.some((quote) => quote.underlying === underlying) ? underlying : nextQuotes[0]?.underlying;
@@ -733,6 +765,11 @@ function App() {
               <p>حلّل العقد، اختبر السيناريو، وسجّل قرارك — من دون تنفيذ أوامر.</p>
             </div>
             <div className="heading-actions">
+              <label className="instrument-search">
+                <Search size={14} aria-hidden="true" />
+                <input type="search" role="searchbox" aria-label="ابحث عن رمز أو أصل" placeholder="ابحث عن أصل…" list="volterra-underlying-options" value={instrumentSearch} onChange={(event) => handleInstrumentSearch(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { const value = instrumentSearch.trim().toLowerCase(); const match = assetChoices.find((item) => item.toLowerCase() === value || getUnderlyingName(item).toLowerCase() === value); if (match) changeUnderlying(match); } }} />
+                <datalist id="volterra-underlying-options">{assetChoices.map((item) => <option key={item} value={item} label={getUnderlyingName(item)} />)}</datalist>
+              </label>
               <label className="select-control asset-class-select"><span>فئة الأصل</span><select value={assetClassFilter} onChange={(event) => changeAssetClass(event.target.value as AssetClass | 'ALL')} aria-label="اختر فئة الأصل">
                 <option value="ALL">كل الفئات</option>
                 {availableAssetClasses.map((item) => <option key={item} value={item}>{ASSET_CLASS_LABELS[item]}</option>)}
@@ -750,6 +787,7 @@ function App() {
                   {assetChoices.map((item) => <button key={item} className={underlying === item ? 'selected' : ''} onClick={() => changeUnderlying(item)}>{item}<span>{getUnderlyingName(item)}</span></button>)}
                 </div>
               )}
+              <button type="button" className={`watchlist-toggle ${watchlist.includes(underlying) ? 'active' : ''}`} aria-label={watchlist.includes(underlying) ? `إزالة ${underlying} من المفضلة` : `إضافة ${underlying} إلى المفضلة`} aria-pressed={watchlist.includes(underlying)} onClick={() => toggleWatchlist(underlying)} title={watchlist.includes(underlying) ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة'}><Star size={14} fill={watchlist.includes(underlying) ? 'currentColor' : 'none'} /></button>
               <div className="upload-actions">
                 <button className={`button button-binance ${dataMode === 'BINANCE' ? 'active' : ''}`} onClick={loadBinanceOptions} disabled={binanceLoading} title="تحميل سلسلة الخيارات والبيانات العامة من Binance">
                   <RefreshCw className={binanceLoading ? 'spin' : ''} size={14} /> {binanceLoading ? 'جارٍ جلب Binance…' : dataMode === 'BINANCE' ? 'تحديث Binance' : 'تحميل Binance'}
@@ -759,6 +797,7 @@ function App() {
                 <input ref={uploadRef} type="file" accept=".csv,text/csv" hidden onChange={(event) => handleCsvUpload(event.target.files?.[0])} />
               </div>
             </div>
+            {visibleWatchlist.length > 0 && <div className="watchlist-bar" role="group" aria-label="الأصول المفضلة"><span>المفضلة</span>{visibleWatchlist.map((item) => <button key={item} type="button" className={item === underlying ? 'selected' : ''} onClick={() => changeUnderlying(item)}>{item}<small>{getUnderlyingName(item)}</small></button>)}</div>}
           </section>
 
           <section className="compliance-banner" aria-label="تنبيه تنظيمي وتعليمي">
