@@ -26,7 +26,7 @@ function standardEquity(overrides: Partial<ContractEconomics> = {}): ContractEco
 test('validates a standard equity contract with distinct premium and exercise terms', () => {
   const result = validateContractEconomics(standardEquity());
   assert.equal(result.valid, true);
-  assert.equal(result.supported, true);
+  assert.equal(result.adapterReady, true);
   assert.deepEqual(result.issues, []);
   assert.deepEqual(result.unsupportedReasons, []);
 });
@@ -46,7 +46,7 @@ test('preserves adjusted multi-component equity and cash deliverables without co
   });
   const result = validateContractEconomics(economics);
   assert.equal(result.valid, true);
-  assert.equal(result.supported, true);
+  assert.equal(result.adapterReady, true);
   assert.equal(economics.premium.multiplier, 100);
   assert.equal(economics.exercise.deliverables[0].amount, 10);
   assert.equal(economics.exercise.deliverables[1].amount, 25);
@@ -69,13 +69,13 @@ test('requires an explicit formula for cash-settled contracts', () => {
   });
   const result = validateContractEconomics(economics);
   assert.equal(result.valid, true);
-  assert.equal(result.supported, true);
+  assert.equal(result.adapterReady, true);
   const missing = validateContractEconomics({
     ...economics,
     exercise: { style: 'EUROPEAN', settlement: 'CASH', settlementCurrency: 'USD', deliverables: [] },
   });
   assert.ok(missing.issues.includes('MISSING_CASH_SETTLEMENT_FORMULA'));
-  assert.equal(missing.supported, false);
+  assert.equal(missing.adapterReady, false);
 });
 
 test('requires physical deliverables and separately specified aggregate exercise cash', () => {
@@ -97,7 +97,7 @@ test('unknown or user-asserted provenance remains inspectable but cannot support
     provenance: { status: 'USER_ASSERTED' },
   }));
   assert.equal(userAsserted.valid, true);
-  assert.equal(userAsserted.supported, false);
+  assert.equal(userAsserted.adapterReady, false);
   assert.ok(userAsserted.unsupportedReasons.includes('USER_ASSERTED_PROVENANCE'));
 
   const unknown = validateContractEconomics(standardEquity({
@@ -109,7 +109,7 @@ test('unknown or user-asserted provenance remains inspectable but cannot support
     provenance: { status: 'UNKNOWN' },
   }));
   assert.equal(unknown.valid, true);
-  assert.equal(unknown.supported, false);
+  assert.equal(unknown.adapterReady, false);
   assert.ok(unknown.unsupportedReasons.includes('UNKNOWN_EXERCISE_STYLE'));
   assert.ok(unknown.unsupportedReasons.includes('UNKNOWN_SETTLEMENT_STYLE'));
   assert.ok(unknown.unsupportedReasons.includes('UNKNOWN_PROVENANCE'));
@@ -126,7 +126,7 @@ test('cross-currency premium, exercise cash or deliverables require explicit FX 
     },
   }));
   assert.equal(premiumMismatch.valid, true);
-  assert.equal(premiumMismatch.supported, false);
+  assert.equal(premiumMismatch.adapterReady, false);
   assert.ok(premiumMismatch.unsupportedReasons.includes('CROSS_CURRENCY_TOTALS_REQUIRE_FX'));
 
   const unknownCurrency = validateContractEconomics(standardEquity({
@@ -139,7 +139,7 @@ test('cross-currency premium, exercise cash or deliverables require explicit FX 
     },
   }));
   assert.equal(unknownCurrency.valid, true);
-  assert.equal(unknownCurrency.supported, false);
+  assert.equal(unknownCurrency.adapterReady, false);
   assert.ok(unknownCurrency.unsupportedReasons.includes('DELIVERABLE_CURRENCY_UNKNOWN'));
 });
 
@@ -155,6 +155,16 @@ test('futures delivery requires a future deliverable with a positive point value
   }));
   assert.ok(result.issues.includes('INVALID_DELIVERABLE'));
   assert.equal(result.valid, false);
+});
+
+
+test('per-contract quoted premiums cannot also apply a non-unit premium multiplier', () => {
+  const result = validateContractEconomics(standardEquity({
+    premium: { multiplier: 100, quoteCurrency: 'USD', priceUnit: 'PER_CONTRACT' },
+  }));
+  assert.ok(result.issues.includes('INVALID_PREMIUM_SCALE_COMBINATION'));
+  assert.equal(result.valid, false);
+  assert.equal(result.adapterReady, false);
 });
 
 test('rejects invalid premium scale and missing provider provenance', () => {
