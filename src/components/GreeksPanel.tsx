@@ -112,7 +112,7 @@ export default function GreeksPanel({ quote, quantity, dataMode }: GreeksPanelPr
         </div>
         <div className="greeks-mobile-list" role="list" aria-label="حساسية Greeks">
           {rows.map((row) => (
-            <article className="greeks-mobile-card" role="listitem" key={row.key}>
+            <div className="greeks-mobile-card" role="listitem" key={row.key}>
               <div className="greeks-mobile-card-head">
                 <strong><span>{row.symbol}</span>{row.label}</strong>
                 <span className={`greek-origin ${quote.estimatedFields?.includes(row.key) || pricingStatus === 'ASSUMED' || dataMode === 'DEMO' ? 'estimated' : ''}`}>{greekSource(row.key, quote, dataMode)}</span>
@@ -123,7 +123,7 @@ export default function GreeksPanel({ quote, quantity, dataMode }: GreeksPanelPr
               </div>
               <p>{row.meaning}</p>
               <small className="greeks-mobile-unit">{row.positionUnit}</small>
-            </article>
+            </div>
           ))}
         </div>
 
