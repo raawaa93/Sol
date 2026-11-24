@@ -170,7 +170,8 @@ test('Binance preserves explicit crypto, commodity, and unknown contract metadat
     assert.equal(quote.pricingStatus, expected.pricing);
     assert.equal(quote.quoteAsset, 'USDT');
     assert.equal(quote.settlementAsset, 'USDT');
-    assert.equal(quote.contractMultiplier, 10);
+    assert.equal(quote.unit, 10);
+    assert.equal(quote.contractMultiplier, undefined);
   }
 
   const crypto = snapshot.quotes.find((item) => item.underlying === 'BTC');

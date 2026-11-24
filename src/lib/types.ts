@@ -40,6 +40,7 @@ export interface OptionQuote {
   pricingReason?: string;
   quoteAsset?: string;
   settlementAsset?: string;
+  /** Provider-supplied multiplier metadata; never assumed equal to `unit`. */
   contractMultiplier?: number;
   exerciseStyle?: ExerciseStyle;
   settlementStyle?: SettlementStyle;
@@ -72,6 +73,7 @@ export interface OptionQuote {
   volume: number | null;
   volumeQuote?: number | null;
   spot: number;
+  /** Underlying quantity represented by one contract; may be an explicitly marked import default. */
   unit: number;
   contractStatus?: string;
   minQty?: number;

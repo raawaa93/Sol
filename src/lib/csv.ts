@@ -212,7 +212,13 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
       : undefined;
     const quoteAsset = readField(row, ['quoteAsset', 'quoteCurrency'])?.trim().toUpperCase();
     const settlementAsset = readField(row, ['settlementAsset', 'settleAsset', 'settlementCurrency'])?.trim().toUpperCase();
-    const contractMultiplier = parsePositiveNumber(readField(row, ['contractMultiplier', 'multiplierValue']), delimiter === ';');
+    const contractMultiplier = parsePositiveNumber(readField(row, ['contractMultiplier', 'multiplierValue', 'multiplier']), delimiter === ';');
+    const inputUnit = parsePositiveNumber(readField(row, ['unit', 'contractunit']), delimiter === ';');
+    if (contractMultiplier !== undefined && inputUnit === undefined) {
+      addRowWarning(`الصف ${sourceRowNumber}: contractMultiplier ليس بديلاً عن unit؛ استُخدمت قيمة unit الافتراضية 1 والمعلّمة كتقديرية.`);
+    } else if (contractMultiplier !== undefined && inputUnit !== undefined && Math.abs(contractMultiplier - inputUnit) > Math.max(1e-9, inputUnit * 1e-9)) {
+      addRowWarning(`الصف ${sourceRowNumber}: contractMultiplier يختلف عن unit؛ تُحفظ القيمتان منفصلتين، لكن حسابات العقد الحالية تستخدم unit فقط ولا تمثل deliverables المعدّلة.`);
+    }
     const expiryTimezone = readField(row, ['expiryTimezone', 'timezone'])?.trim();
     const typeText = (readField(row, ['type', 'optiontype', 'side']) ?? parsedSymbol.type ?? '').toUpperCase();
     const type: OptionSide | undefined = typeText === 'C' || typeText === 'CALL' ? 'CALL'
@@ -334,8 +340,7 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
     const volumeQuote = parseNonnegativeNumber(readField(row, ['volumequote', 'volumeusd', 'turnover', 'amount']), delimiter === ';') ?? null;
     if (openInterest === null) counts.missingOpenInterest += 1;
     if (volume === null) counts.missingVolume += 1;
-    const inputUnit = parsePositiveNumber(readField(row, ['unit', 'contractunit', 'multiplier']), delimiter === ';');
-    const unit = inputUnit ?? contractMultiplier ?? 1;
+    const unit = inputUnit ?? 1;
     if (!inputUnit) {
       counts.defaultedUnit += 1;
       estimatedFields.push('unit');
