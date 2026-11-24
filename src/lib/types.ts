@@ -93,10 +93,12 @@ export interface AssetSnapshot {
   dayChangePct: number;
   iv30: number | null;
   rv30: number | null;
-  openInterestUsd: number | null;
-  openInterestUsdEstimated?: boolean;
-  volume24hUsd: number | null;
-  volume24hUsdEstimated?: boolean;
+  openInterestValue: number | null;
+  openInterestCurrency?: string;
+  openInterestValueEstimated?: boolean;
+  volume24hValue: number | null;
+  volume24hCurrency?: string;
+  volume24hValueEstimated?: boolean;
   fundingRate: number;
 }
 

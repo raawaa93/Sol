@@ -1,4 +1,5 @@
 import { getMidPrice, getUnderlyingReferencePrice } from './options.ts';
+import { getQuoteCurrency } from './format.ts';
 import { isQuoteFieldEstimated } from './quote-quality.ts';
 import type { AssetSnapshot, OptionQuote, Underlying } from './types';
 
@@ -38,11 +39,34 @@ export function getMarketSnapshotFromQuotes(quotes: OptionQuote[], underlying: U
     .sort((a, b) => a - b);
   const oiRows = rows.filter((quote) => quote.openInterestUsd != null || quote.openInterest !== null);
   const volumeRows = rows.filter((quote) => quote.volumeQuote != null || quote.volume !== null);
-  const openInterestUsd = oiRows.length
-    ? oiRows.reduce((sum, quote) => sum + (quote.openInterestUsd ?? (quote.openInterest ?? 0) * getUnderlyingReferencePrice(quote) * quote.unit), 0)
+  const oiAmounts = oiRows.map((quote) => {
+    if (quote.openInterestUsd != null) return { value: quote.openInterestUsd, currency: 'USD', estimated: false };
+    const currency = getQuoteCurrency(quote);
+    const referencePrice = getUnderlyingReferencePrice(quote);
+    if (quote.openInterest === null || !currency || !Number.isFinite(referencePrice) || referencePrice <= 0) return null;
+    return { value: quote.openInterest * referencePrice * quote.unit, currency, estimated: true };
+  });
+  const oiCurrencies = new Set(oiAmounts.filter((amount) => amount !== null).map((amount) => amount!.currency));
+  const openInterestCurrency = oiAmounts.length > 0 && oiAmounts.every((amount) => amount !== null) && oiCurrencies.size === 1
+    ? [...oiCurrencies][0]
+    : undefined;
+  const openInterestValue = openInterestCurrency
+    ? oiAmounts.reduce((sum, amount) => sum + (amount?.value ?? 0), 0)
     : null;
-  const volume24hUsd = volumeRows.length
-    ? volumeRows.reduce((sum, quote) => sum + (quote.volumeQuote ?? (quote.volume ?? 0) * getMidPrice(quote) * quote.unit), 0)
+  const volumeAmounts = volumeRows.map((quote) => {
+    const currency = getQuoteCurrency(quote);
+    if (!currency) return null;
+    if (quote.volumeQuote != null) return { value: quote.volumeQuote, currency, estimated: false };
+    const midPrice = getMidPrice(quote);
+    if (quote.volume === null || !Number.isFinite(midPrice) || midPrice <= 0) return null;
+    return { value: quote.volume * midPrice * quote.unit, currency, estimated: true };
+  });
+  const volumeCurrencies = new Set(volumeAmounts.filter((amount) => amount !== null).map((amount) => amount!.currency));
+  const volume24hCurrency = volumeAmounts.length > 0 && volumeAmounts.every((amount) => amount !== null) && volumeCurrencies.size === 1
+    ? [...volumeCurrencies][0]
+    : undefined;
+  const volume24hValue = volume24hCurrency
+    ? volumeAmounts.reduce((sum, amount) => sum + (amount?.value ?? 0), 0)
     : null;
 
   return {
@@ -51,10 +75,12 @@ export function getMarketSnapshotFromQuotes(quotes: OptionQuote[], underlying: U
     dayChangePct: 0,
     iv30: near30Iv.length ? near30Iv[Math.floor(near30Iv.length / 2)] : null,
     rv30: null,
-    openInterestUsd,
-    openInterestUsdEstimated: oiRows.some((quote) => quote.openInterestUsd == null),
-    volume24hUsd,
-    volume24hUsdEstimated: volumeRows.some((quote) => quote.volumeQuote == null),
+    openInterestValue,
+    openInterestCurrency,
+    openInterestValueEstimated: openInterestCurrency ? oiAmounts.some((amount) => amount?.estimated) : false,
+    volume24hValue,
+    volume24hCurrency,
+    volume24hValueEstimated: volume24hCurrency ? volumeAmounts.some((amount) => amount?.estimated) : false,
     fundingRate: 0,
   };
 }
