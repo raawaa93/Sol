@@ -58,10 +58,10 @@
 - Binance normalization assigns only metadata proven by exchangeInfo/contract specs; unsupported exercise/settlement details remain unknown until sourced.
 - Preserve source venue and exact instrument identifier.
 
-- [ ] Add tests for crypto, commodity and unknown instrument metadata.
-- [ ] Run the tests first and observe failure.
-- [ ] Implement normalization.
-- [ ] Run the full test suite.
+- [x] Add tests for crypto, commodity and unknown instrument metadata.
+- [x] Run the tests first and observe failure.
+- [x] Verify existing normalization preserves explicit crypto, commodity and unknown contract metadata without model fallback.
+- [x] Run the full test suite.
 
 ### Task 3: Asset-class and venue navigation
 
@@ -117,8 +117,16 @@
 - [x] Implement a standalone contract-aware pricing library with explicit European exercise, settlement, rate and carry requirements.
 - [x] Verify analytical values, put-call parity and finite-difference Greeks.
 - [x] Run full suite and build.
-- [ ] Wire the pricing router into CSV normalization, source quote valuation and UI risk panels; keep unsupported mechanics visibly blocked.
+- [x] Wire the pricing router into CSV normalization, Binance source valuation, Demo fixtures and UI risk panels; keep unsupported mechanics visibly blocked.
+- [x] Remove the legacy CSV Black–Scholes fallback for contracts without explicit compatible mechanics. Missing IV is solved only when a validated model accepts the supplied contract metadata; rows with observed IV/quotes remain importable as OBSERVED_ONLY.
 
 ## Rollout
 
 Keep the feature behind no hidden live-trading capability. Merge only after CI, mobile E2E and source/contract metadata tests pass. Publish the research/UI changes first; pricing-model routing can follow as a separately reviewable PR.
+
+
+## Verification follow-up — 24 November 2026
+
+- CSV without exercise/settlement/underlying model metadata no longer receives a generic Black–Scholes IV solve or Greeks. Observed IV and observed market quotes remain available with `OBSERVED_ONLY`; no synthetic model is substituted.
+- Explicit European spot inputs with rate and carry continue to route to Black–Scholes with Carry; explicit futures inputs route to Black–76; perpetual, American/Bermudan and unknown mechanics remain unsupported.
+- Regression coverage added for missing metadata, supported explicit inputs, and Binance crypto/commodity/unknown metadata classification.
