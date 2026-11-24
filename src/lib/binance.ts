@@ -361,7 +361,6 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       takerFeeRate: finiteNumber(symbolInfo.takerFeeRate),
       priceScale: finiteNumber(symbolInfo.priceScale),
       quantityScale: finiteNumber(symbolInfo.quantityScale),
-      riskFreeRate,
       filters,
       sourceTimestamp: timestamp ? new Date(timestamp).toISOString() : undefined,
       estimatedFields,
