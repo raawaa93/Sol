@@ -11,6 +11,7 @@ import {
   YAxis,
 } from 'recharts';
 import { formatAssetPrice } from '../lib/format';
+import { getUnderlyingReferencePrice } from '../lib/options';
 import type { OptionQuote, OptionSide } from '../lib/types';
 
 const numberFormat = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 });
@@ -39,7 +40,7 @@ function ChartEmptyState({ title, note }: { title: string; note: string }) {
 }
 
 export default function VolatilityCharts({ smileData, termData, underlying, selectedQuote, selectedType }: VolatilityChartsProps) {
-  const referencePrice = selectedQuote.underlyingKind === 'FUTURE' ? selectedQuote.forward ?? selectedQuote.spot : selectedQuote.spot;
+  const referencePrice = getUnderlyingReferencePrice(selectedQuote);
   return (
     <>
       <article className="panel chart-panel">
