@@ -128,6 +128,13 @@ test('replay skips a trade when contract scale or settlement currency changes be
   ], config);
   assert.equal(currencyChanged.trades.length, 0);
   assert.equal(currencyChanged.skipped.invalidContractScale, 1);
+
+  const underlyingChanged = replayLongOptionSnapshots([
+    quote('2026-11-24T10:00:00.000Z', { underlying: 'BTC' }),
+    quote('2026-11-24T11:00:00.000Z', { underlying: 'ETH' }),
+  ], config);
+  assert.equal(underlyingChanged.trades.length, 0);
+  assert.equal(underlyingChanged.skipped.invalidContractScale, 1);
 });
 
 test('replay does not look ahead beyond the exit grace window and avoids overlapping trades', () => {
