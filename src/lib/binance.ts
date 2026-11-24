@@ -200,6 +200,9 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
   let skipped = 0;
   let estimatedIv = 0;
   let missingBidAsk = 0;
+  let missingBidOnly = 0;
+  let missingAskOnly = 0;
+  let missingBothSides = 0;
   let crossedBidAsk = 0;
   let missingOpenInterest = 0;
   let missingIndex = 0;
@@ -302,7 +305,12 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       estimatedFields.push('iv');
     }
     if (priceSource === 'MODEL') estimatedFields.push('markPrice');
-    if (!bid || !ask) missingBidAsk += 1;
+    if (!bid || !ask) {
+      missingBidAsk += 1;
+      if (!bid && !ask) missingBothSides += 1;
+      else if (!bid) missingBidOnly += 1;
+      else missingAskOnly += 1;
+    }
     if (crossedQuote) crossedBidAsk += 1;
     if (!openInterest) missingOpenInterest += 1;
     if (observedRiskFreeRate === undefined) {
@@ -381,7 +389,7 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
   if (skipped > 0) warnings.push(`تعذّر استكمال بيانات ${skipped} عقد من قائمة Binance؛ قد يكون مؤشر الأصل أو سعر العقد غير متاح.`);
   if (missingIndex > 0) warnings.push(`لم تتوفر أسعار مؤشر Binance لـ${missingIndex} عقد؛ الأصول المتأثرة: ${[...missingIndexAssets].sort().join('، ')}. لم تُستعر أسعار Demo بديلاً عنها.`);
   if (estimatedIv > 0) warnings.push(`استُنتج IV بنموذج Black–Scholes لـ${estimatedIv} عقد غاب فيها markIV.`);
-  if (missingBidAsk > 0) warnings.push(`Bid أو Ask غير متاح لـ${missingBidAsk} عقد؛ لم يُختلق الطرف الناقص والفارق غير متاح.`);
+  if (missingBidAsk > 0) warnings.push(`Bid أو Ask غير متاح لـ${missingBidAsk} عقد (Bid مفقود فقط: ${missingBidOnly}، Ask مفقود فقط: ${missingAskOnly}، كلاهما مفقود: ${missingBothSides})؛ لم يُختلق الطرف الناقص والفارق غير متاح.`);
   if (crossedBidAsk > 0) warnings.push(`تعارض Bid/Ask في ${crossedBidAsk} عقد؛ استُبعد المنتصف من مرجع السعر.`);
   if (missingOpenInterest > 0) warnings.push(`الفائدة المفتوحة غير متاحة لـ${missingOpenInterest} عقد/استحقاق.`);
   if (missingUnit > 0) warnings.push(`وحدة العقد غير موجودة في ${missingUnit} عقد؛ استُبعدت هذه العقود بدلاً من افتراض مضاعف 1.`);
