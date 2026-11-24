@@ -325,3 +325,33 @@ test('Binance commodity options preserve perpetual-index mechanics and do not re
   assert.deepEqual(quote.unverifiedSourceGreeks, { delta: 0.61, gamma: 0.001, theta: -1.2, vega: 4.2 });
 });
 
+
+
+test('Binance normalizer excludes contracts with unknown contract unit instead of assuming multiplier one', () => {
+  const now = Date.now();
+  const expiry = now + 30 * 86_400_000;
+  const code = compactDate(expiry);
+  const validSymbol = `BTC-${code}-100000-C`;
+  const missingUnitSymbol = `BTC-${code}-100000-P`;
+  const snapshot = normalizeBinanceSnapshot({
+    fetchedAt: now,
+    exchangeInfo: {
+      serverTime: now,
+      optionContracts: [{ baseAsset: 'BTC', quoteAsset: 'USDT', underlying: 'BTCUSDT', settleAsset: 'USDT', contractType: 'CRYPTO_OPTIONS', underlyingType: 'CRYPTO' }],
+      optionSymbols: [
+        { symbol: validSymbol, underlying: 'BTCUSDT', side: 'CALL', strikePrice: 100000, expiryDate: expiry, unit: 1, status: 'TRADING' },
+        { symbol: missingUnitSymbol, underlying: 'BTCUSDT', side: 'PUT', strikePrice: 100000, expiryDate: expiry, status: 'TRADING' },
+      ],
+    },
+    marks: [
+      { symbol: validSymbol, markPrice: 1200, markIV: 0.55 },
+      { symbol: missingUnitSymbol, markPrice: 1100, markIV: 0.56 },
+    ],
+    indices: [{ requestedUnderlying: 'BTCUSDT', item: { indexPrice: 100000, time: now } }],
+  });
+
+  assert.equal(snapshot.quotes.length, 1);
+  assert.equal(snapshot.quotes[0].symbol, validSymbol);
+  assert.equal(snapshot.quotes[0].unit, 1);
+  assert.ok(snapshot.warnings.some((warning) => warning.includes('استُبعدت هذه العقود')));
+});
