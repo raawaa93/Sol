@@ -97,7 +97,7 @@ export default function HistoricalReplayPanel({ quotes, dataMode, underlying }: 
 
         <div className="replay-footnote"><AlertTriangle size={14} /><span>
           هذا خط أساس لتنفيذ شراء/إغلاق، وليس اختبار استراتيجية ذات إشارة دخول. لا يستخدم Mark كسعر تنفيذ ولا يختلق وقتاً عند غياب timestamp. لا يشمل الرسوم إلا النسبة التي تدخلها، والتراجع محسوب من P&L المحقق فقط لا من تقييم المراكز المفتوحة، ولا يمثل نتائج مستقبلية.
-          {replay && ` تم استبعاد: وقت مفقود ${replay.skipped.missingTimestamp}، عرض غير صالح ${replay.skipped.invalidQuote}، وحدة غير صالحة ${replay.skipped.invalidUnit}، Spread واسع ${replay.skipped.wideSpread}، بلا لقطة خروج ${replay.skipped.noExitSnapshot}.`}
+          {replay && ` تم استبعاد: وقت مفقود ${replay.skipped.missingTimestamp}، عرض غير صالح ${replay.skipped.invalidQuote}، وحدة غير صالحة ${replay.skipped.invalidUnit}، مقياس عقد غير متحقق ${replay.skipped.invalidContractScale}، Spread واسع ${replay.skipped.wideSpread}، بلا لقطة خروج ${replay.skipped.noExitSnapshot}.`}
         </span></div>
       </div>
     </section>
