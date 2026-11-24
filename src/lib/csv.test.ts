@@ -161,9 +161,14 @@ test('CSV never substitutes contractMultiplier for the underlying unit and rejec
   const mismatched = 'SPY-MISMATCH,SPY,' + expiry + ',100,CALL,2,2.2,2.1,25%,100,100,2026-11-24T02:00:00Z,EQUITY,CBOE,50';
   const result = parseOptionsCsv([header, missingUnit, mismatched].join('\n'));
 
-  assert.equal(result.quotes.length, 0);
-  assert.ok(result.warnings.some((warning) => warning.includes('لا يمكن استخدام contractMultiplier بديلاً عن unit')));
-  assert.ok(result.warnings.some((warning) => warning.includes('contractMultiplier لا يساوي unit')));
+  assert.equal(result.quotes.length, 2);
+  assert.equal(result.quotes[0].unit, 1);
+  assert.equal(result.quotes[0].contractMultiplier, 100);
+  assert.ok(result.quotes[0].estimatedFields?.includes('unit'));
+  assert.equal(result.quotes[1].unit, 100);
+  assert.equal(result.quotes[1].contractMultiplier, 50);
+  assert.ok(result.warnings.some((warning) => warning.includes('contractMultiplier ليس بديلاً عن unit')));
+  assert.ok(result.warnings.some((warning) => warning.includes('contractMultiplier يختلف عن unit')));
 });
 
 test('CSV generic multiplier field is not interpreted as underlying contract unit', () => {
@@ -174,8 +179,11 @@ test('CSV generic multiplier field is not interpreted as underlying contract uni
   ].join('\n');
   const result = parseOptionsCsv(csv);
 
-  assert.equal(result.quotes.length, 0);
-  assert.ok(result.warnings.some((warning) => warning.includes('لا يمكن استخدام contractMultiplier بديلاً عن unit')));
+  assert.equal(result.quotes.length, 1);
+  assert.equal(result.quotes[0].unit, 1);
+  assert.equal(result.quotes[0].contractMultiplier, 100);
+  assert.ok(result.quotes[0].estimatedFields?.includes('unit'));
+  assert.ok(result.warnings.some((warning) => warning.includes('contractMultiplier ليس بديلاً عن unit')));
 });
 
 test('CSV preserves perpetual underlying mechanics without converting them to spot or futures', () => {
