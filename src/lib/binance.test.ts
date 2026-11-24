@@ -845,7 +845,7 @@ test('Binance Options ticker fills missing sides but never overrides BookTicker 
   assert.equal(updated.volumeQuote, 65000);
   assert.equal(updated.unverifiedSourceGreeks?.delta, 0.99);
   assert.notEqual(updated.delta, 0.99);
-  assert.equal(updated.sourceTimestamps?.ticker, new Date(event.transactionTime).toISOString());
+  assert.equal(updated.sourceTimestamps?.optionTicker, new Date(event.transactionTime).toISOString());
 
   const bookQuote = {
     ...quote, bid: 5000, ask: 5400,
