@@ -98,7 +98,7 @@ export function replayLongOptionSnapshots(
       skipped.invalidUnit += 1;
       continue;
     }
-    if (getContractScaleIssue(quote) === 'MULTIPLIER_MISMATCH') {
+    if (getContractScaleIssue(quote) !== undefined) {
       skipped.invalidContractScale += 1;
       continue;
     }
