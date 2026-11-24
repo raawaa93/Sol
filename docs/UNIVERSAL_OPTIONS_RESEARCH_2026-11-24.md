@@ -233,7 +233,7 @@ Sources:
 
 | Venue / product | Product classification | Syria evidence | Operational decision |
 |---|---|---|---|
-| Gate U.S. Stock Options | USDT cash-settled product; exchange/OCC equivalence not established by reviewed docs | Current Gate User Agreement explicitly names Syria as an embargoed/restricted location | Exclude for Syrian resident |
+| Gate Global Crypto Options | European, cash-settled crypto options; REST/WS, IV/market/limit order paths, short/margin telemetry | Current global ToS does not name Syria in the non-exhaustive list; older 2022 PDF does; no current written Syria approval found | Inquiry-only candidate; no funding before written compliance approval |
 | Bitget Stock+ | Separate U.S. securities sub-account with options features | General Bitget account accepts Syria, but June 2026 Stock+ launch report lists Syria among exclusions | Do not use; require written Stock+ eligibility confirmation |
 | Paradex | On-chain order-book options/perpetual venue | Official Restricted Persons page explicitly names Syria; Terms prohibit VPN circumvention | Exclude |
 | Hyperliquid HIP-4 | Binary/outcome contracts, not vanilla options; HIP-3 are perpetuals | Broad sanctions/export-control terms and independent live test reported Syria trading gate | Exclude as execution; do not misclassify HIP-3/4 as options |
@@ -251,7 +251,7 @@ Sources:
 ### Venue selection for the actual user
 
 1. **Conditional primary:** Binance, because its official Syria FAQ explicitly lists Options and permits eligible Syrian residents to register/KYC. This is not evidence that every option family or API permission is active. Verify the actual product and permissions in the real Syrian KYC account.
-2. **No currently confirmed second execution venue:** Deribit, Bybit, OKX, Gate and Paradex list Syria restrictions; Hyperliquid's trading gate has been observed blocking Syria; Bitget Stock+ is reported to exclude Syria; IBKR and AMP do not establish eligibility. Optimus and Ironbeam remain inquiry-only.
+2. **No currently confirmed second execution venue:** Deribit, Bybit, OKX and Paradex list Syria restrictions; Hyperliquid's trading gate has been observed blocking Syria; Bitget Stock+ is reported to exclude Syria; IBKR and AMP do not establish eligibility. **Gate Global is inquiry-only** because its current non-exhaustive list and older agreement conflict. Optimus and Ironbeam remain inquiry-only.
 3. **Research architecture:** venue-neutral canonical contracts, separate adapter per exchange/FCM, common provenance/freshness, normalized multiplier/currency/settlement, independent pricing and risk engines, and no cross-venue equivalence unless contract terms prove it.
 4. **No VPN workaround:** use VPN only for connectivity/privacy where lawful and allowed; do not route execution through another country to misrepresent residence or defeat a venue's terms.
 
@@ -307,3 +307,30 @@ Sources:
 - https://massive.com/docs/flat-files/options/quotes?assetClass=options&license=personal&name=options_advanced
 - https://www.cmegroup.com/market-data/browse-data.html.html
 - https://www.cboe.com/data/market-data-services
+
+
+## Gate Global — تصحيح أهلية وتقييم منتج الخيارات (24 نوفمبر 2026)
+
+**الحالة الجغرافية:** اتفاقية Gate Global الحالية (صفحة User Agreement) تعرض قائمة Restricted Locations في البند 2.5 ولا تذكر سوريا ضمن القائمة المنشورة، لكنها تقول صراحةً إن القائمة غير حصرية وإن الخدمات قد تُقيّد حسب بلد الإقامة والمنتج. وثيقة Gate PDF أقدم من 2022 تذكر سوريا ضمن المناطق المقيدة. Gate US كيان أمريكي منفصل، واتفاقيته تشترط إقامة أمريكية وتذكر سوريا ضمن القيود؛ لا يجوز تعميم شروط Gate US على Gate Global. القرار: Gate Global ليس محظوراً مثبتاً ولا مقبولاً مثبتاً؛ يبقى **مرشح استفسار مكتوب**. لا تمويل قبل تأكيد Gate Support/Compliance أن مقيم سوريا يستطيع KYC واستخدام Crypto Options تحديداً.
+
+**قدرات Crypto Options التقنية المثبتة في الوثائق الرسمية:**
+- REST وWebSocket لقائمة الأصول الأساسية، تواريخ الانتهاء، العقود، تفاصيل العقد، دفتر الأوامر، الصفقات، mark price، index/forward price وGreeks/IV.
+- مواصفات العقد تتضمن multiplier، quote/settlement-related fields، fees، tick/size limits، ومصدر السعر المرجعي؛ يجب تطبيعها وعدم افتراض وحدة العقد.
+- API يدعم أوامر شراء وبيع؛ size موجب للشراء وسالب للبيع، مع GTC وIOC وPOC. Market order متاح عبر price=0 مع IOC، وتوجد مسارات IV order في واجهة Gate.
+- API يعرض short_enabled وinitial/maintenance margin وorder margin وliquidation state وMMP؛ هذا أفضل من واجهة بيانات فقط، لكنه لا يثبت أن كل حساب تجزئة يحصل على كل صلاحيات الكتابة أو أن هناك atomic multi-leg combo/portfolio margin.
+- Gate Help يصف خياراته كأوروبية ومسددة نقدياً، ويذكر أن المشتري يدفع premium والبائع يضع margin؛ يجب اعتماد مواصفات العقد الفعلية لكل underlying قبل التسعير أو التنفيذ.
+- Gate Crypto Options تبدو أضيق من جميع فئات الأصول العالمية؛ واجهة الخيارات الموثقة مبنية حول underlyings كريبتو مثل BTC_USDT. Gate U.S. Stock Options منتج منفصل مسعّر/مسوّى USDT ولا توجد أدلة كافية في هذه المراجعة على أنه عقد OCC-listed قياسي.
+
+**مقارنة عملية مع Binance:**
+- Gate أقوى تقنياً في مرونة أوامر الخيارات (market/IV/IOC/POC) وواجهات WS/REST والـshort/margin telemetry الموثقة.
+- Binance أقوى حالياً في وضوح أهلية سوريا الرسمية، ولديها خيارات كريبتو إضافة إلى XAU/XAG Commodity Options؛ لكنها تقيد الكتابة والهامش والأوامر كما هو موثق في هذا الملف.
+- لا نختار Gate بدلاً من Binance حتى يصل تأكيد أهلية مكتوب من Gate Global؛ وإذا أكدوا القبول، نختبر حساب Demo/Simulated Trading ونقارن السيولة والرسوم والمضاعفات والتسوية وعمق السوق قبل أي تمويل.
+
+المصادر:
+- Gate Global User Agreement (القائمة الحالية غير حصرية): https://www.gate.com/legal/user-agreement
+- Gate older agreement PDF (2022، مصدر قديم متعارض): https://www.gate.com/docs/agreement.pdf
+- Gate US User Agreement (كيان أمريكي منفصل): https://www.gate.com/en-us/legal/user-agreement
+- Gate Options REST/WS API: https://www.gate.com/docs/developers/apiv4/en/options/
+- Gate Options WebSocket: https://www.gate.com/docs/developers/options/ws/en/
+- Gate European cash-settlement Help: https://www.gate.com/help/other/optionsbasics/46255/european-options-settlement-methods-explained
+- Gate crypto-options trading guide (5 Nov 2026): https://www.gate.com/learn/articles/how-to-trade-crypto-options-on-gate
