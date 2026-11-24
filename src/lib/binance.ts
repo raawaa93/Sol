@@ -322,11 +322,11 @@ export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptio
     ...quote,
     ...(quote.estimatedFields ? {
       estimatedFields: quote.estimatedFields.filter((field) =>
-        (field !== 'iv' || event.markIv === undefined)
-        && (field !== 'bidIv' || event.bidIv === undefined)
-        && (field !== 'askIv' || event.askIv === undefined)
-        && (field !== 'markPrice' || event.markPrice === undefined)
-        && (!modelUpdate || !['delta', 'gamma', 'theta', 'vega', 'rho'].includes(field))),
+        !((field === 'iv' && event.markIv !== undefined)
+          || (field === 'bidIv' && event.bidIv !== undefined)
+          || (field === 'askIv' && event.askIv !== undefined)
+          || (field === 'markPrice' && event.markPrice !== undefined)
+          || (modelUpdate && 'delta gamma theta vega rho'.includes(field))),
     } : {}),
     ...(useTickerBid ? { bid: event.bestBid, ...(event.bestBidQuantity !== undefined ? { bidQuantity: event.bestBidQuantity } : {}) } : {}),
     ...(useTickerAsk ? { ask: event.bestAsk, ...(event.bestAskQuantity !== undefined ? { askQuantity: event.bestAskQuantity } : {}) } : {}),
