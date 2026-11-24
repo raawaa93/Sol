@@ -260,3 +260,8 @@ Recent work reinforces that financial agents must be evaluated on process qualit
 ### Implication for Sol
 
 Build an evaluation harness before scaling agent count or adding model providers. Each test case should include an investor profile, a dated evidence snapshot, a decision task, expected tool use, independently computed numerical checks, a rubric for evidence quality and a delayed outcome. Track source correctness, numerical accuracy, profile alignment, downside coverage, uncertainty calibration and privacy behavior. Never optimize the assistant solely for backtested returns or user satisfaction.
+
+
+## 14. Options and institutional strategy research
+
+- [Options, professional strategies, institutional positioning, open-source projects and implementation decisions](OPTIONS_AND_INSTITUTIONAL_STRATEGY_RESEARCH_2026-11-24.md).
