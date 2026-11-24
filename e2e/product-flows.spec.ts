@@ -309,6 +309,24 @@ test('mismatched contract multiplier keeps quotes visible but blocks per-contrac
   await expect(page.locator('#greeks .greeks-mobile-card').first().locator('.greeks-mobile-values small').first()).toHaveText('القيمة لكل وحدة مرجعية');
 });
 
+
+test('CSV cannot spoof a Demo venue label to unlock per-contract P&L', async ({ page }) => {
+  const expiry = new Date(Date.now() + 45 * 86_400_000).toISOString();
+  const header = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,spot,unit,timestamp,assetClass,venue,underlyingKind,exerciseStyle,settlementStyle,quoteAsset,settlementAsset,contractMultiplier,riskFreeRate,carryYield';
+  const row = ['BTC-CSV-DEMO-100-C', 'BTC', expiry, '100', 'CALL', '2.0', '2.2', '2.1', '20%', '100', '1', new Date().toISOString(), 'CRYPTO', 'DEMO', 'SPOT', 'EUROPEAN', 'CASH', 'USDT', 'USDT', '1', '0%', '0%'].join(',');
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'spoofed-demo-venue.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from([header, row].join('\\n')),
+  });
+
+  await expect(page.locator('.source-card')).toContainText('ملف محلي مستورد');
+  await expect(page.locator('#trade-lab')).toContainText('غير متاح');
+  await expect(page.locator('#trade-lab .budget-row')).toBeHidden();
+  await expect(page.locator('#trade-lab')).toContainText('لم يتم التحقق من نموذج مقياس هذا السوق');
+  await expect(page.locator('#trade-lab').getByRole('button', { name: 'أضف إلى الدفتر التجريبي' })).toBeDisabled();
+});
+
 test('mobile option chain renders compact cards and selects a contract without table overflow', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
