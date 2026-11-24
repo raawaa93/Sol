@@ -21,6 +21,9 @@ test('net worth converts assets and liabilities into one reporting currency', ()
   assert.equal(result.liabilities, 250);
   assert.equal(result.netWorth, 1300);
   assert.equal(result.byCurrency.length, 3);
+  assert.equal(result.convertedBalances.find((item) => item.id === 'cash-eur')?.fxSource, 'test-fx');
+  assert.equal(result.convertedBalances.find((item) => item.id === 'cash-eur')?.fxObservedAt, '2026-11-24T10:00:00.000Z');
+  assert.deepEqual(result.fxUsage.map((item) => item.sourceCurrency), ['EUR', 'GBP']);
 });
 
 test('net worth uses inverse FX rates and never silently treats missing FX as zero', () => {
@@ -57,6 +60,7 @@ test('monthly cash flow filters the month, converts currencies and excludes tran
   assert.equal(result.netCashFlow, 1390);
   assert.equal(result.excludedTransfers, 1);
   assert.equal(result.byCategory.length, 3);
+  assert.deepEqual(result.fxUsage.map((item) => item.sourceCurrency), ['EUR']);
 });
 
 test('cash flow reports incomplete conversion rather than a misleading total', () => {
@@ -78,6 +82,9 @@ test('FX inputs reject duplicate pairs, zero rates and missing source provenance
   assert.throws(() => calculateNetWorth(balances, 'USD', duplicate), /Duplicate FX pair/);
   assert.throws(() => calculateNetWorth(balances, 'USD', [{ ...fx[0], rate: 0 }]), /greater than zero/);
   assert.throws(() => calculateMonthlyCashFlow([], '2026-11', 'USD', [{ ...fx[0], source: ' ' }]), /source is required/);
+  assert.throws(() => calculateNetWorth(balances, 'USD', [
+    fx[0], { ...fx[0], baseCurrency: 'USD', quoteCurrency: 'EUR', rate: 0.9 },
+  ]), /Duplicate FX pair/);
 });
 
 test('balance and cash-flow dates require ISO timestamps', () => {
