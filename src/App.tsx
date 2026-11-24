@@ -301,7 +301,7 @@ function App() {
     const expiries = new Set(binanceSnapshot.quotes
       .filter((quote) => quote.underlying === underlying)
       .map((quote) => quote.symbol.split('-')[1])
-      .filter((expiry): expiry is string => Boolean(expiry && /^\\d{6}$/.test(expiry))));
+      .filter((expiry): expiry is string => Boolean(expiry && /^\d{6}$/.test(expiry))));
     return [...expiries].sort().map((expiry) => `${underlying.toLowerCase()}@ticker@${expiry}`);
   }, [binanceSnapshot, dataMode, underlying]);
   const assetChoices = useMemo(() => [...new Set(scopedQuotes.map((quote) => quote.underlying))]
