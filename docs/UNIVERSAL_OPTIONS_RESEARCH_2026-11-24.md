@@ -139,6 +139,58 @@ No open-source project supplies free, complete, licensed, survivorship-clean, ti
 - [ ] Add source/licensing tests and adapter conformance tests before enabling any additional provider.
 - [ ] Recheck venue terms, fees, and product availability quarterly and before any account funding.
 
+
+
+## 10. Product-specific candidates: Bitget Stock+ and Gate U.S. Stock Options
+
+These products surfaced after the initial platform matrix and must be assessed separately from the general exchange account.
+
+### Bitget: general account eligibility is not Stock+ eligibility
+
+Bitget's official 12 June 2025 announcement says Syria was removed from the restricted-country list for its general platform services and that Syrian residents can register and complete KYC. This supports general crypto account access, not every sub-product.
+
+Stock+ is a separate Securities Sub-account. Its 2026 service terms identify Parsa Financial Services (South Africa) and foreign service providers for execution, clearing and custody, and refer to OCC rules, exercise/assignment and settlement mechanics. The Block's 22 June 2026 launch coverage listed Syria among Stock+'s excluded jurisdictions. The Stock+ terms updated 11 September 2026 do not publish a standalone country table; they refer back to platform/providing-party restrictions. Therefore the general Bitget Syria announcement and the Stock+ product-specific restriction report are not equivalent and should not be conflated.
+
+If available to an eligible customer, Stock+ is materially broader than Binance for U.S. equity options:
+- Bitget announced 2,800+ U.S. stock/ETF option contracts at launch; actual live universe changes.
+- Initial buy-to-open Call/Put and sell-to-close; short options were announced from 1 September 2026, and multi-leg strategies from 29 September.
+- Product terms reference OCC rules, automatic exercise/assignment and T+1 settlement; the service involves external providers rather than being a simple Bitget crypto perpetual.
+- Published fees include a $0.60 platform fee per contract plus clearing/regulatory/exercise/audit and applicable SEC/FINRA fees; "zero commission" is not zero total cost.
+- OPRA options data and Stock Level 1 API access require whitelist/entitlement; an app UI quote does not prove API access.
+
+**Decision:** Do not treat Bitget Stock+ as eligible for this Syrian resident until Bitget/Parsa confirms in writing that a person whose true residence is Syria may open the Securities Sub-account and trade the U.S. options product. Do not use VPN/IP masking to test around the restriction.
+
+Sources:
+- General Syria eligibility: https://www.bitget.com/support/articles/12560603829392
+- Stock+ terms: https://www.bitget.com/terms/legal/12560603885499
+- Stock+ service provider / terms information: https://www.bitget.com/support/articles/12560603887309
+- Launch restriction report: https://www.theblock.co/news/markets/2026-06-22-bitget-us-stock-purchases-crypto-405507
+- Stock+ contract catalogue announcement: https://www.bitget.com/support/articles/12560603889520
+- Short options: https://www.bitget.com/support/articles/12560603893942
+- Multi-leg strategies: https://www.bitget.com/support/articles/12560603896255
+- API overview: https://www.bitget.com/legacy-docs/uta/stockplus/overview
+
+### Gate: U.S. stock options are not necessarily equivalent to OCC-listed stock options
+
+Gate launched U.S. stock options on an initial nine U.S. underlyings (including NVDA, TSLA, AAPL, META, AMD, MU, AMZN, GOOGL and AVGO). Its product documentation describes USDT cash settlement and no delivery of the underlying shares. That is materially different from standard U.S. single-stock options, which commonly involve physical delivery of 100 shares on exercise/assignment.
+
+The Gate pages reviewed do not clearly establish that these contracts are listed on a U.S. options exchange or cleared through OCC. Do not label them OCC-listed or equivalent to CBOE/NYSE standard contracts without explicit contract documentation. Gate's global user agreement list did not expressly name Syria in the version reviewed, but the list is non-exhaustive and Gate states product availability can vary by region/account. Absence from the general list is not approval.
+
+**Decision:** Gate is an inquiry candidate only. Before use, obtain written confirmation for Syrian residence and the exact U.S. Stock Options product, and verify the counterparty, exchange/clearing status, settlement calculation, order types, short-writing permissions, fees, data API and withdrawal path.
+
+Sources:
+- Launch announcement: https://www.gate.com/it/announcements/article/102291
+- Product guide: https://www.gate.com/uk/help/other/stockoptions/101318
+- Order/fee details: https://www.gate.com/uk/help/other/stockoptions/101328
+- Product FAQ: https://www.gate.com/uk/help/other/stockoptions/101334
+- User agreement: https://www.gate.com/legal/user-agreement
+
+### Additional traditional broker checks
+
+- **tastytrade:** Syria is not included in the published eligible international-account country list: https://tastytrade.com/learn/accounts/account-types/international-account
+- **Saxo:** its help page says services cannot be accessed from Syria: https://www.help.saxo/hc/en-us/articles/9342722900765-Can-I-access-my-account-when-I-travel-abroad
+- **KuCoin:** announced that all Options services would close and be removed on 15 January 2026 UTC: https://www.kucoin.com/announcement/kucoin-option-trading-notice-251224
+
 ## 9. Primary sources
 
 ### Binance
