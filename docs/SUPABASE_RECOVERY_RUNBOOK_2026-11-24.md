@@ -1,6 +1,6 @@
 # Sol / Volterra Supabase recovery runbook
 
-**Checked:** 24 November 2026, 07:45 UTC  
+**Checked:** 24 November 2026, 08:20 UTC  
 **Project:** `Ghaiooth-core` / `oyoyozdugicmnkfhjovo`  
 **Repository:** `raawaa93/Sol` (public)  
 **Database:** PostgreSQL 17.11, Supabase Free
@@ -54,7 +54,37 @@ This creates roles, application schema, and database data dumps supported by the
 
 Encrypt the resulting archive with a strong encryption tool and a key held outside GitHub before storing it off-site. Do not upload plaintext SQL or plaintext archive files to this public repository or its Actions artifacts.
 
-## 5. Restore verification plan
+## 5. Automated encrypted backups (workflow added; credentials still required)
+
+The repository now contains `.github/workflows/supabase-backup.yml` and `scripts/backup-supabase.sh`. Once configured, the workflow runs weekly (Sunday 04:23 UTC) or on manual dispatch:
+
+1. Uses Supabase CLI v3 with explicit `--remote=<database-url>` for all three dumps.
+2. Exports cluster roles, non-managed schema, and non-managed schema data.
+3. Verifies the expected Sol rate-limit table and RPC are present in the schema dump.
+4. Writes a manifest and SHA-256 checksums.
+5. Encrypts the archive with age before publishing it as a GitHub Release asset. The repository is public, so only ciphertext is ever uploaded.
+6. Does not automatically delete older releases; retain restore points until a separate retention policy is chosen.
+
+### One-time setup required from the repository owner
+
+The connected GitHub tools cannot inspect or write Actions secrets, and the database password is not available to the connected tools. Do not paste either secret or private key into chat.
+
+1. On a trusted device, install age and generate a key pair offline:
+   `age-keygen -o age-identity.txt`
+2. Keep the `AGE-SECRET-KEY-...` identity in an offline password manager or encrypted offline storage. Never upload it to GitHub.
+3. Copy only the public `age1...` recipient printed by age-keygen into GitHub repository **Settings → Secrets and variables → Actions → Variables** as `AGE_RECIPIENT`.
+4. In GitHub **Settings → Secrets and variables → Actions → Secrets**, add `SUPABASE_DB_URL` containing the PostgreSQL connection URL for project `oyoyozdugicmnkfhjovo`. Use the Session Pooler URL where possible. The workflow validates that the URL identifies this project and never prints it.
+5. Open **Actions → Encrypted Supabase backup → Run workflow**. Confirm that a new `sol-db-backup-...` release appears and contains only a `.age` ciphertext asset.
+
+The scheduled workflow intentionally skips with a warning while either setting is missing. A successful workflow run before configuration is not a backup. A successful encrypted export still is not a verified restore; the matching private identity is needed to decrypt and test it in an isolated environment.
+
+The release asset is publicly downloadable because this repository is public. Its contents are protected only by age encryption and the offline private key. If the private key is lost, the backup cannot be decrypted.
+
+### Automated export scope
+
+The script includes database roles, non-managed schema definitions, and non-managed schema data. Supabase CLI excludes managed `auth`, `storage`, and extension schemas. It does not include Auth users/sessions, Storage object bytes, Edge Function secrets, or project settings. Do not describe this as a complete project clone.
+
+## 6. Restore verification plan
 
 Before loading a dump into a fresh Supabase project, revoke the platform's default privileges for client roles so the target project's defaults do not accidentally widen access. Apply and review these statements before restoring the schema:
 
@@ -75,7 +105,7 @@ Then:
 
 No isolated restore has been run yet; the current state is **not** a verified backup.
 
-## 6. Migration-history reconciliation
+## 7. Migration-history reconciliation
 
 The remote migration ledger contains 22 rows; the Sol repository tracks only the three migrations listed above. The other 19 historical rows refer to removed legacy application objects. Their SQL text remains stored in the remote migration ledger, but the corresponding live application schemas, tables and functions are absent.
 
@@ -92,17 +122,17 @@ Repeat the repair command only for the 19 explicitly listed legacy versions. In 
 
 This repair has **not** been run. The history rows are intentionally retained until the dump and restore path are proven.
 
-## 7. Remaining blockers
+## 8. Remaining blockers
 
-- [ ] Repository owner configures `SUPABASE_DB_URL` as an Actions secret (or runs the export from a trusted local environment).
-- [ ] Establish an offline-held encryption key/passphrase before any backup is uploaded to GitHub.
-- [ ] Generate the first encrypted export and verify its checksum.
+- [ ] Repository owner configures `SUPABASE_DB_URL` as an Actions secret and `AGE_RECIPIENT` as an Actions variable; neither is visible/writable through the connected GitHub tools.
+- [ ] Generate an age key pair offline and keep the private identity outside GitHub.
+- [ ] Dispatch the encrypted-backup workflow; verify the first ciphertext release asset and checksum.
 - [ ] Run an isolated restore test.
 - [ ] Decide whether the single Auth user needs separate preservation; the standard CLI dump excludes Auth.
 - [ ] Reconcile the 19 obsolete remote migration history rows only after backup/restore verification.
 - [ ] Protect `main` with PR + required checks. The repository currently has no rulesets and `main` is not protected; the connected GitHub tool cannot write repository administration settings.
 - [ ] Remove six retired Edge Function deployments if/when a Supabase delete-function action or authorized CLI/Management API path becomes available.
 
-## 8. Incident boundary
+## 9. Incident boundary
 
 The earlier `commerce` and `rawaa_store` schema deletion removed the two Telegram pairing/recipient rows. Those records are absent from the live database. No backup has been located in the connected project, Storage, or Library. This runbook does not recreate placeholders and does not claim the deleted records can be recovered. An external pre-cleanup backup, if one exists, must be located separately.

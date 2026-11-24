@@ -1,0 +1,99 @@
+name: Encrypted Supabase backup
+
+on:
+  schedule:
+    - cron: '23 4 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sol-supabase-encrypted-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - name: Check backup configuration
+        id: config
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          AGE_RECIPIENT: ${{ vars.AGE_RECIPIENT }}
+        shell: bash
+        run: |
+          if [[ -z "$SUPABASE_DB_URL" || -z "$AGE_RECIPIENT" ]]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Encrypted backup is not configured. Add the SUPABASE_DB_URL Actions secret and AGE_RECIPIENT Actions variable; no database connection was attempted."
+            {
+              echo "### Encrypted Supabase backup skipped"
+              echo "No backup was created. Configure the `SUPABASE_DB_URL` repository secret and `AGE_RECIPIENT` repository variable."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [[ "$SUPABASE_DB_URL" != *oyoyozdugicmnkfhjovo* ]]; then
+            echo "The configured database URL does not identify the Sol project." >&2
+            exit 1
+          fi
+          if [[ ! "$AGE_RECIPIENT" =~ ^age1[0-9a-z]+$ ]]; then
+            echo "AGE_RECIPIENT is not a valid age public recipient." >&2
+            exit 1
+          fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
+      - name: Install Supabase CLI v3
+        if: steps.config.outputs.ready == 'true'
+        uses: supabase/setup-cli@v1
+        with:
+          version: 3.0.0
+
+      - name: Install age encryption utility
+        if: steps.config.outputs.ready == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes age
+
+      - name: Create encrypted logical backup
+        id: backup
+        if: steps.config.outputs.ready == 'true'
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          AGE_RECIPIENT: ${{ vars.AGE_RECIPIENT }}
+          BACKUP_OUTPUT_FILE: ${{ runner.temp }}/sol-supabase-backup.tar.gz.age
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          bash scripts/backup-supabase.sh
+          echo "file=$BACKUP_OUTPUT_FILE" >> "$GITHUB_OUTPUT"
+
+      - name: Publish encrypted backup release
+        if: steps.config.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BACKUP_FILE: ${{ steps.backup.outputs.file }}
+        shell: bash
+        run: |
+          timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
+          tag="sol-db-backup-$timestamp-$GITHUB_RUN_ID"
+          notes="$RUNNER_TEMP/backup-release-notes.md"
+          cat > "$notes" <<EOF
+          Encrypted logical backup for the Sol / Volterra Supabase project.
+
+          - Created: $timestamp UTC
+          - Encryption: age recipient encryption
+          - Asset: ciphertext only; the matching private age identity is not stored in this repository.
+          - Restore has not been tested by this workflow. See docs/SUPABASE_RECOVERY_RUNBOOK_2026-11-24.md.
+          EOF
+          gh release create "$tag" "$BACKUP_FILE" --target main --title "Encrypted Sol database backup $timestamp" --notes-file "$notes"
+          echo "Published encrypted backup release: $tag" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Record unconfigured state
+        if: steps.config.outputs.ready != 'true'
+        run: echo "No backup was created because required encryption and database credentials are not configured." >> "$GITHUB_STEP_SUMMARY"
