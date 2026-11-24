@@ -1,6 +1,6 @@
 import type { OptionFilter, OptionQuote } from './types';
 
-const formatters = new Map<string, Intl.NumberFormat>();
+const formatters = new Map<number, Intl.NumberFormat>();
 
 type PrecisionSource = Pick<OptionQuote, 'priceScale' | 'quantityScale' | 'filters'>;
 
@@ -11,7 +11,7 @@ function clampPrecision(value: number): number {
 export function getFormatter(precision: number, minimumFractionDigits = precision): Intl.NumberFormat {
   const maximum = clampPrecision(precision);
   const minimum = Math.min(maximum, clampPrecision(minimumFractionDigits));
-  const key = `${minimum}:${maximum}`;
+  const key = minimum * 10 + maximum;
   let formatter = formatters.get(key);
   if (!formatter) {
     formatter = new Intl.NumberFormat('en-US', {
