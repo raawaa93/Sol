@@ -58,7 +58,7 @@ test('CSV asset-class and venue filters isolate traditional listed option contra
   const expiry = new Date(Date.now() + 40 * 86_400_000).toISOString();
   const header = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,spot,unit,timestamp,assetClass,venue,quoteAsset,settlementAsset,contractMultiplier,exerciseStyle,settlementStyle';
   const call = ['SPY-261230-700-C', 'SPY', expiry, '700', 'CALL', '5.1', '5.3', '5.2', '22%', '690', '100', new Date().toISOString(), 'EQUITY', 'CBOE', 'USD', 'USD', '100', 'AMERICAN', 'PHYSICAL'].join(',');
-  const put = ['SPY-261230-680-P', 'SPY', expiry, '680', 'PUT', '4.1', '4.3', '4.2', '24%', '690', '100', new Date().toISOString(), 'EQUITY', 'ISE', 'USD', 'USD', '100', 'AMERICAN', 'PHYSICAL'].join(',');
+  const put = ['SPY-261230-680-P', 'SPY', expiry, '680', 'PUT', '4.1', '4.3', '4.2', '24%', '690', '100', new Date().toISOString(), 'EQUITY', 'ISE', '', 'USD', '100', 'AMERICAN', 'PHYSICAL'].join(',');
   const csv = `${header}\n${call}\n${put}`;
 
   await page.locator('input[type="file"]').setInputFiles({
@@ -75,6 +75,8 @@ test('CSV asset-class and venue filters isolate traditional listed option contra
   const venue = page.getByRole('combobox', { name: 'اختر المنصة' });
   await expect(venue).toBeVisible();
   await venue.selectOption('ISE');
+  await expect(page.locator('#overview-metrics')).toContainText('SPY');
+  await expect(page.locator('#overview-metrics')).not.toContainText('SPY/USD');
   await expect(page.locator('#scanner')).toContainText('SPY-261230-680-P');
   await expect(page.locator('#scanner')).not.toContainText('SPY-261230-700-C');
 });
