@@ -123,3 +123,9 @@ symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,delta,gamma,theta,vega
 Volterra هو مختبر خيارات متعدد الأصول وليس منتجاً للذهب فقط. Binance هي موصل التنفيذ الأول المشروط: Crypto Options API يوفر بيانات سوقية/Greeks/IV/OI وWebSocket للعقود المدرجة؛ Commodity Options الحالية تشمل XAU/XAG فقط وتجزئة long-only؛ U.S. Stock Options تغطي أسهماً وETFs أمريكية بتسوية مادية وlong-only، لكن API السوق لا يعرض option quotes/Greeks/IV، كما أن أهلية المنتج للسوريين تحتاج تحققاً منفصلاً. Binance لا تغطي وحدها خيارات الفائدة والعملات والطاقة والزراعة والمؤشرات العالمية. Bybit/Deribit/OKX وParadex تستبعد سوريا في الشروط التي راجعناها؛ Gate Global يبقى مرشح استفسار مكتوب بسبب تعارض قائمة حديثة غير حصرية مع وثيقة أقدم، وGate US كيان مختلف؛ IBKR لا يدرج سوريا في قائمة البلدان المتاحة. لا يُستخدم VPN لتغيير بلد الإقامة أو تجاوز القيود.
 
 للتسعير المرجعي نقيّم QuantLib؛ ولإعادة التشغيل والاختبار الحدثي نقيّم NautilusTrader في خدمة Python منفصلة بعد توفير بيانات QuoteTick وOptionGreeks. لا يوجد feed مجاني عالمي حي؛ ضمن سقف 15$/شهر نستخدم Binance API العام ومصادر EOD/CSV المؤخرة للبحث فقط، ولا نشتري اشتراكاً أو نعرض بيانات OPRA داخل منتج عام دون ترخيص.
+
+
+## Agent playbooks
+
+- [Universal options research and contract validation](skills/volterra-options-research/SKILL.md)
+- [UI quality, accessibility and deployment verification](skills/volterra-ui-quality/SKILL.md)
