@@ -326,7 +326,7 @@ export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptio
           || (field === 'bidIv' && event.bidIv !== undefined)
           || (field === 'askIv' && event.askIv !== undefined)
           || (field === 'markPrice' && event.markPrice !== undefined)
-          || (modelUpdate && 'delta gamma theta vega rho'.includes(field))),
+          || (modelUpdate && 'delta gamma theta vega rho'.includes(field)))),
     } : {}),
     ...(useTickerBid ? { bid: event.bestBid, ...(event.bestBidQuantity !== undefined ? { bidQuantity: event.bestBidQuantity } : {}) } : {}),
     ...(useTickerAsk ? { ask: event.bestAsk, ...(event.bestAskQuantity !== undefined ? { askQuantity: event.bestAskQuantity } : {}) } : {}),
