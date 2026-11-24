@@ -54,3 +54,58 @@ tar -xzf "$tmp/backup.tar.gz" -C "$tmp/restored"
 test -f "$tmp/restored/roles.sql"
 grep -q "volterra_rate_limit_windows" "$tmp/restored/schema.sql"
 echo "Real age encryption/decryption and checksum test passed with a mocked database CLI; no live database was accessed."
+
+base_url='postgresql://postgres.oyoyozdugicmnkfhjovo:placeholder@db.oyoyozdugicmnkfhjovo.supabase.co:5432/postgres'
+mock_path="$tmp/bin:$PATH"
+
+expect_failure() {
+  local label="$1"
+  shift
+  if "$@" >"$tmp/failure.log" 2>&1; then
+    echo "Expected failure did not occur: $label" >&2
+    cat "$tmp/failure.log" >&2
+    exit 1
+  fi
+  echo "Expected failure verified: $label"
+}
+
+expect_failure "missing SUPABASE_DB_URL" \
+  env -u SUPABASE_DB_URL PATH="$mock_path" AGE_RECIPIENT="$recipient" \
+  BACKUP_OUTPUT_FILE="$tmp/missing-url.age" bash "$repo_root/scripts/backup-supabase.sh"
+
+expect_failure "database URL for a different project" \
+  env PATH="$mock_path" \
+  SUPABASE_DB_URL='postgresql://postgres:placeholder@db.otherproject.supabase.co:5432/postgres' \
+  AGE_RECIPIENT="$recipient" BACKUP_OUTPUT_FILE="$tmp/wrong-project.age" \
+  bash "$repo_root/scripts/backup-supabase.sh"
+
+expect_failure "invalid AGE_RECIPIENT" \
+  env PATH="$mock_path" SUPABASE_DB_URL="$base_url" \
+  AGE_RECIPIENT='not-a-valid-age-recipient' BACKUP_OUTPUT_FILE="$tmp/invalid-recipient.age" \
+  bash "$repo_root/scripts/backup-supabase.sh"
+
+mkdir -p "$tmp/bad-bin"
+cat > "$tmp/bad-bin/age" <<'BAD_AGE'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+output=""
+while (($#)); do
+  case "$1" in
+    -o) output="$2"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+test -n "$output"
+printf '%s\\n' 'not an age ciphertext' > "$output"
+BAD_AGE
+chmod +x "$tmp/bad-bin/age"
+expect_failure "reject output that is not age ciphertext" \
+  env PATH="$tmp/bad-bin:$mock_path" SUPABASE_DB_URL="$base_url" \
+  AGE_RECIPIENT="$recipient" BACKUP_OUTPUT_FILE="$tmp/plaintext.age" \
+  bash "$repo_root/scripts/backup-supabase.sh"
+
+workflow="$repo_root/.github/workflows/supabase-backup.yml"
+grep -Fq 'BACKUP_FILE: ${{ steps.backup.outputs.file }}' "$workflow"
+grep -Fq 'gh release create "$tag" "$BACKUP_FILE" --target main' "$workflow"
+echo "Release publication wiring verified: the encrypted backup output is the release asset input."
+
