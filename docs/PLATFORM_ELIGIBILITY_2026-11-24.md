@@ -198,7 +198,7 @@ NautilusTrader مرشح محرك أحداث واختبار تاريخي متعد
 
 أُضيفت مراجعة المصادر الرسمية والاختبارات المنشورة التالية؛ وهي لا تغيّر قاعدة الإقامة الصادقة:
 
-- **Gate:** اتفاقية المستخدم الحالية تمنع من يوجد أو يقيم في بلد خاضع لحظر/قيود أمريكية وتذكر سوريا صراحةً مثالاً. لذلك يُسقط Gate من قائمة التنفيذ للمقيم السوري، حتى لو كانت بعض صفحات منتجه أو قائمة عامة أقدم لا تعرض ذلك بوضوح. المصدر: https://www.gate.com/en-us/legal/user-agreement
+- **Gate Global:** اتفاقية المستخدم العالمية الحالية لا تذكر سوريا في قائمة القيود المنشورة، لكنها تصف القائمة بأنها غير حصرية وتجيز تقييد خدمات أو منتجات معينة حسب البلد. وثيقة Gate أقدم (PDF، 2022) تذكر سوريا صراحةً. لذلك لا يصح تصنيفه محظوراً أو مؤهلاً من هذا التناقض وحده؛ يبقى مرشح استفسار مكتوب. Gate US كيان منفصل يشترط إقامة أمريكية، ولا ينطبق على المقيم السوري. المصادر: https://www.gate.com/legal/user-agreement ، https://www.gate.com/docs/agreement.pdf ، https://www.gate.com/en-us/legal/user-agreement
 - **Bitget Stock+:** قبول Bitget العام للسوريين منذ 12 يونيو 2025 لا يعني قبول منتج Stock+؛ فهو حساب أوراق مالية فرعي منفصل. تغطية الإطلاق في 22 يونيو 2026 أدرجت سوريا ضمن البلدان المستثناة من Stock+. القرار: لا استخدام قبل رد كتابي من Bitget/Parsa، مع ترجيح عدم الأهلية وفق قائمة الإطلاق المنشورة. المصادر: https://www.bitget.com/support/articles/12560603829392 ، https://www.bitget.live/support/articles/12560603887309 ، https://www.theblock.co/news/markets/2026-06-22-bitget-us-stock-purchases-crypto-405507
 - **Paradex:** صفحة Restricted Persons الرسمية تذكر سوريا صراحةً، وشروطها تمنع الوصول والاستخدام وتمنع VPN بغرض تجاوز القيود. غير متاح للمستخدم السوري. المصادر: https://paradex.trade/restricted-persons ، https://www.paradex.trade/terms-of-service
 - **Hyperliquid:** الشروط تستخدم قيد المناطق الخاضعة للعقوبات/ضوابط التصدير، واختبارات مستقلة منشورة في أكتوبر 2026 سجلت حظر واجهة/بوابة التداول من سوريا. لا نعتبره مسار تنفيذ. كما أن HIP-4 outcome markets عقود نتائج/ثنائية وليست Vanilla Options؛ وHIP-3 perps ليست خيارات. المصادر: https://hyperliquid.gitbook.io/hyperliquid-docs/policies/terms-of-use ، https://restricted.cp0x.com/monitor/hyperliquid ، https://research.castlelabs.io/p/mapping-onchain-options-exchanges
@@ -239,3 +239,30 @@ NautilusTrader مرشح محرك أحداث واختبار تاريخي متعد
 - Massive Basic data timing/recency: https://massive.com/knowledge-base/article/on-the-free-basic-plan-when-can-i-pull-the-previous-trading-days-data
 - CME data catalogue: https://www.cmegroup.com/market-data/browse-data.html.html
 - Cboe data services: https://www.cboe.com/data/market-data-services
+
+
+## Gate Global — تصحيح أهلية وتقييم منتج الخيارات (24 نوفمبر 2026)
+
+**الحالة الجغرافية:** اتفاقية Gate Global الحالية (صفحة User Agreement) تعرض قائمة Restricted Locations في البند 2.5 ولا تذكر سوريا ضمن القائمة المنشورة، لكنها تقول صراحةً إن القائمة غير حصرية وإن الخدمات قد تُقيّد حسب بلد الإقامة والمنتج. وثيقة Gate PDF أقدم من 2022 تذكر سوريا ضمن المناطق المقيدة. Gate US كيان أمريكي منفصل، واتفاقيته تشترط إقامة أمريكية وتذكر سوريا ضمن القيود؛ لا يجوز تعميم شروط Gate US على Gate Global. القرار: Gate Global ليس محظوراً مثبتاً ولا مقبولاً مثبتاً؛ يبقى **مرشح استفسار مكتوب**. لا تمويل قبل تأكيد Gate Support/Compliance أن مقيم سوريا يستطيع KYC واستخدام Crypto Options تحديداً.
+
+**قدرات Crypto Options التقنية المثبتة في الوثائق الرسمية:**
+- REST وWebSocket لقائمة الأصول الأساسية، تواريخ الانتهاء، العقود، تفاصيل العقد، دفتر الأوامر، الصفقات، mark price، index/forward price وGreeks/IV.
+- مواصفات العقد تتضمن multiplier، quote/settlement-related fields، fees، tick/size limits، ومصدر السعر المرجعي؛ يجب تطبيعها وعدم افتراض وحدة العقد.
+- API يدعم أوامر شراء وبيع؛ size موجب للشراء وسالب للبيع، مع GTC وIOC وPOC. Market order متاح عبر price=0 مع IOC، وتوجد مسارات IV order في واجهة Gate.
+- API يعرض short_enabled وinitial/maintenance margin وorder margin وliquidation state وMMP؛ هذا أفضل من واجهة بيانات فقط، لكنه لا يثبت أن كل حساب تجزئة يحصل على كل صلاحيات الكتابة أو أن هناك atomic multi-leg combo/portfolio margin.
+- Gate Help يصف خياراته كأوروبية ومسددة نقدياً، ويذكر أن المشتري يدفع premium والبائع يضع margin؛ يجب اعتماد مواصفات العقد الفعلية لكل underlying قبل التسعير أو التنفيذ.
+- Gate Crypto Options تبدو أضيق من جميع فئات الأصول العالمية؛ واجهة الخيارات الموثقة مبنية حول underlyings كريبتو مثل BTC_USDT. Gate U.S. Stock Options منتج منفصل مسعّر/مسوّى USDT ولا توجد أدلة كافية في هذه المراجعة على أنه عقد OCC-listed قياسي.
+
+**مقارنة عملية مع Binance:**
+- Gate أقوى تقنياً في مرونة أوامر الخيارات (market/IV/IOC/POC) وواجهات WS/REST والـshort/margin telemetry الموثقة.
+- Binance أقوى حالياً في وضوح أهلية سوريا الرسمية، ولديها خيارات كريبتو إضافة إلى XAU/XAG Commodity Options؛ لكنها تقيد الكتابة والهامش والأوامر كما هو موثق في هذا الملف.
+- لا نختار Gate بدلاً من Binance حتى يصل تأكيد أهلية مكتوب من Gate Global؛ وإذا أكدوا القبول، نختبر حساب Demo/Simulated Trading ونقارن السيولة والرسوم والمضاعفات والتسوية وعمق السوق قبل أي تمويل.
+
+المصادر:
+- Gate Global User Agreement (القائمة الحالية غير حصرية): https://www.gate.com/legal/user-agreement
+- Gate older agreement PDF (2022، مصدر قديم متعارض): https://www.gate.com/docs/agreement.pdf
+- Gate US User Agreement (كيان أمريكي منفصل): https://www.gate.com/en-us/legal/user-agreement
+- Gate Options REST/WS API: https://www.gate.com/docs/developers/apiv4/en/options/
+- Gate Options WebSocket: https://www.gate.com/docs/developers/options/ws/en/
+- Gate European cash-settlement Help: https://www.gate.com/help/other/optionsbasics/46255/european-options-settlement-methods-explained
+- Gate crypto-options trading guide (5 Nov 2026): https://www.gate.com/learn/articles/how-to-trade-crypto-options-on-gate
