@@ -321,9 +321,30 @@ export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptio
     ...(event.askIv !== undefined ? ['askIv'] : []),
     ...(event.markPrice !== undefined ? ['markPrice'] : []),
   ];
+  const modelUpdate = event.markIv !== undefined && quote.pricingStatus === 'ASSUMED' && quote.pricingModel
+    ? priceOption({
+      underlyingKind: quote.underlyingKind,
+      exerciseStyle: quote.exerciseStyle,
+      settlementStyle: quote.settlementStyle,
+      spot: quote.spot,
+      forward: quote.forward,
+      strike: quote.strike,
+      daysToExpiry: quote.daysToExpiry,
+      volatility: event.markIv,
+      type: quote.type,
+      rate: quote.riskFreeRate ?? Number.NaN,
+      carryYield: quote.carryYield,
+    })
+    : undefined;
+  const supportedModelUpdate = modelUpdate?.status === 'SUPPORTED' ? modelUpdate : undefined;
+  const invalidatedModel = modelUpdate?.status === 'UNSUPPORTED';
+  const greekFields = ['delta', 'gamma', 'theta', 'vega', 'rho'];
   return {
     ...quote,
-    ...(quote.estimatedFields ? { estimatedFields: quote.estimatedFields.filter((field) => !observedFields.includes(field)) } : {}),
+    ...(quote.estimatedFields ? {
+      estimatedFields: quote.estimatedFields.filter((field) => !observedFields.includes(field)
+        && (!supportedModelUpdate || !greekFields.includes(field))),
+    } : {}),
     ...(useTickerBid ? { bid: event.bestBid, ...(event.bestBidQuantity !== undefined ? { bidQuantity: event.bestBidQuantity } : {}) } : {}),
     ...(useTickerAsk ? { ask: event.bestAsk, ...(event.bestAskQuantity !== undefined ? { askQuantity: event.bestAskQuantity } : {}) } : {}),
     ...(useTickerBid || useTickerAsk ? { bidAskSource: 'OPTION_TICKER' as const } : {}),
@@ -333,6 +354,24 @@ export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptio
     ...(event.askIv !== undefined ? { askIv: event.askIv } : {}),
     ...(event.volume !== undefined ? { volume: event.volume } : {}),
     ...(event.volumeQuote !== undefined ? { volumeQuote: event.volumeQuote } : {}),
+    ...(supportedModelUpdate ? {
+      delta: supportedModelUpdate.greeks.delta,
+      gamma: supportedModelUpdate.greeks.gamma,
+      theta: supportedModelUpdate.greeks.thetaPerDay,
+      vega: supportedModelUpdate.greeks.vegaPerVolPoint,
+      rho: supportedModelUpdate.greeks.rhoPerRatePoint,
+      pricingModel: supportedModelUpdate.model,
+    } : {}),
+    ...(invalidatedModel ? {
+      delta: 0,
+      gamma: 0,
+      theta: 0,
+      vega: 0,
+      rho: 0,
+      pricingStatus: 'OBSERVED_ONLY' as const,
+      pricingModel: undefined,
+      pricingReason: modelUpdate.reason,
+    } : {}),
     ...(sourceHasGreeks ? { unverifiedSourceGreeks: { ...quote.unverifiedSourceGreeks, ...event.sourceGreeks } } : {}),
     sourceTimestamps: {
       ...quote.sourceTimestamps,
