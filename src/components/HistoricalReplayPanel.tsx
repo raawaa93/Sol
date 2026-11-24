@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { AlertTriangle, History } from 'lucide-react';
 import { replayLongOptionSnapshots } from '../lib/replay';
-import { formatOptionPrice, formatSmallAmount, formatSmallNumber, getQuoteCurrency } from '../lib/format';
+import { formatOptionPrice, formatSmallAmount, getQuoteCurrency } from '../lib/format';
 import type { OptionQuote } from '../lib/types';
 
 interface HistoricalReplayPanelProps {
