@@ -196,7 +196,7 @@ export default function FinancialCockpit() {
         <div className="portfolio-metrics">
           <article><span>القيمة السوقية</span><strong>{money(portfolio.value?.marketValue ?? null, currency)}</strong></article>
           <article><span>تكلفة الشراء</span><strong>{money(portfolio.value?.costBasis ?? null, currency)}</strong></article>
-          <article><span>الربح / الخسارة غير المحققة</span><strong className={(portfolio.value?.unrealizedPnl ?? 0) >= 0 ? 'portfolio-positive' : 'portfolio-negative'}>{money(portfolio.value?.unrealizedPnl ?? null, currency)}</strong><small>{portfolio.value?.unrealizedPnlPct === null || portfolio.value?.unrealizedPnlPct === undefined ? 'النسبة غير متاحة' : portfolio.value.unrealizedPnlPct.toFixed(2) + '%'}</small></article>
+          <article><span>الربح / الخسارة غير المحققة</span><strong className={(portfolio.value?.unrealizedPnl ?? 0) >= 0 ? 'portfolio-positive' : 'portfolio-negative'}>{money(portfolio.value?.unrealizedPnl ?? null, currency)}</strong></article>
           <article><span>أكبر مركز</span><strong>{portfolio.value?.concentration.largestHoldingPct === null || portfolio.value?.concentration.largestHoldingPct === undefined ? 'غير متاح' : portfolio.value.concentration.largestHoldingPct.toFixed(1) + '%'}</strong></article>
         </div>
         {portfolio.value && !portfolio.value.complete && <p className="finance-warning">لا يمكن توحيد قيمة المحفظة بسبب أسعار صرف ناقصة: {portfolio.value.missingFxCurrencies.join('، ')}. القيم الإجمالية والأوزان محجوبة حتى إدخال أسعار الصرف.</p>}
@@ -216,7 +216,6 @@ export default function FinancialCockpit() {
             <article className="panel portfolio-allocations"><h4>توزيع المحفظة حسب فئة الأصل</h4>
               {portfolio.value?.allocations.length ? portfolio.value.allocations.map(item => <div className="portfolio-allocation" key={item.assetClass}><div><b>{item.assetClass}</b><span>{item.weightPct === null ? 'غير مكتمل' : item.weightPct.toFixed(1) + '%'}</span></div><div className="portfolio-bar"><i style={{ width: (item.weightPct ?? 0) + '%' }} /></div></div>) : <p className="finance-empty">أضف مراكز لعرض التوزيع.</p>}
             </article>
-            <article className="panel portfolio-limits"><h4>حدود التحليل الحالي</h4><p>يحسب Sol القيمة السوقية وتكلفة الشراء والتعرض والتركيز. لا يحسب حالياً بيتا أو التقلب التاريخي أو VaR أو أقصى تراجع؛ فهذه تحتاج سلسلة أسعار تاريخية موثوقة.</p></article>
           </div>
         </div>
         <div className="portfolio-holdings">
