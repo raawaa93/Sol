@@ -69,8 +69,8 @@ export default function GreeksPanel({ quote, quantity, dataMode }: GreeksPanelPr
     },
   ];
   const scenarios = [
-    { label: 'Spot +1%', detail: 'Δ + ½Γ محلياً', shock: { spotMovePercent: 1 } },
-    { label: 'Spot −1%', detail: 'Δ + ½Γ محلياً', shock: { spotMovePercent: -1 } },
+    { label: `${underlyingMoveLabel} +1%`, detail: 'Δ + ½Γ محلياً', shock: { spotMovePercent: 1 } },
+    { label: `${underlyingMoveLabel} −1%`, detail: 'Δ + ½Γ محلياً', shock: { spotMovePercent: -1 } },
     { label: 'IV +1 نقطة', detail: 'Vega فقط', shock: { volatilityMovePoints: 1 } },
     { label: 'مرور يوم', detail: 'Theta فقط', shock: { daysElapsed: 1 } },
     { label: 'معدل +1 نقطة', detail: 'Rho فقط', shock: { riskFreeRateMovePoints: 1 } },
@@ -98,7 +98,7 @@ export default function GreeksPanel({ quote, quantity, dataMode }: GreeksPanelPr
                 <td><strong><span>{row.symbol}</span>{row.label}</strong><small>{row.meaning}</small></td>
                 <td className="greek-number" dir="ltr">{modelAvailable ? formatSmallNumber(row.value) : '—'}</td>
                 <td className="greek-position"><strong dir="ltr">{modelAvailable ? (row.amount ? formatSmallAmount(row.positionValue) : formatSmallNumber(row.positionValue)) : '—'}</strong><small>{row.positionUnit}</small></td>
-                <td><span className={`greek-origin ${quote.estimatedFields?.includes(row.key) || dataMode === 'DEMO' ? 'estimated' : ''}`}>{greekSource(row.key, quote, dataMode)}</span></td>
+                <td><span className={`greek-origin ${quote.estimatedFields?.includes(row.key) || pricingStatus === 'ASSUMED' || dataMode === 'DEMO' ? 'estimated' : ''}`}>{greekSource(row.key, quote, dataMode)}</span></td>
               </tr>
             ))}</tbody>
           </table>
@@ -118,7 +118,7 @@ export default function GreeksPanel({ quote, quantity, dataMode }: GreeksPanelPr
           <div className="greeks-footnote"><Info size={14} /><span>ΔP تقريب محلي: Delta·Δ{underlyingMoveLabel} + ½Gamma·Δ{underlyingMoveLabel}² + Vega·ΔIV + Theta·الأيام + Rho·Δالفائدة، مضروباً في الكمية ووحدة العقد. يفترض ثبات العوامل الأخرى ويهمل Vanna/Charm والتفاعلات والابتسامة والتقلب المحقق والرسوم والتنفيذ؛ لا تجمعه مع سيناريو الانتهاء كأنه توقع.</span></div>
         </> : null}
         {quote.unverifiedSourceGreeks && <details className="source-greek-raw">
-          <summary>قيم Greeks الخام من Binance لأغراض التدقيق فقط</summary>
+          <summary>قيم Greeks الخام من المصدر لأغراض التدقيق فقط</summary>
           <p>لا تدخل هذه القيم في حساب الحساسية. يحتفظ بها المختبر كما وردت؛ لم تُطبع وحداتها أو تُثبت مقابل مضاعف كل عقد.</p>
           <div className="source-greek-values" dir="ltr">
             {(['delta', 'gamma', 'theta', 'vega'] as const).map((key) => {
