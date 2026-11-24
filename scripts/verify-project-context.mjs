@@ -1,8 +1,8 @@
 import { readFile } from 'node:fs/promises';
 
 const required = [
-  ['PROJECT_CONTEXT.md', 'Canonical project name:** Volterra Multi-Asset Options Decision Lab'],
-  ['PROJECT_CONTEXT.md', 'Canonical repository:** https://github.com/raawaa93/Sol'],
+  ['PROJECT_CONTEXT.md', 'Canonical project:** Volterra Multi-Asset Options Decision Lab'],
+  ['PROJECT_CONTEXT.md', 'Repository:** https://github.com/raawaa93/Sol'],
   ['PROJECT_CONTEXT.md', '**Status:** ACTIVE'],
   ['PROJECT_CONTEXT.md', 'Gold and silver are individual underlyings, not the product definition.'],
   ['PROJECT_CONTEXT.md', 'The user is physically resident in **Syria**, not the United Kingdom.'],
