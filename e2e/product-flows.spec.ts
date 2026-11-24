@@ -33,6 +33,30 @@ test('PAPER-only journal records and exports a local single-option scenario', as
   expect(download.suggestedFilename()).toBe('volterra-paper-journal.csv');
 });
 
+test('CSV asset-class and venue filters isolate traditional listed option contracts', async ({ page }) => {
+  const expiry = new Date(Date.now() + 40 * 86_400_000).toISOString();
+  const header = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,spot,unit,timestamp,assetClass,venue,quoteAsset,settlementAsset,contractMultiplier,exerciseStyle,settlementStyle';
+  const call = ['SPY-261230-700-C', 'SPY', expiry, '700', 'CALL', '5.1', '5.3', '5.2', '22%', '690', '100', new Date().toISOString(), 'EQUITY', 'CBOE', 'USD', 'USD', '100', 'AMERICAN', 'PHYSICAL'].join(',');
+  const put = ['SPY-261230-680-P', 'SPY', expiry, '680', 'PUT', '4.1', '4.3', '4.2', '24%', '690', '100', new Date().toISOString(), 'EQUITY', 'ISE', 'USD', 'USD', '100', 'AMERICAN', 'PHYSICAL'].join(',');
+  const csv = `${header}\\n${call}\\n${put}`;
+
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'spy-options.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(csv),
+  });
+
+  await expect(page.getByText('تم استيراد 2 عقد محلياً.')).toBeVisible();
+  const assetClass = page.getByRole('combobox', { name: 'اختر فئة الأصل' });
+  await expect(assetClass).toContainText('الأسهم');
+  await assetClass.selectOption('EQUITY');
+  await expect(page.locator('#overview-metrics')).toContainText('SPY/USDT');
+  const venue = page.getByRole('combobox', { name: 'اختر المنصة' });
+  await expect(venue).toBeVisible();
+  await venue.selectOption('ISE');
+  await expect(page.locator('#scanner')).toContainText('SPY-261230-680-P');
+  await expect(page.locator('#scanner')).not.toContainText('SPY-261230-700-C');
+});
 test('CSV import stays local and powers a timestamped XAU execution replay', async ({ page }) => {
   const expiry = new Date(Date.now() + 40 * 86_400_000).toISOString();
   const firstTime = new Date(Date.now() - 2 * 60 * 60_000).toISOString();
