@@ -1,6 +1,6 @@
 # Sol / Volterra Supabase recovery runbook
 
-**Checked:** 24 November 2026, 08:20 UTC  
+**Checked:** 24 November 2026, 09:06 UTC  
 **Project:** `Ghaiooth-core` / `oyoyozdugicmnkfhjovo`  
 **Repository:** `raawaa93/Sol` (public)  
 **Database:** PostgreSQL 17.11, Supabase Free
@@ -13,9 +13,23 @@ The live application schema is deliberately small:
 - `public.volterra_check_rate_limit(text, integer, integer)` — service-side RPC, `SECURITY DEFINER`, pinned `search_path`, executable only by `service_role`.
 - `volterra-binance-market-data` Edge Function — active v10; source is stored in `supabase/functions/volterra-binance-market-data/index.ts` and uses Supabase's injected `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` runtime values. No user-supplied API key is required by this public market-data proxy.
 - Six old Edge Function deployments are inert HTTP 410 handlers and still registered; they are not part of the Sol deploy path.
-- Current snapshot: 1 Auth user, 0 Storage objects, 58 ephemeral rate-limit rows. The Auth user is not included in the standard CLI dump described below.
+- Current snapshot: 1 Auth user, 0 Storage objects, 72 ephemeral rate-limit rows (observed at 09:01 UTC; this count changes as requests arrive). The Auth user is not included in the standard CLI dump described below.
 
 The three tracked migrations rebuild the Sol application table/function and remove the two old application schemas. The 19 older remote migration records belong to retired systems and must not be copied into the active migration directory or blindly replayed.
+
+
+### Live access-control verification — 24 November 2026, 09:01 UTC
+
+A read-only inspection of the live Supabase project confirmed:
+
+- Project status: `ACTIVE_HEALTHY`, PostgreSQL 17.11.
+- The only application table is `public.volterra_rate_limit_windows`; RLS is enabled.
+- No RLS policies exist on this table. This is intentional: the table is accessed only through the privileged rate-limit RPC, not directly by browser/client roles.
+- The table's explicit grants are held by `postgres`; no direct table grants were returned for `anon`, `authenticated` or `service_role`.
+- `public.volterra_check_rate_limit(text, integer, integer)` is `SECURITY DEFINER`, owned by `postgres`, with pinned `search_path=pg_catalog`; EXECUTE is granted to `service_role` and `postgres` only.
+- Supabase security advisor still reports leaked-password protection disabled (Free-plan limitation). Performance and health advisors returned no findings.
+
+The five `rawaa-telegram-*` / `rawaa-*` functions and `commerce-api` were inspected and each returns HTTP 410 with `ENDPOINT_RETIRED`; they are inert retired deployments, not working Raawaa services. `volterra-binance-market-data` is the only non-retired Edge Function in this project. The Supabase organization currently exposes one project, `Ghaioooth-core` (`oyoyozdugicmnkfhjovo`).
 
 ## 2. What Supabase Free does and does not back up
 
