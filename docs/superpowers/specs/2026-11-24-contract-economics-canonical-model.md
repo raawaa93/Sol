@@ -83,6 +83,8 @@ type ContractEconomics = {
 
 The exact TypeScript shape may be refined during implementation, but the semantic separation is mandatory. Keep legacy `unit` and `contractMultiplier` as adapter inputs during migration; do not treat either as a universal canonical field.
 
+The Phase 1 validator exposes `valid` (structural correctness) separately from `adapterReady` (complete, trusted terms that can be passed to an adapter). `adapterReady` is not a model-capability flag: every consumer must still verify that a market-specific pricing/Greek adapter supports the instrument before deriving values.
+
 ### Required invariants
 
 - All numeric scales must be finite and strictly positive unless a documented deliverable is explicitly zero.

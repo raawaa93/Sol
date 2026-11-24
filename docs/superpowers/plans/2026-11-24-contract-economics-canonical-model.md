@@ -20,6 +20,8 @@
 - [ ] Add round-trip serialization tests for CSV v2 fields.
 - [x] Keep legacy fields read-only/observed-only unless a source adapter maps them.
 
+**Phase 1 verification:** PR #119 merged. `adapterReady` means structurally complete and trusted enough to pass to a provider/model adapter; it does not imply that any pricing or Greek model supports the instrument. No runtime calculations or provider adapters were enabled in Phase 1.
+
 ## Phase 2 — Premium cost and exercise payoff primitives
 
 - [ ] Implement premium cost using only premium multiplier.
