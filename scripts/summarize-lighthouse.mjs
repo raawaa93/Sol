@@ -44,6 +44,18 @@ const opportunities = Object.entries(report.audits ?? {})
 const opportunitySummary = opportunities.length
   ? opportunities.map((item) => `${item.title}: ${Math.round(item.savingsMs)} ms`).join('; ')
   : 'no estimated Lighthouse opportunities with measurable time savings';
+const diagnosticAuditIds = [
+  ['main-thread work', 'mainthread-work-breakdown'],
+  ['JavaScript boot-up', 'bootup-time'],
+  ['script evaluation', 'script-evaluation'],
+  ['script parse/compile', 'script-parse-compile'],
+  ['Speed Index', 'speed-index'],
+  ['transfer size', 'total-byte-weight'],
+];
+const diagnosticSummary = diagnosticAuditIds.map(([label, id]) => {
+  const displayValue = report.audits?.[id]?.displayValue;
+  return displayValue ? `${label}: ${displayValue}` : undefined;
+}).filter(Boolean).join('; ') || 'no diagnostic display values';
 const runCount = manifest.length;
 const label = process.env.LIGHTHOUSE_LABEL || 'Lighthouse';
 const line = [
@@ -60,9 +72,10 @@ const line = [
 
 console.log(line);
 console.log(`Top estimated audit savings: ${opportunitySummary}`);
+console.log(`Diagnostics: ${diagnosticSummary}`);
 if (process.env.GITHUB_STEP_SUMMARY) {
-  fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n### ${label} Lighthouse baseline\n\n${line}\n\nTop estimated audit savings: ${opportunitySummary}\n`);
+  fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n### ${label} Lighthouse baseline\n\n${line}\n\nTop estimated audit savings: ${opportunitySummary}\n\nDiagnostics: ${diagnosticSummary}\n`);
 }
-const annotation = `${line} · Top estimated audit savings: ${opportunitySummary}`
+const annotation = `${line} · Top estimated audit savings: ${opportunitySummary} · Diagnostics: ${diagnosticSummary}`
   .replace(/%/g, '%25').replace(/\r/g, ' ').replace(/\n/g, ' ');
 console.log(`::notice title=${label} Lighthouse baseline::${annotation}`);
