@@ -883,11 +883,11 @@ function App() {
               <article className="panel chain-panel">
                 <div className="chain-toolbar">
                   <div className="option-tabs" role="group" aria-label="نوع الخيار">
-                    <button className={selectedType === 'CALL' ? 'active call-tab' : ''} disabled={!assetQuotes.some((quote) => quote.expiry === effectiveExpiry && quote.type === 'CALL')} onClick={() => {
+                    <button type="button" aria-pressed={selectedType === 'CALL'} className={selectedType === 'CALL' ? 'active call-tab' : ''} disabled={!assetQuotes.some((quote) => quote.expiry === effectiveExpiry && quote.type === 'CALL')} onClick={() => {
                       const next = assetQuotes.find((quote) => quote.expiry === effectiveExpiry && quote.type === 'CALL');
                       if (next) { setSelectedType('CALL'); setSelectedId(next.id); }
                     }}>Call <span>شراء حق الصعود</span></button>
-                    <button className={selectedType === 'PUT' ? 'active put-tab' : ''} disabled={!assetQuotes.some((quote) => quote.expiry === effectiveExpiry && quote.type === 'PUT')} onClick={() => {
+                    <button type="button" aria-pressed={selectedType === 'PUT'} className={selectedType === 'PUT' ? 'active put-tab' : ''} disabled={!assetQuotes.some((quote) => quote.expiry === effectiveExpiry && quote.type === 'PUT')} onClick={() => {
                       const next = assetQuotes.find((quote) => quote.expiry === effectiveExpiry && quote.type === 'PUT');
                       if (next) { setSelectedType('PUT'); setSelectedId(next.id); }
                     }}>Put <span>شراء حق الهبوط</span></button>
