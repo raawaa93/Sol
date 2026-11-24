@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const reportDir = path.join(root, '.lighthouseci');
+const reportDir = path.resolve(root, process.env.LIGHTHOUSE_REPORT_DIR || '.lighthouseci');
 const manifestPath = path.join(reportDir, 'manifest.json');
 
 if (!fs.existsSync(manifestPath)) {
@@ -33,8 +33,9 @@ const milliseconds = (id) => {
 };
 const cls = auditValue('cumulative-layout-shift');
 const runCount = manifest.length;
+const label = process.env.LIGHTHOUSE_LABEL || 'Lighthouse';
 const line = [
-  `Lighthouse representative (median) from ${runCount} runs`,
+  `${label} representative (median) from ${runCount} runs`,
   `Performance ${categoryScore('performance')}`,
   `Accessibility ${categoryScore('accessibility')}`,
   `Best Practices ${categoryScore('best-practices')}`,
@@ -47,7 +48,7 @@ const line = [
 
 console.log(line);
 if (process.env.GITHUB_STEP_SUMMARY) {
-  fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n### Lighthouse baseline\n\n${line}\n`);
+  fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n### ${label} Lighthouse baseline\n\n${line}\n`);
 }
 const annotation = line.replace(/%/g, '%25').replace(/\r/g, ' ').replace(/\n/g, ' ');
-console.log(`::notice title=Lighthouse baseline::${annotation}`);
+console.log(`::notice title=${label} Lighthouse baseline::${annotation}`);

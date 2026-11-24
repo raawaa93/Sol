@@ -42,6 +42,8 @@ jobs:
           path: dist
 
   deploy:
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -51,3 +53,56 @@ jobs:
       - name: Deploy site
         id: deployment
         uses: actions/deploy-pages@v5
+
+  production-audit:
+    name: Smoke test and Lighthouse on published site
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      PUBLISHED_URL: ${{ needs.deploy.outputs.page_url }}
+      BINANCE_PROXY_URL: https://oyoyozdugicmnkfhjovo.supabase.co/functions/v1/volterra-binance-market-data
+      LIGHTHOUSE_REPORT_DIR: .lighthouseci-production
+      LIGHTHOUSE_LABEL: Published GitHub Pages
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Chromium for production checks
+        run: npx playwright install --with-deps chromium
+      - name: Configure Lighthouse Chrome path
+        run: |
+          CHROME_PATH="$(node --input-type=module -e 'import { chromium } from "@playwright/test"; process.stdout.write(chromium.executablePath())')"
+          echo "CHROME_PATH=$CHROME_PATH" >> "$GITHUB_ENV"
+      - name: Verify published app and live market-data proxy
+        run: npm run smoke:production
+      - name: Collect published-site Lighthouse reports
+        run: |
+          mkdir -p .lighthouseci-production
+          set +e
+          npm run perf:lighthouse:production 2>&1 | tee .lighthouseci-production/lighthouse-ci.log
+          result=${PIPESTATUS[0]}
+          if [ "$result" -ne 0 ]; then
+            tail -n 50 .lighthouseci-production/lighthouse-ci.log >> "$GITHUB_STEP_SUMMARY"
+            details="$(tail -c 4000 .lighthouseci-production/lighthouse-ci.log | tr '\r\n' ' ' | sed 's/%/%25/g')"
+            echo "::error title=Production Lighthouse output::$details"
+          fi
+          exit "$result"
+      - name: Summarize published-site Lighthouse results
+        run: node scripts/summarize-lighthouse.mjs
+      - name: Upload published-site reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: published-lighthouse-reports
+          path: .lighthouseci-production/
+          include-hidden-files: true
+          retention-days: 14
