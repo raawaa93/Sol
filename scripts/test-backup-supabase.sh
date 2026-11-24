@@ -15,13 +15,12 @@ if [[ "${1:-}" == "--version" ]]; then
 fi
 output=""
 role_only=false
-for arg in "$@"; do
-  [[ "$arg" == "--role-only" ]] && role_only=true
-  if [[ "$arg" == "-f" ]]; then
-    read -r output
-  elif [[ -n "$output" && ! -e "$output" ]]; then
-    printf '%s\n' "$arg" > "$output"
-  fi
+while (($#)); do
+  case "$1" in
+    -f) output="$2"; shift 2 ;;
+    --role-only) role_only=true; shift ;;
+    *) shift ;;
+  esac
 done
 if [[ -z "$output" ]]; then
   echo "mock could not parse output file" >&2
