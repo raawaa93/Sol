@@ -196,7 +196,12 @@ test('Binance order-book UI is exercised only with a deterministic mocked REST s
   await expect(page.locator('.source-stale')).toContainText('لا يثبت حداثة حقول Binance');
 });
 
-test('Binance HTTP 451 is shown as a proxy egress denial, without inferring Syrian account eligibility or replacing Demo data', async ({ page }) => {
+test('Binance proxy HTTP 451 triggers a direct current-network public-data attempt without changing IP or region', async ({ page }) => {
+  let directAttempted = false;
+  await page.route('https://eapi.binance.com/**', async (route) => {
+    directAttempted = true;
+    await route.abort();
+  });
   await page.route(`${PROXY_ORIGIN}/**`, (route) => route.fulfill({
     status: 451,
     headers: proxyHeaders,
@@ -209,10 +214,9 @@ test('Binance HTTP 451 is shown as a proxy egress denial, without inferring Syri
   await page.getByRole('button', { name: 'تحميل Binance' }).click();
   const restriction = page.locator('.source-error-restricted');
   await expect(restriction).toContainText('HTTP 451');
-  await expect(restriction).toContainText('رفض طلب الوسيط من Binance');
-  await expect(restriction).toContainText('هذا رفض لمسار الخادم فقط');
-  await expect(restriction).toContainText('ولا يثبت منع المقيمين في سوريا');
-  await expect(restriction).toContainText('تذكر صفحة Binance للمقيمين في سوريا تداول الخيارات ضمن المنتجات المتاحة عموماً');
+  await expect(restriction).toContainText('لم تنجح محاولة الاتصال المباشر من متصفحك');
+  await expect(restriction).toContainText('هذا لا يثبت منع حسابك أو المقيمين في سوريا');
+  await expect.poll(() => directAttempted).toBe(true);
   await expect(restriction.getByRole('link', { name: /سياسة Binance للمقيمين في سوريا/ }))
     .toHaveAttribute('href', 'https://www.binance.com/ar/support/faq/detail/863795c36a224bd7aa7d677996328ff9');
   await expect(restriction.getByRole('button', { name: 'إعادة المحاولة' })).toHaveCount(0);
