@@ -80,6 +80,58 @@ test('CSV asset-class and venue filters isolate traditional listed option contra
   await expect(page.locator('#scanner')).toContainText('SPY-261230-680-P');
   await expect(page.locator('#scanner')).not.toContainText('SPY-261230-700-C');
 });
+test('asset-class selector covers every canonical class and unknown imports with an explicit empty state', async ({ page }) => {
+  const expiry = new Date(Date.now() + 45 * 86_400_000).toISOString();
+  const timestamp = new Date().toISOString();
+  const header = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,spot,unit,timestamp,assetClass,venue,quoteAsset,settlementAsset,contractMultiplier';
+  const instruments = [
+    ['BTC-CALL', 'BTC', 'CRYPTO', 'BINANCE', '50000'],
+    ['AAPL-CALL', 'AAPL', 'EQUITY', 'CBOE', '200'],
+    ['SPX-CALL', 'SPX', 'INDEX', 'CBOE', '6000'],
+    ['SOFR-CALL', 'SOFR', 'RATES', 'CME', '95'],
+    ['EURUSD-CALL', 'EURUSD', 'FX', 'CME', '1.1'],
+    ['CL-CALL', 'CL', 'ENERGY', 'NYMEX', '75'],
+    ['XAU-CALL', 'XAU', 'METALS', 'COMEX', '4000'],
+    ['WHEAT-CALL', 'WHEAT', 'AGRICULTURE', 'CBOT', '600'],
+    ['CARBON-CALL', 'CARBON', 'OTHER', 'OTC', '100'],
+    ['ZZZ-CALL', 'ZZZ', 'UNRECOGNIZED', 'TEST', '100'],
+  ];
+  const rows = instruments.map(([symbol, underlying, assetClass, venue, spot]) => [
+    symbol, underlying, expiry, spot, 'CALL', '2.1', '2.3', '2.2', '25%', spot, '1', timestamp,
+    assetClass, venue, 'USD', 'USD', '1',
+  ].join(','));
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'all-asset-classes.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from([header, ...rows].join('\n')),
+  });
+
+  await expect(page.getByText('تم استيراد 10 عقود محلياً.')).toBeVisible();
+  const selector = page.getByRole('combobox', { name: 'اختر فئة الأصل' });
+  const expected = [
+    ['CRYPTO', 'BTC-CALL'],
+    ['EQUITY', 'AAPL-CALL'],
+    ['INDEX', 'SPX-CALL'],
+    ['RATES', 'SOFR-CALL'],
+    ['FX', 'EURUSD-CALL'],
+    ['ENERGY', 'CL-CALL'],
+    ['METALS', 'XAU-CALL'],
+    ['AGRICULTURE', 'WHEAT-CALL'],
+    ['OTHER', 'CARBON-CALL'],
+    ['UNKNOWN', 'ZZZ-CALL'],
+  ];
+  for (const [assetClass, symbol] of expected) {
+    await expect(selector.locator('option[value="' + assetClass + '"]')).toHaveCount(1);
+    await selector.selectOption(assetClass);
+    await expect(page.locator('#scanner')).toContainText(symbol);
+  }
+
+  await selector.selectOption('AGRICULTURE');
+  await page.getByPlaceholder('سعر التنفيذ أو الرمز').fill('NO_MATCH_123');
+  await expect(page.locator('#scanner .empty-state')).toContainText('لا توجد عقود مطابقة');
+  await expect(page.locator('#scanner')).not.toContainText('CARBON-CALL');
+});
+
 test('CSV import stays local and powers a timestamped XAU execution replay', async ({ page }) => {
   const expiry = new Date(Date.now() + 40 * 86_400_000).toISOString();
   const firstTime = new Date(Date.now() - 2 * 60 * 60_000).toISOString();
