@@ -376,11 +376,10 @@ test('deliverable package never combines different currencies', async () => {
     },
   });
   const result = valueDeliverablePackage(economics, { NVDA: { price: 500, currency: 'USD' } });
-  assert.equal(result.ok, true);
-  if (result.ok) {
-    assert.equal(result.value.totalsByCurrency.USD, 5000);
-    assert.equal(result.value.totalsByCurrency.USDC, 25);
-    assert.equal(Object.keys(result.value.totalsByCurrency).length, 2);
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.equal(result.reason, 'CONTRACT_NOT_ADAPTER_READY');
+    assert.ok(result.details?.includes('CROSS_CURRENCY_TOTALS_REQUIRE_FX'));
   }
 });
 
