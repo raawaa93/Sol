@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { getContractScaleIssue, getContractScaleIssueMessage } from './contract-scale.ts';
 
-test('contract scale is verified when unit is explicit and multiplier matches', () => {
+test('explicit unit and matching multiplier are internally consistent', () => {
   assert.equal(getContractScaleIssue({ unit: 100, contractMultiplier: 100 }), undefined);
 });
 
