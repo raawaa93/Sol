@@ -53,5 +53,6 @@ test('underlying prices adapt to the asset scale and preserve the selected curre
   assert.equal(formatAssetPrice(95_000, 95_000, 'USD'), '95,000 USD');
   assert.equal(formatAssetPrice(0.45678, 0.45678, null), '0.4568');
   assert.equal(formatAssetPrice(0, 0.0001, 'USD'), '0 USD');
+  assert.equal(formatAssetPrice(0, 0.0001, null), '0');
   assert.equal(formatNumber(Number.POSITIVE_INFINITY, 2), '—');
 });
