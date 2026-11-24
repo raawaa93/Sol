@@ -37,8 +37,8 @@ A read-only catalog query verified that none of these tables has a policy and no
 ### Auth warning
 
 - `auth_leaked_password_protection` is WARN: leaked-password protection is disabled.
-- This is a real hardening opportunity. The available connected Supabase actions do not expose an Auth password-security settings update, so it was not changed here.
-- Recommended action: enable leaked-password protection in Supabase Dashboard → Authentication → Settings / Password Security (label may vary), then verify the setting and test signup/password-change flows.
+- The Supabase organization is on the **Free** plan. Supabase's current password-security documentation says leaked-password protection is available on Pro and above.
+- This is therefore not an available no-cost toggle on the current plan. No upgrade or paid change was made or recommended; retain the finding as a known limitation unless the plan changes for separate reasons.
 
 ## Performance advisor findings
 
@@ -51,7 +51,7 @@ The advisor reports duplicate indexes on `rawaa_store.orders`:
 
 Catalog definitions are identical: btree on `(closed_at, id)` with predicate `closed_at IS NOT NULL`.
 
-Both are reported unused. The table currently has zero rows, so unused-index telemetry is not sufficient evidence to drop other indexes. The duplicate pair is a plausible storage/write-amplification cleanup, but these are legacy `rawaa_store` objects and are not represented in the current Sol repository migrations. No index was dropped.
+The table currently has zero rows in the table inventory, but a later direct `pg_stat_user_indexes` snapshot showed `idx_scan = 1` for **each** index. That contradicts any claim that both are unused. The duplicate pair remains structurally redundant, but these are legacy `rawaa_store` objects and are not represented in the current Sol repository migrations. No index was dropped.
 
 **Next safe step:** identify the active callers/retention job and decide which index name is canonical; then remove one duplicate through a reviewed migration with a rollback/restore plan.
 
@@ -94,7 +94,7 @@ No HTTP 200 response was observed for version 6 in this log window. This is cons
 
 ## Recommended action order
 
-1. Enable leaked-password protection in Auth settings and verify signup/password-change behavior.
+1. Keep leaked-password protection documented as a Free-plan limitation; do not upgrade solely for this feature without a separate cost decision.
 2. Map legacy commerce/Telegram Edge Function callers, schedules, and secrets; preserve them until dependencies are proven absent.
 3. Resolve the duplicate `rawaa_store.orders` partial index through a reviewed migration only after confirming the retention job's query plan.
 4. Revisit the seven unused-index warnings after representative workload exists.
