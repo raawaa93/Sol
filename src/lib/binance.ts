@@ -344,7 +344,7 @@ export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptio
     ...quote,
     ...(quote.estimatedFields ? {
       estimatedFields: quote.estimatedFields.filter((field) => !observedFields.includes(field)
-        && (!supportedModelUpdate || !greekFields.includes(field))),
+        && (!modelUpdate || !greekFields.includes(field))),
     } : {}),
     ...(useTickerBid ? { bid: event.bestBid, ...(event.bestBidQuantity !== undefined ? { bidQuantity: event.bestBidQuantity } : {}) } : {}),
     ...(useTickerAsk ? { ask: event.bestAsk, ...(event.bestAskQuantity !== undefined ? { askQuantity: event.bestAskQuantity } : {}) } : {}),
