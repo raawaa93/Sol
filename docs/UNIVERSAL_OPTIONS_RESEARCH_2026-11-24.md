@@ -284,3 +284,26 @@ Sources:
 
 - Deriv: قائمة البلدان المدعومة الرسمية لا تتضمن سوريا، وشروطها تجعل إتاحة المنتجات مرتبطة ببلد الإقامة والكيان والمنتج؛ لا نعتبرها متاحة للمستخدم. المصدر: https://legacy-docs.deriv.com/docs/country-list
 - NinjaTrader: نموذج فتح الحساب الحي يمنع فتح حساب ممول إذا لم يظهر بلد الإقامة في القائمة؛ تقرير مستقل ينقل تأكيد امتثال بعدم قبول المقيمين في سوريا في سبتمبر 2026. القرار الحالي: مستبعد، ويعاد تقييمه فقط إذا تغيّر نص/رد الشركة. المصادر: https://vendor-support.ninjatrader.com/s/article/Applying-for-a-Live-NinjaTrader-Account?language=en_US ، https://unblocksyria.com/en/services/ninjatrader
+
+
+## 11. مزودو بيانات الخيارات: ما الذي يمكن الحصول عليه مجاناً؟
+
+لا يوجد مصدر مجاني موحد وموثوق يغطي كل خيارات الأسهم والمؤشرات والعقود الآجلة والفائدة والعملات والطاقة والمعادن والزراعة والكريبتو. تغطية OPRA الأمريكية منفصلة عن CME/ICE/Eurex، وبيانات OTC FX options مختلفة عن الخيارات المدرجة.
+
+- **Binance:** أفضل مصدر عام مجاني داخل النطاق الذي تسرده Binance؛ REST وWebSocket للعقود المتاحة فقط، ولا يوسع التغطية إلى البورصات التقليدية.
+- **Alpaca Basic:** يعطي US options indicative feed مجاناً؛ الوثائق تميّزه عن OPRA الحقيقي وتوضح أن OPRA يتطلب خطة مدفوعة. لا نستخدم indicative feed كـBBO قابل للتنفيذ.
+- **MarketData.app Free Forever:** 100 credit يومياً، سنة تاريخية، وتأخير 24 ساعة للخيارات؛ مناسب لاستكشاف EOD لا للمضاربة أو قياس التنفيذ. التحقق من هوية المشترك واتفاقيات البيانات مطلوب قبل البيانات الأسرع.
+- **Massive Options Basic:** بيانات نهاية اليوم؛ flat files لأسعار الخيارات ليست ضمن المجاني. خطة 15-minute delayed تبدأ من 29$/شهر، وخطة Real-time أعلى بكثير.
+- **CME:** يوفر بيانات خيارات آجلة للفائدة والعملات والطاقة والمعادن والزراعة وغيرها عبر DataMine/MDP/REST/WebSocket، لكن المنتج والترخيص والتكلفة يجب طلبها حسب السوق.
+- **Cboe:** يبيع بيانات أسواقه ومؤشراته عبر feeds وCloud وDataShop وموزعين؛ لا توجد تغطية عالمية مجانية موحدة.
+
+**التوصية الهندسية:** لا نضيف اشتراكاً مدفوعاً الآن. ابدأ بموصل Binance العام، وموصل CSV موحد، ثم أضف مزود بيانات أمريكي مجاني مؤخر فقط بعد تحقق حسابي وترخيصي. خزّن تاريخ السلسلة من وقت التفعيل فصاعداً في Parquet؛ لا تخترع تاريخاً خلفياً. كل Quote يحمل source وsourceTimestamp وreceivedAt وdelayClass وlicenseClass وvenue وinstrumentId، مع فصل indicative عن tradable.
+
+المصادر الرسمية:
+- https://docs.alpaca.markets/us/docs/about-market-data-api
+- https://docs.alpaca.markets/us/docs/historical-option-data
+- https://www.marketdata.app/docs/account/plan-limits/
+- https://www.marketdata.app/docs/account/data-policies/free-accounts/
+- https://massive.com/docs/flat-files/options/quotes?assetClass=options&license=personal&name=options_advanced
+- https://www.cmegroup.com/market-data/browse-data.html.html
+- https://www.cboe.com/data/market-data-services
