@@ -94,8 +94,10 @@ export interface AssetSnapshot {
   iv30: number | null;
   rv30: number | null;
   openInterestUsd: number | null;
+  openInterestCurrency?: string;
   openInterestUsdEstimated?: boolean;
   volume24hUsd: number | null;
+  volume24hCurrency?: string;
   volume24hUsdEstimated?: boolean;
   fundingRate: number;
 }
