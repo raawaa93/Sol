@@ -233,7 +233,7 @@ Sources:
 
 | Venue / product | Product classification | Syria evidence | Operational decision |
 |---|---|---|---|
-| Gate Global Crypto Options | European, cash-settled crypto options; REST/WS, IV/market/limit order paths, short/margin telemetry | Current global ToS does not name Syria in the non-exhaustive list; older 2022 PDF does; no current written Syria approval found | Inquiry-only candidate; no funding before written compliance approval |
+| Gate EU Crypto Options | European, cash-settled crypto options; REST/WS, IV/market/limit order paths, short/margin telemetry | Gate EU agreement (1 Mar 2026) explicitly lists Syria; generic global terms differ; older PDF also lists Syria | Gate EU excluded; non-EU Gate entity unresolved; no funding |
 | Bitget Stock+ | Separate U.S. securities sub-account with options features | General Bitget account accepts Syria, but June 2026 Stock+ launch report lists Syria among exclusions | Do not use; require written Stock+ eligibility confirmation |
 | Paradex | On-chain order-book options/perpetual venue | Official Restricted Persons page explicitly names Syria; Terms prohibit VPN circumvention | Exclude |
 | Hyperliquid HIP-4 | Binary/outcome contracts, not vanilla options; HIP-3 are perpetuals | Broad sanctions/export-control terms and independent live test reported Syria trading gate | Exclude as execution; do not misclassify HIP-3/4 as options |
@@ -251,7 +251,7 @@ Sources:
 ### Venue selection for the actual user
 
 1. **Conditional primary:** Binance, because its official Syria FAQ explicitly lists Options and permits eligible Syrian residents to register/KYC. This is not evidence that every option family or API permission is active. Verify the actual product and permissions in the real Syrian KYC account.
-2. **No currently confirmed second execution venue:** Deribit, Bybit, OKX and Paradex list Syria restrictions; Hyperliquid's trading gate has been observed blocking Syria; Bitget Stock+ is reported to exclude Syria; IBKR and AMP do not establish eligibility. **Gate Global is inquiry-only** because its current non-exhaustive list and older agreement conflict. Optimus and Ironbeam remain inquiry-only.
+2. **No currently confirmed second execution venue:** Deribit, Bybit, OKX and Paradex list Syria restrictions; Hyperliquid's trading gate has been observed blocking Syria; Bitget Stock+ is reported to exclude Syria; IBKR and AMP do not establish eligibility. **Gate EU is explicitly excluded**; a non-EU Gate entity remains unresolved because regional terms differ and no written Syrian approval exists. Optimus and Ironbeam remain inquiry-only.
 3. **Research architecture:** venue-neutral canonical contracts, separate adapter per exchange/FCM, common provenance/freshness, normalized multiplier/currency/settlement, independent pricing and risk engines, and no cross-venue equivalence unless contract terms prove it.
 4. **No VPN workaround:** use VPN only for connectivity/privacy where lawful and allowed; do not route execution through another country to misrepresent residence or defeat a venue's terms.
 
@@ -399,3 +399,23 @@ Sources:
 اتفاقية Gate Global الحالية لا تذكر سوريا في قائمة Restricted Locations المنشورة، لكنها تصف القائمة بأنها غير حصرية وتسمح بقيود حسب المنتج/البلد؛ وثيقة أقدم تذكر سوريا صراحة. Gate US كيان أمريكي منفصل ويشترط إقامة أمريكية، ولا تنطبق شروطه تلقائياً على Gate Global. لذلك نصنف Gate Global مرشح استفسار مكتوب لتداول Crypto Options فقط، ولا نفتح حساباً ممولاً أو ننقل أموالاً قبل تأكيد امتثال مكتوب بقبول الإقامة السورية والمنتج المحدد. Gate يدعم خيارات كريبتو أوروبية وتسوية نقدية وواجهات REST/WS وأوامر market/limit/IOC/POC وIV order حسب وثائقه؛ هذه مرونة تقنية لا تعوض شرط الأهلية أو فحص السيولة والمضاعف والتسوية. خيارات Gate U.S. Stock Options منتج USDT cash-settled ولا يوجد دليل كافٍ أنها OCC-listed أو cleared مثل خيارات الأسهم الأمريكية القياسية؛ لا نساويهما.
 
 المصادر: https://www.gate.com/legal/user-agreement ، https://www.gate.com/docs/agreement.pdf ، https://www.gate.com/en-us/legal/user-agreement ، https://www.gate.com/docs/developers/apiv4/en/options/ ، https://www.gate.com/docs/developers/options/ws/en/ ، https://www.gate.com/help/other/optionsbasics/46255/european-options-settlement-methods-explained
+
+
+## تصحيح Gate — الاتفاقية الأوروبية الحالية
+
+اتفاقية Gate Technology Ltd الأوروبية على eu.gate.com، المحدثة في 1 مارس 2026، تذكر سوريا صراحةً ضمن Restricted Locations في البند 4.2، وتؤكد في البند 5.1.v أن المستخدم لا يكون مقيماً في هذه المواقع. لذلك **Gate EU غير متاح للمقيم السوري**. الاتفاقية العامة على gate.com تختلف ولا تذكر سوريا في القائمة المنشورة، لكن القائمة غير حصرية، ووثيقة Gate PDF أقدم تذكر سوريا أيضاً. لا نعتبر ذلك تصريحاً لاستخدام كيان آخر؛ أي مسار Gate غير أوروبي يبقى غير مثبت حتى تأكيد Compliance كتابةً بقبول الإقامة السورية وخيارات Crypto Options والكيان المتعاقد.
+
+المصادر:
+- Gate EU User Agreement (1 March 2026): https://eu.gate.com/en-eu/legal/user-agreement
+- Gate Global User Agreement: https://www.gate.com/legal/user-agreement
+- Gate older agreement PDF: https://www.gate.com/docs/agreement.pdf
+- Gate Event Contracts agreement (Syria excluded): https://www.gate.com/es/help/event-contracts/faq/100616
+
+
+## 13. خيارات الكريبتو: مقارنة السيولة المنشورة
+
+تقرير Orbit Markets المنشور في 27 أكتوبر 2026 عن متوسط Q3 2026 يعرض نحو 7.33 مليار دولار يومياً عبر أكبر ثماني منصات خيارات كريبتو: Deribit 28.6%، IBIT options 27.6%، Bybit 19.3%، Binance 13.2% (قرابة 0.97 مليار دولار ADV)، OKX 8.2%، Bullish 1.3%، Derive 1.1%، وCME 0.6%. Gate لم تظهر في قائمة أكبر ثماني منصات في هذا التقرير. عدم ظهورها لا يثبت أن حجمها صفر، لكنه لا يقدم دليلاً على سيولة مماثلة للمنصات الرئيسية. هذه أرقام تقرير سوق ثانوي لفترة Q3 وليست لقطة تنفيذية حية أو دليلاً على عمق كل عقد.
+
+**قرار المنصة:** Binance تبقى الخيار العملي الأول المشروط للمستخدم السوري لأنها صاحبة دليل أهلية رسمي عام ولها حجم خيارات موثق في عينة Q3. Deribit أكبر في هذه العينة لكنه محظور على المقيم السوري؛ Bybit وOKX كذلك. Gate لديها API أكثر مرونة، لكن Gate EU محظور، وأهلية أي كيان آخر غير مثبتة، كما أن السيولة المقارنة غير مثبتة؛ لا تبديل ولا تمويل بناءً على API فقط.
+
+المصدر: Orbit Markets, “Current State of the Crypto Options Market”, 27 Oct 2026: https://www.orbitmarkets.io/post/current-state-of-the-crypto-options-market
