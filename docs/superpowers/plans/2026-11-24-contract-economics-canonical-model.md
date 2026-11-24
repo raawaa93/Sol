@@ -33,7 +33,7 @@
 ## Phase 3 — Provider adapters
 
 - [ ] Binance Crypto Options adapter: map contract unit, quote/settlement assets and published exercise/settlement terms.
-- [ ] Binance Stock Options reference adapter: map premium multiplier, contractSize and deliverables; no quote/Greeks claim.
+- [x] Binance Stock Options reference adapter: map premium multiplier and component deliverables; preserve contractSize independently; no quote/Greeks claim.
 - [ ] OCC/standard-equity reference adapter for test vectors only until a licensed/live data source exists.
 - [ ] Keep futures and commodity adapters blocked until exchange-specific point value and delivery specifications are sourced.
 
@@ -136,3 +136,19 @@ PR #128 merged as `b5acdf1fa0b9c3f963222863549968af26ac0f0f`.
 Verification on PR head `5a62815cedf39fc6f4cb70624082c2c2ab0073f8`: CI passed (unit/property tests, mocked backup test, production build, bundle budgets and Playwright); Project Context Guard passed; Lighthouse completed successfully.
 
 **Scope boundary:** this is a reference/economics mapping adapter only. It does not enable the legacy scalar analytics for Binance unit > 1, and does not route payoff, break-even, max-loss, position Greeks, EV or replay through canonical economics. Model capability and production analytics routing remain separate work.
+
+
+### Binance Stock Options reference adapter — implementation branch, 24 November 2026
+
+Added `mapBinanceStockOptionEconomics` and focused regression tests on `feat/binance-stock-options-reference-adapter`.
+
+Official Binance Stock Options market-data documentation defines:
+- `multiplier` as the premium-cost multiplier.
+- `contractSize` as shares delivered per contract; it may differ after corporate actions.
+- `deliverables` as component-level equity/cash amounts.
+- Prices in USD, while order payment is USDC; the adapter does not treat this as an FX conversion.
+- The market-data endpoints do not provide option quotes, IV or Greeks.
+
+The mapper preserves `multiplier`, `contractSize`, root/underlying symbols and component deliverables independently. It does **not** infer an exercise style or aggregate exercise-cash obligation because the reference fields used here do not establish those terms. Settlement and exercise style remain `UNKNOWN`, so the canonical validator keeps all calculations blocked. This is reference metadata only, not a pricing/Greeks adapter or trading integration.
+
+Test vectors cover standard contracts and an adjusted contract with 10 shares plus a USD cash component while premium multiplier remains 100; incomplete and unrecognized deliverable data are rejected.
