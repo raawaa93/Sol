@@ -98,13 +98,7 @@ export interface BinanceBookTickerEvent {
 export interface BinanceOptionMarkPriceEvent {
   symbol: string;
   eventTime: number;
-  markPrice?: number;
-  indexPrice?: number;
-  bidIv?: number;
-  askIv?: number;
-  markIv?: number;
-  riskFreeRate?: number;
-  sourceGreeks: { delta?: number; gamma?: number; theta?: number; vega?: number };
+  markPrice: number;
 }
 
 export interface BinanceOptionTickerEvent {
@@ -245,36 +239,13 @@ export function parseBinanceOptionMarkPriceMessage(payload: unknown): BinanceOpt
     const data = candidate as Record<string, unknown>;
     if (data.e !== 'markPrice' || typeof data.s !== 'string' || !data.s) return [];
     const eventTime = finiteNumber(data.E as string | number | undefined);
-    if (eventTime === undefined || eventTime <= 0) return [];
     const markPrice = positiveNumber(data.mp as string | number | undefined);
-    const indexPrice = positiveNumber(data.i as string | number | undefined);
-    const bidIv = positiveNumber(data.b as string | number | undefined);
-    const askIv = positiveNumber(data.a as string | number | undefined);
-    const markIv = positiveNumber(data.vo as string | number | undefined);
-    const riskFreeRate = finiteNumber(data.rf as string | number | undefined);
-    const sourceGreeks = {
-      delta: finiteNumber(data.d as string | number | undefined),
-      gamma: finiteNumber(data.g as string | number | undefined),
-      theta: finiteNumber(data.t as string | number | undefined),
-      vega: finiteNumber(data.v as string | number | undefined),
-    };
-    if ([markPrice, indexPrice, bidIv, askIv, markIv, riskFreeRate, ...Object.values(sourceGreeks)]
-      .every((value) => value === undefined)) return [];
-    return [{
-      symbol: data.s,
-      eventTime,
-      ...(markPrice !== undefined ? { markPrice } : {}),
-      ...(indexPrice !== undefined ? { indexPrice } : {}),
-      ...(bidIv !== undefined ? { bidIv } : {}),
-      ...(askIv !== undefined ? { askIv } : {}),
-      ...(markIv !== undefined ? { markIv } : {}),
-      ...(riskFreeRate !== undefined ? { riskFreeRate } : {}),
-      sourceGreeks,
-    }];
+    if (eventTime === undefined || eventTime <= 0 || markPrice === undefined) return [];
+    return [{ symbol: data.s, eventTime, markPrice }];
   });
 }
 
-/** Parse Binance Options ticker-by-underlying events (raw or combined stream payloads). */
+/** Parse Binance Options ticker-by-underlying events/** Parse Binance Options ticker-by-underlying events (raw or combined stream payloads). */
 export function parseBinanceOptionTickerMessage(payload: unknown): BinanceOptionTickerEvent[] {
   let decoded = payload;
   if (typeof decoded === 'string') {
@@ -372,70 +343,16 @@ export function applyBinanceOptionMarkPrice(quote: OptionQuote, event: BinanceOp
     ? new Date(quote.sourceTimestamps.markPrice).getTime()
     : 0;
   if (event.eventTime < previousTimestamp) return quote;
-
-  const iv = event.markIv ?? quote.iv;
-  const spot = event.indexPrice ?? quote.spot;
-  const rate = event.riskFreeRate ?? quote.riskFreeRate ?? 0;
-  const sourceHasGreeks = Object.values(event.sourceGreeks).some((value) => value !== undefined);
-  const hasBookTicker = Boolean(quote.sourceTimestamps?.bookTicker);
-  const useMarkBidFallback = !hasBookTicker && !(quote.bid > 0) && event.bestBid !== undefined;
-  const useMarkAskFallback = !hasBookTicker && !(quote.ask > 0) && event.bestAsk !== undefined;
-  const markPriceBookFallback = useMarkBidFallback || useMarkAskFallback;
-  const observedFields = [
-    ...(event.markPrice !== undefined ? ['markPrice'] : []),
-    ...(event.markIv !== undefined ? ['iv'] : []),
-    ...(event.riskFreeRate !== undefined ? ['riskFreeRate'] : []),
-  ];
-  const next: OptionQuote = {
+  return {
     ...quote,
-    ...(quote.estimatedFields ? { estimatedFields: quote.estimatedFields.filter((field) => !observedFields.includes(field)) } : {}),
-    ...(markPriceBookFallback ? {
-      ...(useMarkBidFallback ? { bid: event.bestBid } : {}),
-      ...(useMarkAskFallback ? { ask: event.bestAsk } : {}),
-      ...(useMarkBidFallback && event.bestBidQuantity !== undefined ? { bidQuantity: event.bestBidQuantity } : {}),
-      ...(useMarkAskFallback && event.bestAskQuantity !== undefined ? { askQuantity: event.bestAskQuantity } : {}),
-      bidAskSource: 'OPTION_MARK_PRICE' as const,
-    } : {}),
-    ...(event.markPrice !== undefined ? { markPrice: event.markPrice, priceSource: 'MARK' as const } : {}),
-    ...(event.markIv !== undefined ? { iv: event.markIv, ivStatus: 'OBSERVED' as const } : {}),
-    ...(event.bidIv !== undefined ? { bidIv: event.bidIv } : {}),
-    ...(event.askIv !== undefined ? { askIv: event.askIv } : {}),
-    ...(event.indexPrice !== undefined ? { spot: event.indexPrice } : {}),
-    ...(event.riskFreeRate !== undefined ? { riskFreeRate: event.riskFreeRate } : {}),
-    ...(sourceHasGreeks ? { unverifiedSourceGreeks: {
-      ...quote.unverifiedSourceGreeks,
-      ...event.sourceGreeks,
-    } } : {}),
+    markPrice: event.markPrice,
+    priceSource: 'MARK',
+    estimatedFields: quote.estimatedFields?.filter((field) => field !== 'markPrice'),
     sourceTimestamps: {
       ...quote.sourceTimestamps,
       markPrice: new Date(event.eventTime).toISOString(),
-      ...(event.indexPrice !== undefined ? { index: new Date(event.eventTime).toISOString() } : {}),
     },
   };
-
-  if (next.pricingModel && next.pricingStatus !== 'OBSERVED_ONLY' && iv > 0) {
-    const model = priceOption({
-      underlyingKind: next.underlyingKind ?? 'UNKNOWN',
-      exerciseStyle: next.exerciseStyle ?? 'UNKNOWN',
-      settlementStyle: next.settlementStyle ?? 'UNKNOWN',
-      spot,
-      forward: next.forward,
-      strike: next.strike,
-      daysToExpiry: next.daysToExpiry,
-      type: next.type,
-      rate,
-      carryYield: next.carryYield,
-      volatility: iv,
-    });
-    if (model.status === 'SUPPORTED') {
-      next.delta = model.greeks.delta;
-      next.gamma = model.greeks.gamma;
-      next.theta = model.greeks.thetaPerDay;
-      next.vega = model.greeks.vegaPerVolPoint;
-      next.rho = model.greeks.rhoPerRatePoint;
-    }
-  }
-  return next;
 }
 
 function normaliseSide(value: string | undefined, symbol: string): OptionSide | undefined {
