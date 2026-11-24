@@ -191,7 +191,7 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
     const venue = readField(row, ['venue', 'exchange', 'market'])?.trim().toUpperCase();
     const underlyingKindText = readField(row, ['underlyingKind', 'underlyingType', 'instrumentKind'])?.trim().toUpperCase();
     const underlyingKind: UnderlyingKind | undefined = underlyingKindText
-      ? (['SPOT', 'FUTURE', 'INDEX', 'FX_SPOT', 'UNKNOWN'].includes(underlyingKindText) ? underlyingKindText as UnderlyingKind : 'UNKNOWN')
+      ? (['SPOT', 'FUTURE', 'PERPETUAL', 'INDEX', 'FX_SPOT', 'UNKNOWN'].includes(underlyingKindText) ? underlyingKindText as UnderlyingKind : 'UNKNOWN')
       : undefined;
     const exerciseStyleText = readField(row, ['exerciseStyle', 'exerciseType'])?.trim().toUpperCase();
     const exerciseStyle: ExerciseStyle | undefined = exerciseStyleText
