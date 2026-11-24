@@ -319,7 +319,7 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       id: symbol,
       symbol,
       underlying: baseAsset,
-      assetClass: isCrypto ? 'CRYPTO' : inferAssetClass(baseAsset),
+      assetClass: isCrypto ? 'CRYPTO' : underlyingType === 'EQUITY' ? 'EQUITY' : inferAssetClass(baseAsset),
       venue: 'BINANCE',
       underlyingKind,
       exerciseStyle: exerciseStyle === 'UNKNOWN' ? undefined : exerciseStyle,
