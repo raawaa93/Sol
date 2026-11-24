@@ -227,3 +227,54 @@ Sources:
 - OptionLab: https://github.com/rgaveiga/optionlab
 - OptionSuite: https://github.com/sirnfs/OptionSuite
 - py_vollib: https://github.com/vollib/py_vollib
+
+
+## 10. مراجعة موسعة لمنصات on-chain والمنتجات الملتبسة — 24 نوفمبر 2026
+
+| Venue / product | Product classification | Syria evidence | Operational decision |
+|---|---|---|---|
+| Gate U.S. Stock Options | USDT cash-settled product; exchange/OCC equivalence not established by reviewed docs | Current Gate User Agreement explicitly names Syria as an embargoed/restricted location | Exclude for Syrian resident |
+| Bitget Stock+ | Separate U.S. securities sub-account with options features | General Bitget account accepts Syria, but June 2026 Stock+ launch report lists Syria among exclusions | Do not use; require written Stock+ eligibility confirmation |
+| Paradex | On-chain order-book options/perpetual venue | Official Restricted Persons page explicitly names Syria; Terms prohibit VPN circumvention | Exclude |
+| Hyperliquid HIP-4 | Binary/outcome contracts, not vanilla options; HIP-3 are perpetuals | Broad sanctions/export-control terms and independent live test reported Syria trading gate | Exclude as execution; do not misclassify HIP-3/4 as options |
+| Aevo | On-chain options and perps | Independent terms analysis identifies Syria as restricted; no official Syria exception found | Unavailable/unverified; not a workaround |
+| Deriv Vanilla/Digital/Accumulator | Broker-issued OTC/house-priced options and digital products | Country and contracting entity are product-dependent; Syria acceptance not established | Separate OTC product category; not an approved listed-options route |
+| Optimus / Ironbeam | Traditional futures broker/FCM routes to CME/ICE/Eurex etc. | General international support only; no Syria-specific acceptance confirmed | Written compliance inquiry only; no deposit/account opening until explicit approval |
+
+### لماذا لا نساوي كل المنتجات باسم Options؟
+
+- Exchange-listed vanilla options have standardized contract specs, exchange order books, clearing and published exercise/settlement rules.
+- Broker-issued OTC vanilla options are bilateral contracts priced/managed by the broker; counterparty and quote methodology differ.
+- Digital/binary/event-outcome products pay according to a discrete event condition and do not have the same payoff, Greeks, exercise or liquidity model as ordinary calls/puts.
+- Futures/perpetuals/CFDs/tokenized shares are not options simply because a platform markets them alongside options.
+
+### Venue selection for the actual user
+
+1. **Conditional primary:** Binance, because its official Syria FAQ explicitly lists Options and permits eligible Syrian residents to register/KYC. This is not evidence that every option family or API permission is active. Verify the actual product and permissions in the real Syrian KYC account.
+2. **No currently confirmed second execution venue:** Deribit, Bybit, OKX, Gate and Paradex list Syria restrictions; Hyperliquid's trading gate has been observed blocking Syria; Bitget Stock+ is reported to exclude Syria; IBKR and AMP do not establish eligibility. Optimus and Ironbeam remain inquiry-only.
+3. **Research architecture:** venue-neutral canonical contracts, separate adapter per exchange/FCM, common provenance/freshness, normalized multiplier/currency/settlement, independent pricing and risk engines, and no cross-venue equivalence unless contract terms prove it.
+4. **No VPN workaround:** use VPN only for connectivity/privacy where lawful and allowed; do not route execution through another country to misrepresent residence or defeat a venue's terms.
+
+### Data and engineering stack decision
+
+- **Market data:** official exchange/FCM feeds first; free public REST/WebSocket data only where terms permit; historical option chains must be archived prospectively or acquired under a data license. There is no verified free universal real-time options-chain feed for all listed markets.
+- **Pricing reference:** QuantLib as an independent validation engine; current in-app TypeScript models remain small transparent primitives, not a replacement for a full curve/volatility-surface library.
+- **Execution-aware research:** NautilusTrader is the strongest candidate to evaluate for event-driven replay/backtesting and live/data adapter parity; keep it as an isolated Python service, not bundled into the static React UI. Validate options fills, assignment, exercise, margin and queue modelling before relying on it.
+- **Strategy research:** Optopsy/OptionLab can be used in isolated research environments after GPL/AGPL compatibility review; do not import copyleft code into the frontend bundle without legal review.
+- **Data platform:** OpenBB is an extensible research interface, not a guaranteed licensed options data vendor. Each provider's symbol coverage, history depth, delayed/real-time entitlement and redistribution rights must be checked.
+- **Plugin catalog:** discovery for options-chain/broker/exchange data plugins returned no dedicated market-data/broker connector. Existing GitHub, Context7, Consensus and Data tools can assist engineering/research, but they do not replace an exchange API or data license. No paid plugin/service was installed.
+
+### Primary/secondary source links
+
+- Gate User Agreement: https://www.gate.com/en-us/legal/user-agreement
+- Bitget Syria general account announcement: https://www.bitget.com/support/articles/12560603829392
+- Bitget Stock+ support: https://www.bitget.live/support/articles/12560603887309
+- Bitget Stock+ launch exclusions (secondary): https://www.theblock.co/news/markets/2026-06-22-bitget-us-stock-purchases-crypto-405507
+- Paradex restricted persons: https://paradex.trade/restricted-persons
+- Paradex terms: https://www.paradex.trade/terms-of-service
+- Hyperliquid terms: https://hyperliquid.gitbook.io/hyperliquid-docs/policies/terms-of-use
+- Hyperliquid Syria geo-gate research (secondary): https://restricted.cp0x.com/monitor/hyperliquid
+- Aevo terms analysis (secondary): https://defillama.com/exchange/aevo/information
+- Deriv trading terms: https://deriv.com/terms-and-conditions/trading-terms
+- Deriv general terms: https://deriv.com/terms-and-conditions/general-terms-of-use
+- On-chain product taxonomy: https://research.castlelabs.io/p/mapping-onchain-options-exchanges
