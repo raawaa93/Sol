@@ -57,3 +57,32 @@ The earlier US/GB observations remain valid historical comparisons: US server-si
 ## Data completeness note
 
 The app's observed count of 336 contracts with at least one missing side (Bid or Ask) is a quote-availability limitation, not evidence that the proxy failed. The normalizer intentionally preserves a missing side as unavailable instead of fabricating a price. A contract with no complete two-sided quote must not be treated as executable or used to infer a reliable spread. The displayed Greeks Gamma, Theta, Vega and Rho remain model-derived where indicated; public market-data access does not make them exchange-observed values.
+
+
+## Rolling 24-hour regional egress recheck — through 08:22 UTC
+
+A read-only aggregate of the deployed v10 function logs covered 2026-11-23 08:22 UTC through 2026-11-24 08:22 UTC. It grouped by Cloudflare client-country classification, Supabase execution region, and response status; no client IPs or identity data are reproduced here.
+
+| Client-country classification | Supabase Edge region | Requests | Outcome | First → last observed (UTC) |
+|---|---|---:|---|---|
+| SY | eu-west-2 | 50 | HTTP 200 | 07:00:20 → 07:00:27 |
+| GB | eu-west-2 | 337 | HTTP 200 | 15:23:03 (23 Nov) → 06:54:35 |
+| US | eu-central-2 | 6 | HTTP 200 | 06:39:37 → 06:43:40 |
+| US | us-west-1 | 12 | HTTP 451 | 01:54:38 → 08:18:06 |
+| US | us-west-2 | 8 | HTTP 451 | 01:25:44 → 08:11:01 |
+| US | us-east-2 | 15 | HTTP 451 | 01:29:13 → 08:01:19 |
+| US | us-east-1 | 23 | HTTP 451 | 15:18:15 (23 Nov) → 07:39:33 |
+| US | us-east-1 | 5 | HTTP 400 | 03:54:18 → 08:05:06 |
+
+The latest observed HTTP 451 was an exchangeInfo request at 08:18:06 UTC from a US-classified caller executed in us-west-1. The 58 HTTP 451 responses across four US execution regions coexist with successful requests from SY/GB classifications through eu-west-2 and from a US-classified caller through eu-central-2.
+
+### Interpretation
+
+- This is evidence of regional/request-path-dependent outcomes, not a universal Binance outage and not a blanket statement that every US request is denied.
+- The 50 SY-classified successes are still the most recent Syrian-classified burst in this log window. No later SY-classified request appears in this aggregate.
+- Logs for these successful requests did not contain Origin or Referer values. They cannot be attributed conclusively to the published browser app or to a specific person/device.
+- Supabase's automatic edge routing remains enabled. No region pinning, proxy rotation, IP masking, VPN geofencing bypass, or residence changes were introduced.
+- The published app's smoke test is run from US infrastructure; its HTTP 451 is not a test of the user's Syrian ISP or Binance account.
+- None of these results establishes account-level Options permission, legal permission to trade from Syria, or access to every Binance options sub-product.
+
+The next meaningful end-to-end check remains a direct user-device/browser session on the intended Syrian network path, with the app's source status and the resulting HTTP outcome observed together. Do not treat the server-side log classification alone as that confirmation.
