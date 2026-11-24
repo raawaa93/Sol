@@ -170,6 +170,39 @@ test('public requests without an Origin header still pass through the shared lim
   }
 });
 
+test('Binance proxy serves hot cache reads without repeated shared-database calls', async () => {
+  const originalFetch = globalThis.fetch;
+  const restoreRuntime = installConfiguredTestDenoEnv();
+  let rateLimiterCalls = 0;
+  let upstreamCalls = 0;
+  globalThis.fetch = async (input) => {
+    const url = new URL(String(input));
+    if (url.pathname.endsWith('/rpc/volterra_check_rate_limit')) {
+      rateLimiterCalls += 1;
+      return new Response(JSON.stringify([{ allowed: true, retry_after_seconds: 60 }]), { status: 200 });
+    }
+    upstreamCalls += 1;
+    return new Response(JSON.stringify({ underlying: 'CACHEHITUSDT', indexPrice: '123' }), { status: 200 });
+  };
+
+  try {
+    const request = () => new Request('https://function.example/?endpoint=index&underlying=CACHEHITUSDT', {
+      headers: { origin: 'https://raawaa93.github.io', 'cf-connecting-ip': '198.51.100.240' },
+    });
+    const first = await handleRequest(request());
+    const second = await handleRequest(request());
+
+    assert.equal(first.status, 200);
+    assert.equal(second.status, 200);
+    assert.deepEqual(await second.json(), { underlying: 'CACHEHITUSDT', indexPrice: '123' });
+    assert.equal(rateLimiterCalls, 1, 'only the cache miss should call the shared database limiter');
+    assert.equal(upstreamCalls, 1, 'the second request should be served from the in-memory cache');
+  } finally {
+    globalThis.fetch = originalFetch;
+    restoreRuntime();
+  }
+});
+
 test('Binance proxy refuses unknown browser origins and passes through regional denial', async () => {
   const originalFetch = globalThis.fetch;
   const restoreRuntime = installConfiguredTestDenoEnv();
