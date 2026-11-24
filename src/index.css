@@ -134,6 +134,12 @@ h1, h2, h3, p { margin: 0; }
 .source-error strong { font-size: 10px; }
 .source-error span { color: #bc918c; font-size: 9px; line-height: 1.55; overflow-wrap: anywhere; }
 .source-error .button { flex: 0 0 auto; }
+.source-error-restricted { border-color: rgba(223, 173, 91, .32); color: #dfc48d; background: rgba(153, 108, 37, .09); }
+.source-error-restricted .source-error-icon { color: #e8c176; background: rgba(199, 151, 74, .13); }
+.source-error-restricted span { color: #c2ae86; }
+.source-error-actions { display: flex; align-items: center; gap: 9px; flex: 0 0 auto; }
+.source-error-link { display: inline-flex; align-items: center; gap: 4px; color: #e2c077; font-size: 9px; text-decoration: none; white-space: nowrap; }
+.source-error-link:hover { color: #ffe3a4; text-decoration: underline; }
 
 .section-anchor { scroll-margin-top: 84px; }
 .section-title-row { display: flex; justify-content: space-between; align-items: flex-end; gap: 18px; margin-bottom: 13px; }

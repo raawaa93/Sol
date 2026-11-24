@@ -101,6 +101,18 @@ export interface BinanceOptionsSnapshot {
   warnings: string[];
 }
 
+export class BinanceMarketDataError extends Error {
+  readonly status: number;
+  readonly detail?: string;
+
+  constructor(status: number, detail?: string) {
+    super(`Binance market-data service returned HTTP ${status}${detail ? `: ${detail}` : ''}`);
+    this.name = 'BinanceMarketDataError';
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
 export interface BinanceFixture {
   exchangeInfo: BinanceExchangeInfo;
   marks?: BinanceMark[];
@@ -391,7 +403,7 @@ async function getJson<T>(
     if (!response.ok) {
       const error = payload && typeof payload === 'object' ? payload as { msg?: string; error?: string } : {};
       const detail = error.msg ?? error.error;
-      throw new Error(`Binance market-data service returned HTTP ${response.status}${detail ? `: ${detail}` : ''}`);
+      throw new BinanceMarketDataError(response.status, detail);
     }
     if (payload && typeof payload === 'object' && !Array.isArray(payload) && 'code' in payload) {
       const error = payload as { code?: number; msg?: string; optionSymbols?: unknown };

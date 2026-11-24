@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { fetchBinanceDepth, fetchBinanceOptions, normalizeBinanceDepth, normalizeBinanceSnapshot } from './binance.ts';
+import { BinanceMarketDataError, fetchBinanceDepth, fetchBinanceOptions, normalizeBinanceDepth, normalizeBinanceSnapshot } from './binance.ts';
 import { blackScholes, getMidPrice } from './options.ts';
 
 function compactDate(timestamp: number): string {
@@ -142,6 +142,30 @@ test('Binance normalizer avoids crossed bid/ask midpoints and preserves last-pri
   assert.ok(quote.estimatedFields?.includes('gamma'));
   assert.ok(quote.estimatedFields?.includes('rho'));
   assert.ok(Number.isFinite(quote.rho));
+});
+
+test('Binance client preserves HTTP 451 as a typed upstream access restriction', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const url = new URL(String(input));
+    assert.equal(url.searchParams.get('endpoint'), 'exchangeInfo');
+    return new Response(JSON.stringify({
+      code: 0,
+      msg: 'Service unavailable from a restricted location according to b. Eligibility.',
+    }), { status: 451, headers: { 'Content-Type': 'application/json' } });
+  };
+
+  try {
+    await assert.rejects(fetchBinanceOptions('https://market-data-proxy.test/functions/v1/market-data'), (error: unknown) => {
+      assert.ok(error instanceof BinanceMarketDataError);
+      assert.equal(error.status, 451);
+      assert.match(error.detail ?? '', /restricted location/);
+      assert.match(error.message, /HTTP 451/);
+      return true;
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test('Binance client requests public exchange and market data endpoints and maps open interest by expiry', async () => {

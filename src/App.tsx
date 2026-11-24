@@ -35,7 +35,7 @@ import GreeksPanel from './components/GreeksPanel';
 import OpportunityReview from './components/OpportunityReview';
 import MarketDepthPanel from './components/MarketDepthPanel';
 import { DEMO_MARKETS, DEMO_QUOTES, getExpiryChoices } from './lib/demo';
-import { fetchBinanceDepth, fetchBinanceOptions } from './lib/binance';
+import { BinanceMarketDataError, fetchBinanceDepth, fetchBinanceOptions } from './lib/binance';
 import type { BinanceDepthSnapshot, BinanceOptionsSnapshot } from './lib/binance';
 import { getLatestQuotePerContract, getMarketSnapshotFromQuotes } from './lib/market';
 import { downloadCsv, downloadCsvTemplate, MAX_CSV_FILE_BYTES, parseOptionsCsv } from './lib/csv';
@@ -189,6 +189,7 @@ function App() {
   const [binanceSnapshot, setBinanceSnapshot] = useState<BinanceOptionsSnapshot | null>(null);
   const [binanceLoading, setBinanceLoading] = useState(false);
   const [binanceError, setBinanceError] = useState('');
+  const [binanceAccessRestricted, setBinanceAccessRestricted] = useState(false);
   const [binanceDepth, setBinanceDepth] = useState<BinanceDepthSnapshot | null>(null);
   const [binanceDepthLoading, setBinanceDepthLoading] = useState(false);
   const [binanceDepthError, setBinanceDepthError] = useState('');
@@ -396,6 +397,7 @@ function App() {
     const requestId = ++binanceRequestId.current;
     setBinanceLoading(true);
     setBinanceError('');
+    setBinanceAccessRestricted(false);
     try {
       const snapshot = await fetchBinanceOptions(import.meta.env.VITE_BINANCE_PROXY_URL);
       if (requestId !== binanceRequestId.current) return;
@@ -428,9 +430,15 @@ function App() {
       notify(`تم تحميل بيانات ${integerFormat.format(snapshot.quotes.length)} من أصل ${integerFormat.format(snapshot.activeSymbols)} عقد نشط من Binance.`);
     } catch (error) {
       if (requestId !== binanceRequestId.current) return;
+      if (error instanceof BinanceMarketDataError && error.status === 451) {
+        setBinanceAccessRestricted(true);
+        setBinanceError('أعادت Binance HTTP 451، وتشير رسالة الرفض إلى بند الأهلية (Eligibility) في شروطها. هذا رفض من المصدر، وليس خللاً في CORS أو وسيط Supabase. لا يمكن إصلاحه بتغيير إعدادات التطبيق، ولن نلتف على قيد المنطقة/المنتج؛ استخدم Demo أو CSV أو مزود بيانات مرخصاً ومتاحاً لك.');
+        return;
+      }
+      setBinanceAccessRestricted(false);
       const message = error instanceof Error ? error.message : String(error);
       const networkHint = /fetch|network|abort|timeout|load failed/i.test(message)
-        ? ' تحقّق من الاتصال وإمكانية الوصول إلى Binance؛ قد تمنع الشبكة أو قيود المنطقة أو CORS الطلب.'
+        ? ' تحقّق من الاتصال؛ قد تكون الشبكة أو CORS أو مهلة الخدمة سبباً.'
         : '';
       setBinanceError(`${message}${networkHint}`);
     } finally {
@@ -472,6 +480,7 @@ function App() {
     }
     invalidateBinanceRequest();
     setBinanceError('');
+    setBinanceAccessRestricted(false);
     const reader = new FileReader();
     reader.onload = () => {
       const result = parseOptionsCsv(String(reader.result ?? ''));
@@ -503,6 +512,7 @@ function App() {
   const resetDemo = () => {
     invalidateBinanceRequest();
     setBinanceError('');
+    setBinanceAccessRestricted(false);
     setQuotes(DEMO_QUOTES);
     setDataMode('DEMO');
     setImportedAt(null);
@@ -679,10 +689,18 @@ function App() {
           </section>
 
           {binanceError && (
-            <div className="source-error" role="alert">
+            <div className={`source-error ${binanceAccessRestricted ? 'source-error-restricted' : ''}`} role="alert">
               <div className="source-error-icon"><ShieldAlert size={16} /></div>
-              <div><strong>{dataMode === 'BINANCE' && binanceSnapshot ? 'تعذّر تحديث Binance' : 'تعذّر تحميل بيانات Binance'}</strong><span>{binanceError}{dataMode === 'BINANCE' && binanceSnapshot ? ' — ما يزال المعروض آخر لقطة محمّلة.' : ''}</span></div>
-              <button className="button button-ghost" onClick={loadBinanceOptions} disabled={binanceLoading}><RefreshCw size={13} /> إعادة المحاولة</button>
+              <div>
+                <strong>{binanceAccessRestricted ? 'رفض أهلية من Binance · HTTP 451' : dataMode === 'BINANCE' && binanceSnapshot ? 'تعذّر تحديث Binance' : 'تعذّر تحميل بيانات Binance'}</strong>
+                <span>{binanceError}{dataMode === 'BINANCE' && binanceSnapshot ? ' — المعروض آخر لقطة محمّلة، وليس تحديثاً ناجحاً.' : ''}</span>
+              </div>
+              <div className="source-error-actions">
+                {binanceAccessRestricted ? <>
+                  <a className="source-error-link" href="https://www.binance.com/en/terms" target="_blank" rel="noreferrer">شروط الأهلية <ExternalLink size={12} /></a>
+                  <button className="button button-ghost" onClick={resetDemo}><Zap size={13} /> استخدام Demo</button>
+                </> : <button className="button button-ghost" onClick={loadBinanceOptions} disabled={binanceLoading}><RefreshCw size={13} /> إعادة المحاولة</button>}
+              </div>
             </div>
           )}
 

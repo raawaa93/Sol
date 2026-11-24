@@ -133,6 +133,32 @@ test('Binance order-book UI is exercised only with a deterministic mocked REST s
   await expect(sourceGreeks).toContainText('لم تُطبع وحداتها');
 });
 
+test('Binance HTTP 451 is shown as an upstream eligibility restriction, without replacing Demo data', async ({ page }) => {
+  await page.route(`${PROXY_ORIGIN}/**`, (route) => route.fulfill({
+    status: 451,
+    headers: proxyHeaders,
+    body: JSON.stringify({
+      code: 0,
+      msg: 'Service unavailable from a restricted location according to b. Eligibility in Binance terms.',
+    }),
+  }));
+
+  await page.getByRole('button', { name: 'تحميل Binance' }).click();
+  const restriction = page.locator('.source-error-restricted');
+  await expect(restriction).toContainText('HTTP 451');
+  await expect(restriction).toContainText('الأهلية (Eligibility)');
+  await expect(restriction).toContainText('ليس خللاً في CORS أو وسيط Supabase');
+  await expect(restriction.getByRole('link', { name: /شروط الأهلية/ }))
+    .toHaveAttribute('href', 'https://www.binance.com/en/terms');
+  await expect(restriction.getByRole('button', { name: 'إعادة المحاولة' })).toHaveCount(0);
+  await expect(page.locator('.source-card')).toContainText('بيانات تجريبية');
+  await expect(page.locator('#overview-metrics')).toContainText('قيم توضيحية مولّدة');
+
+  await restriction.getByRole('button', { name: 'استخدام Demo' }).click();
+  await expect(page.locator('.source-error')).toHaveCount(0);
+  await expect(page.locator('.source-card')).toContainText('بيانات تجريبية');
+});
+
 test('mobile layout has no document-level horizontal overflow', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
