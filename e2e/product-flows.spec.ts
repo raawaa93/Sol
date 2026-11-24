@@ -296,6 +296,36 @@ test('mobile layout has no document-level horizontal overflow', async ({ page })
 });
 
 
+test('mobile primary controls meet touch-target and keyboard-focus requirements', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+
+  await expect(page.getByRole('group', { name: 'نوع الخيار' })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'تاريخ الانتهاء' })).toBeVisible();
+  await expect(page.getByRole('searchbox', { name: 'سعر التنفيذ أو الرمز' })).toBeVisible();
+
+  const targets = [
+    page.locator('.option-tabs button').first(),
+    page.locator('.chain-controls .select-control').first(),
+    page.locator('.chain-controls .search-control'),
+    page.locator('.mobile-bottom-nav button').first(),
+  ];
+  for (const target of targets) {
+    const box = await target.boundingBox();
+    expect(box, 'primary mobile control should be rendered').not.toBeNull();
+    expect(box!.height, 'primary mobile control should be at least 44px tall').toBeGreaterThanOrEqual(44);
+  }
+
+  const navButton = page.locator('.mobile-bottom-nav button').first();
+  await navButton.focus();
+  const focusStyle = await navButton.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { outlineStyle: style.outlineStyle, outlineWidth: style.outlineWidth };
+  });
+  expect(focusStyle.outlineStyle).not.toBe('none');
+  expect(Number.parseFloat(focusStyle.outlineWidth)).toBeGreaterThanOrEqual(2);
+});
+
 test('shows local legal eligibility warning in the compliance banner', async ({ page }) => {
   await page.goto('/');
   const banner = page.locator('.compliance-banner');
