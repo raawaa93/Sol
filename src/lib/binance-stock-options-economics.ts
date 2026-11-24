@@ -90,5 +90,5 @@ export function mapBinanceStockOptionEconomics(
     },
   };
   const validation = validateContractEconomics(economics);
-  return validation.valid && validation.adapterReady ? economics : null;
+  return validation.valid ? economics : null;
 }
