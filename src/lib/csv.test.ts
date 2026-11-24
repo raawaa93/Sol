@@ -142,7 +142,7 @@ test('CSV preserves perpetual underlying mechanics without converting them to sp
   const csv = [
     'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,spot,unit,timestamp,assetClass,underlyingKind',
     'XAU-261230-4000-C,XAU,2026-12-30T08:00:00Z,4000,CALL,12,13,12.5,18%,3980,1,2026-11-24T02:00:00Z,METALS,PERPETUAL',
-  ].join('\\n');
+  ].join('\n');
   const result = parseOptionsCsv(csv);
   assert.equal(result.quotes.length, 1);
   assert.equal(result.quotes[0].underlyingKind, 'PERPETUAL');
