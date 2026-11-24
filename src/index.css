@@ -102,7 +102,7 @@ h1, h2, h3, p { margin: 0; }
 .heading-actions { display: flex; align-items: flex-end; gap: 14px; }
 .asset-switch { direction: ltr; display: flex; gap: 4px; padding: 4px; border: 1px solid #242f33; background: #0e1417; border-radius: 10px; }
 .asset-switch button { display: flex; flex-direction: column; align-items: flex-start; min-width: 82px; border: 1px solid transparent; border-radius: 7px; background: transparent; color: #778583; padding: 5px 10px; cursor: pointer; font-size: 11px; font-weight: 750; transition: .18s ease; }
-.asset-switch button span { margin-top: 2px; color: #5e6d6c; font-size: 8px; font-weight: 500; }
+.asset-switch button span { margin-top: 2px; color: #8b9a93; font-size: 8px; font-weight: 500; }
 .asset-switch button.selected { color: #e4f0dc; background: #1a2720; border-color: #324636; }
 .asset-switch button.selected span { color: #8eaa83; }
 .asset-switch button:disabled { opacity: .36; cursor: not-allowed; }
@@ -163,7 +163,7 @@ h1, h2, h3, p { margin: 0; }
 .section-anchor { scroll-margin-top: 84px; }
 .section-title-row { display: flex; justify-content: space-between; align-items: flex-end; gap: 18px; margin-bottom: 13px; }
 .section-title-row h2 { margin-top: 4px; font-size: 17px; font-weight: 650; letter-spacing: -.3px; color: #e7eeea; }
-.section-title-row p { margin-top: 5px; font-size: 10px; color: #73817f; }
+.section-title-row p { margin-top: 5px; font-size: 10px; color: #85938f; }
 .section-title-row.compact-title { align-items: center; margin-bottom: 11px; }
 .snapshot-meta { display: flex; align-items: center; gap: 7px; font-size: 9px; color: #697776; }
 .live-hollow { width: 6px; height: 6px; border: 1px solid #d4ad68; border-radius: 50%; }
@@ -296,7 +296,7 @@ h1, h2, h3, p { margin: 0; }
 .budget-row { display: flex; flex-direction: column; gap: 5px; margin-top: 9px; color: #8b9894; font-size: 8px; }
 .budget-row > div { display: flex; align-items: center; height: 30px; border: 1px solid #283437; background: #0d1315; border-radius: 6px; overflow: hidden; }
 .budget-row input { width: 90px; height: 100%; border: 0; background: transparent; }
-.budget-row > div > span { color: #687572; font-family: Inter, sans-serif; font-size: 8px; }
+.budget-row > div > span { color: #84928d; font-family: Inter, sans-serif; font-size: 8px; }
 .budget-row button { height: 100%; margin-right: auto; padding: 0 8px; border: 0; border-right: 1px solid #283437; background: #141d19; color: #a8d687; font-size: 8px; cursor: pointer; }
 .budget-row button:hover { background: #1c2a20; }
 .risk-summary { display: flex; flex-direction: column; gap: 7px; margin-top: 10px; padding: 9px 9px; border: 1px solid #242e31; border-radius: 8px; background: rgba(8, 13, 14, .48); }
