@@ -233,9 +233,10 @@ export function getRiskNeutralExpiryMetrics(
   const referencePrice = isFuture ? quote.forward : quote.spot;
   const carryYield = isFuture ? 0 : quote.carryYield;
   const { strike, daysToExpiry, iv, type } = quote;
+  if (effectiveRate === undefined || !Number.isFinite(effectiveRate)) return null;
 
   if (quote.pricingStatus !== 'SUPPORTED' || quote.exerciseStyle !== 'EUROPEAN'
-    || !quote.settlementStyle || !Number.isFinite(effectiveRate)
+    || !quote.settlementStyle
     || !Number.isFinite(referencePrice) || referencePrice === undefined || referencePrice <= 0
     || !Number.isFinite(strike) || strike <= 0
     || !Number.isFinite(daysToExpiry) || daysToExpiry < 0
