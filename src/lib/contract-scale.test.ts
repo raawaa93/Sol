@@ -31,6 +31,12 @@ test('CSV crypto requires a named non-Demo venue and explicit matching multiplie
   assert.equal(getContractScaleIssue(binanceCrypto, 'CSV'), 'UNSUPPORTED_CONTRACT_SCALE');
 });
 
+test('Binance unit greater than one blocks until premium and deliverable scales are separated', () => {
+  assert.equal(getContractScaleIssue({ ...binanceCrypto, unit: 100 }, 'BINANCE'), 'PREMIUM_SCALE_UNVERIFIED');
+  assert.equal(getContractScaleIssue({ ...binanceCrypto, unit: 100, contractMultiplier: 100 }, 'CSV'), 'PREMIUM_SCALE_UNVERIFIED');
+  assert.match(getContractScaleIssueMessage('PREMIUM_SCALE_UNVERIFIED'), /unit تمثل كمية الأصل الأساسي/);
+});
+
 test('different quote and settlement currencies block scalar per-contract P&L', () => {
   assert.equal(getContractScaleIssue({ ...binanceCrypto, settlementAsset: 'USDC' }, 'BINANCE'), 'UNSUPPORTED_CONTRACT_SCALE');
 });
@@ -75,5 +81,5 @@ test('CSV scale values alone do not establish a supported American equity delive
     settlementStyle: 'PHYSICAL',
     unit: 100,
     contractMultiplier: 100,
-  }, 'CSV'), 'UNSUPPORTED_CONTRACT_SCALE');
+  }, 'CSV'), 'PREMIUM_SCALE_UNVERIFIED');
 });
