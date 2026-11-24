@@ -33,25 +33,33 @@ test('PAPER-only journal records and exports a local single-option scenario', as
   expect(download.suggestedFilename()).toBe('volterra-paper-journal.csv');
 });
 
-test('CSV import stays local and supports a non-crypto underlying', async ({ page }) => {
+test('CSV import stays local and powers a timestamped XAU execution replay', async ({ page }) => {
   const expiry = new Date(Date.now() + 40 * 86_400_000).toISOString();
-  const sourceTime = new Date().toISOString();
+  const firstTime = new Date(Date.now() - 2 * 60 * 60_000).toISOString();
+  const secondTime = new Date(Date.now() - 60 * 60_000).toISOString();
   const header = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,delta,gamma,theta,vega,openInterest,volume,spot,unit,timestamp';
-  const row = [
+  const first = [
     'XAU-custom-P', 'XAU', expiry, '4000', 'PUT', '50', '52', '51', '45%',
-    '', '', '', '', '', '', '4100', '1', sourceTime,
+    '', '', '', '', '', '', '4100', '1', firstTime,
   ].join(',');
-  const csv = `${header}\n${row}`;
+  const second = [
+    'XAU-custom-P', 'XAU', expiry, '4000', 'PUT', '60', '61', '60.5', '45%',
+    '', '', '', '', '', '', '4100', '1', secondTime,
+  ].join(',');
+  const csv = `${header}\n${first}\n${second}`;
 
   await page.locator('input[type="file"]').setInputFiles({
-    name: 'xau-snapshot.csv',
+    name: 'xau-history.csv',
     mimeType: 'text/csv',
     buffer: Buffer.from(csv),
   });
 
-  await expect(page.getByText('تم استيراد 1 عقد محلياً.')).toBeVisible();
+  await expect(page.getByText('تم استيراد 2 عقد محلياً.')).toBeVisible();
   await expect(page.locator('#overview-metrics')).toContainText('XAU/USDT');
   await expect(page.locator('#scanner')).toContainText('XAU-custom-P');
+  await expect(page.locator('#historical-replay')).toContainText('إعادة تشغيل تاريخية محافظة');
+  await expect(page.locator('#historical-replay .replay-trades tbody tr')).toHaveCount(1);
+  await expect(page.locator('#historical-replay')).toContainText('+8');
 });
 
 test('Binance order-book UI is exercised only with a deterministic mocked REST snapshot', async ({ page }) => {
