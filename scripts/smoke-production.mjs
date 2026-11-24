@@ -96,7 +96,8 @@ async function main() {
   }
   console.log(`Published app shell: HTTP ${pageResponse.status}, ${pageMs} ms.`);
 
-  const discoveryUrl = new URL('.well-known/ard.json', pageUrl);
+  const pageBase = new URL(`${pageUrl.pathname.replace(/\/?$/, '/')}`, pageUrl.origin);
+  const discoveryUrl = new URL('.well-known/ard.json', pageBase);
   const discoveryResponse = await fetch(discoveryUrl, {
     headers: { Accept: 'application/json' },
     signal: timeoutSignal(),
@@ -117,7 +118,7 @@ async function main() {
   }
   console.log(`Published ARD manifest: HTTP ${discoveryResponse.status}, ${discovery.entries.length} entries.`);
 
-  const llmsUrl = new URL('llms.txt', pageUrl);
+  const llmsUrl = new URL('llms.txt', pageBase);
   const llmsResponse = await fetch(llmsUrl, { signal: timeoutSignal() });
   if (!llmsResponse.ok) {
     throw new Error(`Published llms.txt did not load (HTTP ${llmsResponse.status}).`);
