@@ -96,6 +96,35 @@ async function main() {
   }
   console.log(`Published app shell: HTTP ${pageResponse.status}, ${pageMs} ms.`);
 
+  const pageBase = new URL(`${pageUrl.pathname.replace(/\/?$/, '/')}`, pageUrl.origin);
+  const discoveryUrl = new URL('.well-known/ard.json', pageBase);
+  const discoveryResponse = await fetch(discoveryUrl, {
+    headers: { Accept: 'application/json' },
+    signal: timeoutSignal(),
+  });
+  if (!discoveryResponse.ok) {
+    throw new Error(`Published ARD manifest did not load (HTTP ${discoveryResponse.status}): ${discoveryUrl.pathname}`);
+  }
+  const discoveryType = discoveryResponse.headers.get('content-type') ?? '';
+  if (!discoveryType.includes('application/json')) {
+    throw new Error(`Published ARD manifest returned unexpected content type: ${discoveryType || 'none'}.`);
+  }
+  const discovery = await discoveryResponse.json();
+  if (!Array.isArray(discovery?.entries)) {
+    throw new Error('Published ARD manifest is missing the required entries array.');
+  }
+  if (!pageHtml.includes('rel="ard"')) {
+    throw new Error('Published app shell does not advertise its ARD manifest.');
+  }
+  console.log(`Published ARD manifest: HTTP ${discoveryResponse.status}, ${discovery.entries.length} entries.`);
+
+  const llmsUrl = new URL('llms.txt', pageBase);
+  const llmsResponse = await fetch(llmsUrl, { signal: timeoutSignal() });
+  if (!llmsResponse.ok) {
+    throw new Error(`Published llms.txt did not load (HTTP ${llmsResponse.status}).`);
+  }
+  console.log(`Published llms.txt: HTTP ${llmsResponse.status}.`);
+
   const infoResult = await requestJson('exchangeInfo');
   if (!ensureOk('exchangeInfo', infoResult.response, infoResult.payload)) return;
   const info = infoResult.payload;
