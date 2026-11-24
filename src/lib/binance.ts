@@ -250,13 +250,21 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
     const riskFreeRate = observedRiskFreeRate ?? 0;
     const referencePrice = twoSidedMid ?? observedMark ?? lastPrice ?? oneSidedQuote;
     const contractInfo = fixture.exchangeInfo.optionContracts?.find((contract) => contract.underlying?.toUpperCase() === indexKey);
-    const contractType = (symbolInfo.contractType ?? contractInfo?.contractType ?? '').toUpperCase();
-    const underlyingType = (symbolInfo.underlyingType ?? contractInfo?.underlyingType ?? '').toUpperCase();
+    const contractType = (symbolInfo.contractType?.trim() || contractInfo?.contractType?.trim() || '').toUpperCase();
+    const underlyingType = (symbolInfo.underlyingType?.trim() || contractInfo?.underlyingType?.trim() || '').toUpperCase();
+    const hasExplicitUnderlyingType = underlyingType.length > 0;
+    const hasExplicitContractType = contractType.length > 0;
     const isCommodity = underlyingType === 'COMMODITY';
-    const isCrypto = !isCommodity && (contractType === 'CRYPTO_OPTIONS' || underlyingType === 'CRYPTO' || ['BTC', 'ETH', 'BNB', 'XRP', 'DOGE', 'SOL'].includes(baseAsset));
+    const isCrypto = underlyingType === 'CRYPTO'
+      || (!hasExplicitUnderlyingType && contractType === 'CRYPTO_OPTIONS')
+      || (!hasExplicitUnderlyingType && !hasExplicitContractType && ['BTC', 'ETH', 'BNB', 'XRP', 'DOGE', 'SOL'].includes(baseAsset));
     const underlyingKind = isCommodity ? 'PERPETUAL' as const : isCrypto ? 'SPOT' as const : 'UNKNOWN' as const;
     const exerciseStyle = isCommodity || isCrypto ? 'EUROPEAN' as const : 'UNKNOWN' as const;
     const settlementStyle = isCommodity || isCrypto ? 'CASH' as const : 'UNKNOWN' as const;
+    const inferredAssetClass = inferAssetClass(baseAsset);
+    const assetClass = isCrypto ? 'CRYPTO' : underlyingType === 'EQUITY' ? 'EQUITY'
+      : isCommodity ? (inferredAssetClass === 'CRYPTO' ? 'UNKNOWN' : inferredAssetClass)
+        : hasExplicitUnderlyingType || hasExplicitContractType ? 'UNKNOWN' : inferredAssetClass;
     const carryYield = isCrypto ? 0 : undefined;
     const pricingInputs = {
       underlyingKind,
@@ -319,7 +327,7 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       id: symbol,
       symbol,
       underlying: baseAsset,
-      assetClass: isCrypto ? 'CRYPTO' : underlyingType === 'EQUITY' ? 'EQUITY' : inferAssetClass(baseAsset),
+      assetClass,
       venue: 'BINANCE',
       underlyingKind,
       exerciseStyle: exerciseStyle === 'UNKNOWN' ? undefined : exerciseStyle,
