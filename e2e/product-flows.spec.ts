@@ -207,8 +207,9 @@ test('Binance HTTP 451 is shown as an upstream eligibility restriction, without 
   await page.getByRole('button', { name: 'تحميل Binance' }).click();
   const restriction = page.locator('.source-error-restricted');
   await expect(restriction).toContainText('HTTP 451');
-  await expect(restriction).toContainText('الأهلية (Eligibility)');
-  await expect(restriction).toContainText('ليس خللاً في CORS أو وسيط Supabase');
+  await expect(restriction).toContainText('قيد Eligibility');
+  await expect(restriction).toContainText('لا يثبت وحده ما إذا كان المنتج متاحاً لحسابك');
+  await expect(restriction).toContainText('ليست مشكلة CORS أو إعداد واجهة');
   await expect(restriction.getByRole('link', { name: /شروط الأهلية/ }))
     .toHaveAttribute('href', 'https://www.binance.com/en/terms');
   await expect(restriction.getByRole('button', { name: 'إعادة المحاولة' })).toHaveCount(0);
