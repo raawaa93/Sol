@@ -231,3 +231,12 @@ test('mobile layout has no document-level horizontal overflow', async ({ page })
   }));
   expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.client + 1);
 });
+
+
+test('shows local legal eligibility warning in the compliance banner', async ({ page }) => {
+  await page.goto('/');
+  const banner = page.locator('.compliance-banner');
+  await expect(banner).toContainText('أهلية الحساب لدى المنصة لا تعني أن التداول مسموح قانونياً');
+  await expect(banner).toContainText('للمقيمين في سوريا');
+  await expect(banner).toContainText('البحث والمحاكاة فقط');
+});
