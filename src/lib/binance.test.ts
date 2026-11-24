@@ -179,6 +179,9 @@ test('Binance preserves explicit crypto, commodity, and unknown contract metadat
   const unknown = snapshot.quotes.find((item) => item.underlying === 'RAT');
   assert.equal(crypto?.exerciseStyle, 'EUROPEAN');
   assert.equal(crypto?.settlementStyle, 'CASH');
+  assert.equal(crypto?.contractEconomics?.premium.multiplier, 1);
+  assert.equal(crypto?.contractEconomics?.exercise.cashSettlement?.multiplier, 10);
+  assert.equal(crypto?.contractEconomics?.provenance.status, 'PROVIDER_VERIFIED');
   assert.equal(crypto?.pricingModel, undefined);
   assert.ok(crypto?.pricingReason?.includes('unit is underlying quantity per contract'));
   assert.equal(crypto?.iv, 0.5);
