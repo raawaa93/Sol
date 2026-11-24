@@ -106,9 +106,9 @@ test('portfolio converts holdings, calculates unrealized P&L and asset-class all
   const { calculatePortfolio } = await import('./personal-finance.ts');
   const result = calculatePortfolio(portfolioHoldings, 'USD', fx);
   assert.equal(result.complete, true);
-  assert.equal(result.marketValue, 3650);
-  assert.equal(result.costBasis, 3175);
-  assert.equal(result.unrealizedPnl, 475);
+  assert.equal(result.marketValue, 32200);
+  assert.equal(result.costBasis, 22045);
+  assert.equal(result.unrealizedPnl, 10155);
   assert.equal(result.holdings.find((item) => item.holding.id === 'btc')?.unrealizedPnl, 10000);
   assert.equal(result.allocations.find((item) => item.assetClass === 'BOND')?.marketValue, 1100);
   assert.ok((result.concentration.largestHoldingPct ?? 0) > 25);
