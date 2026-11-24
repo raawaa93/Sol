@@ -43,7 +43,8 @@ export interface NetWorthSummary {
   complete: boolean;
   missingFxCurrencies: string[];
   byCurrency: Array<{ currency: string; assets: number; liabilities: number; netWorth: number }>;
-  convertedBalances: Array<FinancialBalance & { reportingAmount: number | null; fxRate: number | null; fxSource: string | null; fxObservedAt: string | null }>;\n  fxUsage: FxUsage[];
+  convertedBalances: Array<FinancialBalance & { reportingAmount: number | null; fxRate: number | null; fxSource: string | null; fxObservedAt: string | null }>;
+  fxUsage: FxUsage[];
 }
 
 export interface CashFlowTransaction {
@@ -65,6 +66,7 @@ export interface CashFlowSummary {
   missingFxCurrencies: string[];
   byCategory: Array<{ category: string; kind: 'INCOME' | 'EXPENSE'; amount: number }>;
   excludedTransfers: number;
+  fxUsage: FxUsage[];
 }
 
 function normalizeCurrency(value: string): string {
@@ -146,6 +148,7 @@ export function calculateNetWorth(
   const ids = new Set<string>();
   const currencyTotals = new Map<string, { assets: number; liabilities: number }>();
   const convertedBalances: NetWorthSummary['convertedBalances'] = [];
+  const fxUsage = new Map<string, FxUsage>();
   const missing = new Set<string>();
   let assets = 0;
   let liabilities = 0;
@@ -163,9 +166,21 @@ export function calculateNetWorth(
 
     const converted = getConversion(balance.amount, currency, target, fxRates);
     if (!converted) missing.add(currency);
-    else if (balance.kind === 'ASSET') assets += converted.amount;
-    else liabilities += converted.amount;
-    convertedBalances.push({ ...balance, reportingAmount: converted?.amount ?? null, fxRate: converted?.rate ?? null });
+    else {
+      if (balance.kind === 'ASSET') assets += converted.amount;
+      else liabilities += converted.amount;
+      if (converted.rateSource !== 'IDENTITY' && converted.rateObservedAt) {
+        const key = `${currency}/${target}`;
+        fxUsage.set(key, { sourceCurrency: currency, reportingCurrency: target, rate: converted.rate, source: converted.rateSource, observedAt: converted.rateObservedAt });
+      }
+    }
+    convertedBalances.push({
+      ...balance,
+      reportingAmount: converted?.amount ?? null,
+      fxRate: converted?.rate ?? null,
+      fxSource: converted && converted.rateSource !== 'IDENTITY' ? converted.rateSource : null,
+      fxObservedAt: converted?.rateObservedAt ?? null,
+    });
   }
 
   const complete = missing.size === 0;
@@ -180,6 +195,7 @@ export function calculateNetWorth(
       currency, ...totals, netWorth: totals.assets - totals.liabilities,
     })),
     convertedBalances,
+    fxUsage: [...fxUsage.values()],
   };
 }
 
@@ -195,7 +211,8 @@ export function calculateMonthlyCashFlow(
   validateFxRates(fxRates);
   const ids = new Set<string>();
   const missing = new Set<string>();
-  const categories = new Map<string, { INCOME: number; EXPENSE: number }>();\n  const fxUsage = new Map<string, FxUsage>();
+  const categories = new Map<string, { INCOME: number; EXPENSE: number }>();
+  const fxUsage = new Map<string, FxUsage>();
   let income = 0;
   let expenses = 0;
   let excludedTransfers = 0;
@@ -217,6 +234,10 @@ export function calculateMonthlyCashFlow(
     if (!converted) {
       missing.add(currency);
       continue;
+    }
+    if (converted.rateSource !== 'IDENTITY' && converted.rateObservedAt) {
+      const key = `${currency}/${target}`;
+      fxUsage.set(key, { sourceCurrency: currency, reportingCurrency: target, rate: converted.rate, source: converted.rateSource, observedAt: converted.rateObservedAt });
     }
     if (!transaction.category.trim()) throw new Error('Cash-flow category is required');
     if (transaction.kind === 'INCOME') income += converted.amount;
@@ -243,5 +264,6 @@ export function calculateMonthlyCashFlow(
       return [{ category, kind, amount: totals[kind] }];
     }).sort((a, b) => a.kind.localeCompare(b.kind) || a.category.localeCompare(b.category)),
     excludedTransfers,
+    fxUsage: [...fxUsage.values()],
   };
 }
