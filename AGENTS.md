@@ -1,6 +1,6 @@
 # Mandatory project identity gate
 
-**Before any work, read [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md).** It is the canonical project lock for this repository. Confirm the repository is raawaa93/Sol and the task belongs to Volterra. Do not import unrelated historical project context. Follow the scope, legal gate and change-control protocol in PROJECT_CONTEXT.md.
+**Before any work, read [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md).** It is the canonical project lock for this repository. Confirm the repository is raawaa93/Sol and the task belongs to Sol Financial and Investment Intelligence. Do not import unrelated historical project context. Follow the scope, legal gate and change-control protocol in PROJECT_CONTEXT.md.
 
 ---
 
