@@ -365,7 +365,7 @@ test('mobile Greeks and paper journal use readable cards instead of wide tables'
   await expect(page.locator('.greeks-table-wrap')).toBeHidden();
   await expect(greekList.locator('.greeks-mobile-card')).toHaveCount(5);
   await expect(greekList).toContainText('Delta');
-  await expect(greekList).toContainText('القيمة لكل عقد');
+  await expect(greekList).toContainText('القيمة لكل وحدة مرجعية');
   await expect(greekList).toContainText('حساسية الكمية الحالية');
 
   await page.getByRole('button', { name: 'أضف إلى الدفتر التجريبي' }).click();
