@@ -61,7 +61,7 @@ test('CSV asset-class and venue filters isolate traditional listed option contra
   const put = ['SPY-261230-680-P', 'SPY', expiry, '680', 'PUT', '4.1', '4.3', '4.2', '24%', '690', '100', new Date().toISOString(), 'EQUITY', 'ISE', '', 'USD', '100', 'AMERICAN', 'PHYSICAL'].join(',');
   const csv = `${header}\n${call}\n${put}`;
 
-  await page.locator('input[type="file"]').setInputFiles({
+  await page.locator('section').filter({ hasText: 'MULTI-ASSET OPTIONS ·' }).locator('input[type="file"]').setInputFiles({
     name: 'spy-options.csv',
     mimeType: 'text/csv',
     buffer: Buffer.from(csv),
@@ -100,7 +100,7 @@ test('asset-class selector covers every canonical class and unknown imports with
     symbol, underlying, expiry, spot, 'CALL', '2.1', '2.3', '2.2', '25%', spot, '1', timestamp,
     assetClass, venue, 'USD', 'USD', '1',
   ].join(','));
-  await page.locator('input[type="file"]').setInputFiles({
+  await page.locator('section').filter({ hasText: 'MULTI-ASSET OPTIONS ·' }).locator('input[type="file"]').setInputFiles({
     name: 'all-asset-classes.csv',
     mimeType: 'text/csv',
     buffer: Buffer.from([header, ...rows].join('\n')),
@@ -147,7 +147,7 @@ test('CSV import stays local and replays only an explicitly scaled supported cry
   ].join(',');
   const csv = `${header}\n${first}\n${second}`;
 
-  await page.locator('input[type="file"]').setInputFiles({
+  await page.locator('section').filter({ hasText: 'MULTI-ASSET OPTIONS ·' }).locator('input[type="file"]').setInputFiles({
     name: 'btc-history.csv',
     mimeType: 'text/csv',
     buffer: Buffer.from(csv),
@@ -289,7 +289,7 @@ test('mismatched contract multiplier keeps quotes visible but blocks per-contrac
     ['CL-UNVERIFIED-70-C', 'CL', expiry, '70', 'CALL', '2.0', '2.2', '2.1', '20%', '69', '1', firstTime, 'ENERGY', 'CME', 'FUTURE', '69', '3%', 'EUROPEAN', 'PHYSICAL', 'USD', 'USD', '1000'],
     ['CL-UNVERIFIED-70-C', 'CL', expiry, '70', 'CALL', '2.1', '2.3', '2.2', '20%', '69', '1', secondTime, 'ENERGY', 'CME', 'FUTURE', '69', '3%', 'EUROPEAN', 'PHYSICAL', 'USD', 'USD', '1000'],
   ].map((row) => row.join(','));
-  await page.locator('input[type="file"]').setInputFiles({
+  await page.locator('section').filter({ hasText: 'MULTI-ASSET OPTIONS ·' }).locator('input[type="file"]').setInputFiles({
     name: 'unverified-futures-scale.csv',
     mimeType: 'text/csv',
     buffer: Buffer.from([header, ...rows].join('\n')),
@@ -315,7 +315,7 @@ test('CSV cannot spoof a Demo venue label to unlock per-contract P&L', async ({ 
   const expiry = new Date(Date.now() + 45 * 86_400_000).toISOString();
   const header = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,spot,unit,timestamp,assetClass,venue,underlyingKind,exerciseStyle,settlementStyle,quoteAsset,settlementAsset,contractMultiplier,riskFreeRate,carryYield';
   const row = ['BTC-CSV-DEMO-100-C', 'BTC', expiry, '100', 'CALL', '2.0', '2.2', '2.1', '20%', '100', '1', new Date().toISOString(), 'CRYPTO', 'DEMO', 'SPOT', 'EUROPEAN', 'CASH', 'USDT', 'USDT', '1', '0%', '0%'].join(',');
-  await page.locator('input[type="file"]').setInputFiles({
+  await page.locator('section').filter({ hasText: 'MULTI-ASSET OPTIONS ·' }).locator('input[type="file"]').setInputFiles({
     name: 'spoofed-demo-venue.csv',
     mimeType: 'text/csv',
     buffer: Buffer.from([header, row].join('\n')),
