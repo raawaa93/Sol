@@ -97,6 +97,24 @@ async function main() {
   console.log(`Published app shell: HTTP ${pageResponse.status}, ${pageMs} ms.`);
 
   const pageBase = new URL(`${pageUrl.pathname.replace(/\/?$/, '/')}`, pageUrl.origin);
+  const moduleSource = pageHtml.match(/<script[^>]+type="module"[^>]+src="([^"]+)"/)?.[1]
+    ?? pageHtml.match(/<script[^>]+src="([^"]+)"[^>]+type="module"/)?.[1];
+  const stylesheetHref = pageHtml.match(/<link[^>]+rel="stylesheet"[^>]+href="([^"]+)"/)?.[1]
+    ?? pageHtml.match(/<link[^>]+href="([^"]+)"[^>]+rel="stylesheet"/)?.[1];
+  if (!moduleSource || !stylesheetHref) {
+    throw new Error('Published app shell is missing its module script or stylesheet reference.');
+  }
+  for (const [label, assetPath] of [['JavaScript', moduleSource], ['CSS', stylesheetHref]]) {
+    const assetUrl = new URL(assetPath, pageUrl.origin);
+    if (!assetUrl.pathname.startsWith(pageBase.pathname)) {
+      throw new Error(`Published ${label} asset escaped the GitHub Pages project path: ${assetUrl.pathname}`);
+    }
+    const assetResponse = await fetch(assetUrl, { signal: timeoutSignal() });
+    if (!assetResponse.ok) {
+      throw new Error(`Published ${label} asset failed (HTTP ${assetResponse.status}): ${assetUrl.pathname}`);
+    }
+    console.log(`Published ${label} asset: HTTP ${assetResponse.status}, ${assetUrl.pathname}.`);
+  }
   const discoveryUrl = new URL('.well-known/ard.json', pageBase);
   const discoveryResponse = await fetch(discoveryUrl, {
     headers: { Accept: 'application/json' },

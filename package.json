@@ -15,7 +15,8 @@
     "perf:bundle": "node scripts/check-bundle-budget.mjs",
     "perf:lighthouse": "lhci autorun",
     "perf:lighthouse:production": "lhci autorun --config=lighthouserc.production.json",
-    "preview": "vite preview --host 0.0.0.0"
+    "preview": "vite preview --host 0.0.0.0",
+    "build:pages": "tsc -b && vite build --mode pages && node scripts/copy-pages-dotfiles.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
