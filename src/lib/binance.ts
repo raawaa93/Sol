@@ -349,7 +349,7 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       settlementStyle: settlementStyle === 'UNKNOWN' ? undefined : settlementStyle,
       quoteAsset: symbolInfo.quoteAsset ?? contractInfo?.quoteAsset,
       settlementAsset: contractInfo?.settleAsset,
-      contractMultiplier: unit,
+      // Binance publishes `unit` (underlying quantity per contract), not a separate contractMultiplier.
       carryYield,
       riskFreeRate,
       pricingStatus: modelGreeks ? 'ASSUMED' : 'OBSERVED_ONLY',
