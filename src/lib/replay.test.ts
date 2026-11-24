@@ -7,7 +7,12 @@ function quote(timestamp: string, overrides: Partial<OptionQuote> = {}): OptionQ
   return {
     id: 'XAU-261124-4000-C',
     symbol: 'XAU-261124-4000-C',
-    underlying: 'XAU',
+    underlying: 'BTC',
+    assetClass: 'CRYPTO',
+    venue: 'BINANCE',
+    underlyingKind: 'SPOT',
+    exerciseStyle: 'EUROPEAN',
+    settlementStyle: 'CASH',
     expiry: '2026-11-25T21:00:00.000Z',
     daysToExpiry: 1,
     strike: 4000,
