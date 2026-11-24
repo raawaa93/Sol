@@ -75,3 +75,23 @@ jobs:
           path: .lighthouseci/
           include-hidden-files: true
           retention-days: 14
+
+  production-smoke:
+    name: Weekly published-site smoke test
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    env:
+      PUBLISHED_URL: https://raawaa93.github.io/Sol
+      BINANCE_PROXY_URL: https://oyoyozdugicmnkfhjovo.supabase.co/functions/v1/volterra-binance-market-data
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Verify published app and market-data proxy
+        run: npm run smoke:production
