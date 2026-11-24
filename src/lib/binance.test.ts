@@ -305,10 +305,10 @@ test('Binance commodity options preserve perpetual-index mechanics and do not re
     fetchedAt: now,
     exchangeInfo: {
       serverTime: now,
-      optionContracts: [{ baseAsset: 'XAU', quoteAsset: 'USDT', underlying: 'XAUUSDT', settleAsset: 'USDT' }],
+      optionContracts: [{ baseAsset: 'XAU', quoteAsset: 'USDT', underlying: 'XAUUSDT', settleAsset: 'USDT', contractType: 'TRADFI_OPTIONS', underlyingType: 'COMMODITY' }],
       optionSymbols: [{
         symbol, underlying: 'XAUUSDT', quoteAsset: 'USDT', side: 'CALL', strikePrice: 4000,
-        expiryDate: expiry, unit: 1, status: 'TRADING', contractType: 'TRADFI_OPTIONS', underlyingType: 'COMMODITY',
+        expiryDate: expiry, unit: 1, status: 'TRADING',
       }],
     },
     marks: [{ symbol, markPrice: 25, markIV: 0.22, delta: 0.61, gamma: 0.001, theta: -1.2, vega: 4.2 }],
