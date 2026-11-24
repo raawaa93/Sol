@@ -209,7 +209,7 @@ test('CSV does not apply a spot model to American equity options without a valid
   const csv = [
     'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,spot,unit,timestamp,assetClass,venue,underlyingKind,exerciseStyle,settlementStyle',
     'SPY-261230-700-C,SPY,2026-12-30T08:00:00Z,700,CALL,5.1,5.3,5.2,22%,690,100,2026-11-24T02:00:00Z,EQUITY,CBOE,SPOT,AMERICAN,PHYSICAL',
-  ].join('\\n');
+  ].join('\n');
   const result = parseOptionsCsv(csv);
   assert.equal(result.quotes.length, 1, JSON.stringify(result.warnings));
   assert.equal(result.quotes[0].pricingStatus, 'OBSERVED_ONLY');
