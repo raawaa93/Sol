@@ -90,6 +90,7 @@ No second execution venue for a Syrian resident has been verified for global lis
 - AGENTS.md — repository-wide agent instructions.
 - README.md — current user-visible behavior and test commands.
 - docs/UNIVERSAL_OPTIONS_RESEARCH_2026-11-24.md — market/platform/data architecture research.
+- docs/DATA_PROVIDER_EVALUATION_2026-11-24.md — verified data-provider coverage, pricing, freshness and licensing evaluation.
 - docs/PLATFORM_ELIGIBILITY_2026-11-24.md — venue and product eligibility.
 - docs/SYRIA_RESIDENCY_AND_SANCTIONS_2026-11-24.md — residency, VPN and legal context.
 - docs/PRODUCT_REVIEW.md — decision and product roadmap.
