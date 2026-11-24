@@ -25,7 +25,7 @@ function standardEquity(overrides: Partial<ContractEconomics> = {}): ContractEco
 
 test('validates a standard equity contract with distinct premium and exercise terms', () => {
   const result = validateContractEconomics(standardEquity());
-  assert.equal(result.valid, true);
+  assert.equal(result.valid, true, JSON.stringify(result));
   assert.equal(result.adapterReady, true);
   assert.deepEqual(result.issues, []);
   assert.deepEqual(result.unsupportedReasons, []);
@@ -125,7 +125,7 @@ test('cross-currency premium, exercise cash or deliverables require explicit FX 
       deliverables: [{ type: 'EQUITY', symbol: 'NVDA', amount: 100, currency: 'USDC' }],
     },
   }));
-  assert.equal(premiumMismatch.valid, true);
+  assert.equal(premiumMismatch.valid, true, JSON.stringify(premiumMismatch));
   assert.equal(premiumMismatch.adapterReady, false);
   assert.ok(premiumMismatch.unsupportedReasons.includes('CROSS_CURRENCY_TOTALS_REQUIRE_FX'));
 
@@ -312,6 +312,6 @@ test('currency identifiers support settlement assets without implying cross-asse
       },
     },
   }));
-  assert.equal(usdc.valid, true);
+  assert.equal(usdc.valid, true, JSON.stringify(usdc));
   assert.equal(usdc.adapterReady, true);
 });
