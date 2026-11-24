@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { blackScholes, getSpreadPct } from './options.ts';
 import { escapeCsvCell, MAX_CSV_FILE_BYTES, parseOptionsCsv } from './csv.ts';
+import { serializeContractEconomicsCsvV2 } from './contract-economics-csv.ts';
+import type { ContractEconomics } from './types.ts';
 
 const header = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,delta,gamma,theta,vega,openInterest,volume,spot,unit,timestamp';
 
@@ -274,4 +276,47 @@ test('CSV does not apply a spot model to American equity options without a valid
   assert.equal(result.quotes[0].pricingStatus, 'OBSERVED_ONLY');
   assert.equal(result.quotes[0].pricingModel, undefined);
   assert.ok(result.quotes[0].pricingReason?.includes('European'));
+});
+
+
+test('CSV v2 import restores canonical economics as user-asserted, never provider-verified', () => {
+  const economics: ContractEconomics = {
+    premium: { multiplier: 100, quoteCurrency: 'USD', priceUnit: 'PER_UNDERLYING_UNIT' },
+    exercise: {
+      style: 'AMERICAN',
+      settlement: 'PHYSICAL',
+      settlementCurrency: 'USD',
+      aggregateExerciseCash: { basis: 'STRIKE_MULTIPLIER', currency: 'USD', multiplier: 100 },
+      deliverables: [
+        { type: 'EQUITY', symbol: 'NVDA', amount: 10, currency: 'USD' },
+        { type: 'CASH', currency: 'USD', amount: 25 },
+      ],
+    },
+    provenance: {
+      status: 'PROVIDER_VERIFIED',
+      provider: 'REFERENCE_FIXTURE',
+      sourceRef: 'fixture://adjusted-equity-contract',
+      retrievedAt: '2026-11-24T09:00:00.000Z',
+    },
+  };
+  const canonical = serializeContractEconomicsCsvV2(economics);
+  const headers = [
+    'symbol', 'underlying', 'expiry', 'strike', 'type', 'bid', 'ask', 'markPrice', 'iv', 'spot', 'unit', 'timestamp',
+    ...Object.keys(canonical),
+  ];
+  const values = [
+    'SPY-261230-100-C', 'SPY', '2026-12-30T08:00:00Z', '100', 'CALL', '2', '2.2', '2.1', '25%', '100', '100', '2026-11-24T09:00:00Z',
+    ...Object.values(canonical),
+  ];
+  const csv = [
+    headers.map(escapeCsvCell).join(','),
+    values.map(escapeCsvCell).join(','),
+  ].join('\\n');
+  const result = parseOptionsCsv(csv, Date.parse('2026-11-24T09:01:00Z'));
+
+  assert.equal(result.quotes.length, 1, result.warnings.join(' '));
+  assert.deepEqual(result.quotes[0].contractEconomics?.premium, economics.premium);
+  assert.deepEqual(result.quotes[0].contractEconomics?.exercise, economics.exercise);
+  assert.equal(result.quotes[0].contractEconomics?.provenance.status, 'USER_ASSERTED');
+  assert.ok(result.warnings.some((warning) => warning.includes('USER_ASSERTED')));
 });
