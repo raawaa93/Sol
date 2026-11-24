@@ -138,7 +138,7 @@ These projects are candidates to study or integrate selectively, not a mandate t
 
 | Project | Useful role | Decision / caution |
 |---|---|---|
-| [OpenBB](https://github.com/openbb-finance/OpenBB) | Financial data provider framework, typed Python client, REST and MCP | Strong data/research adapter candidate. It is a framework, not a free universal feed; each provider has its own credentials, limits and license. |
+| [OpenBB](https://github.com/openbq-org/OpenBB) | Financial data provider framework, typed Python client, REST and MCP | Strong data/research adapter candidate. It is a framework, not a free universal feed; each provider has its own credentials, limits and license. |
 | [FinRobot](https://github.com/AI4Finance-Foundation/FinRobot) | Financial research pipelines, analyst roles, valuation and report patterns | Study pipelines and deterministic operators. Do not import its full desktop stack into the current web app. |
 | [Wealthfolio](https://github.com/wealthfolio/wealthfolio) | Private portfolio/net-worth/spending tracker with AI/MCP integration | Strong UX and privacy reference. AGPL-3.0: review license obligations before code reuse. |
 | [Ghostfolio](https://github.com/ghostfolio/ghostfolio) | Wealth tracking and portfolio analytics | Useful comparison for asset/activity model and performance; review license and provider dependencies. |
@@ -244,3 +244,19 @@ A reviewer agent must challenge the recommendation, but automated agreement betw
 6. Only then add portfolio analytics, research ingestion and the orchestrator.
 
 **Acceptance rule:** Sol is not considered a reliable financial manager until calculations are independently tested, source provenance is inspectable, private data is protected, and recommendations show uncertainty and downside. A polished chat interface alone does not satisfy this bar.
+
+
+## 13. Evaluation research added on 24 November 2026
+
+Recent work reinforces that financial agents must be evaluated on process quality and evidence grounding, not persuasive prose or raw portfolio returns alone.
+
+- **FinSearchComp (ICLR 2026):** tests time-sensitive retrieval, historical lookup and complex financial investigations. Its 635-question benchmark evaluates real financial search and reasoning workflows. Use it as a research-evaluation reference for source retrieval and date correctness. https://proceedings.iclr.cc/paper_files/paper/2026/hash/4d42358702dff82e1436550a05ade260-Abstract-Conference.html
+- **FinSkillBench (June 2026):** evaluates portfolio construction, risk management and fundamental analysis across 2,603 episodes. Its reported results favor curated procedural skills over self-generated skill prompts. This supports versioned, tested skill playbooks with executable tools. https://arxiv.org/abs/2608.18099
+- **InvestLogicBench (August 2026):** emphasizes investor-profile conditioning and a Profile → Events → Reasoning → Decision → Outcome trace. The paper reports that plausible reasoning can coexist with weak event grounding. Adopt this trace as a design principle for Sol's recommendation journal. https://arxiv.org/abs/2608.06108
+- **OpenPM-Bench:** an auditable point-in-time portfolio-management benchmark with leakage controls, point-in-time index constituents and deterministic baselines. Evaluate portfolio recommendations against this kind of methodology rather than a single backtest return. https://github.com/aslcai/OpenPM-Bench
+- **PortBench (May 2026):** evaluates correlation-aware, multi-asset portfolio decisions and investor-profile alignment across stress regimes. Its reported findings caution that procedural compliance or good static QA do not guarantee robust portfolio outcomes. https://arxiv.org/abs/2605.27887
+- **Awesome Finance Agents:** a living map of 278 projects across data, investment research, multi-agent systems, accounting, risk, personal finance and evaluation. Use it as a discovery index, not as an endorsement or integration list. https://finance-agents.dev/
+
+### Implication for Sol
+
+Build an evaluation harness before scaling agent count or adding model providers. Each test case should include an investor profile, a dated evidence snapshot, a decision task, expected tool use, independently computed numerical checks, a rubric for evidence quality and a delayed outcome. Track source correctness, numerical accuracy, profile alignment, downside coverage, uncertainty calibration and privacy behavior. Never optimize the assistant solely for backtested returns or user satisfaction.
