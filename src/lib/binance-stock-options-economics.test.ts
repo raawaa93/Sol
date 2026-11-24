@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { mapBinanceStockOptionEconomics } from './binance-stock-options-economics.ts';
+import { validateContractEconomics } from './contract-economics.ts';
 
 const base = {
   symbol: 'NVDA260930C00100000',
@@ -22,6 +23,8 @@ test('standard Binance stock option maps premium multiplier and delivered shares
   assert.equal(economics.premium.priceUnit, 'PER_UNDERLYING_UNIT');
   assert.equal(economics.exercise.settlement, 'UNKNOWN');
   assert.equal(economics.exercise.style, 'UNKNOWN');
+  assert.equal(validateContractEconomics(economics).valid, true);
+  assert.equal(validateContractEconomics(economics).adapterReady, false);
   assert.deepEqual(economics.exercise.deliverables, [
     { type: 'EQUITY', symbol: 'NVDA', amount: 100, currency: 'USD' },
   ]);
