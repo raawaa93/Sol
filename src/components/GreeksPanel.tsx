@@ -23,7 +23,7 @@ function greekSource(key: GreekKey, quote: OptionQuote, dataMode: DataMode): str
 }
 
 export default function GreeksPanel({ quote, quantity, dataMode }: GreeksPanelProps) {
-  const scaleIssue = getContractScaleIssue(quote);
+  const scaleIssue = getContractScaleIssue(quote, dataMode);
   const hasExplicitConsistentContractScale = scaleIssue === undefined;
   const scaleIssueMessage = scaleIssue ? getContractScaleIssueMessage(scaleIssue) : '';
   const positionUnits = hasExplicitConsistentContractScale ? Math.max(0, Number.isFinite(quantity) ? quantity : 0) * quote.unit : 0;
