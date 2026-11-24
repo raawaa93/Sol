@@ -25,7 +25,7 @@
 - https://www.okx.com/en-gb/help/us-risk-and-compliance-disclosures
 - https://www.interactivebrokers.com/en/accounts/open-account-country-list.php
 
-**هل Binance تكفي؟** تغطي الآن خيارات الكريبتو، وبعض السلع (XAU/XAG)، وخيارات أسهم/ETFs أمريكية long-only بتسوية مادية؛ لكنها لا توفر كامل نطاق خيارات المؤشرات والفائدة والعملات والطاقة والزراعة، ولا توفر عبر Stock Options API أسعاراً/Greeks/IV. أهلية المنتج الأمريكي للمقيم السوري تحتاج تحققاً منفصلاً. كتابة Crypto Options متاحة حالياً لـBTC وETH فقط، وتتطلب هامشاً ويمكن تصفيتها؛ BNB/XRP/SOL/DOGE لا تدعم الكتابة حالياً. Commodity Options على XAU/XAG متاحة للتجزئة long-only. الحساب العادي لا يطبق Portfolio Margin أو Risk Netting بين أرجل الاستراتيجيات، والأوامر Limit فقط؛ لذلك لا نعتبر Binance مناسبة لاستراتيجيات متعددة الأرجل تعتمد على تعويض الهامش.
+**هل Binance تكفي؟** تغطي الآن خيارات الكريبتو، وبعض السلع (XAU/XAG)، وخيارات أسهم/ETFs أمريكية long-only بتسوية مادية؛ لكنها لا توفر كامل نطاق خيارات المؤشرات والفائدة والعملات والطاقة والزراعة، ولا توفر عبر Stock Options API أسعاراً/Greeks/IV. خيارات الأسهم أمريكية النمط مع تمرين يدوي وAuto-liquidation عند تفويت cutoff. أهلية المنتج الأمريكي للمقيم السوري تحتاج تحققاً منفصلاً. كتابة Crypto Options متاحة حالياً لـBTC وETH فقط، وتتطلب هامشاً ويمكن تصفيتها؛ BNB/XRP/SOL/DOGE لا تدعم الكتابة حالياً. Commodity Options على XAU/XAG متاحة للتجزئة long-only. الحساب العادي لا يطبق Portfolio Margin أو Risk Netting بين أرجل الاستراتيجيات، والأوامر Limit فقط؛ لذلك لا نعتبر Binance مناسبة لاستراتيجيات متعددة الأرجل تعتمد على تعويض الهامش.
 
 المصادر:
 - https://www.binance.com/en-UZ/support/faq/detail/dc9e52b4440b48bd900a767cc5024c84
