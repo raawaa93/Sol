@@ -1084,6 +1084,9 @@ function App() {
                   ['عقود لها حجم تداول', quoteDataCoverage.volumeAvailable],
                   ['مواصفات اقتصادية موثقة', quoteDataCoverage.providerVerifiedEconomics],
                   ['عقود وصلها BookTicker', quoteDataCoverage.bookTickerAvailable],
+                  ['عقود وصلها Mark Price حي', quoteDataCoverage.liveMarkPriceAvailable],
+                  ['Bid IV متاح', quoteDataCoverage.bidIvAvailable],
+                  ['Ask IV متاح', quoteDataCoverage.askIvAvailable],
                 ].map(([label, count]) => (
                   <div className="data-coverage-item" key={label}>
                     <strong>{integerFormat.format(Number(count))}<small> / {integerFormat.format(quoteDataCoverage.contracts)}</small></strong>
