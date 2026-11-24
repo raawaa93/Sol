@@ -63,16 +63,18 @@ test('replay applies per-side premium fees and never uses mark price for executi
   assert.ok(Math.abs(result.trades[0].netPnl - 1.978) < 1e-12);
 });
 
-test('replay refuses missing source timestamps, invalid units, crossed books and wide spreads', () => {
+test('replay refuses missing timestamps, invalid units, mismatched contract scales, crossed books and wide spreads', () => {
   const result = replayLongOptionSnapshots([
     quote('', { sourceTimestamp: undefined }),
     quote('2026-11-24T10:00:00.000Z', { unit: 0 }),
+    quote('2026-11-24T10:00:00.000Z', { contractMultiplier: 100 }),
     quote('2026-11-24T10:00:00.000Z', { bid: 11, ask: 10 }),
     quote('2026-11-24T10:00:00.000Z', { bid: 1, ask: 20 }),
     quote('2026-11-24T11:00:00.000Z'),
   ], { ...config, maxSpreadPct: 20 });
   assert.equal(result.skipped.missingTimestamp, 1);
   assert.equal(result.skipped.invalidUnit, 1);
+  assert.equal(result.skipped.invalidContractScale, 1);
   assert.equal(result.skipped.invalidQuote, 1);
   assert.equal(result.skipped.wideSpread, 1);
   assert.equal(result.trades.length, 0);
