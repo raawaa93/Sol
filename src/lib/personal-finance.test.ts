@@ -39,7 +39,7 @@ test('net worth uses inverse FX rates and never silently treats missing FX as ze
 test('net worth rejects duplicate IDs, negative balances and invalid dates', () => {
   assert.throws(() => calculateNetWorth([balances[0], balances[0]], 'USD', fx), /unique/);
   assert.throws(() => calculateNetWorth([{ ...balances[0], amount: -1 }], 'USD'), /non-negative/);
-  assert.throws(() => calculateNetWorth([{ ...balances[0], asOf: 'bad-date' }], 'USD'), /valid timestamp/);
+  assert.throws(() => calculateNetWorth([{ ...balances[0], asOf: 'bad-date' }], 'USD'), /ISO timestamp/);
 });
 
 const transactions: CashFlowTransaction[] = [
