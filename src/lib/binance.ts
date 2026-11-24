@@ -227,6 +227,7 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       continue;
     }
 
+    const hasUnitOnePremiumParity = unit === 1;
     const daysToExpiry = Math.max(0, (expiryDate - serverTime) / 86_400_000);
     const mark = markBySymbol.get(symbol);
     const ticker = tickerBySymbol.get(symbol);
@@ -280,7 +281,7 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       rate: riskFreeRate,
       carryYield,
     };
-    const iv = observedIv ?? (isCrypto && referencePrice !== undefined
+    const iv = observedIv ?? (isCrypto && hasUnitOnePremiumParity && referencePrice !== undefined
       ? impliedVolatilityForContract(referencePrice, pricingInputs)
       : undefined);
     if (iv === undefined) {
@@ -288,13 +289,15 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       continue;
     }
 
-    const pricingResult = isCrypto ? priceOption({ ...pricingInputs, volatility: iv })
-      : { status: 'UNSUPPORTED' as const, reason: isCommodity
-        ? 'Underlying is the Binance TradFi Perpetual Contract Index; no validated spot or futures pricing model is applied.'
-        : 'Underlying type and contract mechanics are not validated for analytical pricing.' };
+    const pricingResult = isCrypto && hasUnitOnePremiumParity ? priceOption({ ...pricingInputs, volatility: iv })
+      : { status: 'UNSUPPORTED' as const, reason: isCrypto && !hasUnitOnePremiumParity
+        ? 'Binance unit is underlying quantity per contract, not a documented premium multiplier. Premium price and deliverable scales are not separated yet.'
+        : isCommodity
+          ? 'Underlying is the Binance TradFi Perpetual Contract Index; no validated spot or futures pricing model is applied.'
+          : 'Underlying type and contract mechanics are not validated for analytical pricing.' };
     const modelGreeks = pricingResult.status === 'SUPPORTED' ? pricingResult.greeks : undefined;
     const priceSource = observedMark ? 'MARK' : twoSidedMid ? 'MID' : lastPrice ? 'LAST' : bid > 0 && !crossedQuote ? 'BID' : ask > 0 && !crossedQuote ? 'ASK' : 'MODEL';
-    const markPrice = observedPrice ?? modelGreeks?.price;
+    const markPrice = observedPrice ?? (hasUnitOnePremiumParity ? modelGreeks?.price : undefined);
     if (markPrice === undefined || markPrice <= 0) {
       skipped += 1;
       continue;
