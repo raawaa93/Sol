@@ -402,7 +402,7 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
 }
 
 export function downloadCsvTemplate(): void {
-  const template = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,delta,gamma,theta,vega,rho,openInterest,openInterestUsd,volume,volumeQuote,spot,unit,timestamp';
+  const template = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,delta,gamma,theta,vega,rho,openInterest,openInterestUsd,volume,volumeQuote,spot,unit,timestamp,assetClass,venue,underlyingKind,quoteAsset,settlementAsset,contractMultiplier,exerciseStyle,settlementStyle,expiryTimezone';
   const blob = new Blob([template], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
