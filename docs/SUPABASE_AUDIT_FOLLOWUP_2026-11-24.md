@@ -129,6 +129,22 @@ A second read-only pass checked effective schema privileges, function execution 
 
 The active project is secure against direct `anon`/`authenticated` table access in the audited schemas, but it is not a Sol-only backend. The safest next step remains to recover the authoritative owner/repository for the 19 unmatched migrations and obtain a tested off-site logical backup before any legacy cleanup. No paid resource was created and no production DDL was applied.
 
+## Executed Sol-only cleanup — 24 November 2026
+
+The production cleanup migration `20261124052328_remove_non_sol_legacy_schemas_20261124` was applied successfully.
+
+- Dropped the legacy `commerce` and `rawaa_store` schemas with CASCADE, including Commerce orders/events/rate limits and Rawaa orders, Telegram pairing/recipient records, outbox, rate-limit and marketing-preference tables and their schema-local functions/triggers.
+- The two Rawaa Telegram records that existed before cleanup were intentionally removed under the user's explicit instruction.
+- The remaining application schema is `public`, with only `volterra_rate_limit_windows` and `volterra_check_rate_limit`. The rate-limit table and its 35 existing rows were preserved.
+- Supabase Auth remains intact (one user, existing identities/sessions); Storage, Realtime, Vault and Supabase-managed schemas remain intact. There are no storage buckets or Vault secrets.
+- Regenerated database types contain only the Volterra table and rate-limit RPC.
+- All six legacy Rawaa/Commerce Edge Function deployments were replaced with a minimal HTTP 410 retirement handler and `verify_jwt=true`. This blocks their prior behavior and public unauthenticated invocation. The current Supabase connector exposes deployment but no Edge Function delete operation, so their function records remain visible as retired deployments; actual removal requires the Supabase Management API/CLI.
+- The Volterra Edge Function remains version 6, active, and unchanged.
+- Historical migration ledger entries were retained as audit history; they do not recreate or activate the removed schemas.
+- No backup was available or created before deletion. The dropped application data is not recoverable through this operation.
+
+This migration is recorded in the repository so the checked-in migration history matches the production cleanup. No paid plan or new project was created.
+
 ## Auth leaked-password warning: Free-plan limitation
 
 Supabase's current Password Security documentation says leaked-password protection is available on Pro and above. The organization is on the Free plan. Therefore this warning cannot be cleared as a no-cost setting in the current plan. No upgrade, billing change, or paid workaround was attempted.
