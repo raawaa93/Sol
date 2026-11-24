@@ -662,3 +662,40 @@ test('Binance explicit underlyingType overrides legacy base-asset heuristics', (
   assert.equal(quote.pricingStatus, 'OBSERVED_ONLY');
   assert.equal(quote.pricingModel, undefined);
 });
+
+
+test('Binance keeps contracts with a valid market price when implied volatility is unavailable', () => {
+  const now = Date.now();
+  const expiry = now + 30 * 86_400_000;
+  const symbol = `BTC-${compactDate(expiry)}-100000-C`;
+  const snapshot = normalizeBinanceSnapshot({
+    fetchedAt: now,
+    exchangeInfo: {
+      serverTime: now,
+      optionContracts: [{
+        baseAsset: 'BTC', quoteAsset: 'USDT', underlying: 'BTCUSDT',
+        settleAsset: 'USDT', underlyingType: 'CRYPTO', contractType: 'CRYPTO_OPTIONS',
+      }],
+      optionSymbols: [{
+        symbol, underlying: 'BTCUSDT', side: 'CALL', strikePrice: 100000,
+        expiryDate: expiry, unit: 10, status: 'TRADING',
+        underlyingType: 'CRYPTO', contractType: 'CRYPTO_OPTIONS',
+      }],
+    },
+    marks: [{ symbol, markPrice: 3 }],
+    tickers: [{ symbol, bidPrice: 2.8, askPrice: 3.2, volume: 0, amount: 0, closeTime: now }],
+    indices: [{ requestedUnderlying: 'BTCUSDT', item: { indexPrice: 100000, time: now } }],
+  });
+
+  assert.equal(snapshot.quotes.length, 1);
+  const quote = snapshot.quotes[0];
+  assert.equal(quote.markPrice, 3);
+  assert.equal(quote.bid, 2.8);
+  assert.equal(quote.ask, 3.2);
+  assert.equal(quote.iv, 0);
+  assert.equal(quote.ivStatus, 'UNAVAILABLE');
+  assert.equal(quote.pricingStatus, 'OBSERVED_ONLY');
+  assert.equal(quote.pricingModel, undefined);
+  assert.ok(!quote.estimatedFields?.includes('iv'));
+  assert.ok(snapshot.warnings.some((warning) => warning.includes('IV غير متاح لـ1 عقد')));
+});
