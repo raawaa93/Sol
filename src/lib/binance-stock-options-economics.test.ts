@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { mapBinanceStockOptionEconomics } from './binance-stock-options-economics.ts';
 import { validateContractEconomics } from './contract-economics.ts';
+import { calculatePremiumCash } from './contract-economics-calculations.ts';
 
 const base = {
   symbol: 'NVDA260930C00100000',
@@ -25,6 +26,18 @@ test('standard Binance stock option maps premium multiplier and delivered shares
   assert.equal(economics.exercise.style, 'UNKNOWN');
   assert.equal(validateContractEconomics(economics).valid, true);
   assert.equal(validateContractEconomics(economics).adapterReady, false);
+  const premium = calculatePremiumCash({ economics, premiumPrice: 1.25, contracts: 3, fees: 0.5 });
+  assert.deepEqual(premium, {
+    ok: true,
+    value: {
+      amount: 375.5,
+      currency: 'USD',
+      premiumAmount: 375,
+      fees: 0.5,
+      contracts: 3,
+      multiplier: 100,
+    },
+  });
   assert.deepEqual(economics.exercise.deliverables, [
     { type: 'EQUITY', symbol: 'NVDA', amount: 100, currency: 'USD' },
   ]);
