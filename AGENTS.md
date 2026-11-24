@@ -1,3 +1,9 @@
+# Mandatory project identity gate
+
+**Before any work, read [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md).** It is the canonical project lock for this repository. Confirm the repository is `raawaa93/Sol` and the task belongs to Volterra. Do not import unrelated historical project context. If project identity is ambiguous, ask before writing or taking external action. Follow the change-control and verification protocol in PROJECT_CONTEXT.md.
+
+---
+
 # Repository-wide operating instructions
 
 ## Product scope
