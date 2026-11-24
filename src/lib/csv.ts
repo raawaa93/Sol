@@ -1,4 +1,5 @@
 import type { AssetClass, ExerciseStyle, OptionQuote, OptionSide, SettlementStyle, Underlying, UnderlyingKind } from './types';
+import { CONTRACT_ECONOMICS_CSV_V2_FIELDS, parseContractEconomicsCsvV2 } from './contract-economics-csv.ts';
 import { inferAssetClass, parseAssetClass } from './asset-class.ts';
 import { impliedVolatilityForContract, priceOption } from './pricing-model.ts';
 
@@ -185,6 +186,16 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
     const row: Record<string, string> = {};
     headers.forEach((header, index) => { row[header] = cells[index] ?? ''; });
     const sourceRowNumber = rowIndex + 2;
+    const canonicalEconomicsFields = Object.fromEntries(
+      CONTRACT_ECONOMICS_CSV_V2_FIELDS.map((field) => [field, row[normalizeHeader(field)] ?? '']),
+    );
+    const hasCanonicalEconomicsFields = Object.values(canonicalEconomicsFields).some((value) => value.trim() !== '');
+    const canonicalEconomics = hasCanonicalEconomicsFields
+      ? parseContractEconomicsCsvV2(canonicalEconomicsFields)
+      : undefined;
+    if (canonicalEconomics?.warning) {
+      addRowWarning(`الصف ${sourceRowNumber}: ${canonicalEconomics.warning}`);
+    }
 
     const symbol = readField(row, ['symbol', 'contract', 'instrument']) ?? '';
     const parsedSymbol = parseSymbol(symbol);
@@ -385,6 +396,7 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
       quoteAsset,
       settlementAsset,
       contractMultiplier,
+      ...(canonicalEconomics?.economics ? { contractEconomics: canonicalEconomics.economics } : {}),
       exerciseStyle,
       settlementStyle,
       expiryTimezone,
