@@ -559,6 +559,8 @@ function App() {
       }
       setQuotes(result.quotes);
       setDataMode('CSV');
+      setAssetClassFilter('ALL');
+      setVenueFilter('ALL');
       setImportedAt(new Date());
       setSourceTimeRange(result.sourceTimeRange ?? null);
       setCsvWarnings(result.warnings);
