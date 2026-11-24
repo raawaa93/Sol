@@ -9,7 +9,7 @@ const required = [
   ['PROJECT_CONTEXT.md', 'Do not enable live order execution or recommend funding for options trading from Syria'],
   ['PROJECT_CONTEXT.md', 'QuantLib is the independent pricing/Greeks validation candidate'],
   ['AGENTS.md', 'Before any work, read [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md).'],
-  ['AGENTS.md', 'genuine vanilla options across all asset classes and venues'],
+  ['AGENTS.md', 'genuine vanilla options across asset classes and venues'],
 ];
 
 let failed = false;
