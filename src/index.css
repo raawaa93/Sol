@@ -227,6 +227,7 @@ h1, h2, h3, p { margin: 0; }
 .search-control input { min-width: 0; width: 100%; border: 0; outline: 0; background: transparent; color: #d8e2dc; font-size: 9px; }
 .search-control input::placeholder { color: #5d6a69; }
 .chain-table-wrap { overflow: auto; max-height: 420px; scrollbar-color: #354340 transparent; scrollbar-width: thin; }
+.chain-mobile-list { display: none; }
 .chain-table, .journal-table { border-collapse: collapse; width: 100%; font-family: Inter, "Segoe UI", Tahoma, sans-serif; }
 .chain-table { min-width: 680px; }
 .chain-table th { position: sticky; top: 0; z-index: 2; padding: 10px 10px; border-bottom: 1px solid #242e31; color: #85938f; background: #11181b; text-align: right; font-size: 8px; font-weight: 600; white-space: nowrap; }
