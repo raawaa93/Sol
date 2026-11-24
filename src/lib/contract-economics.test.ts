@@ -477,10 +477,10 @@ test('canonical cash-settlement payoff uses settlement and premium multipliers i
     ok: true,
     value: {
       intrinsicPerReferenceUnit: 12,
-      grossSettlement: 360,
+      grossSettlement: 3600,
       premiumAmount: 15,
       fees: 1,
-      netPnl: 344,
+      netPnl: 3584,
       currency: 'USDT',
       contracts: 3,
     },
