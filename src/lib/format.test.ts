@@ -5,8 +5,10 @@ import {
   formatNumber,
   formatOptionPrice,
   formatQuantity,
+  formatSmallAmount,
   getOptionPricePrecision,
   getQuantityPrecision,
+  getQuoteCurrency,
 } from './format.ts';
 
 const fractionalTick = [{ filterType: 'PRICE_FILTER', tickSize: '0.05' }];
@@ -18,6 +20,17 @@ test('option premiums retain meaningful precision instead of rounding small pric
   assert.equal(formatOptionPrice(0.00001), '0.00001000 USDT');
   assert.equal(formatOptionPrice(0), '—');
   assert.equal(formatOptionPrice(Number.NaN), '—');
+});
+
+test('quote-currency formatting follows the selected contract instead of assuming USDT', () => {
+  assert.equal(getQuoteCurrency({ venue: 'DEMO', quoteAsset: 'USD' }), 'USD');
+  assert.equal(getQuoteCurrency({ venue: 'BINANCE' }), 'USDT');
+  assert.equal(getQuoteCurrency({ venue: 'CBOE' }), undefined);
+  assert.equal(formatOptionPrice(14.2, { priceScale: 3, quoteAsset: 'USD' }), '14.200 USD');
+  assert.equal(formatOptionPrice(14.2, { priceScale: 3, venue: 'CBOE' }, null), '14.200');
+  assert.equal(formatOptionPrice(14.2, { priceScale: 3, venue: 'BINANCE' }), '14.200 USDT');
+  assert.equal(formatSmallAmount(12.5, 'EUR'), '12.50 EUR');
+  assert.equal(formatSmallAmount(12.5, null), '12.50');
 });
 
 test('Binance price scale and price tick determine option quote precision', () => {
@@ -35,9 +48,11 @@ test('quantity precision honors Binance step/scale and avoids floating point noi
   assert.equal(formatQuantity(1.234, { quantityScale: 2 }), '1.234');
 });
 
-test('underlying prices adapt to the asset scale and invalid numbers stay unavailable', () => {
+test('underlying prices adapt to the asset scale and preserve the selected currency', () => {
   assert.equal(formatAssetPrice(95_000, 95_000), '95,000 USDT');
-  assert.equal(formatAssetPrice(0.45678, 0.45678), '0.4568 USDT');
-  assert.equal(formatAssetPrice(0, 0.0001), '0 USDT');
+  assert.equal(formatAssetPrice(95_000, 95_000, 'USD'), '95,000 USD');
+  assert.equal(formatAssetPrice(0.45678, 0.45678, null), '0.4568');
+  assert.equal(formatAssetPrice(0, 0.0001, 'USD'), '0 USD');
+  assert.equal(formatAssetPrice(0, 0.0001, null), '0');
   assert.equal(formatNumber(Number.POSITIVE_INFINITY, 2), '—');
 });

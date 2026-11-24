@@ -46,7 +46,7 @@ import { isQuoteFieldEstimated } from './lib/quote-quality';
 import { downloadCsv, downloadCsvTemplate, MAX_CSV_FILE_BYTES, parseOptionsCsv } from './lib/csv';
 import type { CsvTimestampRange } from './lib/csv';
 import { buildScenarioSeries, getBreakeven, getExpectedMove, getMaxLoss, getMidPrice, getSpreadPct, getUnderlyingReferencePrice } from './lib/options';
-import { formatAssetPrice, formatOptionPrice, formatQuantity, formatSmallNumber, getOptionPricePrecision, getQuantityPrecision } from './lib/format';
+import { formatAssetPrice, formatOptionPrice, formatQuantity, formatSmallNumber, getOptionPricePrecision, getQuantityPrecision, getQuoteCurrency } from './lib/format';
 import type { AssetClass, OptionQuote, OptionSide, PaperTrade, Underlying } from './lib/types';
 import { ASSET_CLASS_LABELS } from './lib/asset-class';
 
@@ -68,17 +68,19 @@ function getUnderlyingName(underlying: string): string {
   return UNDERLYING_NAMES[underlying] ?? 'Underlying asset';
 }
 
-function formatMoney(value: number, digits = 2): string {
+function formatMoney(value: number, digits = 2, currency: string | null = 'USDT'): string {
   if (!Number.isFinite(value)) return '—';
-  return `${new Intl.NumberFormat('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value)} USDT`;
+  const formatted = new Intl.NumberFormat('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value);
+  return formatted + (currency ? ' ' + currency : '');
 }
 
-function formatCompact(value: number): string {
-  return `${new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 2 }).format(value)} USDT`;
+function formatCompact(value: number, currency: string | null): string {
+  const formatted = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 2 }).format(value);
+  return formatted + (currency ? ' ' + currency : '');
 }
 
 function formatQuotePrice(value: number, quote: OptionQuote): string {
-  return formatOptionPrice(value, quote);
+  return formatOptionPrice(value, quote, getQuoteCurrency(quote) ?? null);
 }
 
 function formatEstimatedFields(fields: string[] | undefined): string {
@@ -144,6 +146,7 @@ function isPaperTrade(value: unknown): value is PaperTrade {
     && isOptionalPrecision(trade.pricePrecision)
     && typeof trade.fees === 'number' && Number.isFinite(trade.fees) && trade.fees >= 0
     && typeof trade.spotAtEntry === 'number' && Number.isFinite(trade.spotAtEntry) && trade.spotAtEntry > 0
+    && (trade.quoteAsset === undefined || (typeof trade.quoteAsset === 'string' && /^[A-Z0-9]{2,12}$/.test(trade.quoteAsset)))
     && trade.status === 'PAPER';
 }
 
@@ -375,9 +378,10 @@ function App() {
   const breakEven = getBreakeven(selectedQuote, selectedPremium, safeFees, safeQuantity);
   const maxLoss = getMaxLoss(selectedPremium, safeQuantity, selectedQuote.unit, safeFees);
   const hasModelGreeks = (selectedQuote.pricingStatus ?? (dataMode === 'DEMO' ? 'ASSUMED' : 'OBSERVED_ONLY')) !== 'OBSERVED_ONLY';
-  const quoteAssetLabel = dataMode === 'DEMO'
-    ? 'USDT'
-    : selectedQuote.quoteAsset ?? (dataMode === 'CSV' ? undefined : 'USDT');
+  const quoteAssetLabel = getQuoteCurrency(selectedQuote);
+  const assetQuoteCurrencies = [...new Set(assetQuotes.map((quote) => getQuoteCurrency(quote) ?? ''))];
+  const marketCurrencyLabel = assetQuoteCurrencies.length === 1 ? assetQuoteCurrencies[0] || null : null;
+  const openInterestCurrencyLabel = market?.openInterestUsdEstimated ? marketCurrencyLabel : 'USD';
   const underlyingReferencePrice = getUnderlyingReferencePrice(selectedQuote);
   const expectedMove = hasModelGreeks ? getExpectedMove(underlyingReferencePrice, selectedQuote.iv, selectedQuote.daysToExpiry) : undefined;
   const scenarioSeries = useMemo(() => buildScenarioSeries(selectedQuote, selectedPremium, safeQuantity, safeFees), [safeFees, safeQuantity, selectedPremium, selectedQuote]);
@@ -676,6 +680,7 @@ function App() {
       pricePrecision: getOptionPricePrecision(selectedPremium, selectedQuote),
       fees: safeFees,
       spotAtEntry: underlyingReferencePrice,
+      quoteAsset: quoteAssetLabel,
       status: 'PAPER',
     };
     setTrades((current) => [newTrade, ...current]);
@@ -695,9 +700,10 @@ function App() {
       expiry: trade.expiry,
       strike: trade.strike,
       quantity: trade.quantity,
-      entryPremiumUSDT: trade.entryPremium,
-      feesUSDT: trade.fees,
-      spotAtEntryUSDT: trade.spotAtEntry,
+      entryPremium: trade.entryPremium,
+      fees: trade.fees,
+      spotAtEntry: trade.spotAtEntry,
+      quoteAsset: trade.quoteAsset ?? '',
       mode: 'PAPER',
     })));
   };
@@ -850,12 +856,12 @@ function App() {
           <section className="market-summary section-anchor" id="overview-metrics">
             <div className="section-title-row compact-title"><div><span className="section-kicker">MARKET SNAPSHOT</span><h2>لقطة السوق</h2></div><div className="snapshot-meta"><span className="live-hollow" />{dataMode === 'DEMO' ? 'قيم توضيحية مولّدة' : dataMode === 'CSV' ? 'مصدر الملف الذي استوردته' : `Binance REST · ${integerFormat.format(binanceSnapshot?.activeSymbols ?? 0)} عقد نشط / ${integerFormat.format(binanceSnapshot?.quotes.length ?? 0)} محلل`}<span className="meta-separator">·</span><span>{underlying}{quoteAssetLabel ? `/${quoteAssetLabel}` : ''}</span></div></div>
             {market ? <div className="stats-grid">
-              <StatCard label={`السعر المرجعي · ${underlying}`} value={formatAssetPrice(market.spot, market.spot)} change={dataMode === 'DEMO' ? formatSignedPercent(DEMO_MARKETS[underlying].dayChangePct) : undefined} tone={dataMode === 'DEMO' ? (DEMO_MARKETS[underlying].dayChangePct >= 0 ? 'positive' : 'negative') : 'neutral'} footnote={dataMode === 'DEMO' ? 'قيمة محاكاة — ليست سعر Binance' : dataMode === 'BINANCE' ? 'مؤشر الأصل من Binance Options REST' : 'وسيط الأسعار الواردة في CSV'} icon={<span className="asset-symbol">{underlying === 'BTC' ? '₿' : underlying === 'ETH' ? 'Ξ' : underlying.slice(0, 3)}</span>} />
+              <StatCard label={`السعر المرجعي · ${underlying}`} value={formatAssetPrice(market.spot, market.spot, quoteAssetLabel ?? null)} change={dataMode === 'DEMO' ? formatSignedPercent(DEMO_MARKETS[underlying].dayChangePct) : undefined} tone={dataMode === 'DEMO' ? (DEMO_MARKETS[underlying].dayChangePct >= 0 ? 'positive' : 'negative') : 'neutral'} footnote={dataMode === 'DEMO' ? 'قيمة محاكاة — ليست سعر Binance' : dataMode === 'BINANCE' ? 'مؤشر الأصل من Binance Options REST' : 'وسيط الأسعار الواردة في CSV'} icon={<span className="asset-symbol">{underlying === 'BTC' ? '₿' : underlying === 'ETH' ? 'Ξ' : underlying.slice(0, 3)}</span>} />
               <StatCard label="التقلب الضمني · 30 يوم" value={market.iv30 === null ? 'غير متاح' : formatPercent(market.iv30)} change={market.iv30 === null ? 'لا يوجد IV صالح' : dataMode === 'DEMO' ? 'قيمة مولّدة' : dataMode === 'BINANCE' ? 'سلسلة الخيارات' : 'تقريب من السلسلة'} tone={market.iv30 === null ? 'neutral' : 'accent'} footnote={market.iv30 === null ? 'لا يتوفر IV وأجل 20–40 يوماً غير معلّمين كتقديريين' : dataMode === 'DEMO' ? 'بيانات محاكاة وليست حية' : dataMode === 'BINANCE' ? 'وسيط IV غير المعلّم كتقديري لعقود 20–40 يوماً' : 'وسيط IV غير المعلّم كتقديري لصفوف 20–40 يوماً بوقت صالح'} icon={<Activity size={17} />} />
               <StatCard label="التقلب المحقّق · 30 يوم" value={market.rv30 === null ? 'غير متاح' : formatPercent(market.rv30)} change={market.rv30 === null ? 'يلزم تاريخ الأصل' : 'مرجع توضيحي'} tone="neutral" footnote={market.rv30 === null ? dataMode === 'BINANCE' ? 'لقطة REST لا توفر تاريخاً كافياً' : 'CSV لا يتضمن سلسلة أسعار تاريخية' : 'المحاكاة تستخدم قيمة ثابتة'} icon={<LineChart size={17} />} />
               <StatCard label="IV − RV" value={ivRvSpread === null ? 'غير متاح' : `${ivRvSpread >= 0 ? '+' : ''}${(ivRvSpread * 100).toFixed(1)} نقطة`} change={ivRvSpread === null ? 'بيانات غير كافية' : 'قراءة وصفية'} tone={ivTone === 'yellow' ? 'accent' : ivTone === 'green' ? 'positive' : 'neutral'} footnote={ivRvSpread === null ? 'لا نخلط بيانات تاريخية غير متوفرة' : 'ليس إشارة بيع أو شراء'} icon={<Gauge size={17} />} />
-              <StatCard label="الفائدة المفتوحة الاسمية" value={market.openInterestUsd === null ? 'غير متاح' : formatCompact(market.openInterestUsd)} change="من صفوف اللقطة" tone="neutral" footnote={market.openInterestUsd === null ? 'لا تتوفر قيمة مباشرة أو بيانات OI قابلة للتحويل' : dataMode === 'DEMO' ? 'قيمة تقريبية مولّدة' : market.openInterestUsdEstimated ? 'تقدير من OI × السعر المرجعي × وحدة العقد' : dataMode === 'BINANCE' ? 'مجموع sumOpenInterestUsd من Binance' : 'قيمة USD واردة في ملف CSV'} icon={<Layers3 size={17} />} />
-              <StatCard label="حجم التداول · 24 ساعة" value={market.volume24hUsd === null ? 'غير متاح' : formatCompact(market.volume24hUsd)} change="من صفوف اللقطة" tone="neutral" footnote={market.volume24hUsd === null ? 'لا تتوفر قيمة تداول أو حجم عقود للتحويل' : dataMode === 'DEMO' ? 'قيمة تقريبية مولّدة' : market.volume24hUsdEstimated ? 'تقدير من حجم العقود × علاوة الخيار × وحدة العقد' : dataMode === 'BINANCE' ? 'مجموع amount (عملة التسعير) من Binance' : 'volumeQuote/turnover وارد في ملف CSV'} icon={<BarChart3 size={17} />} />
+              <StatCard label="الفائدة المفتوحة الاسمية" value={market.openInterestUsd === null ? 'غير متاح' : formatCompact(market.openInterestUsd, openInterestCurrencyLabel)} change="من صفوف اللقطة" tone="neutral" footnote={market.openInterestUsd === null ? 'لا تتوفر قيمة مباشرة أو بيانات OI قابلة للتحويل' : dataMode === 'DEMO' ? 'قيمة تقريبية مولّدة' : market.openInterestUsdEstimated ? 'تقدير من OI × السعر المرجعي × وحدة العقد' : dataMode === 'BINANCE' ? 'مجموع sumOpenInterestUsd من Binance' : 'قيمة USD واردة في ملف CSV'} icon={<Layers3 size={17} />} />
+              <StatCard label="حجم التداول · 24 ساعة" value={market.volume24hUsd === null ? 'غير متاح' : formatCompact(market.volume24hUsd, marketCurrencyLabel)} change="من صفوف اللقطة" tone="neutral" footnote={market.volume24hUsd === null ? 'لا تتوفر قيمة تداول أو حجم عقود للتحويل' : dataMode === 'DEMO' ? 'قيمة تقريبية مولّدة' : market.volume24hUsdEstimated ? 'تقدير من حجم العقود × علاوة الخيار × وحدة العقد' : dataMode === 'BINANCE' ? 'مجموع amount (عملة التسعير) من Binance' : 'volumeQuote/turnover وارد في ملف CSV'} icon={<BarChart3 size={17} />} />
             </div> : <EmptyState title="لا توجد بيانات لهذا الأصل في الملف" note="استورد سلسلة تتضمن عقوداً وسعراً مرجعياً لهذا الأصل، أو استعد بيانات المحاكاة." />}
           </section>
 
@@ -921,7 +927,7 @@ function App() {
                         const quoteReferencePrice = getUnderlyingReferencePrice(quote);
                         const moneyness = ((quote.strike / quoteReferencePrice) - 1) * 100;
                         return <tr key={quote.id} onClick={() => setSelectedId(quote.id)} className={isSelected ? 'selected-row' : ''}>
-                          <td><div className="contract-cell"><strong>{formatAssetPrice(quote.strike, quoteReferencePrice)}</strong><span className={`moneyness ${Math.abs(moneyness) < 2.6 ? 'atm' : ''}`}>{Math.abs(moneyness) < 2.6 ? 'ATM' : `${moneyness > 0 ? '+' : ''}${moneyness.toFixed(1)}%`}</span></div><span className="contract-symbol">{quote.symbol}</span></td>
+                          <td><div className="contract-cell"><strong>{formatAssetPrice(quote.strike, quoteReferencePrice, getQuoteCurrency(quote) ?? null)}</strong><span className={`moneyness ${Math.abs(moneyness) < 2.6 ? 'atm' : ''}`}>{Math.abs(moneyness) < 2.6 ? 'ATM' : `${moneyness > 0 ? '+' : ''}${moneyness.toFixed(1)}%`}</span></div><span className="contract-symbol">{quote.symbol}</span></td>
                           <td>{formatQuotePrice(quote.bid, quote)}</td><td>{formatQuotePrice(quote.ask, quote)}</td><td className="iv-cell">{formatPercent(quote.iv)}</td><td className={quote.delta >= 0 ? 'positive-text' : 'negative-text'}>{quote.pricingStatus === 'OBSERVED_ONLY' ? '—' : `${quote.delta.toFixed(3)}${quote.pricingStatus === 'ASSUMED' ? '*' : ''}`}</td><td>{quote.openInterest === null ? '—' : formatSmallNumber(quote.openInterest)}</td><td>{quote.volume === null ? '—' : formatSmallNumber(quote.volume)}</td><td><span className={`spread-pill ${!Number.isFinite(spread) ? 'unknown' : spread > 8 ? 'wide' : spread > 4 ? 'medium' : 'tight'}`}>{Number.isFinite(spread) ? `${spread.toFixed(1)}%` : '—'}</span></td>
                         </tr>;
                       })}
@@ -934,7 +940,7 @@ function App() {
 
               <aside className="panel quick-analysis" id="trade-lab">
                 <div className="analysis-header"><div><span className="section-kicker">CONTRACT REVIEW</span><h3>ملخص العقد</h3></div><span className="analysis-state"><span /> فحص فقط</span></div>
-                <div className="selected-contract-title"><div className={`contract-type-icon ${selectedQuote.type.toLowerCase()}`}>{selectedQuote.type === 'CALL' ? <TrendingUp size={17} /> : <TrendingDown size={17} />}</div><div><strong>{selectedQuote.underlying} {selectedQuote.type}</strong><span>{formatAssetPrice(selectedQuote.strike, underlyingReferencePrice)} · ينتهي بعد {selectedQuote.daysToExpiry.toFixed(0)} يوم</span></div><button className="copy-symbol" onClick={() => { navigator.clipboard?.writeText(selectedQuote.symbol); notify('تم نسخ رمز العقد.'); }} title="نسخ رمز العقد">⧉</button></div>
+                <div className="selected-contract-title"><div className={`contract-type-icon ${selectedQuote.type.toLowerCase()}`}>{selectedQuote.type === 'CALL' ? <TrendingUp size={17} /> : <TrendingDown size={17} />}</div><div><strong>{selectedQuote.underlying} {selectedQuote.type}</strong><span>{formatAssetPrice(selectedQuote.strike, underlyingReferencePrice, quoteAssetLabel ?? null)} · ينتهي بعد {selectedQuote.daysToExpiry.toFixed(0)} يوم</span></div><button className="copy-symbol" onClick={() => { navigator.clipboard?.writeText(selectedQuote.symbol); notify('تم نسخ رمز العقد.'); }} title="نسخ رمز العقد">⧉</button></div>
                 {dataMode === 'BINANCE' && <div className="contract-specs"><span><small>وحدة العقد</small><b>{formatSmallNumber(selectedQuote.unit)} {selectedQuote.underlying}</b></span><span><small>حد الكمية</small><b>{selectedQuote.minQty === undefined ? '—' : formatQuantity(selectedQuote.minQty, selectedQuote)} – {selectedQuote.maxQty === undefined ? '—' : formatQuantity(selectedQuote.maxQty, selectedQuote)}</b></span><span><small>رسوم taker</small><b>{selectedQuote.takerFeeRate === undefined ? '—' : formatPercent(selectedQuote.takerFeeRate, 2)}</b></span></div>}
                 <div className="price-highlight"><span>{dataMode === 'BINANCE' ? 'سعر العقد المرجعي' : 'السعر المرجعي التقديري'}</span><strong>{formatOptionPrice(selectedPremium, selectedQuote)}</strong><small>{priceBasis}</small></div>
                 <div className="quote-row"><span>Bid <b>{formatQuotePrice(selectedQuote.bid, selectedQuote)}</b></span><span>Ask <b>{formatQuotePrice(selectedQuote.ask, selectedQuote)}</b></span></div>
@@ -947,13 +953,13 @@ function App() {
                 <div className="analysis-divider" />
                 <div className="input-grid">
                   <label><span>{dataMode === 'BINANCE' ? 'كمية العقود' : 'الكمية'} <small>{dataMode === 'BINANCE' ? 'حسب مواصفات Binance' : 'من الأصل'}</small></span><input type="number" min={dataMode === 'BINANCE' ? minimumQuantity : 0.01} step={dataMode === 'BINANCE' ? quantityStep : 0.01} max={dataMode === 'BINANCE' ? selectedQuote.maxQty : undefined} value={quantity} onChange={(event) => setQuantity(Math.max(0, Number(event.target.value)))} /></label>
-                  <label><span>الرسوم التقديرية <small>USDT</small></span><input type="number" min="0" step="0.1" value={fees} onChange={(event) => setFees(Math.max(0, Number(event.target.value)))} /></label>
+                  <label><span>الرسوم التقديرية <small>{quoteAssetLabel ?? 'عملة غير محددة'}</small></span><input type="number" min="0" step="0.1" value={fees} onChange={(event) => setFees(Math.max(0, Number(event.target.value)))} /></label>
                 </div>
-                <div className="budget-row"><label htmlFor="risk-budget">حد الميزانية التجريبية</label><div><input id="risk-budget" type="number" min="0" step="10" value={riskBudget} onChange={(event) => setRiskBudget(Math.max(0, Number(event.target.value)))} /><span>USDT</span><button onClick={handleBudgetClick} title="احسب كمية لا تتجاوز الميزانية">احسب الكمية</button></div></div>
+                <div className="budget-row"><label htmlFor="risk-budget">حد الميزانية التجريبية</label><div><input id="risk-budget" type="number" min="0" step="10" value={riskBudget} onChange={(event) => setRiskBudget(Math.max(0, Number(event.target.value)))} /><span>{quoteAssetLabel ?? 'عملة غير محددة'}</span><button onClick={handleBudgetClick} title="احسب كمية لا تتجاوز الميزانية">احسب الكمية</button></div></div>
                 <div className="risk-summary">
-                  <div><span>تكلفة القسط + الرسوم</span><strong>{formatMoney(totalCost)}</strong></div>
-                  <div><span>نقطة التعادل عند الانتهاء</span><strong>{formatMoney(breakEven, 0)}</strong></div>
-                  <div className="risk-row"><span>أقصى خسارة للمشتري</span><strong className="loss-value">{formatMoney(maxLoss)}</strong></div>
+                  <div><span>تكلفة القسط + الرسوم</span><strong>{formatMoney(totalCost, 2, quoteAssetLabel ?? null)}</strong></div>
+                  <div><span>نقطة التعادل عند الانتهاء</span><strong>{formatMoney(breakEven, 0, quoteAssetLabel ?? null)}</strong></div>
+                  <div className="risk-row"><span>أقصى خسارة للمشتري</span><strong className="loss-value">{formatMoney(maxLoss, 2, quoteAssetLabel ?? null)}</strong></div>
                 </div>
                 <div className="analysis-footnote"><Info size={13} /><span>{dataMode !== 'DEMO' && selectedQuote.estimatedFields?.length ? `حقول مقدّرة أو افتراضية في هذا العقد: ${formatEstimatedFields(selectedQuote.estimatedFields)}. ` : ''}الحساب لا يضيف تلقائياً رسوم المنصة أو أثر التنفيذ؛ أدخل الرسوم الفعلية وراجع وحدة العقد.</span></div>
                 <button className="button button-paper" onClick={savePaperTrade}><Plus size={16} /> أضف إلى الدفتر التجريبي</button>
@@ -979,14 +985,14 @@ function App() {
               <div className="scenario-side">
                 <div className="scenario-side-head"><span>نطاق الحركة الضمني التقريبي</span><CircleHelp size={14} /></div>
                 {expectedMove !== undefined ? <>
-                  <div className="expected-move-value">±{formatAssetPrice(expectedMove, underlyingReferencePrice)}</div>
-                  <div className="expected-range"><span>{formatAssetPrice(Math.max(0, underlyingReferencePrice - expectedMove), underlyingReferencePrice)}</span><i /><span>{formatAssetPrice(underlyingReferencePrice + expectedMove, underlyingReferencePrice)}</span></div>
+                  <div className="expected-move-value">±{formatAssetPrice(expectedMove, underlyingReferencePrice, quoteAssetLabel ?? null)}</div>
+                  <div className="expected-range"><span>{formatAssetPrice(Math.max(0, underlyingReferencePrice - expectedMove), underlyingReferencePrice, quoteAssetLabel ?? null)}</span><i /><span>{formatAssetPrice(underlyingReferencePrice + expectedMove, underlyingReferencePrice, quoteAssetLabel ?? null)}</span></div>
                   <p>تقريب 1σ من IV حتى الانتهاء. ليس توقعاً ولا احتمالاً مؤكداً.</p>
                 </> : <p>نطاق الحركة غير متاح: لا يوجد نموذج تسعير موثّق لهذا العقد. {selectedQuote.pricingReason}</p>}
                 <div className="scenario-divider" />
                 <div className="scenario-stat"><span>Delta</span><strong className={hasModelGreeks && selectedQuote.delta >= 0 ? 'positive-text' : 'negative-text'}>{hasModelGreeks ? selectedQuote.delta.toFixed(3) : '—'}</strong><small>حساسية تقريبية لكل حركة وحدة</small></div>
-                <div className="scenario-stat"><span>Theta / يوم</span><strong className="negative-text">{hasModelGreeks ? formatMoney(selectedQuote.theta * safeQuantity * selectedQuote.unit) : '—'}</strong><small>تقدير النموذج، يتغير مع السوق</small></div>
-                <div className="scenario-stat"><span>Vega / نقطة تقلب</span><strong>{hasModelGreeks ? formatMoney(selectedQuote.vega * safeQuantity * selectedQuote.unit) : '—'}</strong><small>حساسية تقريبية لـ +1 نقطة مئوية</small></div>
+                <div className="scenario-stat"><span>Theta / يوم</span><strong className="negative-text">{hasModelGreeks ? formatMoney(selectedQuote.theta * safeQuantity * selectedQuote.unit, 2, quoteAssetLabel ?? null) : '—'}</strong><small>تقدير النموذج، يتغير مع السوق</small></div>
+                <div className="scenario-stat"><span>Vega / نقطة تقلب</span><strong>{hasModelGreeks ? formatMoney(selectedQuote.vega * safeQuantity * selectedQuote.unit, 2, quoteAssetLabel ?? null) : '—'}</strong><small>حساسية تقريبية لـ +1 نقطة مئوية</small></div>
               </div>
             </div>
           </section>
@@ -1000,7 +1006,7 @@ function App() {
             <div className="section-title-row"><div><span className="section-kicker">PAPER WORKSPACE</span><h2>الدفتر التجريبي</h2><p>سجل الفرضية والكمية والقسط قبل أن تقيم جودة القرار.</p></div><div className="journal-actions"><button className="button button-ghost" onClick={exportTrades}><Download size={14} /> تصدير CSV</button><button className="button button-ghost danger-ghost" onClick={() => { setTrades([]); notify('تم مسح الدفتر المحلي.'); }} disabled={!trades.length}><Trash2 size={14} /> مسح الدفتر</button></div></div>
             <article className="panel journal-panel">
               <div className="journal-summary"><div className="journal-summary-icon"><WalletCards size={18} /></div><div><strong>{trades.length} <span>صفقة تجريبية</span></strong><small>محفوظة محلياً في هذا المتصفح فقط</small></div><div className="journal-metric"><span>وضع التنفيذ</span><strong><i /> PAPER ONLY</strong></div><div className="journal-metric"><span>مفاتيح تداول</span><strong className="safe-label"><LockKeyhole size={13} /> غير مطلوبة</strong></div></div>
-              {trades.length ? <div className="journal-table-wrap"><table className="journal-table"><thead><tr><th>وقت التسجيل</th><th>العقد</th><th>Strike</th><th>كمية</th><th>قسط الدخول</th><th>السعر المرجعي وقتها</th><th>الحالة</th></tr></thead><tbody>{trades.map((trade) => <tr key={trade.id}><td>{formatDateTime(new Date(trade.createdAt))}</td><td><span className={`mini-type ${trade.type.toLowerCase()}`}>{trade.type}</span><strong>{trade.symbol}</strong></td><td>{formatAssetPrice(trade.strike, trade.spotAtEntry)}</td><td>{formatQuantity(trade.quantity, { quantityScale: trade.quantityPrecision })}</td><td>{formatOptionPrice(trade.entryPremium, { priceScale: trade.pricePrecision })}</td><td>{formatAssetPrice(trade.spotAtEntry, trade.spotAtEntry)}</td><td><span className="paper-status"><i /> تجريبية</span></td></tr>)}</tbody></table></div> : <div className="journal-empty"><div className="journal-empty-icon"><BookOpen size={20} /></div><strong>لا توجد صفقات مسجلة بعد</strong><span>اختر عقداً من الماسح ثم أضفه إلى الدفتر. لن يتم إرسال أي أمر إلى أي منصة.</span><button className="text-button" onClick={() => navigate('scanner')}>ابدأ بتحليل عقد <ArrowUpLeft size={14} /></button></div>}
+              {trades.length ? <div className="journal-table-wrap"><table className="journal-table"><thead><tr><th>وقت التسجيل</th><th>العقد</th><th>Strike</th><th>كمية</th><th>قسط الدخول</th><th>السعر المرجعي وقتها</th><th>الحالة</th></tr></thead><tbody>{trades.map((trade) => <tr key={trade.id}><td>{formatDateTime(new Date(trade.createdAt))}</td><td><span className={`mini-type ${trade.type.toLowerCase()}`}>{trade.type}</span><strong>{trade.symbol}</strong></td><td>{formatAssetPrice(trade.strike, trade.spotAtEntry, trade.quoteAsset ?? null)}</td><td>{formatQuantity(trade.quantity, { quantityScale: trade.quantityPrecision })}</td><td>{formatOptionPrice(trade.entryPremium, { priceScale: trade.pricePrecision }, trade.quoteAsset ?? null)}</td><td>{formatAssetPrice(trade.spotAtEntry, trade.spotAtEntry, trade.quoteAsset ?? null)}</td><td><span className="paper-status"><i /> تجريبية</span></td></tr>)}</tbody></table></div> : <div className="journal-empty"><div className="journal-empty-icon"><BookOpen size={20} /></div><strong>لا توجد صفقات مسجلة بعد</strong><span>اختر عقداً من الماسح ثم أضفه إلى الدفتر. لن يتم إرسال أي أمر إلى أي منصة.</span><button className="text-button" onClick={() => navigate('scanner')}>ابدأ بتحليل عقد <ArrowUpLeft size={14} /></button></div>}
             </article>
           </section>
 

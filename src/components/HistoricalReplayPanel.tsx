@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { AlertTriangle, History } from 'lucide-react';
 import { replayLongOptionSnapshots } from '../lib/replay';
-import { formatSmallNumber } from '../lib/format';
+import { formatOptionPrice, formatSmallAmount, getQuoteCurrency } from '../lib/format';
 import type { OptionQuote } from '../lib/types';
 
 interface HistoricalReplayPanelProps {
@@ -16,8 +16,8 @@ function formatReplayTime(value: string): string {
   }).format(new Date(value));
 }
 
-function formatPnl(value: number): string {
-  return `${value > 0 ? '+' : ''}${formatSmallNumber(value)} USDT`;
+function formatPnl(value: number, currency: string | null): string {
+  return `${value > 0 ? '+' : ''}${formatSmallAmount(value, currency)}`;
 }
 
 export default function HistoricalReplayPanel({ quotes, dataMode, underlying }: HistoricalReplayPanelProps) {
@@ -42,6 +42,8 @@ export default function HistoricalReplayPanel({ quotes, dataMode, underlying }: 
 
   const timestampedRows = quotes.filter((quote) => quote.sourceTimestamp && Number.isFinite(Date.parse(quote.sourceTimestamp))).length;
   const totalTrades = replay?.trades.length ?? 0;
+  const replayCurrencies = [...new Set(quotes.map((quote) => getQuoteCurrency(quote) ?? ''))];
+  const replayCurrency = replayCurrencies.length === 1 ? replayCurrencies[0] || null : null;
 
   return (
     <section className="section-anchor replay-section" id="historical-replay" aria-labelledby="historical-replay-heading">
@@ -74,9 +76,9 @@ export default function HistoricalReplayPanel({ quotes, dataMode, underlying }: 
           <div className="replay-metrics">
             <article><span>عدد الصفقات</span><strong>{totalTrades}</strong></article>
             <article><span>نسبة الصفقات الرابحة</span><strong>{replay!.winRate === null ? '—' : `${(replay!.winRate * 100).toFixed(1)}%`}</strong></article>
-            <article><span>صافي P&amp;L</span><strong className={replay!.netPnl >= 0 ? 'replay-positive' : 'replay-negative'}>{formatPnl(replay!.netPnl)}</strong></article>
+            <article><span>صافي P&amp;L</span><strong className={replay!.netPnl >= 0 ? 'replay-positive' : 'replay-negative'}>{formatPnl(replay!.netPnl, replayCurrency)}</strong></article>
             <article><span>Profit Factor</span><strong>{replay!.profitFactor === null ? 'غير محدد' : replay!.profitFactor.toFixed(2)}</strong></article>
-            <article><span>أقصى تراجع</span><strong>{formatSmallNumber(replay!.maxDrawdown)} USDT</strong></article>
+            <article><span>أقصى تراجع</span><strong>{formatSmallAmount(replay!.maxDrawdown, replayCurrency)}</strong></article>
             <article><span>العائد على الأقساط</span><strong>{replay!.returnOnPremiumPct === null ? '—' : `${replay!.returnOnPremiumPct.toFixed(2)}%`}</strong></article>
           </div>
           <div className="replay-trades-wrap">
@@ -85,8 +87,8 @@ export default function HistoricalReplayPanel({ quotes, dataMode, underlying }: 
               <tbody>{replay!.trades.slice(-8).reverse().map((trade, index) => (
                 <tr key={`${trade.symbol}-${trade.entryTimestamp}-${index}`}>
                   <td>{trade.symbol}</td><td>{formatReplayTime(trade.entryTimestamp)}</td><td>{formatReplayTime(trade.exitTimestamp)}</td>
-                  <td>{formatSmallNumber(trade.entryAsk)}</td><td>{formatSmallNumber(trade.exitBid)}</td>
-                  <td className={trade.netPnl >= 0 ? 'replay-positive' : 'replay-negative'}>{formatPnl(trade.netPnl)}</td>
+                  <td>{formatOptionPrice(trade.entryAsk, undefined, replayCurrency)}</td><td>{formatOptionPrice(trade.exitBid, undefined, replayCurrency)}</td>
+                  <td className={trade.netPnl >= 0 ? 'replay-positive' : 'replay-negative'}>{formatPnl(trade.netPnl, replayCurrency)}</td>
                 </tr>
               ))}</tbody>
             </table>

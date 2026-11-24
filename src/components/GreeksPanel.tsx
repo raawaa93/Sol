@@ -1,6 +1,6 @@
 import { Info } from 'lucide-react';
 import { estimateGreekPnl } from '../lib/options';
-import { formatSmallAmount, formatSmallNumber } from '../lib/format';
+import { formatSmallAmount, formatSmallNumber, getQuoteCurrency } from '../lib/format';
 import type { OptionQuote } from '../lib/types';
 
 type DataMode = 'DEMO' | 'CSV' | 'BINANCE';
@@ -27,6 +27,8 @@ export default function GreeksPanel({ quote, quantity, dataMode }: GreeksPanelPr
   const modelAvailable = pricingStatus !== 'OBSERVED_ONLY';
   const underlyingMoveLabel = quote.underlyingKind === 'FUTURE' ? 'Forward' : 'السعر المرجعي';
   const modelName = quote.pricingModel === 'BLACK_76' ? 'Black–76' : 'Black–Scholes مع Carry';
+  const quoteCurrency = getQuoteCurrency(quote);
+  const currencyLabel = quoteCurrency ?? 'عملة التسعير غير محددة';
   const rows: Array<{
     key: GreekKey;
     label: string;
@@ -40,7 +42,7 @@ export default function GreeksPanel({ quote, quantity, dataMode }: GreeksPanelPr
     {
       key: 'delta', label: 'Delta', symbol: 'Δ', value: quote.delta,
       positionValue: quote.delta * positionUnits,
-      positionUnit: `USDT تقريباً لكل +1 في ${underlyingMoveLabel}`, amount: true,
+      positionUnit: `${currencyLabel} تقريباً لكل +1 في ${underlyingMoveLabel}`, amount: true,
       meaning: 'تغير محلي تقريبي في علاوة الخيار مع حركة الأصل بوحدة واحدة.',
     },
     {
@@ -52,19 +54,19 @@ export default function GreeksPanel({ quote, quantity, dataMode }: GreeksPanelPr
     {
       key: 'theta', label: 'Theta', symbol: 'Θ', value: quote.theta,
       positionValue: quote.theta * positionUnits,
-      positionUnit: 'USDT تقريباً لكل يوم تقويمي', amount: true,
+      positionUnit: `${currencyLabel} تقريباً لكل يوم تقويمي`, amount: true,
       meaning: 'أثر مرور يوم واحد مع ثبات السعر والتقلب والمدخلات الأخرى.',
     },
     {
       key: 'vega', label: 'Vega', symbol: 'ν', value: quote.vega,
       positionValue: quote.vega * positionUnits,
-      positionUnit: 'USDT تقريباً لكل +1 نقطة IV', amount: true,
+      positionUnit: `${currencyLabel} تقريباً لكل +1 نقطة IV`, amount: true,
       meaning: 'أثر رفع IV نقطة مئوية مطلقة؛ مثلاً 50% إلى 51%.',
     },
     {
       key: 'rho', label: 'Rho', symbol: 'ρ', value: quote.rho,
       positionValue: quote.rho * positionUnits,
-      positionUnit: 'USDT تقريباً لكل +1 نقطة مئوية في المعدل', amount: true,
+      positionUnit: `${currencyLabel} تقريباً لكل +1 نقطة مئوية في المعدل`, amount: true,
       meaning: 'أثر رفع معدل الفائدة السنوي نقطة مئوية؛ مثلاً 2% إلى 3%.',
     },
   ];
@@ -97,7 +99,7 @@ export default function GreeksPanel({ quote, quantity, dataMode }: GreeksPanelPr
               <tr key={row.key}>
                 <td><strong><span>{row.symbol}</span>{row.label}</strong><small>{row.meaning}</small></td>
                 <td className="greek-number" dir="ltr">{modelAvailable ? formatSmallNumber(row.value) : '—'}</td>
-                <td className="greek-position"><strong dir="ltr">{modelAvailable ? (row.amount ? formatSmallAmount(row.positionValue) : formatSmallNumber(row.positionValue)) : '—'}</strong><small>{row.positionUnit}</small></td>
+                <td className="greek-position"><strong dir="ltr">{modelAvailable ? (row.amount ? formatSmallAmount(row.positionValue, quoteCurrency ?? null) : formatSmallNumber(row.positionValue)) : '—'}</strong><small>{row.positionUnit}</small></td>
                 <td><span className={`greek-origin ${quote.estimatedFields?.includes(row.key) || pricingStatus === 'ASSUMED' || dataMode === 'DEMO' ? 'estimated' : ''}`}>{greekSource(row.key, quote, dataMode)}</span></td>
               </tr>
             ))}</tbody>
@@ -105,12 +107,12 @@ export default function GreeksPanel({ quote, quantity, dataMode }: GreeksPanelPr
         </div>
 
         {modelAvailable ? <>
-          <div className="greek-shock-heading"><div><strong>اختبار صدمات صغيرة</strong><span>تقدير P&amp;L للمركز الحالي، قبل الرسوم والانزلاق</span></div><span>USDT</span></div>
+          <div className="greek-shock-heading"><div><strong>اختبار صدمات صغيرة</strong><span>تقدير P&amp;L للمركز الحالي، قبل الرسوم والانزلاق</span></div><span>{currencyLabel}</span></div>
           <div className="greek-shock-grid">
             {scenarios.map((scenario) => (
               <div className="greek-shock-card" key={scenario.label}>
                 <span>{scenario.label}</span>
-                <strong dir="ltr">{formatSmallAmount(estimateGreekPnl(quote, quantity, scenario.shock))}</strong>
+                <strong dir="ltr">{formatSmallAmount(estimateGreekPnl(quote, quantity, scenario.shock), quoteCurrency ?? null)}</strong>
                 <small>{scenario.detail}</small>
               </div>
             ))}

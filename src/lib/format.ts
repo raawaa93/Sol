@@ -28,9 +28,20 @@ export function formatNumber(value: number, precision: number): string {
   return getFormatter(precision).format(value);
 }
 
+function formatCurrency(value: number, currency: string | null | undefined, precision: number): string {
+  const formatted = formatNumber(value, precision);
+  return formatted + (currency ? ' ' + currency.toUpperCase() : '');
+}
+
+export function getQuoteCurrency(quote?: Partial<Pick<OptionQuote, 'quoteAsset' | 'venue'>>): string | undefined {
+  const declared = quote?.quoteAsset?.trim().toUpperCase();
+  if (declared) return declared;
+  return quote?.venue?.toUpperCase() === 'BINANCE' ? 'USDT' : undefined;
+}
+
 export function formatUsdt(value: number, precision = 2): string {
   if (!Number.isFinite(value)) return '—';
-  return `${formatNumber(value, precision)} USDT`;
+  return formatCurrency(value, 'USDT', precision);
 }
 
 export function getAdaptivePrecision(value: number): number {
@@ -83,16 +94,20 @@ export function getOptionPricePrecision(
 
 export function formatOptionPrice(
   value: number,
-  contract?: Pick<PrecisionSource, 'priceScale' | 'filters'>,
+  contract?: Pick<PrecisionSource, 'priceScale' | 'filters'> & Partial<Pick<OptionQuote, 'quoteAsset' | 'venue'>>,
+  currency?: string | null,
 ): string {
   if (!Number.isFinite(value) || value <= 0) return '—';
-  return formatUsdt(value, getOptionPricePrecision(value, contract));
+  const inferredCurrency = currency === undefined
+    ? contract?.quoteAsset ?? (contract?.venue?.toUpperCase() === 'BINANCE' || !contract?.venue ? 'USDT' : undefined)
+    : currency ?? undefined;
+  return formatCurrency(value, inferredCurrency, getOptionPricePrecision(value, contract));
 }
 
-export function formatAssetPrice(value: number, referencePrice: number): string {
+export function formatAssetPrice(value: number, referencePrice: number, currency: string | null = 'USDT'): string {
   if (!Number.isFinite(value)) return '—';
-  if (value === 0) return '0 USDT';
-  return formatUsdt(value, getAssetPricePrecision(referencePrice));
+  if (value === 0) return formatCurrency(0, currency, 0);
+  return formatCurrency(value, currency, getAssetPricePrecision(referencePrice));
 }
 
 export function getQuantityPrecision(contract?: Pick<PrecisionSource, 'quantityScale' | 'filters'>): number {
@@ -127,14 +142,14 @@ export function formatQuantity(
   return formatNumber(value, Math.max(declaredPrecision, valuePrecision));
 }
 
-export function formatSmallAmount(value: number): string {
+export function formatSmallAmount(value: number, currency: string | null = 'USDT'): string {
   if (!Number.isFinite(value)) return '—';
   const magnitude = Math.abs(value);
   const precision = magnitude >= 1 ? 2
     : magnitude >= 0.01 ? 4
       : magnitude >= 0.0001 ? 6
         : 8;
-  return formatUsdt(value, precision);
+  return formatCurrency(value, currency, precision);
 }
 
 export function formatSmallNumber(value: number): string {
