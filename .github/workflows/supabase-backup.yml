@@ -4,11 +4,6 @@ on:
   schedule:
     - cron: '23 4 * * 0'
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - 'docs/backup-trigger-once-2026-11-24.md'
 
 permissions:
   contents: write
@@ -40,7 +35,7 @@ jobs:
             echo "::warning::Encrypted backup is not configured. Add the SUPABASE_DB_URL Actions secret and AGE_RECIPIENT Actions variable; no database connection was attempted."
             {
               echo "### Encrypted Supabase backup skipped"
-              echo "No backup was created. Configure the `SUPABASE_DB_URL` repository secret and `AGE_RECIPIENT` repository variable."
+              echo 'No backup was created. Configure the `SUPABASE_DB_URL` repository secret and `AGE_RECIPIENT` repository variable.'
             } >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
