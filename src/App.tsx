@@ -1112,6 +1112,8 @@ function App() {
                   ['مواصفات اقتصادية موثقة', quoteDataCoverage.providerVerifiedEconomics],
                   ['عقود وصلها BookTicker', quoteDataCoverage.bookTickerAvailable],
                   ['عقود وصلها Mark Price حي', quoteDataCoverage.liveMarkPriceAvailable],
+                  ['عقود وصلها Option Ticker حي', quoteDataCoverage.liveOptionTickerAvailable],
+                  ['عقود تتوفر لها كميات أفضل Bid/Ask', quoteDataCoverage.bestBookQuantitiesAvailable],
                   ['عقود لديها Bid/Ask من Ticker', quoteDataCoverage.optionTickerBookAvailable],
                   ['Bid IV متاح', quoteDataCoverage.bidIvAvailable],
                   ['Ask IV متاح', quoteDataCoverage.askIvAvailable],
