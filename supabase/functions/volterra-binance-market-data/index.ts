@@ -24,7 +24,7 @@ export function isAllowedOrigin(origin: string): boolean {
 export function getCorsHeaders(origin: string | null): Headers {
   const headers = new Headers({
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Access-Control-Allow-Headers': 'accept, content-type',
+    'Access-Control-Allow-Headers': 'accept, content-type, x-region',
     'Access-Control-Max-Age': '3600',
     'Cache-Control': 'no-store',
     'Vary': 'Origin',
