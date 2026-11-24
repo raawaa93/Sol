@@ -151,6 +151,7 @@ export interface OptionQuote {
     ticker?: string;
     index?: string;
     openInterest?: string;
+    bookTicker?: string;
   };
   /** Values calculated or defaulted during import or normalisation. */
   estimatedFields?: string[];
