@@ -431,3 +431,27 @@ test('future deliverables remain blocked without a futures-specific valuation ad
   assert.equal(result.ok, false);
   if (!result.ok) assert.equal(result.reason, 'FUTURE_DELIVERY_REQUIRES_ADAPTER');
 });
+
+
+test('standard 100-share equity reference vector keeps premium and exercise scales distinct', async () => {
+  const { calculatePremiumCash, valueDeliverablePackage, calculateAggregateExerciseCash } = await import('./contract-economics-calculations.ts');
+  const economics = standardEquity({
+    premium: { multiplier: 100, quoteCurrency: 'USD', priceUnit: 'PER_UNDERLYING_UNIT' },
+    exercise: {
+      style: 'AMERICAN',
+      settlement: 'PHYSICAL',
+      aggregateExerciseCash: { basis: 'STRIKE_MULTIPLIER', currency: 'USD', multiplier: 100 },
+      settlementCurrency: 'USD',
+      deliverables: [{ type: 'EQUITY', symbol: 'NVDA', amount: 100, currency: 'USD' }],
+    },
+  });
+  const premium = calculatePremiumCash({ economics, premiumPrice: 2, contracts: 1 });
+  const packageValue = valueDeliverablePackage(economics, { NVDA: { price: 55, currency: 'USD' } });
+  const exerciseCash = calculateAggregateExerciseCash(economics, 50, 1);
+  assert.equal(premium.ok, true);
+  if (premium.ok) assert.equal(premium.value.amount, 200);
+  assert.equal(packageValue.ok, true);
+  if (packageValue.ok) assert.equal(packageValue.value.totalsByCurrency.USD, 5500);
+  assert.equal(exerciseCash.ok, true);
+  if (exerciseCash.ok) assert.equal(exerciseCash.value.amount, 5000);
+});
