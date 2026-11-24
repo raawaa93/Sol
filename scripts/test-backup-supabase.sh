@@ -42,7 +42,7 @@ test -n "$recipient"
 
 PATH="$tmp/bin:$PATH" \
 SUPABASE_DB_URL='postgresql://postgres.oyoyozdugicmnkfhjovo:placeholder@db.oyoyozdugicmnkfhjovo.supabase.co:5432/postgres' \
-AGE_RECIPIENT='age1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq' \
+AGE_RECIPIENT="$recipient" \\
 BACKUP_OUTPUT_FILE="$tmp/backup.age" \
 bash "$repo_root/scripts/backup-supabase.sh"
 
