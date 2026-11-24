@@ -1076,7 +1076,7 @@ function App() {
             <div className="panel payoff-panel">
               {scenarioSeries.length > 0
                 ? <DeferredPayoffChart scenarioSeries={scenarioSeries} selectedQuote={selectedQuote} />
-                : <div className="empty-state"><strong>حساب P&amp;L عند الانتهاء غير متاح</strong><span>{selectedQuote.contractEconomics ? 'لم تجتز مواصفات التسوية النقدية والتحقق من مصدرها شروط المحوّل الاقتصادي؛ لم نستخدم مضاعف unit بديلاً.' : contractScaleIssueMessage}</span></div>}
+                : <div className="empty-state"><strong>{selectedQuote.contractEconomics ? 'حساب P&amp;L عند الانتهاء غير متاح' : 'حساب P&amp;L لكل عقد غير متاح'}</strong><span>{selectedQuote.contractEconomics ? 'لم تجتز مواصفات التسوية النقدية والتحقق من مصدرها شروط المحوّل الاقتصادي؛ لم نستخدم مضاعف unit بديلاً.' : contractScaleIssueMessage}</span></div>}
               <div className="scenario-side">
                 <div className="scenario-side-head"><span>نطاق الحركة الضمني التقريبي</span><CircleHelp size={14} /></div>
                 {expectedMove !== undefined ? <>
