@@ -731,3 +731,35 @@ h1, h2, h3, p { margin: 0; }
   .instrument-search input { width: 100%; }
   .watchlist-bar { margin-top: -3px; }
 }
+
+
+/* Data coverage: explicit counts, never inferred prices. */
+.data-coverage-panel {
+  margin: 0 0 22px;
+  padding: 15px;
+  border: 1px solid #263237;
+  border-radius: 13px;
+  background: linear-gradient(145deg, rgba(18, 27, 30, .92), rgba(13, 19, 22, .96));
+}
+.data-coverage-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 13px; }
+.data-coverage-heading h2 { margin: 4px 0 3px; color: #e5ece7; font-size: 14px; font-weight: 700; }
+.data-coverage-heading p { margin: 0; color: #7f8d8c; font-size: 10px; }
+.data-coverage-source { flex: 0 0 auto; padding: 5px 8px; border: 1px solid #2b393c; border-radius: 7px; color: #9eaaa5; font-size: 9px; }
+.data-coverage-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.data-coverage-item { min-width: 0; padding: 10px; border: 1px solid #222e32; border-radius: 9px; background: rgba(8, 14, 16, .55); }
+.data-coverage-item > strong { display: block; color: #dce8dc; font-size: 16px; font-variant-numeric: tabular-nums; line-height: 1.3; }
+.data-coverage-item > strong small { color: #71807f; font-size: 9px; font-weight: 500; }
+.data-coverage-item > span { display: block; min-height: 27px; margin-top: 4px; color: #8b9996; font-size: 9px; line-height: 1.5; }
+.data-coverage-item > i { display: block; height: 3px; margin-top: 7px; overflow: hidden; border-radius: 4px; background: #263235; }
+.data-coverage-item > i > b { display: block; height: 100%; border-radius: inherit; background: #8fbd6a; }
+.data-coverage-note { margin: 11px 0 0; color: #71807e; font-size: 9px; line-height: 1.7; }
+@media (max-width: 980px) {
+  .data-coverage-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .data-coverage-panel { padding: 12px; }
+  .data-coverage-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+  .data-coverage-item { padding: 9px; }
+  .data-coverage-heading { align-items: flex-start; }
+  .data-coverage-source { max-width: 112px; white-space: normal; text-align: center; }
+}
