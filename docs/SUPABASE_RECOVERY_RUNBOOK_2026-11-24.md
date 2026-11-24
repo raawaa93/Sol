@@ -76,6 +76,8 @@ The connected GitHub tools cannot inspect or write Actions secrets, and the data
 4. In GitHub **Settings → Secrets and variables → Actions → Secrets**, add `SUPABASE_DB_URL` containing the PostgreSQL connection URL for project `oyoyozdugicmnkfhjovo`. Use the Session Pooler URL where possible. The workflow validates that the URL identifies this project and never prints it.
 5. Open **Actions → Encrypted Supabase backup → Run workflow**. Confirm that a new `sol-db-backup-...` release appears and contains only a `.age` ciphertext asset.
 
+A one-time trigger was executed on 24 November 2026 at 08:55 UTC. The workflow completed successfully but **skipped the export** because both `SUPABASE_DB_URL` and `AGE_RECIPIENT` were absent; its configuration check confirms that no database connection was attempted and no backup artifact was created. The temporary push trigger was then removed; the weekly schedule and manual `workflow_dispatch` remain. The skipped-state summary quoting was also corrected.
+
 The scheduled workflow intentionally skips with a warning while either setting is missing. A successful workflow run before configuration is not a backup. A successful encrypted export still is not a verified restore; the matching private identity is needed to decrypt and test it in an isolated environment.
 
 The release asset is publicly downloadable because this repository is public. Its contents are protected only by age encryption and the offline private key. If the private key is lost, the backup cannot be decrypted.

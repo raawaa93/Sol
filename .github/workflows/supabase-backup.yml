@@ -35,7 +35,7 @@ jobs:
             echo "::warning::Encrypted backup is not configured. Add the SUPABASE_DB_URL Actions secret and AGE_RECIPIENT Actions variable; no database connection was attempted."
             {
               echo "### Encrypted Supabase backup skipped"
-              echo "No backup was created. Configure the `SUPABASE_DB_URL` repository secret and `AGE_RECIPIENT` repository variable."
+              echo 'No backup was created. Configure the `SUPABASE_DB_URL` repository secret and `AGE_RECIPIENT` repository variable.'
             } >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
