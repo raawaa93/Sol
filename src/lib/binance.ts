@@ -85,6 +85,17 @@ interface BinanceTicker {
   closeTime?: number;
 }
 
+export interface BinanceBookTickerEvent {
+  symbol: string;
+  bidPrice: number;
+  bidQuantity: number;
+  askPrice: number;
+  askQuantity: number;
+  eventTime?: number;
+  transactionTime?: number;
+}
+
+
 interface BinanceIndex {
   underlying?: string;
   indexPrice?: string | number;
@@ -141,6 +152,51 @@ function finiteNumber(value: string | number | undefined): number | undefined {
 function positiveNumber(value: string | number | undefined): number | undefined {
   const parsed = finiteNumber(value);
   return parsed !== undefined && parsed > 0 ? parsed : undefined;
+}
+
+/** Parse raw or combined public Binance bookTicker stream messages without inventing missing sides. */
+export function parseBinanceBookTickerMessage(payload: unknown): BinanceBookTickerEvent | null {
+  let decoded = payload;
+  if (typeof decoded === 'string') {
+    try { decoded = JSON.parse(decoded) as unknown; } catch { return null; }
+  }
+  if (!decoded || typeof decoded !== 'object') return null;
+  const envelope = decoded as Record<string, unknown>;
+  const data = envelope.data && typeof envelope.data === 'object'
+    ? envelope.data as Record<string, unknown>
+    : envelope;
+  if (data.e !== 'bookTicker' || typeof data.s !== 'string' || !data.s) return null;
+  const bidPrice = finiteNumber(data.b as string | number | undefined);
+  const askPrice = finiteNumber(data.a as string | number | undefined);
+  const bidQuantity = finiteNumber(data.B as string | number | undefined);
+  const askQuantity = finiteNumber(data.A as string | number | undefined);
+  if (bidPrice === undefined || bidPrice < 0 || askPrice === undefined || askPrice < 0
+    || bidQuantity === undefined || bidQuantity < 0 || askQuantity === undefined || askQuantity < 0) return null;
+  const eventTime = finiteNumber(data.E as string | number | undefined);
+  const transactionTime = finiteNumber(data.T as string | number | undefined);
+  return {
+    symbol: data.s,
+    bidPrice,
+    bidQuantity,
+    askPrice,
+    askQuantity,
+    ...(eventTime !== undefined ? { eventTime } : {}),
+    ...(transactionTime !== undefined ? { transactionTime } : {}),
+  };
+}
+
+/** Apply a provider event to the matching quote while preserving independent source timestamps. */
+export function applyBinanceBookTicker(quote: OptionQuote, event: BinanceBookTickerEvent): OptionQuote {
+  const timestamp = event.transactionTime ?? event.eventTime;
+  return {
+    ...quote,
+    bid: event.bidPrice,
+    ask: event.askPrice,
+    sourceTimestamps: {
+      ...quote.sourceTimestamps,
+      ...(timestamp !== undefined && timestamp > 0 ? { bookTicker: new Date(timestamp).toISOString() } : {}),
+    },
+  };
 }
 
 function normaliseSide(value: string | undefined, symbol: string): OptionSide | undefined {

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { BinanceMarketDataError, fetchBinanceDepth, fetchBinanceOptions, normalizeBinanceDepth, normalizeBinanceSnapshot } from './binance.ts';
+import { applyBinanceBookTicker, BinanceMarketDataError, fetchBinanceDepth, fetchBinanceOptions, normalizeBinanceDepth, normalizeBinanceSnapshot, parseBinanceBookTickerMessage } from './binance.ts';
 import { blackScholes, getMidPrice } from './options.ts';
 
 function compactDate(timestamp: number): string {
@@ -698,4 +698,52 @@ test('Binance keeps contracts with a valid market price when implied volatility 
   assert.equal(quote.pricingModel, undefined);
   assert.ok(!quote.estimatedFields?.includes('iv'));
   assert.ok(snapshot.warnings.some((warning) => warning.includes('IV غير متاح لـ1 عقد')));
+});
+
+
+test('Binance bookTicker parser accepts combined events and preserves zero-sized sides', () => {
+  const event = parseBinanceBookTickerMessage(JSON.stringify({
+    stream: 'btc-261225-100000-c@bookTicker',
+    data: {
+      e: 'bookTicker', E: 1_800_000_001_000, T: 1_800_000_000_900,
+      s: 'BTC-261225-100000-C', b: '0', B: '0', a: '12.5', A: '3',
+    },
+  }));
+  assert.deepEqual(event, {
+    symbol: 'BTC-261225-100000-C',
+    bidPrice: 0,
+    bidQuantity: 0,
+    askPrice: 12.5,
+    askQuantity: 3,
+    eventTime: 1_800_000_001_000,
+    transactionTime: 1_800_000_000_900,
+  });
+});
+
+test('Binance bookTicker parser rejects malformed, unrelated, and negative quote events', () => {
+  assert.equal(parseBinanceBookTickerMessage('{not-json'), null);
+  assert.equal(parseBinanceBookTickerMessage({ e: 'trade', s: 'BTC-261225-100000-C' }), null);
+  assert.equal(parseBinanceBookTickerMessage({
+    e: 'bookTicker', s: 'BTC-261225-100000-C', b: '-1', B: '1', a: '2', A: '1',
+  }), null);
+});
+
+test('Binance bookTicker updates only BBO fields and records its own source timestamp', () => {
+  const quote = {
+    id: 'BTC-261225-100000-C', symbol: 'BTC-261225-100000-C', underlying: 'BTC',
+    expiry: '2026-12-25T08:00:00.000Z', daysToExpiry: 30, strike: 100000, type: 'CALL' as const,
+    bid: 0, ask: 12, markPrice: 11, iv: 0.5, delta: 0.5, gamma: 0, theta: 0,
+    vega: 0, rho: 0, openInterest: null, volume: null, spot: 100000, unit: 1,
+    sourceTimestamps: { ticker: '2026-11-24T10:00:00.000Z' },
+  };
+  const event = {
+    symbol: quote.symbol, bidPrice: 10, bidQuantity: 2, askPrice: 12, askQuantity: 3,
+    transactionTime: 1_800_000_000_900,
+  };
+  const updated = applyBinanceBookTicker(quote, event);
+  assert.equal(updated.bid, 10);
+  assert.equal(updated.ask, 12);
+  assert.equal(updated.markPrice, 11);
+  assert.equal(updated.sourceTimestamps?.ticker, quote.sourceTimestamps.ticker);
+  assert.equal(updated.sourceTimestamps?.bookTicker, new Date(event.transactionTime).toISOString());
 });

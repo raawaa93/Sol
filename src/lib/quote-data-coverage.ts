@@ -12,6 +12,7 @@ export interface QuoteDataCoverage {
   openInterestAvailable: number;
   volumeAvailable: number;
   providerVerifiedEconomics: number;
+  bookTickerAvailable: number;
 }
 
 export function getQuoteDataCoverage(quotes: OptionQuote[]): QuoteDataCoverage {
@@ -38,6 +39,7 @@ export function getQuoteDataCoverage(quotes: OptionQuote[]): QuoteDataCoverage {
     if (quote.contractEconomics?.provenance.status === 'PROVIDER_VERIFIED') {
       coverage.providerVerifiedEconomics += 1;
     }
+    if (quote.sourceTimestamps?.bookTicker) coverage.bookTickerAvailable += 1;
     return coverage;
   }, {
     contracts: 0,
@@ -51,5 +53,6 @@ export function getQuoteDataCoverage(quotes: OptionQuote[]): QuoteDataCoverage {
     openInterestAvailable: 0,
     volumeAvailable: 0,
     providerVerifiedEconomics: 0,
+    bookTickerAvailable: 0,
   });
 }

@@ -37,7 +37,7 @@ import OpportunityReview from './components/OpportunityReview';
 import HistoricalReplayPanel from './components/HistoricalReplayPanel';
 import MarketDepthPanel from './components/MarketDepthPanel';
 import { DEMO_MARKETS, DEMO_QUOTES, getExpiryChoices } from './lib/demo';
-import { BinanceMarketDataError, fetchBinanceDepth, fetchBinanceOptions } from './lib/binance';
+import { applyBinanceBookTicker, BinanceMarketDataError, fetchBinanceDepth, fetchBinanceOptions, parseBinanceBookTickerMessage } from './lib/binance';
 import type { BinanceDepthSnapshot, BinanceOptionsSnapshot } from './lib/binance';
 import { getAtmTermStructure } from './lib/analysis';
 import { getLatestQuotePerContract, getMarketSnapshotFromQuotes } from './lib/market';
@@ -232,6 +232,8 @@ function App() {
   const [binanceDepthLoading, setBinanceDepthLoading] = useState(false);
   const [binanceDepthError, setBinanceDepthError] = useState('');
   const [binanceDepthRefreshKey, setBinanceDepthRefreshKey] = useState(0);
+  const [bookTickerStatus, setBookTickerStatus] = useState<'idle' | 'connecting' | 'connected' | 'reconnecting'>('idle');
+  const [bookTickerUpdates, setBookTickerUpdates] = useState(0);
   const [importedAt, setImportedAt] = useState<Date | null>(null);
   const [sourceTimeRange, setSourceTimeRange] = useState<CsvTimestampRange | null>(null);
   const [activeView, setActiveView] = useState('overview');
@@ -282,6 +284,13 @@ function App() {
     .sort((a, b) => a.localeCompare(b)), [classQuotes]);
   const scopedQuotes = useMemo(() => classQuotes.filter((quote) => venueFilter === 'ALL' || quote.venue === venueFilter), [classQuotes, venueFilter]);
   const assetQuotes = useMemo(() => scopedQuotes.filter((quote) => quote.underlying === underlying), [scopedQuotes, underlying]);
+  const bookTickerCandidates = useMemo(() => dataMode === 'BINANCE' && binanceSnapshot
+    ? binanceSnapshot.quotes
+      .filter((quote) => quote.underlying === underlying && quote.expiry === effectiveExpiry && quote.type === selectedType
+        && (quote.bid <= 0 || quote.ask <= 0 || quote.ask < quote.bid))
+      .sort((a, b) => Math.abs(a.strike - getUnderlyingReferencePrice(a)) - Math.abs(b.strike - getUnderlyingReferencePrice(b)))
+    : [], [binanceSnapshot, dataMode, effectiveExpiry, selectedType, underlying]);
+  const bookTickerTargets = useMemo(() => bookTickerCandidates.slice(0, 180).map((quote) => quote.symbol), [bookTickerCandidates]);
   const assetChoices = useMemo(() => [...new Set(scopedQuotes.map((quote) => quote.underlying))]
     .sort((a, b) => a.localeCompare(b)), [scopedQuotes]);
   const market = useMemo(() => dataMode === 'DEMO' ? DEMO_MARKETS[underlying] : getMarketSnapshotFromQuotes(scopedQuotes, underlying), [dataMode, scopedQuotes, underlying]);
@@ -303,6 +312,69 @@ function App() {
       ?? quotes[0]
       ?? DEMO_QUOTES[0];
   }, [assetQuotes, effectiveExpiry, filteredQuotes, quotes, scopedQuotes, selectedId, selectedType, underlying]);
+
+  useEffect(() => {
+    if (dataMode !== 'BINANCE' || !bookTickerTargets.length) {
+      setBookTickerStatus('idle');
+      return;
+    }
+
+    let active = true;
+    let socket: WebSocket | null = null;
+    let retryTimer: number | undefined;
+    let attempts = 0;
+
+    let connect = () => {};
+    const scheduleRetry = () => {
+      if (!active) return;
+      attempts += 1;
+      setBookTickerStatus('reconnecting');
+      const delay = Math.min(30_000, 3_000 * (2 ** Math.min(attempts - 1, 3)));
+      retryTimer = window.setTimeout(() => connect(), delay);
+    };
+
+    connect = () => {
+      if (!active) return;
+      setBookTickerStatus(attempts === 0 ? 'connecting' : 'reconnecting');
+      let connection: WebSocket;
+      try {
+        connection = new WebSocket('wss://fstream.binance.com/public/stream');
+        socket = connection;
+      } catch {
+        scheduleRetry();
+        return;
+      }
+      connection.onopen = () => {
+        if (!active) return;
+        setBookTickerStatus('connected');
+        connection.send(JSON.stringify({
+          method: 'SUBSCRIBE',
+          params: bookTickerTargets.map((symbol) => `${symbol.toLowerCase()}@bookTicker`),
+          id: Math.floor(Date.now() % 2_147_483_647),
+        }));
+      };
+      connection.onmessage = (event) => {
+        if (!active) return;
+        const ticker = parseBinanceBookTickerMessage(event.data);
+        if (!ticker) return;
+        setQuotes((current) => current.map((quote) => quote.symbol === ticker.symbol
+          ? applyBinanceBookTicker(quote, ticker)
+          : quote));
+        setBookTickerUpdates((current) => current + 1);
+      };
+      connection.onerror = () => {
+        if (active) connection.close();
+      };
+      connection.onclose = () => scheduleRetry();
+    };
+
+    connect();
+    return () => {
+      active = false;
+      if (retryTimer !== undefined) window.clearTimeout(retryTimer);
+      socket?.close();
+    };
+  }, [bookTickerTargets, dataMode]);
 
   useEffect(() => {
     if (dataMode !== 'BINANCE') {
@@ -924,7 +996,7 @@ function App() {
                   <h2 id="data-coverage-title">اكتمال بيانات العقود</h2>
                   <p>{underlying} · {integerFormat.format(quoteDataCoverage.contracts)} عقداً فريداً بعد إزالة تكرار الملاحظات</p>
                 </div>
-                <span className="data-coverage-source">{dataMode === 'BINANCE' ? 'Binance REST · لقطة' : 'ملف CSV محلي'}</span>
+                <span className="data-coverage-source">{dataMode === 'BINANCE' ? `BookTicker · ${bookTickerStatus === 'connected' ? 'متصل' : bookTickerStatus === 'connecting' ? 'جارٍ الاتصال' : bookTickerStatus === 'reconnecting' ? 'إعادة اتصال' : 'غير نشط'}` : 'ملف CSV محلي'}</span>
               </div>
               <div className="data-coverage-grid">
                 {[
@@ -938,6 +1010,7 @@ function App() {
                   ['عقود لها OI', quoteDataCoverage.openInterestAvailable],
                   ['عقود لها حجم تداول', quoteDataCoverage.volumeAvailable],
                   ['مواصفات اقتصادية موثقة', quoteDataCoverage.providerVerifiedEconomics],
+                  ['عقود وصلها BookTicker', quoteDataCoverage.bookTickerAvailable],
                 ].map(([label, count]) => (
                   <div className="data-coverage-item" key={label}>
                     <strong>{integerFormat.format(Number(count))}<small> / {integerFormat.format(quoteDataCoverage.contracts)}</small></strong>
@@ -947,6 +1020,7 @@ function App() {
                 ))}
               </div>
               <p className="data-coverage-note">الأصفار في OI والحجم تُحسب قيماً متاحة، لا حقولاً مفقودة. لا تُستبدل الأسعار أو IV الناقصة بقيم مخمّنة. وجود Bid وAsk لا يضمن التنفيذ أو حداثة السعر.</p>
+              {dataMode === 'BINANCE' && <p className="data-coverage-note">BookTicker: {bookTickerStatus === 'connected' ? 'متصل' : bookTickerStatus === 'connecting' ? 'جارٍ الاتصال' : bookTickerStatus === 'reconnecting' ? 'يعيد الاتصال تلقائياً' : 'غير نشط'} · الاشتراك في {integerFormat.format(bookTickerTargets.length)} من {integerFormat.format(bookTickerCandidates.length)} عقد ناقص، بحد أقصى 180 رمزاً · {integerFormat.format(bookTickerUpdates)} تحديثاً مستلماً. إذا لم ينشر المزود تحديثاً، يبقى الحقل ناقصاً.</p>}
             </section>
           )}
 
@@ -1071,7 +1145,8 @@ function App() {
                   <div><span>آخر تداول ضمن 24 ساعة · Ticker</span><strong>{formatSourceTimestamp(selectedQuote.sourceTimestamps?.ticker)}</strong><small>{formatSourceTimestampAge(selectedQuote.sourceTimestamps?.ticker)}</small></div>
                   <div><span>مؤشر الأصل · Index</span><strong>{formatSourceTimestamp(selectedQuote.sourceTimestamps?.index)}</strong><small>{formatSourceTimestampAge(selectedQuote.sourceTimestamps?.index)}</small></div>
                   <div><span>الفائدة المفتوحة · OI</span><strong>{formatSourceTimestamp(selectedQuote.sourceTimestamps?.openInterest)}</strong><small>{formatSourceTimestampAge(selectedQuote.sourceTimestamps?.openInterest)}</small></div>
-                  <small>العمر هو الزمن المنقضي منذ التوقيت المنشور لكل نقطة، ولا يثبت حداثة تدفق الأسعار. closeTime هو وقت آخر صفقة حدثت ضمن نافذة 24 ساعة، ولا يثبت حداثة بقية حقول Ticker. هذه ليست أوقات استلام التطبيق؛ وMark Price لا يتضمن توقيتاً مستقلاً موثقاً في هذه الاستجابة.</small>
+                  <div><span>أفضل Bid/Ask · BookTicker</span><strong>{formatSourceTimestamp(selectedQuote.sourceTimestamps?.bookTicker)}</strong><small>{formatSourceTimestampAge(selectedQuote.sourceTimestamps?.bookTicker)}</small></div>
+                  <small>العمر هو الزمن المنقضي منذ التوقيت المنشور لكل نقطة. BookTicker يخص أفضل Bid/Ask فقط ولا يضمن التنفيذ؛ closeTime يخص آخر صفقة ضمن نافذة 24 ساعة. هذه أوقات المصدر وليست أوقات استلام التطبيق، وMark Price لا يتضمن توقيتاً مستقلاً موثقاً في استجابة REST.</small>
                 </div>}
                 {dataMode === 'BINANCE' && <div className="iv-source-range" aria-label="قيم IV المتاحة للعقد">
                   <span>Bid IV <b>{selectedQuote.bidIv === undefined ? '—' : formatPercent(selectedQuote.bidIv)}</b></span>
