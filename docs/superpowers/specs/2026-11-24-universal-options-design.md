@@ -28,7 +28,7 @@ Evolve Volterra from a crypto/commodity-oriented options lab into a provider-neu
 
 ## User and compliance context
 
-The account owner is a Syrian resident. Binance's Syria-specific FAQ expressly includes Options trading for eligible Syrian residents, subject to KYC/compliance. Binance remains the conditional first execution candidate. Deribit, Bybit and OKX list Syria as restricted in reviewed terms; IBKR has no Syria country acceptance evidence. Traditional options-on-futures access requires a broker/FCM that confirms Syrian residency acceptance in writing. VPN is connectivity only, never eligibility.
+The account owner is a Syrian resident. Binance's Syria-specific FAQ confirms registration/KYC subject to compliance but does not explicitly name Options in its enumerated products; do not infer product eligibility from general account access. Binance remains a technical public-data candidate only where the upstream product endpoints are available. Deribit, Bybit and OKX list Syria as restricted in reviewed terms; IBKR has no Syria country acceptance evidence. Traditional options-on-futures access requires a broker/FCM that confirms Syrian residency acceptance in writing. VPN is connectivity only, never eligibility.
 
 ## Approaches considered
 
