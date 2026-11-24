@@ -11,6 +11,8 @@ export interface OptionReplayConfig {
   feeRatePerSide: number;
   quantity: number;
   maxTrades?: number;
+  /** Trusted app mode; never inferred from CSV venue labels. */
+  sourceMode?: 'CSV' | 'BINANCE';
 }
 
 export interface OptionReplayTrade {
@@ -98,7 +100,7 @@ export function replayLongOptionSnapshots(
       skipped.invalidUnit += 1;
       continue;
     }
-    if (getContractScaleIssue(quote) === 'MULTIPLIER_MISMATCH') {
+    if (getContractScaleIssue(quote, config.sourceMode ?? 'CSV') !== undefined) {
       skipped.invalidContractScale += 1;
       continue;
     }
