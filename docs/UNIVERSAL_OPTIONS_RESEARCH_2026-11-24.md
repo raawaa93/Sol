@@ -6,8 +6,8 @@
 
 ## 1. Executive decision
 
-1. Keep Binance as the first **conditional** venue for the products it explicitly lists and permits to this account. Binance's Syria-specific FAQ says Syrian residents can register and verify subject to KYC/compliance and lists "Options trading". That FAQ predates Binance Commodity Options, so it does not prove that the newer TradFi commodity product is enabled for every Syrian account.
-2. Binance is not a universal options venue. Its currently documented product families include crypto options and commodity options (currently XAUUSDT and XAGUSDT in the first batch). This is not a substitute for the full listed equity, index, rates, FX, energy and agricultural options markets.
+1. Keep Binance as the first **conditional** venue for the products it explicitly lists and permits to this account. Binance's Syria-specific FAQ says Syrian residents can register and verify subject to KYC/compliance and lists "Options trading". That FAQ predates Binance Commodity Options and U.S. Stock Options, so it does not prove that either newer product is enabled for every Syrian account.
+2. Binance is not a universal options venue. Its documented product families now include Crypto Options, Commodity Options (XAUUSDT/XAGUSDT first batch), and U.S. Stock Options on selected U.S. equities/ETFs (physically settled, long-only). This still does not cover the full index, rates, FX, energy and agricultural options markets; stock-option API market endpoints provide reference data, not option quotes/Greeks/IV.
 3. Deribit, Bybit and OKX explicitly restrict Syria in the reviewed current terms. Do not attempt to use them from Syria through VPN/IP masking.
 4. AMP Futures explicitly excludes Syria in its official high-risk country image. Optimus Futures and Ironbeam describe international account opening but do not publish Syria-specific acceptance; they remain unverified prospects, not approved routes. IBKR's current eligibility information does not establish acceptance of a Syrian resident.
 5. Build a venue-neutral research and paper-trading system now. Keep execution adapters disabled until the exact legal entity, product, residency, funding route and account permissions are verified.
@@ -56,9 +56,20 @@ This is positive, first-party evidence for the general Options service. It does 
 
 **API:** Binance documents REST and WebSocket Options APIs for exchange information, index prices, klines, open interest, mark prices, order books, trades, user account/positions, orders and user data streams. The public API documentation is a data interface, not proof of account eligibility.
 
+**U.S. Stock Options (launched 1 September 2026):**
+- More than 1,000 selected U.S.-listed stocks and ETFs are announced as supported; the actual chain is dynamic and account/product-specific.
+- Physically settled in real shares, with Nest Trading Limited as introducing broker and Alpaca Securities LLC as clearing/custody partner.
+- Long-only Buy Call/Buy Put; no writing/short exposure currently. Limit orders only. Launch fee was $0.60/contract; check the current schedule before use.
+- U.S. market hours, generally 9:30–16:00 ET, with some ETF/ETN late close to 16:15 ET.
+- Exercise is manual; if no exercise instruction is submitted before cutoff, Binance describes best-efforts auto-liquidation before market close. Do not assume automatic exercise.
+- Binance UI FAQ: 15-minute delayed quotes are free; real-time OPRA can be activated, with one month included after signing the disclosure. The API market endpoints expose expirations, contracts, exchangeInfo, multipliers, contractSize and deliverables only—not option quotes, prices, Greeks or IV.
+- The product is American-style (exercise before expiry is allowed); Volterra's current validated pricing router rejects American/Bermudan mechanics. Do not calculate European Black-Scholes Greeks for these contracts until an American model and corporate-action/dividend inputs are validated.
+- The September 2026 product launch warns that regional availability may vary. The June 2025 Syria FAQ predates this launch; verify the actual Syrian KYC account or obtain written support confirmation.
+
+
 **Fees:** use the current Options fee page and account-specific rate at execution time. Promotional or regional rates can change; do not hard-code a fee from an old screenshot or marketing page.
 
-**Conclusion:** Binance is a useful initial venue for long single-leg options on products enabled for the account. It is not an institutional multi-leg options workstation: ordinary accounts lack cross-product risk netting, short-writing is restricted, and only limit orders are supported. It is not the whole options universe. Confirm in the actual Syrian KYC account whether both Crypto Options and Commodity/TradFi Options are enabled before funding or trading those products.
+**Conclusion:** Binance is a useful initial venue for long single-leg Crypto, XAU/XAG Commodity and U.S. Stock/ETF options only where the account has product access. It is not an institutional multi-leg options workstation: ordinary accounts lack cross-product risk netting, short-writing is restricted, and only limit orders are supported. It is not the whole options universe. Confirm in the actual Syrian KYC account whether both Crypto Options and Commodity/TradFi Options are enabled before funding or trading those products.
 
 ### Other crypto venues
 
@@ -426,3 +437,10 @@ Gate EU غير متاح للمقيم السوري وفق الاتفاقية ال
 لا تخلط بين رفع العقوبات الاقتصادية الشاملة وبين إلزام الوسطاء بقبول المقيمين السوريين. الأمر التنفيذي الأمريكي 14312 ألغى برنامج العقوبات الاقتصادية الشاملة على سوريا اعتباراً من 1 يوليو 2025، وأزالت OFAC اللوائح السورية من CFR في 26 أغسطس 2025. في 24 أغسطس 2026 أوضحت OFAC أن GL-25 لم تعد لازمة وألغتها، مع استمرار العقوبات المستهدفة على أفراد وكيانات محددة. الاتحاد الأوروبي رفع معظم العقوبات الاقتصادية في 28 مايو 2025 وأبقى القيود الأمنية والتدابير المستهدفة التي جُددت حتى 1 يونيو 2027. المملكة المتحدة رفعت بعض التدابير في 2025 و2026 لكنها أبقت تدابير مالية مستهدفة وقيوداً تجارية معينة. تظل سياسة كل كيان وسيط وأهليته للمنتج المحدد مستقلة عن هذه التغييرات.
 
 التفاصيل والمصادر الحكومية الأولية في [SYRIA_RESIDENCY_AND_SANCTIONS_2026-11-24.md](SYRIA_RESIDENCY_AND_SANCTIONS_2026-11-24.md).
+
+
+### Binance Stock Options sources
+- Launch announcement (1 Sep 2026): https://www.binance.com/en/blog/markets/3413696947185733989
+- Stock Options FAQ (updated 9 Oct 2026): https://www.binance.com/en-PH/support/faq/detail/3dddc209bb564b448c0948fc4c5e6d80
+- Stock Options API introduction: https://developers.binance.me/en/docs/products/stock-options/introduction
+- Stock Options market-data REST API: https://developers.binance.me/en/docs/catalog/advanced-trading-stock-option-trading/api/rest-api
