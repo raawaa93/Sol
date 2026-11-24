@@ -166,6 +166,18 @@ test('CSV never substitutes contractMultiplier for the underlying unit and rejec
   assert.ok(result.warnings.some((warning) => warning.includes('contractMultiplier لا يساوي unit')));
 });
 
+test('CSV generic multiplier field is not interpreted as underlying contract unit', () => {
+  const expiry = new Date(Date.now() + 45 * 86_400_000).toISOString();
+  const csv = [
+    'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,spot,multiplier,timestamp,assetClass',
+    'SPY-MULTIPLIER,SPY,' + expiry + ',100,CALL,2,2.2,2.1,25%,100,100,2026-11-24T02:00:00Z,EQUITY',
+  ].join('\n');
+  const result = parseOptionsCsv(csv);
+
+  assert.equal(result.quotes.length, 0);
+  assert.ok(result.warnings.some((warning) => warning.includes('لا يمكن استخدام contractMultiplier بديلاً عن unit')));
+});
+
 test('CSV preserves perpetual underlying mechanics without converting them to spot or futures', () => {
   const csv = [
     'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,spot,unit,timestamp,assetClass,underlyingKind',
