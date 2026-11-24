@@ -155,6 +155,40 @@ test('Binance normalizer avoids crossed bid/ask midpoints and preserves last-pri
   assert.ok(Number.isFinite(quote.rho));
 });
 
+
+test('Binance quote diagnostics distinguish missing bid, ask, and both sides', () => {
+  const now = Date.now();
+  const expiry = now + 30 * 86_400_000;
+  const code = compactDate(expiry);
+  const symbols = [
+    `BTC-${code}-100000-C`,
+    `BTC-${code}-101000-C`,
+    `BTC-${code}-102000-C`,
+  ];
+  const snapshot = normalizeBinanceSnapshot({
+    fetchedAt: now,
+    exchangeInfo: {
+      serverTime: now,
+      optionContracts: [{ baseAsset: 'BTC', quoteAsset: 'USDT', underlying: 'BTCUSDT' }],
+      optionSymbols: symbols.map((symbol, index) => ({
+        symbol, underlying: 'BTCUSDT', side: 'CALL', strikePrice: 100000 + index * 1000,
+        expiryDate: expiry, unit: 1, status: 'TRADING',
+      })),
+    },
+    marks: symbols.map((symbol) => ({ symbol, markPrice: 10, markIV: 0.5 })),
+    tickers: [
+      { symbol: symbols[0], bidPrice: 9, lastPrice: 10 },
+      { symbol: symbols[1], askPrice: 11, lastPrice: 10 },
+      { symbol: symbols[2], lastPrice: 10 },
+    ],
+    indices: [{ requestedUnderlying: 'BTCUSDT', item: { indexPrice: 100000, time: now } }],
+  });
+
+  assert.equal(snapshot.quotes.length, 3);
+  assert.ok(snapshot.warnings.some((warning) =>
+    warning.includes('Bid مفقود فقط: 1، Ask مفقود فقط: 1، كلاهما مفقود: 1')));
+});
+
 test('Binance client preserves HTTP 451 as a typed upstream access restriction', async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (input) => {
