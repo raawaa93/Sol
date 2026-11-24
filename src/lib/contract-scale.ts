@@ -6,14 +6,16 @@ export type ContractScaleSourceMode = 'DEMO' | 'CSV' | 'BINANCE';
 
 type ScaleMetadata = Pick<OptionQuote,
   'unit' | 'contractMultiplier' | 'estimatedFields' | 'venue' | 'assetClass'
-  | 'underlyingKind' | 'exerciseStyle' | 'settlementStyle'
+  | 'underlyingKind' | 'exerciseStyle' | 'settlementStyle' | 'quoteAsset' | 'settlementAsset'
 >;
 
 function hasSupportedCryptoScaleProfile(quote: ScaleMetadata): boolean {
   return quote.assetClass === 'CRYPTO'
     && quote.underlyingKind === 'SPOT'
     && quote.exerciseStyle === 'EUROPEAN'
-    && quote.settlementStyle === 'CASH';
+    && quote.settlementStyle === 'CASH'
+    && Boolean(quote.quoteAsset)
+    && quote.quoteAsset === quote.settlementAsset;
 }
 
 /**
