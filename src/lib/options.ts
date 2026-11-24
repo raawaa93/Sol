@@ -1,5 +1,10 @@
 import type { OptionGreeks, OptionQuote, OptionSide } from './types';
 
+export function getUnderlyingReferencePrice(quote: OptionQuote): number {
+  return quote.underlyingKind === 'FUTURE' ? quote.forward ?? quote.spot : quote.spot;
+}
+
+
 const SQRT_2 = Math.sqrt(2);
 const SQRT_2PI = Math.sqrt(2 * Math.PI);
 // Cephes rational coefficients for erf/erfc; attribution and license are in THIRD-PARTY-NOTICES.md.
@@ -344,7 +349,7 @@ export function getExpiryPnl(quote: OptionQuote, expirySpot: number, premiumPerU
 
 export function buildScenarioSeries(quote: OptionQuote, premium: number, quantity: number, fees: number) {
   const moves = [-0.2, -0.15, -0.1, -0.05, 0, 0.05, 0.1, 0.15, 0.2];
-  const referencePrice = quote.underlyingKind === 'FUTURE' ? quote.forward ?? quote.spot : quote.spot;
+  const referencePrice = getUnderlyingReferencePrice(quote);
   return moves.map((move) => {
     const expirySpot = referencePrice * (1 + move);
     return {
