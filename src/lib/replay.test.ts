@@ -15,8 +15,6 @@ function quote(timestamp: string, overrides: Partial<OptionQuote> = {}): OptionQ
     settlementStyle: 'CASH',
     quoteAsset: 'USDT',
     settlementAsset: 'USDT',
-    quoteAsset: 'USDT',
-    settlementAsset: 'USDT',
     expiry: '2026-11-25T21:00:00.000Z',
     daysToExpiry: 1,
     strike: 4000,
