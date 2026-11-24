@@ -154,6 +154,18 @@ test('CSV preserves explicit asset class and venue for traditional listed option
   assert.equal(result.quotes[0].settlementStyle, 'PHYSICAL');
 });
 
+test('CSV never substitutes contractMultiplier for the underlying unit and rejects mismatched scalar mechanics', () => {
+  const expiry = new Date(Date.now() + 45 * 86_400_000).toISOString();
+  const header = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,spot,unit,timestamp,assetClass,venue,contractMultiplier';
+  const missingUnit = 'SPY-MISSING-UNIT,SPY,' + expiry + ',100,CALL,2,2.2,2.1,25%,100,,2026-11-24T02:00:00Z,EQUITY,CBOE,100';
+  const mismatched = 'SPY-MISMATCH,SPY,' + expiry + ',100,CALL,2,2.2,2.1,25%,100,100,2026-11-24T02:00:00Z,EQUITY,CBOE,50';
+  const result = parseOptionsCsv([header, missingUnit, mismatched].join('\n'));
+
+  assert.equal(result.quotes.length, 0);
+  assert.ok(result.warnings.some((warning) => warning.includes('لا يمكن استخدام contractMultiplier بديلاً عن unit')));
+  assert.ok(result.warnings.some((warning) => warning.includes('contractMultiplier لا يساوي unit')));
+});
+
 test('CSV preserves perpetual underlying mechanics without converting them to spot or futures', () => {
   const csv = [
     'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,spot,unit,timestamp,assetClass,underlyingKind',
