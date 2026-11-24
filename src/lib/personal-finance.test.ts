@@ -97,9 +97,9 @@ test('balance and cash-flow dates require ISO timestamps', () => {
 
 
 const portfolioHoldings = [
-  { id: 'btc', symbol: 'BTC', name: 'Bitcoin', assetClass: 'CRYPTO' as const, quantity: 0.5, averageCost: 40000, marketPrice: 60000, currency: 'USD', contractMultiplier: 1, quoteSource: 'manual exchange quote', priceObservedAt: '2026-11-24T12:00:00Z' },
-  { id: 'spy', symbol: 'SPY', name: 'S&P 500 ETF', assetClass: 'ETF' as const, quantity: 2, averageCost: 500, marketPrice: 550, currency: 'USD', contractMultiplier: 1, quoteSource: 'manual broker statement', priceObservedAt: '2026-11-24T12:00:00Z' },
-  { id: 'eur-bond', symbol: 'EU-BOND', name: 'Euro bond fund', assetClass: 'BOND' as const, quantity: 10, averageCost: 95, marketPrice: 100, currency: 'EUR', contractMultiplier: 1, quoteSource: 'manual statement', priceObservedAt: '2026-11-24T12:00:00Z' },
+  { id: 'btc', symbol: 'BTC', assetClass: 'CRYPTO' as const, quantity: 0.5, averageCost: 40000, marketPrice: 60000, currency: 'USD', contractMultiplier: 1, quoteSource: 'manual exchange quote', priceObservedAt: '2026-11-24T12:00:00Z' },
+  { id: 'spy', symbol: 'SPY', assetClass: 'ETF' as const, quantity: 2, averageCost: 500, marketPrice: 550, currency: 'USD', contractMultiplier: 1, quoteSource: 'manual broker statement', priceObservedAt: '2026-11-24T12:00:00Z' },
+  { id: 'eur-bond', symbol: 'EU-BOND', assetClass: 'BOND' as const, quantity: 10, averageCost: 95, marketPrice: 100, currency: 'EUR', contractMultiplier: 1, quoteSource: 'manual statement', priceObservedAt: '2026-11-24T12:00:00Z' },
 ];
 
 test('portfolio converts holdings, calculates unrealized P&L and asset-class allocation', async () => {
@@ -118,7 +118,7 @@ test('portfolio converts holdings, calculates unrealized P&L and asset-class all
 test('portfolio applies verified contract multipliers to listed options economics', async () => {
   const { calculatePortfolio } = await import('./personal-finance.ts');
   const option = {
-    id: 'spy-call', symbol: 'SPY-DEC-600-C', name: 'SPY December call', assetClass: 'OPTION' as const,
+    id: 'spy-call', symbol: 'SPY-DEC-600-C', assetClass: 'OPTION' as const,
     quantity: 2, averageCost: 4, marketPrice: 6, currency: 'USD', contractMultiplier: 100,
     quoteSource: 'broker option chain', priceObservedAt: '2026-11-24T12:00:00Z',
   };
