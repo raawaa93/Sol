@@ -79,7 +79,7 @@ CME تسرد وسطاء/FCMs يمكنهم إتاحة الوصول إلى منت�
 
 ### ما توفره
 
-Binance خيار عملي لخيارات العملات الرقمية وبعض الخيارات السلعية، وليس بديلاً عن جميع الأسواق التقليدية. وثائقها الحالية تفصل بين Crypto Options وCommodity/TradFi Options. توفر وثائق Options API واجهات REST وWebSocket للسوق والحساب والأوامر، منها:
+Binance خيار عملي مشروط لخيارات الكريبتو والسلع المحدودة وخيارات الأسهم الأمريكية/ETFs، لكنه ليس بديلاً عن جميع أسواق الخيارات العالمية. يجب التعامل مع Crypto Options وCommodity Options وU.S. Stock Options كخطوط منتجات منفصلة، لكل منها API وتسوية وأهلية وصلاحيات مختلفة. Crypto Options وحده لديه واجهة سوق REST/WebSocket كاملة نسبياً، منها:
 - exchangeInfo لمواصفات الرموز والعقود.
 - depth لدفتر الأوامر.
 - trades وhistoricalTrades.
@@ -92,6 +92,11 @@ Binance خيار عملي لخيارات العملات الرقمية وبعض 
 
 ### حدود مهمة
 
+- **U.S. Stock Options (إطلاق 1 سبتمبر 2026):** Binance أعلنت عقود Calls/Puts على أكثر من 1,000 سهم وETF أمريكي مختار، بتسوية مادية في أسهم حقيقية عبر Nest Trading Limited كوسيط مُعرّف وAlpaca Securities LLC كوسيط مقاصة/حفظ. المنتج Long-only (Buy Call/Buy Put فقط)، Limit orders فقط، ورسوم الإطلاق المعلنة 0.60$ للعقد؛ يجب التحقق من جدول الرسوم الحالي. ساعات التداول الأمريكية عادة 9:30–16:00 ET وبعض ETF/ETN حتى 16:15. التمرين يحتاج تعليمات يدوية قبل cutoff؛ إذا لم تُرسل، يجري Auto-liquidation على أساس best-efforts قبل الإغلاق، وليس تمريناً تلقائياً مضموناً. لا تعتبره عقداً نقدياً أو Crypto Options.
+- **بيانات Stock Options:** واجهات SAPI للسوق تعيد expirations/contracts/exchangeInfo وmultiplier/contractSize/deliverables وقواعد التداول فقط؛ وثائق API تقول صراحةً إنها لا توفر option prices/quotes/Greeks/IV. واجهة Binance تعرض 15-minute delayed quotes مجاناً، ويمكن تفعيل real-time OPRA quotes؛ FAQ تقول إن توقيع الإفصاح يمنح شهراً من البيانات اللحظية. لا نفترض سعر OPRA بعد الشهر الأول أو ترخيص إعادة العرض. API يتطلب X-MBX-APIKEY، وفتح المنتج يتطلب تفعيله في التطبيق واختبار الملاءمة.
+- **مواصفات الأسهم:** multiplier يحسب تكلفة العقد، بينما contractSize يحدد عدد الأسهم المسلمة؛ قد يختلفان بعد corporate action. يجب حفظ rootSymbol وdeliverables وتوقيت expiry في America/New_York. لا تستخدم multiplier=100 افتراضياً للعقود المعدلة.
+- **نموذج التسعير:** خيارات الأسهم الأمريكية قابلة للتمرين قبل الانتهاء وفق شروط Binance، أي أن نمطها أمريكي. نموذج Volterra الحالي يرفض American/Bermudan عمداً؛ لا نمررها إلى Black–Scholes الأوروبي أو Black–76. يلزم CRR/QuantLib مع جدول توزيعات/أحداث شركة واضح قبل عرض Greeks محسوبة.
+- **أهلية سوريا:** FAQ سوريا المنشور في يونيو 2025 يسبق إطلاق Stock Options في سبتمبر 2026، وإعلان المنتج ينبه إلى أن المنتجات قد لا تكون متاحة في كل منطقة. لا نستنتج أن Stock Options مفعلة للحساب السوري من FAQ العام؛ يلزم ظهورها في حساب KYC أو تأكيد دعم مكتوب.
 - خيارات Binance ليست سوقاً عالمية موحدة لكل الأسهم والمؤشرات والفائدة والعملات والطاقة والزراعة.
 - خيارات السلع الموثقة حالياً تشمل XAUUSDT وXAGUSDT في الدفعة الأولى، مع إمكانية إدراج أصول إضافية لاحقاً؛ لا نفترض وجودها حتى تظهر في instrument catalogue.
 - Commodity Options على XAUUSDT وXAGUSDT في الدفعة الأولى، أوروبية، USDT-settled، ولا تتطلب تسليم السلعة فعلياً. يربط Binance underlying price بمؤشر TradFi Perpetual؛ هذا لا يحول الخيار إلى perpetual، ولا يجعل perpetual نفسه خياراً.
@@ -119,7 +124,7 @@ Binance تكفي كبداية لشراء الخيارات أحادية الرج�
 
 | المنصة/المسار | إقامة سوريا | نطاق الخيارات | API/بيانات | القرار |
 |---|---|---|---|---|
-| Binance | FAQ سوريا يدرج Options؛ Commodity Options تحتاج تحققاً منفصلاً | كريبتو + XAU/XAG؛ كتابة BTC/ETH فقط؛ سلعة Long Only | REST + WS؛ Limit orders فقط | أفضل بداية مشروطة للـlong single-leg، لا منصة متعددة الأرجل |
+| Binance | FAQ سوريا يدرج Options؛ Stock/Commodity الجديدة تحتاج تحققاً منفصلاً | Crypto + XAU/XAG + US stocks/ETFs؛ الأسهم والسلع Long-only؛ لا تغطية عالمية | Crypto REST/WS كامل نسبياً؛ Stock API مرجعي فقط؛ Limit orders | أفضل بداية مشروطة للمنتجات المتاحة، لا منصة شاملة |
 | Deribit | ممنوع صراحة | كريبتو، سيولة قوية في BTC/ETH وبعض العملات | API/WS متقدم | لا تنفيذ للمستخدم السوري |
 | Bybit | ممنوع صراحة | كريبتو | REST + WS | لا تنفيذ للمستخدم السوري |
 | OKX | سوريا ضمن المواقع المقيدة في الشروط التي راجعناها | كريبتو | REST + WS | لا تنفيذ للمستخدم السوري |
@@ -188,7 +193,7 @@ NautilusTrader مرشح محرك أحداث واختبار تاريخي متعد
 
 ## 9. حالة الأدلة
 
-- **مثبت بمصدر رسمي:** Binance تقبل مبدئياً المقيمين السوريين وتذكر Options ضمن المنتجات؛ Deribit/Bybit/OKX تقيد سوريا وفق الصفحات التي تمت مراجعتها؛ IBKR لا تظهر سوريا في قائمة الدول المتاحة؛ Binance Commodity Options للذهب والفضة أوروبية وUSDT-settled والبيع للمستخدمين الأفراد غير متاح.
+- **مثبت بمصدر رسمي:** Binance تقبل مبدئياً المقيمين السوريين وتذكر Options ضمن المنتجات؛ Deribit/Bybit/OKX تقيد سوريا وفق الصفحات التي تمت مراجعتها؛ IBKR لا تظهر سوريا في قائمة الدول المتاحة؛ Binance Commodity Options للذهب والفضة أوروبية وUSDT-settled وRetail long-only؛ Binance Stock Options على أسهم/ETFs أمريكية Physically-settled وLong-only، لكن أهلية سوريا لها غير مثبتة وواجهات API لا تعطي أسعار الخيارات أو Greeks/IV.
 - **غير مثبت:** أن كل عقود Binance متاحة لهذا الحساب، أو أن كل أنواع بيع خيارات الكريبتو مفعلة؛ قبول Optimus للمقيم السوري؛ وجود وسيط تقليدي متاح فعلياً لسوريا لجميع خيارات الأسهم والمؤشرات والعقود الآجلة. AMP مستبعدة وفق قائمتها الرسمية.
 - **ليس دليلاً:** عنوان IP أجنبي، غياب سوريا من قائمة غير مكتوبة/صورة غير قابلة للبحث، نجاح اتصال API عام، أو وجود وسيط في قائمة CME.
 - **القرار يتغير فقط بدليل جديد:** تحديث شروط رسمي أو رد امتثال مكتوب أو صلاحيات حساب حقيقية بعد KYC صادق.
@@ -349,3 +354,10 @@ Gate EU ممنوع للمقيم السوري وفق الاتفاقية الأو�
 لا تخلط بين رفع العقوبات الاقتصادية الشاملة وبين إلزام الوسطاء بقبول المقيمين السوريين. الأمر التنفيذي الأمريكي 14312 ألغى برنامج العقوبات الاقتصادية الشاملة على سوريا اعتباراً من 1 يوليو 2025، وأزالت OFAC اللوائح السورية من CFR في 26 أغسطس 2025. في 24 أغسطس 2026 أوضحت OFAC أن GL-25 لم تعد لازمة وألغتها، مع استمرار العقوبات المستهدفة على أفراد وكيانات محددة. الاتحاد الأوروبي رفع معظم العقوبات الاقتصادية في 28 مايو 2025 وأبقى القيود الأمنية والتدابير المستهدفة التي جُددت حتى 1 يونيو 2027. المملكة المتحدة رفعت بعض التدابير في 2025 و2026 لكنها أبقت تدابير مالية مستهدفة وقيوداً تجارية معينة. تظل سياسة كل كيان وسيط وأهليته للمنتج المحدد مستقلة عن هذه التغييرات.
 
 التفاصيل والمصادر الحكومية الأولية في [SYRIA_RESIDENCY_AND_SANCTIONS_2026-11-24.md](SYRIA_RESIDENCY_AND_SANCTIONS_2026-11-24.md).
+
+
+### مصادر U.S. Stock Options
+- Launch announcement (1 Sep 2026): https://www.binance.com/en/blog/markets/3413696947185733989
+- Stock Options FAQ (updated 9 Oct 2026): https://www.binance.com/en-PH/support/faq/detail/3dddc209bb564b448c0948fc4c5e6d80
+- Stock Options REST API (reference data only): https://developers.binance.me/en/docs/catalog/advanced-trading-stock-option-trading/api/rest-api
+- Stock Options API introduction: https://developers.binance.me/en/docs/products/stock-options/introduction
