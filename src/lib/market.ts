@@ -1,4 +1,4 @@
-import { getMidPrice } from './options.ts';
+import { getMidPrice, getUnderlyingReferencePrice } from './options.ts';
 import { isQuoteFieldEstimated } from './quote-quality.ts';
 import type { AssetSnapshot, OptionQuote, Underlying } from './types';
 
@@ -28,7 +28,7 @@ export function getMarketSnapshotFromQuotes(quotes: OptionQuote[], underlying: U
   const rows = getLatestQuotePerContract(quotes.filter((quote) => quote.underlying === underlying));
   if (!rows.length) return null;
 
-  const referencePrices = rows.map((quote) => quote.underlyingKind === 'FUTURE' ? quote.forward ?? quote.spot : quote.spot).sort((a, b) => a - b);
+  const referencePrices = rows.map(getUnderlyingReferencePrice).sort((a, b) => a - b);
   const near30Iv = rows
     .filter((quote) => quote.daysToExpiry >= 20 && quote.daysToExpiry <= 40
       && !isQuoteFieldEstimated(quote, 'daysToExpiry')
@@ -39,7 +39,7 @@ export function getMarketSnapshotFromQuotes(quotes: OptionQuote[], underlying: U
   const oiRows = rows.filter((quote) => quote.openInterestUsd != null || quote.openInterest !== null);
   const volumeRows = rows.filter((quote) => quote.volumeQuote != null || quote.volume !== null);
   const openInterestUsd = oiRows.length
-    ? oiRows.reduce((sum, quote) => sum + (quote.openInterestUsd ?? (quote.openInterest ?? 0) * (quote.underlyingKind === 'FUTURE' ? quote.forward ?? quote.spot : quote.spot) * quote.unit), 0)
+    ? oiRows.reduce((sum, quote) => sum + (quote.openInterestUsd ?? (quote.openInterest ?? 0) * getUnderlyingReferencePrice(quote) * quote.unit), 0)
     : null;
   const volume24hUsd = volumeRows.length
     ? volumeRows.reduce((sum, quote) => sum + (quote.volumeQuote ?? (quote.volume ?? 0) * getMidPrice(quote) * quote.unit), 0)
