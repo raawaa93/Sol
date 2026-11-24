@@ -667,3 +667,22 @@ h1, h2, h3, p { margin: 0; }
   .replay-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .replay-section { margin-top: 22px; }
 }
+
+
+/* Global instrument search and local watchlist. */
+.instrument-search { display: inline-flex; align-items: center; gap: 7px; min-width: 185px; height: 36px; padding: 0 10px; border: 1px solid #293638; border-radius: 8px; color: #84938d; background: #101719; }
+.instrument-search:focus-within { border-color: #6b8658; box-shadow: 0 0 0 2px rgba(183,244,119,.08); }
+.instrument-search input { width: 145px; min-width: 0; border: 0; outline: 0; color: #e5eee8; background: transparent; font: inherit; font-size: 10px; }
+.instrument-search input::placeholder { color: #778580; }
+.watchlist-toggle { display: inline-grid; place-items: center; width: 34px; height: 34px; flex: 0 0 auto; border: 1px solid #2b3738; border-radius: 8px; color: #81908b; background: #101719; cursor: pointer; }
+.watchlist-toggle:hover, .watchlist-toggle.active { color: #c7ed9d; border-color: #536d42; background: #17231b; }
+.watchlist-bar { display: flex; align-items: center; gap: 7px; width: 100%; overflow-x: auto; padding: 9px 0 0; scrollbar-width: thin; }
+.watchlist-bar > span { flex: 0 0 auto; color: #82908a; font-size: 9px; }
+.watchlist-bar button { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; padding: 5px 8px; border: 1px solid #283435; border-radius: 7px; color: #aebbb4; background: #11191b; font-size: 9px; cursor: pointer; }
+.watchlist-bar button.selected { border-color: #526b43; color: #d6efc4; background: #17221b; }
+.watchlist-bar button small { color: #74827b; font-size: 8px; }
+@media (max-width: 760px) {
+  .instrument-search { order: -1; width: 100%; min-width: 0; }
+  .instrument-search input { width: 100%; }
+  .watchlist-bar { margin-top: -3px; }
+}
