@@ -793,7 +793,8 @@ test('Binance optionMarkPrice updates mark, IV and index while retaining source 
     estimatedFields: ['iv', 'markPrice', 'riskFreeRate', 'delta'],
   };
   const event = {
-    symbol: quote.symbol, eventTime: 1_800_000_001_000, markPrice: 5200, indexPrice: 101000,
+    symbol: quote.symbol, eventTime: 1_800_000_001_000, markPrice: 5200, bestBid: 5100, bestAsk: 5300,
+    bestBidQuantity: 1.25, bestAskQuantity: 2.5, indexPrice: 101000,
     bidIv: 0.58, askIv: 0.62, markIv: 0.60, riskFreeRate: 0.03,
     sourceGreeks: { delta: 0.99, gamma: 0.00004, theta: -30, vega: 55 },
   };
