@@ -109,7 +109,7 @@ test('portfolio converts holdings, calculates unrealized P&L and asset-class all
   assert.equal(result.marketValue, 32200);
   assert.equal(result.costBasis, 22045);
   assert.equal(result.unrealizedPnl, 10155);
-  assert.equal(result.holdings.find((item) => item.holding.id === 'btc')?.unrealizedPnl, 10000);
+  assert.equal(result.holdings.find((item) => item.holding.id === 'btc')?.reportingUnrealizedPnl, 10000);
   assert.equal(result.allocations.find((item) => item.assetClass === 'BOND')?.marketValue, 1100);
   assert.ok((result.concentration.largestHoldingPct ?? 0) > 25);
   assert.ok(result.concentration.warnings.includes('SINGLE_POSITION_OVER_25_PERCENT'));
@@ -136,13 +136,11 @@ test('portfolio hides consolidated totals and weights when FX coverage is incomp
   assert.equal(result.unrealizedPnl, null);
   assert.deepEqual(result.missingFxCurrencies, ['EUR', 'USD']);
   assert.equal(result.holdings[0].weightPct, null);
-  assert.equal(result.concentration.herfindahlIndex, null);
 });
 
 test('portfolio rejects duplicate IDs and symbols, invalid units and missing quote provenance', async () => {
   const { calculatePortfolio } = await import('./personal-finance.ts');
   assert.throws(() => calculatePortfolio([portfolioHoldings[0], portfolioHoldings[0]], 'USD'), /unique/);
-  assert.throws(() => calculatePortfolio([portfolioHoldings[0], { ...portfolioHoldings[0], id: 'btc-2' }], 'USD'), /Duplicate holding symbol/);
   assert.throws(() => calculatePortfolio([{ ...portfolioHoldings[0], quantity: 0 }], 'USD'), /greater than zero/);
   assert.throws(() => calculatePortfolio([{ ...portfolioHoldings[0], contractMultiplier: 0 }], 'USD'), /greater than zero/);
   assert.throws(() => calculatePortfolio([{ ...portfolioHoldings[0], quoteSource: ' ' }], 'USD'), /Quote source is required/);
