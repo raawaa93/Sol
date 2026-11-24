@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: '23 4 * * 0'
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/backup-trigger-once-2026-11-24.md'
 
 permissions:
   contents: write
