@@ -373,6 +373,9 @@ Sources:
 
 ### Data API and pricing distinction
 
+**Binance Crypto premium-scale correction (24 November 2026):** the official `exchangeInfo` schema defines `unit` as underlying quantity per contract. The same Market Data API documents order-book levels as `[price, quantity]`, ticker `volume` as contracts and `amount` as quote-asset value, and a recent-trade example `price=1300`, `qty=0.1`, `quoteQty=130` (price × quantity). These fields must not be collapsed into one scalar. The current legacy app multiplies observed premium by `unit`; this is only numerically safe when `unit=1`. Until premium debit, model-price scaling and deliverable payoff are separated, Binance Crypto Options with `unit>1` remain observed-only. Source: https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-options/api/rest-api/market-data
+
+
 - Binance Crypto Options API يقدم سلسلة بيانات حية للعقود المدعومة، ويجب اكتشافها من exchangeInfo؛ Binance Stock Options API منفصل ويصف endpoints الخاصة بالسوق بأنها contract reference data فقط دون option prices/quotes/Greeks/IV.
 - Massive Options Basic: مجاني، 5 طلبات/دقيقة وEOD ومرجع بيانات؛ Starter $29/month لتأخير 15 دقيقة، Advanced $199/month للحظي. غير مناسب لسقف 15$/month إلا المجاني EOD.
 - MarketData.app Free: 100 API credits/day، سنة تاريخية، وتأخير خيارات لا يقل عن 24 ساعة؛ Starter يتطلب التزاماً سنوياً ويعطي 15-minute delayed options؛ لا نشترك حالياً.
