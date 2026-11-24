@@ -82,6 +82,16 @@ At the time of this audit, the latest `main` commit was `8cd1c3bda29c5e2c1aae8af
 
 The successful smoke test verifies the deployed app/proxy contract exercised by the workflow. It does **not** prove Binance currently returns live options data; recent observed HTTP 451 responses remain upstream rejections for those requests.
 
+### Latest Binance proxy telemetry (24-hour log window)
+
+For the deployed `volterra-binance-market-data` function, read-only Edge Function logs show:
+
+- Version 6: 27 responses with HTTP 451, latest at 04:50:35 UTC on 24 November 2026.
+- Version 6: 2 responses with HTTP 400, latest at 03:54:19 UTC.
+- Version 5: 98 responses with HTTP 200 on 23 November, plus 3 responses with HTTP 451.
+
+No HTTP 200 response was observed for version 6 in this log window. This is consistent with an upstream rejection affecting the current deployment, but does not establish whether the rejection is specific to one endpoint, egress route, region, or product entitlement. Preserve the existing distinction between proxy transport health and upstream market-data availability.
+
 ## Recommended action order
 
 1. Enable leaked-password protection in Auth settings and verify signup/password-change behavior.
