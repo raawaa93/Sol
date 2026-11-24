@@ -228,6 +228,32 @@ test('Binance proxy HTTP 451 triggers a direct current-network public-data attem
   await expect(page.locator('.source-card')).toContainText('بيانات تجريبية');
 });
 
+test('mobile option chain renders compact cards and selects a contract without table overflow', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+
+  const mobileList = page.locator('.chain-mobile-list');
+  await expect(mobileList).toBeVisible();
+  await expect(page.locator('.chain-table')).toBeHidden();
+  const cards = mobileList.locator('.chain-mobile-card');
+  await expect(cards.first()).toBeVisible();
+  await expect(cards.first()).toContainText('Bid');
+  await expect(cards.first()).toContainText('Ask');
+  await expect(cards.first()).toContainText('IV');
+  await expect(cards.first()).toContainText('Delta');
+
+  if (await cards.count() > 1) {
+    await cards.nth(1).click();
+    await expect(cards.nth(1)).toHaveAttribute('aria-pressed', 'true');
+  }
+
+  const dimensions = await mobileList.evaluate((element) => ({
+    client: element.clientWidth,
+    scroll: element.scrollWidth,
+  }));
+  expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.client + 1);
+});
+
 test('mobile layout has no document-level horizontal overflow', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
