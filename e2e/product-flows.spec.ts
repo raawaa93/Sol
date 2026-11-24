@@ -317,7 +317,7 @@ test('CSV cannot spoof a Demo venue label to unlock per-contract P&L', async ({ 
   await page.locator('input[type="file"]').setInputFiles({
     name: 'spoofed-demo-venue.csv',
     mimeType: 'text/csv',
-    buffer: Buffer.from([header, row].join('\\n')),
+    buffer: Buffer.from([header, row].join('\n')),
   });
 
   await expect(page.locator('.source-card')).toContainText('ملف محلي مستورد');
