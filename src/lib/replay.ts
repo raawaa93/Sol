@@ -5,7 +5,12 @@ import type { OptionQuote } from './types.ts';
 
 function hasSameContractScale(entry: OptionQuote, exit: OptionQuote): boolean {
   const tolerance = Math.max(1e-9, Math.abs(entry.unit) * 1e-9);
-  return Number.isFinite(entry.unit)
+  return entry.symbol === exit.symbol
+    && entry.underlying === exit.underlying
+    && entry.expiry === exit.expiry
+    && entry.strike === exit.strike
+    && entry.type === exit.type
+    && Number.isFinite(entry.unit)
     && Number.isFinite(exit.unit)
     && Math.abs(entry.unit - exit.unit) <= tolerance
     && entry.contractMultiplier === exit.contractMultiplier
