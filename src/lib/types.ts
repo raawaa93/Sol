@@ -111,6 +111,11 @@ export interface OptionQuote {
   bid: number;
   /** 0 means the bid/ask side was not present in the source. */
   ask: number;
+  /** Best displayed side quantities when supplied by a live venue stream. */
+  bidQuantity?: number;
+  askQuantity?: number;
+  /** Provenance for the current bid/ask values; no inference from mere presence. */
+  bidAskSource?: 'BOOK_TICKER' | 'OPTION_MARK_PRICE';
   markPrice: number;
   priceSource?: QuotePriceSource;
   /** Zero is the unavailable sentinel; ivStatus distinguishes it from a valid observed or modelled value. */

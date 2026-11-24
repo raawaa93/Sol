@@ -754,7 +754,7 @@ test('Binance Options optionMarkPrice parser handles combined event payloads', (
     stream: 'btcusdt@optionMarkPrice',
     data: [{
       e: 'markPrice', E: 1_800_000_001_000, s: 'BTC-261225-100000-C',
-      mp: '5200', i: '101000', bo: '5100', ao: '5300',
+      mp: '5200', i: '101000', bo: '5100', ao: '5300', bq: '1.25', aq: '2.5',
       b: '0.58', a: '0.62', vo: '0.60', rf: '0.02',
       d: '0.99', g: '0.00004', t: '-30', v: '55',
     }],
@@ -764,6 +764,10 @@ test('Binance Options optionMarkPrice parser handles combined event payloads', (
     symbol: 'BTC-261225-100000-C',
     eventTime: 1_800_000_001_000,
     markPrice: 5200,
+    bestBid: 5100,
+    bestAsk: 5300,
+    bestBidQuantity: 1.25,
+    bestAskQuantity: 2.5,
     indexPrice: 101000,
     bidIv: 0.58,
     askIv: 0.62,
@@ -789,7 +793,8 @@ test('Binance optionMarkPrice updates mark, IV and index while retaining source 
     estimatedFields: ['iv', 'markPrice', 'riskFreeRate', 'delta'],
   };
   const event = {
-    symbol: quote.symbol, eventTime: 1_800_000_001_000, markPrice: 5200, indexPrice: 101000,
+    symbol: quote.symbol, eventTime: 1_800_000_001_000, markPrice: 5200, bestBid: 5100, bestAsk: 5300,
+    bestBidQuantity: 1.25, bestAskQuantity: 2.5, indexPrice: 101000,
     bidIv: 0.58, askIv: 0.62, markIv: 0.60, riskFreeRate: 0.03,
     sourceGreeks: { delta: 0.99, gamma: 0.00004, theta: -30, vega: 55 },
   };
@@ -809,6 +814,36 @@ test('Binance optionMarkPrice updates mark, IV and index while retaining source 
   assert.notEqual(updated.delta, 0.99);
   assert.equal(updated.bid, quote.bid);
   assert.equal(updated.ask, quote.ask);
+  assert.equal(updated.bidAskSource, undefined, 'existing quote sides without live book ticker are not overwritten by a synthetic source marker');
+
+  const fallbackQuote = { ...quote, sourceTimestamps: undefined, bid: 0, ask: 0 };
+  const fallback = applyBinanceOptionMarkPrice(fallbackQuote, event);
+  assert.equal(fallback.bid, 5100);
+  assert.equal(fallback.ask, 5300);
+  assert.equal(fallback.bidQuantity, 1.25);
+  assert.equal(fallback.askQuantity, 2.5);
+  assert.equal(fallback.bidAskSource, 'OPTION_MARK_PRICE');
+
+  const partialQuote = { ...fallbackQuote, bid: 5050 };
+  const partial = applyBinanceOptionMarkPrice(partialQuote, event);
+  assert.equal(partial.bid, 5050, 'valid existing bid is preserved');
+  assert.equal(partial.ask, 5300, 'only the missing ask is filled');
+  assert.equal(partial.bidQuantity, undefined);
+  assert.equal(partial.askQuantity, 2.5);
+
+  const liveBookQuote = {
+    ...fallbackQuote,
+    sourceTimestamps: { bookTicker: '2026-11-24T10:00:00.000Z' },
+    bid: 5000,
+    ask: 5400,
+    bidQuantity: 3,
+    askQuantity: 4,
+    bidAskSource: 'BOOK_TICKER' as const,
+  };
+  const liveBook = applyBinanceOptionMarkPrice(liveBookQuote, event);
+  assert.equal(liveBook.bid, 5000);
+  assert.equal(liveBook.ask, 5400);
+  assert.equal(liveBook.bidAskSource, 'BOOK_TICKER');
 
   const stale = applyBinanceOptionMarkPrice(updated, { ...event, eventTime: event.eventTime - 1000, markPrice: 1 });
   assert.equal(stale, updated);

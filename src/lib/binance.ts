@@ -99,6 +99,10 @@ export interface BinanceOptionMarkPriceEvent {
   symbol: string;
   eventTime: number;
   markPrice?: number;
+  bestBid?: number;
+  bestAsk?: number;
+  bestBidQuantity?: number;
+  bestAskQuantity?: number;
   indexPrice?: number;
   bidIv?: number;
   askIv?: number;
@@ -208,6 +212,9 @@ export function applyBinanceBookTicker(quote: OptionQuote, event: BinanceBookTic
       ...quote.sourceTimestamps,
       ...(timestamp !== undefined && timestamp > 0 ? { bookTicker: new Date(timestamp).toISOString() } : {}),
     },
+    bidQuantity: event.bidQuantity,
+    askQuantity: event.askQuantity,
+    bidAskSource: 'BOOK_TICKER',
   };
 }
 
@@ -228,6 +235,10 @@ export function parseBinanceOptionMarkPriceMessage(payload: unknown): BinanceOpt
     const eventTime = finiteNumber(data.E as string | number | undefined);
     if (eventTime === undefined || eventTime <= 0) return [];
     const markPrice = positiveNumber(data.mp as string | number | undefined);
+    const bestBid = positiveNumber(data.bo as string | number | undefined);
+    const bestAsk = positiveNumber(data.ao as string | number | undefined);
+    const bestBidQuantity = finiteNumber(data.bq as string | number | undefined);
+    const bestAskQuantity = finiteNumber(data.aq as string | number | undefined);
     const indexPrice = positiveNumber(data.i as string | number | undefined);
     const bidIv = positiveNumber(data.b as string | number | undefined);
     const askIv = positiveNumber(data.a as string | number | undefined);
@@ -239,12 +250,16 @@ export function parseBinanceOptionMarkPriceMessage(payload: unknown): BinanceOpt
       theta: finiteNumber(data.t as string | number | undefined),
       vega: finiteNumber(data.v as string | number | undefined),
     };
-    if ([markPrice, indexPrice, bidIv, askIv, markIv, riskFreeRate, ...Object.values(sourceGreeks)]
+    if ([markPrice, bestBid, bestAsk, indexPrice, bidIv, askIv, markIv, riskFreeRate, ...Object.values(sourceGreeks)]
       .every((value) => value === undefined)) return [];
     return [{
       symbol: data.s,
       eventTime,
       ...(markPrice !== undefined ? { markPrice } : {}),
+      ...(bestBid !== undefined ? { bestBid } : {}),
+      ...(bestAsk !== undefined ? { bestAsk } : {}),
+      ...(bestBidQuantity !== undefined && bestBidQuantity >= 0 ? { bestBidQuantity } : {}),
+      ...(bestAskQuantity !== undefined && bestAskQuantity >= 0 ? { bestAskQuantity } : {}),
       ...(indexPrice !== undefined ? { indexPrice } : {}),
       ...(bidIv !== undefined ? { bidIv } : {}),
       ...(askIv !== undefined ? { askIv } : {}),
@@ -266,6 +281,10 @@ export function applyBinanceOptionMarkPrice(quote: OptionQuote, event: BinanceOp
   const spot = event.indexPrice ?? quote.spot;
   const rate = event.riskFreeRate ?? quote.riskFreeRate ?? 0;
   const sourceHasGreeks = Object.values(event.sourceGreeks).some((value) => value !== undefined);
+  const hasBookTicker = Boolean(quote.sourceTimestamps?.bookTicker);
+  const useMarkBidFallback = !hasBookTicker && !(quote.bid > 0) && event.bestBid !== undefined;
+  const useMarkAskFallback = !hasBookTicker && !(quote.ask > 0) && event.bestAsk !== undefined;
+  const markPriceBookFallback = useMarkBidFallback || useMarkAskFallback;
   const observedFields = [
     ...(event.markPrice !== undefined ? ['markPrice'] : []),
     ...(event.markIv !== undefined ? ['iv'] : []),
@@ -274,6 +293,13 @@ export function applyBinanceOptionMarkPrice(quote: OptionQuote, event: BinanceOp
   const next: OptionQuote = {
     ...quote,
     ...(quote.estimatedFields ? { estimatedFields: quote.estimatedFields.filter((field) => !observedFields.includes(field)) } : {}),
+    ...(markPriceBookFallback ? {
+      ...(useMarkBidFallback ? { bid: event.bestBid } : {}),
+      ...(useMarkAskFallback ? { ask: event.bestAsk } : {}),
+      ...(useMarkBidFallback && event.bestBidQuantity !== undefined ? { bidQuantity: event.bestBidQuantity } : {}),
+      ...(useMarkAskFallback && event.bestAskQuantity !== undefined ? { askQuantity: event.bestAskQuantity } : {}),
+      bidAskSource: 'OPTION_MARK_PRICE' as const,
+    } : {}),
     ...(event.markPrice !== undefined ? { markPrice: event.markPrice, priceSource: 'MARK' as const } : {}),
     ...(event.markIv !== undefined ? { iv: event.markIv, ivStatus: 'OBSERVED' as const } : {}),
     ...(event.bidIv !== undefined ? { bidIv: event.bidIv } : {}),
