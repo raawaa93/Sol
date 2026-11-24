@@ -192,3 +192,50 @@ NautilusTrader مرشح محرك أحداث واختبار تاريخي متعد
 - **غير مثبت:** أن كل عقود Binance متاحة لهذا الحساب، أو أن كل أنواع بيع خيارات الكريبتو مفعلة؛ قبول Optimus للمقيم السوري؛ وجود وسيط تقليدي متاح فعلياً لسوريا لجميع خيارات الأسهم والمؤشرات والعقود الآجلة. AMP مستبعدة وفق قائمتها الرسمية.
 - **ليس دليلاً:** عنوان IP أجنبي، غياب سوريا من قائمة غير مكتوبة/صورة غير قابلة للبحث، نجاح اتصال API عام، أو وجود وسيط في قائمة CME.
 - **القرار يتغير فقط بدليل جديد:** تحديث شروط رسمي أو رد امتثال مكتوب أو صلاحيات حساب حقيقية بعد KYC صادق.
+
+
+## ملحق بحثي — مراجعة إضافية للمنصات وواجهات on-chain (24 نوفمبر 2026)
+
+أُضيفت مراجعة المصادر الرسمية والاختبارات المنشورة التالية؛ وهي لا تغيّر قاعدة الإقامة الصادقة:
+
+- **Gate:** اتفاقية المستخدم الحالية تمنع من يوجد أو يقيم في بلد خاضع لحظر/قيود أمريكية وتذكر سوريا صراحةً مثالاً. لذلك يُسقط Gate من قائمة التنفيذ للمقيم السوري، حتى لو كانت بعض صفحات منتجه أو قائمة عامة أقدم لا تعرض ذلك بوضوح. المصدر: https://www.gate.com/en-us/legal/user-agreement
+- **Bitget Stock+:** قبول Bitget العام للسوريين منذ 12 يونيو 2025 لا يعني قبول منتج Stock+؛ فهو حساب أوراق مالية فرعي منفصل. تغطية الإطلاق في 22 يونيو 2026 أدرجت سوريا ضمن البلدان المستثناة من Stock+. القرار: لا استخدام قبل رد كتابي من Bitget/Parsa، مع ترجيح عدم الأهلية وفق قائمة الإطلاق المنشورة. المصادر: https://www.bitget.com/support/articles/12560603829392 ، https://www.bitget.live/support/articles/12560603887309 ، https://www.theblock.co/news/markets/2026-06-22-bitget-us-stock-purchases-crypto-405507
+- **Paradex:** صفحة Restricted Persons الرسمية تذكر سوريا صراحةً، وشروطها تمنع الوصول والاستخدام وتمنع VPN بغرض تجاوز القيود. غير متاح للمستخدم السوري. المصادر: https://paradex.trade/restricted-persons ، https://www.paradex.trade/terms-of-service
+- **Hyperliquid:** الشروط تستخدم قيد المناطق الخاضعة للعقوبات/ضوابط التصدير، واختبارات مستقلة منشورة في أكتوبر 2026 سجلت حظر واجهة/بوابة التداول من سوريا. لا نعتبره مسار تنفيذ. كما أن HIP-4 outcome markets عقود نتائج/ثنائية وليست Vanilla Options؛ وHIP-3 perps ليست خيارات. المصادر: https://hyperliquid.gitbook.io/hyperliquid-docs/policies/terms-of-use ، https://restricted.cp0x.com/monitor/hyperliquid ، https://research.castlelabs.io/p/mapping-onchain-options-exchanges
+- **Aevo:** أبحاث مستقلة قارنت شروط المنصة وأدرجت سوريا ضمن Restricted Territory. لم نعثر في هذا البحث على نص رسمي مفتوح مستقل يمكنه إثبات استثناء سوري؛ لذلك يصنف غير متاح/غير مثبت، لا بديلاً للمنصات المقيدة. المصدر الثانوي: https://defillama.com/exchange/aevo/information
+- **Deriv:** يقدم Vanilla Options وDigital/Accumulator Products بتسعير وشروط داخلية لدى الوسيط، مع قيود تنفيذية ومخاطر الطرف المقابل؛ لا تخلطها بخيارات بورصة مركزية قياسية أو ببيانات OPRA/CME. قبول المقيم السوري لم يُثبت. المصادر: https://deriv.com/terms-and-conditions/trading-terms ، https://deriv.com/terms-and-conditions/general-terms-of-use
+
+**الخلاصة المحدثة:** Binance تظل المنصة الوحيدة ضمن ما فُحص هنا التي لديها تصريح رسمي صريح بأن المقيمين السوريين يمكنهم التسجيل والتحقق وأن Options ضمن قائمة المنتجات العامة، مع بقاء أهلية كل منتج/عقد وصلاحية بيع الخيارات مرتبطة بالحساب. لم يثبت وجود وسيط تقليدي أو DEX آخر يقبل المستخدم السوري حالياً لتداول Vanilla Options على نطاق عالمي. لا يُستنتج القبول من عدم وجود اسم سوريا في صفحة ما، ولا من نجاح API عام أو عنوان VPN.
+
+
+## ملحق إضافي — Deriv وNinjaTrader
+
+- **Deriv:** صفحة Deriv الرسمية لقائمة البلدان المدعومة تسرد البلدان التي تقدم فيها منتجات Deriv ولا تتضمن سوريا في القائمة العامة؛ لذلك لا نعتبرها منصة متاحة للمقيم السوري. حتى لو كانت بعض منتجاتها تحمل اسم Vanilla Options، فهي عقود وسيط بأسعار/شروط الوسيط وليست بديلاً مكافئاً لعقود البورصات القياسية. المصادر: https://legacy-docs.deriv.com/docs/country-list ، https://deriv.com/terms-and-conditions/trading-terms ، https://deriv.com/terms-and-conditions/general-terms-of-use
+- **NinjaTrader:** وثائق الحساب الحي الرسمية تقول إن البلد إذا لم يكن ضمن خيارات طلب الحساب فلن يمكن فتح حساب حي ممول. تقرير مستقل عن الوصول من سوريا ينقل رد امتثال مباشر بأن فتح الحساب من سوريا غير مسموح حالياً؛ نحتفظ بهذا كدليل ثانوي إلى أن يظهر نص رسمي أو تحديث من الشركة. المصادر: https://vendor-support.ninjatrader.com/s/article/Applying-for-a-Live-NinjaTrader-Account?language=en_US ، https://unblocksyria.com/en/services/ninjatrader
+
+
+## ملحق — مزودو بيانات الخيارات وتكلفة الوصول (24 نوفمبر 2026)
+
+لا يوجد في المصادر التي تمت مراجعتها مزود مجاني واحد يعطي سلاسل خيارات لحظية وموثوقة لكل فئات الأصول العالمية. التغطية تتجزأ حسب البورصة وفئة الأصل والترخيص.
+
+| مزود البيانات | التغطية | المجاني | القيود / القرار |
+|---|---|---|---|
+| Binance Options API | العقود التي تسردها Binance من كريبتو وسلع محدودة | واجهات سوق عامة REST/WS بلا مفتاح تداول خاص | مصدر حي مفيد فقط لعقود Binance التي تظهر فعلياً؛ لا يمثل جميع أسواق الخيارات |
+| Alpaca Basic | خيارات أسهم/ETF أمريكية عبر OPRA universe | Feed مؤشري Indicative؛ ليس OPRA BBO الحقيقي، مع حدود API وبيانات تاريخية | جيد للتعلم/عرض مؤشرات غير تنفيذية إذا اجتاز فتح الحساب والامتثال؛ OPRA الحقيقي ضمن خطة مدفوعة تقارب 99$/شهر، خارج سقف 15$ |
+| MarketData.app Free Forever | خيارات أسهم أمريكية | 100 API credits يومياً، سنة تاريخية، تأخير 24 ساعة | مناسب لتجربة EOD/تحليل غير لحظي؛ لا يصلح للتنفيذ أو ملء backtest؛ مزود يقول إن تعريف المستخدم واتفاقيات البورصة مطلوبة للبيانات الأسرع، ويجب التحقق من أهلية سوريا |
+| Massive Options Basic | خيارات أمريكية | End-of-day؛ حد Basic محدود، لا Quotes flat files ضمن الخطة المجانية | خيار أرشفة/استكشاف محدود بعد فحص الترخيص؛ خطط 15-minute delayed تبدأ من 29$/شهر، أعلى من سقف المستخدم |
+| CME Group DataMine / MDP | خيارات العقود الآجلة عبر الفائدة والعملات والطاقة والمعادن والزراعة وغيرها | لا توجد تغطية مجانية عامة مثبتة؛ بعض مجموعات البيانات تتطلب التواصل/الشراء | المصدر المنطقي لبيانات CME القياسية، لكن الترخيص والتكلفة والوصول للوسيط/FCM منفصلة |
+| Cboe Market Data / DataShop | خيارات وأسهم ومؤشرات وFX وبيانات أسواق دولية | لا يوجد feed عالمي مجاني شامل مثبت | شراء بيانات حسب المنتج/السوق أو عبر موزع مرخص؛ لا تفترض أن اشتراكاً واحداً يغطي كل شيء |
+
+**القرار ضمن سقف 15$/شهر:** لا نشتري بيانات الآن. استخدم Binance public market data للعقود المتاحة، وCSV/مصادر مجانية مؤخرة فقط للدراسة، وابنِ أرشفة مستقبلية. يمكن لاحقاً تقييم MarketData.app Free أو Alpaca Indicative كمصدر أمريكي منفصل، لكن فقط بعد التحقق من قبول المقيم السوري وشروط البيانات. لا نستخدم أي بيانات متأخرة كأنها سعر تنفيذ أو كدليل على قابلية صفقة تاريخية للتنفيذ.
+
+المصادر الرسمية:
+- Binance Options API/streams: https://www.binance.com/en/support/faq/detail/fe0be251ac014a8082e702f83d089e54
+- Alpaca market data tiers: https://docs.alpaca.markets/us/docs/about-market-data-api
+- Alpaca indicative vs OPRA historical feed: https://docs.alpaca.markets/us/docs/historical-option-data
+- MarketData.app plan limits (updated 23 Oct 2026): https://www.marketdata.app/docs/account/plan-limits/
+- MarketData.app free-account data policy (3 Sep 2026): https://www.marketdata.app/docs/account/data-policies/free-accounts/
+- Massive options quotes plans: https://massive.com/docs/flat-files/options/quotes?assetClass=options&license=personal&name=options_advanced
+- Massive Basic data timing/recency: https://massive.com/knowledge-base/article/on-the-free-basic-plan-when-can-i-pull-the-previous-trading-days-data
+- CME data catalogue: https://www.cmegroup.com/market-data/browse-data.html.html
+- Cboe data services: https://www.cboe.com/data/market-data-services
