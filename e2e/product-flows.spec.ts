@@ -132,30 +132,30 @@ test('asset-class selector covers every canonical class and unknown imports with
   await expect(page.locator('#scanner')).not.toContainText('CARBON-CALL');
 });
 
-test('CSV import stays local and powers a timestamped XAU execution replay', async ({ page }) => {
+test('CSV import stays local and replays only an explicitly scaled supported crypto option', async ({ page }) => {
   const expiry = new Date(Date.now() + 40 * 86_400_000).toISOString();
   const firstTime = new Date(Date.now() - 2 * 60 * 60_000).toISOString();
   const secondTime = new Date(Date.now() - 60 * 60_000).toISOString();
-  const header = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,delta,gamma,theta,vega,openInterest,volume,spot,unit,timestamp';
+  const header = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,delta,gamma,theta,vega,openInterest,volume,spot,unit,timestamp,assetClass,venue,underlyingKind,exerciseStyle,settlementStyle,quoteAsset,settlementAsset,contractMultiplier';
   const first = [
-    'XAU-custom-P', 'XAU', expiry, '4000', 'PUT', '50', '52', '51', '45%',
-    '', '', '', '', '', '', '4100', '1', firstTime,
+    'BTC-custom-P', 'BTC', expiry, '40000', 'PUT', '50', '52', '51', '45%',
+    '', '', '', '', '', '', '41000', '1', firstTime, 'CRYPTO', 'BINANCE', 'SPOT', 'EUROPEAN', 'CASH', 'USDT', 'USDT', '1',
   ].join(',');
   const second = [
-    'XAU-custom-P', 'XAU', expiry, '4000', 'PUT', '60', '61', '60.5', '45%',
-    '', '', '', '', '', '', '4100', '1', secondTime,
+    'BTC-custom-P', 'BTC', expiry, '40000', 'PUT', '60', '61', '60.5', '45%',
+    '', '', '', '', '', '', '41000', '1', secondTime, 'CRYPTO', 'BINANCE', 'SPOT', 'EUROPEAN', 'CASH', 'USDT', 'USDT', '1',
   ].join(',');
   const csv = `${header}\n${first}\n${second}`;
 
   await page.locator('input[type="file"]').setInputFiles({
-    name: 'xau-history.csv',
+    name: 'btc-history.csv',
     mimeType: 'text/csv',
     buffer: Buffer.from(csv),
   });
 
   await expect(page.getByText('تم استيراد 2 عقد محلياً.')).toBeVisible();
-  await expect(page.locator('#overview-metrics')).toContainText('XAU');
-  await expect(page.locator('#scanner')).toContainText('XAU-custom-P');
+  await expect(page.locator('#overview-metrics')).toContainText('BTC');
+  await expect(page.locator('#scanner')).toContainText('BTC-custom-P');
   await expect(page.locator('#historical-replay')).toContainText('إعادة تشغيل تاريخية محافظة');
   await expect(page.locator('#historical-replay .replay-trades tbody tr')).toHaveCount(1);
   await expect(page.locator('#historical-replay')).toContainText('+8');
