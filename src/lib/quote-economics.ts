@@ -103,3 +103,45 @@ export function calculateQuoteCashMaxLoss(
   if (!Number.isFinite(amount)) return { ok: false, reason: 'INVALID_INPUT' };
   return { ok: true, value: { amount, currency: economics.premium.quoteCurrency, contracts } };
 }
+
+
+export interface QuoteCashExpiryScenarioPoint {
+  move: number;
+  label: string;
+  spot: number;
+  pnl: number;
+}
+
+/**
+ * Builds expiry scenarios from canonical cash-settlement terms.
+ * Returns null when the quote is not eligible; callers must not substitute
+ * legacy unit-based calculations when canonical terms are present but invalid.
+ */
+export function buildQuoteCashExpiryScenarioSeries(
+  quote: OptionQuote,
+  premiumPrice: number,
+  contracts: number,
+  fees = 0,
+): QuoteCashExpiryScenarioPoint[] | null {
+  const referencePrice = quote.underlyingKind === 'FUTURE' ? quote.forward : quote.spot;
+  if (!Number.isFinite(referencePrice) || referencePrice === undefined || referencePrice <= 0) return null;
+  const moves = [-0.2, -0.15, -0.1, -0.05, 0, 0.05, 0.1, 0.15, 0.2];
+  const points: QuoteCashExpiryScenarioPoint[] = [];
+  for (const move of moves) {
+    const settlementReferencePrice = referencePrice * (1 + move);
+    const result = calculateQuoteCashExpiryPnl(quote, {
+      settlementReferencePrice,
+      premiumPrice,
+      contracts,
+      fees,
+    });
+    if (!result.ok) return null;
+    points.push({
+      move,
+      label: `${move > 0 ? '+' : ''}${Math.round(move * 100)}%`,
+      spot: settlementReferencePrice,
+      pnl: result.value.netPnl,
+    });
+  }
+  return points;
+}

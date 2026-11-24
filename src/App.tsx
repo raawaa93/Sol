@@ -47,6 +47,7 @@ import { getContractScaleIssue, getContractScaleIssueMessage } from './lib/contr
 import { downloadCsv, downloadCsvTemplate, MAX_CSV_FILE_BYTES, parseOptionsCsv } from './lib/csv';
 import type { CsvTimestampRange } from './lib/csv';
 import { buildScenarioSeries, getBreakeven, getExpectedMove, getMaxLoss, getMidPrice, getSpreadPct, getUnderlyingReferencePrice } from './lib/options';
+import { buildQuoteCashExpiryScenarioSeries } from './lib/quote-economics';
 import { formatAssetPrice, formatOptionPrice, formatQuantity, formatSmallNumber, getOptionPricePrecision, getQuantityPrecision, getQuoteCurrency } from './lib/format';
 import type { AssetClass, OptionQuote, OptionSide, PaperTrade, Underlying } from './lib/types';
 import { ASSET_CLASS_LABELS } from './lib/asset-class';
@@ -394,9 +395,14 @@ function App() {
   const volumeCurrencyLabel = market?.volume24hCurrency ?? null;
   const underlyingReferencePrice = getUnderlyingReferencePrice(selectedQuote);
   const expectedMove = hasModelGreeks ? getExpectedMove(underlyingReferencePrice, selectedQuote.iv, selectedQuote.daysToExpiry) : undefined;
-  const scenarioSeries = useMemo(() => hasExplicitConsistentContractScale
-    ? buildScenarioSeries(selectedQuote, selectedPremium, safeQuantity, safeFees)
-    : [], [hasExplicitConsistentContractScale, safeFees, safeQuantity, selectedPremium, selectedQuote]);
+  const scenarioSeries = useMemo(() => {
+    if (selectedQuote.contractEconomics) {
+      return buildQuoteCashExpiryScenarioSeries(selectedQuote, selectedPremium, safeQuantity, safeFees) ?? [];
+    }
+    return hasExplicitConsistentContractScale
+      ? buildScenarioSeries(selectedQuote, selectedPremium, safeQuantity, safeFees)
+      : [];
+  }, [hasExplicitConsistentContractScale, safeFees, safeQuantity, selectedPremium, selectedQuote]);
   const rawAffordableQty = hasExplicitConsistentContractScale && selectedPremium > 0
     ? Math.floor(Math.max(0, safeRiskBudget - safeFees) / (selectedPremium * selectedQuote.unit) / quantityStep + 1e-9) * quantityStep
     : 0;
@@ -1068,9 +1074,9 @@ function App() {
           <section className="section-anchor payoff-section" id="payoff">
             <div className="section-title-row"><div><span className="section-kicker">EXPIRY SCENARIOS</span><h2>ماذا لو انتهى العقد عند مستويات مختلفة؟</h2><p>ربح/خسارة الخيار المشترى عند الانتهاء · قبل إضافة أي رسوم غير مدخلة</p></div><div className="scenario-controls"><span className="scenario-key"><i className="profit-key" /> صافي P&amp;L</span><span className="scenario-key"><i className="zero-key" /> التعادل</span></div></div>
             <div className="panel payoff-panel">
-              {hasExplicitConsistentContractScale
+              {scenarioSeries.length > 0
                 ? <DeferredPayoffChart scenarioSeries={scenarioSeries} selectedQuote={selectedQuote} />
-                : <div className="empty-state"><strong>حساب P&amp;L لكل عقد غير متاح</strong><span>{contractScaleIssueMessage}</span></div>}
+                : <div className="empty-state"><strong>{selectedQuote.contractEconomics ? 'حساب P&L عند الانتهاء غير متاح' : 'حساب P&L لكل عقد غير متاح'}</strong><span>{selectedQuote.contractEconomics ? 'لم تجتز مواصفات التسوية النقدية والتحقق من مصدرها شروط المحوّل الاقتصادي؛ لم نستخدم مضاعف unit بديلاً.' : contractScaleIssueMessage}</span></div>}
               <div className="scenario-side">
                 <div className="scenario-side-head"><span>نطاق الحركة الضمني التقريبي</span><CircleHelp size={14} /></div>
                 {expectedMove !== undefined ? <>
