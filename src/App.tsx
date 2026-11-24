@@ -783,7 +783,7 @@ function App() {
                   {assetChoices.map((item) => <option key={item} value={item}>{item} · {getUnderlyingName(item)}</option>)}
                 </select><ChevronDown size={13} /></label>
               ) : (
-                <div className="asset-switch" role="tablist" aria-label="الأصل الأساسي">
+                <div className="asset-switch" role="group" aria-label="الأصل الأساسي">
                   {assetChoices.map((item) => <button key={item} className={underlying === item ? 'selected' : ''} onClick={() => changeUnderlying(item)}>{item}<span>{getUnderlyingName(item)}</span></button>)}
                 </div>
               )}
