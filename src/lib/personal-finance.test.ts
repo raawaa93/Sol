@@ -51,6 +51,7 @@ const transactions: CashFlowTransaction[] = [
   { id: 'eur-expense', kind: 'EXPENSE', amount: 100, currency: 'EUR', occurredAt: '2026-11-03T09:00:00Z', category: 'Food' },
   { id: 'transfer', kind: 'TRANSFER', amount: 300, currency: 'USD', occurredAt: '2026-11-04T09:00:00Z', category: 'Savings' },
   { id: 'last-month', kind: 'INCOME', amount: 999, currency: 'USD', occurredAt: '2026-10-31T23:00:00Z', category: 'Salary' },
+  { id: 'old-transfer', kind: 'TRANSFER', amount: 200, currency: 'USD', occurredAt: '2026-10-30T12:00:00Z', category: 'Savings' },
 ];
 
 test('monthly cash flow filters the month, converts currencies and excludes transfers', () => {
