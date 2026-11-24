@@ -42,13 +42,13 @@ async function requestJson(endpoint, params = {}) {
     method: 'GET',
     // GitHub-hosted runners are US-based. Force the nearest supported Supabase
     // region to Syria so this production check does not test US egress by accident.
-    headers: { Accept: 'application/json', Origin: pageOrigin, 'x-region': 'eu-central-1' },
+    headers: { Accept: 'application/json', Origin: pageOrigin, 'x-region': 'eu-central-2' },
     signal: timeoutSignal(),
   });
   const elapsedMs = Math.round(performance.now() - startedAt);
   const executionRegion = response.headers.get('x-sb-edge-region');
-  if (executionRegion !== 'eu-central-1') {
-    throw new Error(`${endpoint}: expected Supabase execution region eu-central-1 (Frankfurt), got ${executionRegion ?? 'unknown'}.`);
+  if (executionRegion !== 'eu-central-2') {
+    throw new Error(`${endpoint}: expected Supabase execution region eu-central-2 (Zurich), got ${executionRegion ?? 'unknown'}.`);
   }
   const allowOrigin = response.headers.get('access-control-allow-origin');
   if (allowOrigin !== pageOrigin) {
@@ -66,7 +66,7 @@ async function requestJson(endpoint, params = {}) {
 
 function recordUpstreamDenial(endpoint, response, payload) {
   const detail = typeof payload?.msg === 'string' ? payload.msg : 'Binance rejected the server-side market-data request.';
-  const line = `⚠️ ${endpoint}: Binance returned HTTP ${response.status} to the Supabase proxy executing in Frankfurt (eu-central-1). This tests only this server egress path; it does not test a Syrian user's IP or account eligibility. Live data is not verified. ${detail}`;
+  const line = `⚠️ ${endpoint}: Binance returned HTTP ${response.status} to the Supabase proxy executing in Zurich (eu-central-2). This tests only this server egress path; it does not test a Syrian user's IP or account eligibility. Live data is not verified. ${detail}`;
   console.warn(line);
   annotate('warning', 'Binance upstream request denied', line);
   appendSummary(`### Live market-data smoke test\n\n${line}\n`);
