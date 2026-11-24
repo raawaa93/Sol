@@ -3,6 +3,7 @@ name: Deploy Volterra to GitHub Pages
 on:
   push:
     branches:
+      - main
       - arena/5d011bc6-sol
   workflow_dispatch:
 
