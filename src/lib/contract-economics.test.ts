@@ -183,7 +183,7 @@ test('rejects a missing deliverables array instead of treating it as empty', () 
     } as unknown as ContractEconomics['exercise'],
   });
   const result = validateContractEconomics(malformed);
-  assert.ok(result.issues.includes('INVALID_DELIVERABLE'));
+  assert.ok(result.issues.includes('INVALID_DELIVERABLES_COLLECTION'));
   assert.equal(result.valid, false);
 });
 
@@ -199,7 +199,7 @@ test('accepts futures delivery only with explicit point value and currency', () 
     },
   }));
   assert.equal(result.valid, true);
-  assert.equal(result.supported, true);
+  assert.equal(result.adapterReady, true);
 });
 
 test('rejects invalid premium scale and missing provider provenance', () => {
