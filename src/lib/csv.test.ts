@@ -198,7 +198,7 @@ test('CSV routes explicit European futures options to Black-76 using the forward
     'CL-261230-70-C,CL,2026-12-30T08:00:00Z,70,CALL,2.0,2.2,2.1,20%,68.5,1,2026-11-24T02:00:00Z,ENERGY,CME,FUTURE,69,3%,EUROPEAN,PHYSICAL,USD,USD,1000',
   ].join('\\n');
   const result = parseOptionsCsv(csv);
-  assert.equal(result.quotes.length, 1);
+  assert.equal(result.quotes.length, 1, JSON.stringify(result.warnings));
   assert.equal(result.quotes[0].pricingStatus, 'SUPPORTED');
   assert.equal(result.quotes[0].pricingModel, 'BLACK_76');
   assert.equal(result.quotes[0].forward, 69);
@@ -211,7 +211,7 @@ test('CSV does not apply a spot model to American equity options without a valid
     'SPY-261230-700-C,SPY,2026-12-30T08:00:00Z,700,CALL,5.1,5.3,5.2,22%,690,100,2026-11-24T02:00:00Z,EQUITY,CBOE,SPOT,AMERICAN,PHYSICAL',
   ].join('\\n');
   const result = parseOptionsCsv(csv);
-  assert.equal(result.quotes.length, 1);
+  assert.equal(result.quotes.length, 1, JSON.stringify(result.warnings));
   assert.equal(result.quotes[0].pricingStatus, 'OBSERVED_ONLY');
   assert.equal(result.quotes[0].pricingModel, undefined);
   assert.ok(result.quotes[0].pricingReason?.includes('European'));
