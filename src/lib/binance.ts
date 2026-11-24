@@ -227,6 +227,13 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       continue;
     }
 
+    const unit = positiveNumber(symbolInfo.unit);
+    if (!unit) {
+      missingUnit += 1;
+      skipped += 1;
+      continue;
+    }
+    const hasUnitOnePremiumParity = unit === 1;
     const daysToExpiry = Math.max(0, (expiryDate - serverTime) / 86_400_000);
     const mark = markBySymbol.get(symbol);
     const ticker = tickerBySymbol.get(symbol);
@@ -280,7 +287,7 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       rate: riskFreeRate,
       carryYield,
     };
-    const iv = observedIv ?? (isCrypto && referencePrice !== undefined
+    const iv = observedIv ?? (isCrypto && hasUnitOnePremiumParity && referencePrice !== undefined
       ? impliedVolatilityForContract(referencePrice, pricingInputs)
       : undefined);
     if (iv === undefined) {
@@ -288,13 +295,15 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       continue;
     }
 
-    const pricingResult = isCrypto ? priceOption({ ...pricingInputs, volatility: iv })
-      : { status: 'UNSUPPORTED' as const, reason: isCommodity
-        ? 'Underlying is the Binance TradFi Perpetual Contract Index; no validated spot or futures pricing model is applied.'
-        : 'Underlying type and contract mechanics are not validated for analytical pricing.' };
+    const pricingResult = isCrypto && hasUnitOnePremiumParity ? priceOption({ ...pricingInputs, volatility: iv })
+      : { status: 'UNSUPPORTED' as const, reason: isCrypto && !hasUnitOnePremiumParity
+        ? 'Binance unit is underlying quantity per contract, not a documented premium multiplier. Premium price and deliverable scales are not separated yet.'
+        : isCommodity
+          ? 'Underlying is the Binance TradFi Perpetual Contract Index; no validated spot or futures pricing model is applied.'
+          : 'Underlying type and contract mechanics are not validated for analytical pricing.' };
     const modelGreeks = pricingResult.status === 'SUPPORTED' ? pricingResult.greeks : undefined;
     const priceSource = observedMark ? 'MARK' : twoSidedMid ? 'MID' : lastPrice ? 'LAST' : bid > 0 && !crossedQuote ? 'BID' : ask > 0 && !crossedQuote ? 'ASK' : 'MODEL';
-    const markPrice = observedPrice ?? modelGreeks?.price;
+    const markPrice = observedPrice ?? (hasUnitOnePremiumParity ? modelGreeks?.price : undefined);
     if (markPrice === undefined || markPrice <= 0) {
       skipped += 1;
       continue;
@@ -332,12 +341,6 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
     const lotSizeFilter = filters?.find((filter) => ['LOT_SIZE', 'MARKET_LOT_SIZE'].includes(filter.filterType.toUpperCase()));
     const minQty = positiveNumber(symbolInfo.minQty) ?? positiveNumber(lotSizeFilter?.minQty);
     const maxQty = positiveNumber(symbolInfo.maxQty) ?? positiveNumber(lotSizeFilter?.maxQty);
-    const unit = positiveNumber(symbolInfo.unit);
-    if (!unit) {
-      missingUnit += 1;
-      skipped += 1;
-      continue;
-    }
     quotes.push({
       id: symbol,
       symbol,
@@ -401,6 +404,8 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
   if (crossedBidAsk > 0) warnings.push(`تعارض Bid/Ask في ${crossedBidAsk} عقد؛ استُبعد المنتصف من مرجع السعر.`);
   if (missingOpenInterest > 0) warnings.push(`الفائدة المفتوحة غير متاحة لـ${missingOpenInterest} عقد/استحقاق.`);
   if (missingUnit > 0) warnings.push(`وحدة العقد غير موجودة في ${missingUnit} عقد؛ استُبعدت هذه العقود بدلاً من افتراض مضاعف 1.`);
+  const unverifiedPremiumScale = quotes.filter((quote) => quote.assetClass === 'CRYPTO' && quote.unit > 1).length;
+  if (unverifiedPremiumScale > 0) warnings.push(`مقياس القسط غير مفصول عن وحدة التسليم في ${unverifiedPremiumScale} عقد Binance ذات unit أكبر من 1؛ أبقينا الأسعار وIV المرصودة فقط وحجبنا القيم النموذجية وحسابات P&L لكل عقد.`);
   if (missingRiskFreeRate > 0) warnings.push(`معدل الفائدة من Binance غير متاح لـ${missingRiskFreeRate} عقد؛ استُخدم 0% للنموذج.`);
   if (quotes.length) warnings.push('Gamma وTheta وVega وRho تقديرات Black–Scholes وليست Greeks مرصودة من Binance؛ تحقّق من الوحدات قبل استخدامها.');
   if (!quotes.length) {
