@@ -53,7 +53,7 @@ test('quote coverage distinguishes observed, estimated, and unavailable fields',
     liveMarkPriceAvailable: 1,
     bidIvAvailable: 1,
     askIvAvailable: 1,
-    optionMarkBookAvailable: 1,
+    optionTickerBookAvailable: 1,
   });
 });
 
