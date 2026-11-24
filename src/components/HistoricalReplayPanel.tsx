@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Activity, AlertTriangle, History } from 'lucide-react';
+import { AlertTriangle, History } from 'lucide-react';
 import { replayLongOptionSnapshots } from '../lib/replay';
 import { formatSmallNumber } from '../lib/format';
 import type { OptionQuote } from '../lib/types';
