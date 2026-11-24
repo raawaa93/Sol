@@ -200,7 +200,7 @@ export default function FinancialCockpit() {
           <article><span>أكبر مركز</span><strong>{portfolio.value?.concentration.largestHoldingPct === null || portfolio.value?.concentration.largestHoldingPct === undefined ? 'غير متاح' : portfolio.value.concentration.largestHoldingPct.toFixed(1) + '%'}</strong></article>
         </div>
         {portfolio.value && !portfolio.value.complete && <p className="finance-warning">لا يمكن توحيد قيمة المحفظة بسبب أسعار صرف ناقصة: {portfolio.value.missingFxCurrencies.join('، ')}. القيم الإجمالية والأوزان محجوبة حتى إدخال أسعار الصرف.</p>}
-        {portfolio.value?.concentration.warnings.length ? <div className="finance-warning"><strong>تنبيهات تركّز:</strong> {portfolio.value.concentration.warnings.map(code => code === 'SINGLE_POSITION_OVER_25_PERCENT' ? 'مركز واحد يتجاوز 25%' : code === 'TOP_THREE_OVER_60_PERCENT' ? 'أكبر ثلاثة مراكز تتجاوز 60%' : 'فئة أصول واحدة تتجاوز 70%').join(' · ')}. هذه حدود تنبيه ثابتة وليست توصيات بيع أو شراء.</div> : null}
+        {portfolio.value?.concentration.warnings.length ? <div className="finance-warning"><strong>تنبيهات تركّز:</strong> {portfolio.value.concentration.warnings.map(() => 'مركز واحد يتجاوز 25%').join(' · ')}. هذه حدود تنبيه ثابتة وليست توصيات بيع أو شراء.</div> : null}
         <div className="portfolio-layout">
           <form className="finance-form portfolio-form" onSubmit={event => { event.preventDefault(); addHolding(); }}>
             <h4>إضافة مركز استثماري</h4>
