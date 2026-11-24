@@ -47,8 +47,8 @@ const market: AssetSnapshot = {
   dayChangePct: 0,
   iv30: 0.6,
   rv30: 0.5,
-  openInterestUsd: null,
-  volume24hUsd: null,
+  openInterestValue: null,
+  volume24hValue: null,
   fundingRate: 0,
 };
 
