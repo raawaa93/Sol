@@ -106,6 +106,7 @@ export function formatOptionPrice(
 
 export function formatAssetPrice(value: number, referencePrice: number, currency: string | null = 'USDT'): string {
   if (!Number.isFinite(value)) return '—';
+  if (value === 0) return formatCurrency(0, currency, 0);
   return formatCurrency(value, currency, getAssetPricePrecision(referencePrice));
 }
 
