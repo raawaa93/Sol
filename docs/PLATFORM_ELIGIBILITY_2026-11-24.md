@@ -206,3 +206,9 @@ NautilusTrader مرشح محرك أحداث واختبار تاريخي متعد
 - **Deriv:** يقدم Vanilla Options وDigital/Accumulator Products بتسعير وشروط داخلية لدى الوسيط، مع قيود تنفيذية ومخاطر الطرف المقابل؛ لا تخلطها بخيارات بورصة مركزية قياسية أو ببيانات OPRA/CME. قبول المقيم السوري لم يُثبت. المصادر: https://deriv.com/terms-and-conditions/trading-terms ، https://deriv.com/terms-and-conditions/general-terms-of-use
 
 **الخلاصة المحدثة:** Binance تظل المنصة الوحيدة ضمن ما فُحص هنا التي لديها تصريح رسمي صريح بأن المقيمين السوريين يمكنهم التسجيل والتحقق وأن Options ضمن قائمة المنتجات العامة، مع بقاء أهلية كل منتج/عقد وصلاحية بيع الخيارات مرتبطة بالحساب. لم يثبت وجود وسيط تقليدي أو DEX آخر يقبل المستخدم السوري حالياً لتداول Vanilla Options على نطاق عالمي. لا يُستنتج القبول من عدم وجود اسم سوريا في صفحة ما، ولا من نجاح API عام أو عنوان VPN.
+
+
+## ملحق إضافي — Deriv وNinjaTrader
+
+- **Deriv:** صفحة Deriv الرسمية لقائمة البلدان المدعومة تسرد البلدان التي تقدم فيها منتجات Deriv ولا تتضمن سوريا في القائمة العامة؛ لذلك لا نعتبرها منصة متاحة للمقيم السوري. حتى لو كانت بعض منتجاتها تحمل اسم Vanilla Options، فهي عقود وسيط بأسعار/شروط الوسيط وليست بديلاً مكافئاً لعقود البورصات القياسية. المصادر: https://legacy-docs.deriv.com/docs/country-list ، https://deriv.com/terms-and-conditions/trading-terms ، https://deriv.com/terms-and-conditions/general-terms-of-use
+- **NinjaTrader:** وثائق الحساب الحي الرسمية تقول إن البلد إذا لم يكن ضمن خيارات طلب الحساب فلن يمكن فتح حساب حي ممول. تقرير مستقل عن الوصول من سوريا ينقل رد امتثال مباشر بأن فتح الحساب من سوريا غير مسموح حالياً؛ نحتفظ بهذا كدليل ثانوي إلى أن يظهر نص رسمي أو تحديث من الشركة. المصادر: https://vendor-support.ninjatrader.com/s/article/Applying-for-a-Live-NinjaTrader-Account?language=en_US ، https://unblocksyria.com/en/services/ninjatrader
