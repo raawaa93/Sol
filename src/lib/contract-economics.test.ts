@@ -229,3 +229,89 @@ test('canonical economics round-trip through JSON without collapsing deliverable
   });
   assert.deepEqual(JSON.parse(JSON.stringify(economics)), economics);
 });
+
+
+test('synthetic demo provenance is never ready for production adapters', () => {
+  const result = validateContractEconomics(standardEquity({
+    provenance: { status: 'SYNTHETIC_DEMO' },
+  }));
+  assert.equal(result.valid, true);
+  assert.equal(result.adapterReady, false);
+  assert.ok(result.unsupportedReasons.includes('SYNTHETIC_DEMO_ONLY'));
+});
+
+test('malformed runtime payloads fail closed without throwing', () => {
+  const withNullDeliverable = standardEquity({
+    exercise: {
+      style: 'AMERICAN',
+      settlement: 'PHYSICAL',
+      aggregateExerciseCash: { basis: 'STRIKE_MULTIPLIER', currency: 'USD', multiplier: 100 },
+      settlementCurrency: 'USD',
+      deliverables: [null],
+    } as unknown as ContractEconomics['exercise'],
+  });
+  assert.doesNotThrow(() => validateContractEconomics(withNullDeliverable));
+  assert.ok(validateContractEconomics(withNullDeliverable).issues.includes('INVALID_DELIVERABLE'));
+
+  const malformedProvenance = standardEquity({
+    provenance: {
+      status: 'PROVIDER_VERIFIED',
+      provider: 42,
+      sourceRef: {},
+      retrievedAt: '2026-11-24 08:00:00',
+    } as unknown as ContractEconomics['provenance'],
+  });
+  const provenanceResult = validateContractEconomics(malformedProvenance);
+  assert.equal(provenanceResult.valid, false);
+  assert.ok(provenanceResult.issues.includes('MISSING_PROVIDER_PROVENANCE'));
+  assert.ok(provenanceResult.issues.includes('INVALID_PROVIDER_TIMESTAMP'));
+
+  const primitive = validateContractEconomics(null);
+  assert.equal(primitive.valid, false);
+  assert.equal(primitive.adapterReady, false);
+  assert.ok(primitive.issues.includes('INVALID_CONTRACT_ECONOMICS'));
+});
+
+test('provider timestamps require RFC 3339 timezone information', () => {
+  const timezoneLess = validateContractEconomics(standardEquity({
+    provenance: {
+      status: 'PROVIDER_VERIFIED',
+      provider: 'EXCHANGE',
+      sourceRef: '/contract-spec',
+      retrievedAt: '2026-11-24T08:00:00',
+    },
+  }));
+  assert.ok(timezoneLess.issues.includes('INVALID_PROVIDER_TIMESTAMP'));
+  assert.equal(timezoneLess.adapterReady, false);
+
+  const withOffset = validateContractEconomics(standardEquity({
+    provenance: {
+      status: 'PROVIDER_VERIFIED',
+      provider: 'EXCHANGE',
+      sourceRef: '/contract-spec',
+      retrievedAt: '2026-11-24T08:00:00+03:00',
+    },
+  }));
+  assert.equal(withOffset.valid, true);
+  assert.equal(withOffset.adapterReady, true);
+});
+
+test('currency identifiers support settlement assets without implying cross-asset equivalence', () => {
+  const usdc = validateContractEconomics(standardEquity({
+    premium: { multiplier: 1, quoteCurrency: 'USDC', priceUnit: 'PER_CONTRACT' },
+    exercise: {
+      style: 'EUROPEAN',
+      settlement: 'CASH',
+      settlementCurrency: 'USDC',
+      deliverables: [],
+      cashSettlement: {
+        formula: 'INTRINSIC_VALUE',
+        reference: 'INDEX',
+        currency: 'USDC',
+        multiplier: 1,
+      },
+    },
+  }));
+  assert.equal(usdc.valid, true);
+  assert.equal(usdc.adapterReady, true);
+});
