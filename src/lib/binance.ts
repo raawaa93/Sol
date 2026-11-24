@@ -307,9 +307,13 @@ export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptio
     : 0;
   if (eventTimestamp < previousTickerTimestamp) return quote;
 
-  const hasBookTicker = Boolean(quote.sourceTimestamps?.bookTicker);
-  const useTickerBid = !hasBookTicker && event.bestBid !== undefined;
-  const useTickerAsk = !hasBookTicker && event.bestAsk !== undefined;
+  const bookTickerTimestamp = quote.sourceTimestamps?.bookTicker
+    ? new Date(quote.sourceTimestamps.bookTicker).getTime()
+    : Number.NaN;
+  const bookTickerFresh = Number.isFinite(bookTickerTimestamp)
+    && eventTimestamp - bookTickerTimestamp <= 5_000;
+  const useTickerBid = !bookTickerFresh && event.bestBid !== undefined;
+  const useTickerAsk = !bookTickerFresh && event.bestAsk !== undefined;
   const sourceHasGreeks = Object.values(event.sourceGreeks).some((value) => value !== undefined);
   const observedFields = [
     ...(event.markIv !== undefined ? ['iv'] : []),
