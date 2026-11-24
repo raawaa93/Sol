@@ -302,8 +302,8 @@ export function parseBinanceOptionTickerMessage(payload: unknown): BinanceOption
 /** Apply ticker data without overriding a fresher BookTicker quote. */
 export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptionTickerEvent): OptionQuote {
   const eventTimestamp = event.transactionTime ?? event.eventTime;
-  const previousTickerTimestamp = quote.sourceTimestamps?.ticker
-    ? new Date(quote.sourceTimestamps.ticker).getTime()
+  const previousTickerTimestamp = quote.sourceTimestamps?.optionTicker
+    ? new Date(quote.sourceTimestamps.optionTicker).getTime()
     : 0;
   if (eventTimestamp < previousTickerTimestamp) return quote;
 
@@ -336,7 +336,7 @@ export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptio
     ...(sourceHasGreeks ? { unverifiedSourceGreeks: { ...quote.unverifiedSourceGreeks, ...event.sourceGreeks } } : {}),
     sourceTimestamps: {
       ...quote.sourceTimestamps,
-      ticker: new Date(eventTimestamp).toISOString(),
+      optionTicker: new Date(eventTimestamp).toISOString(),
     },
   };
 }
