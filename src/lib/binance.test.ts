@@ -753,7 +753,7 @@ test('Binance Options optionMarkPrice parser handles combined event payloads', (
   const events = parseBinanceOptionMarkPriceMessage(JSON.stringify({
     stream: 'btcusdt@optionMarkPrice',
     data: [{
-      e: 'optionMarkPrice', E: 1_800_000_001_000, s: 'BTC-261225-100000-C',
+      e: 'markPrice', E: 1_800_000_001_000, s: 'BTC-261225-100000-C',
       mp: '5200', i: '101000', bo: '5100', ao: '5300',
       b: '0.58', a: '0.62', vo: '0.60', rf: '0.02',
       d: '0.99', g: '0.00004', t: '-30', v: '55',
