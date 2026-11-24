@@ -113,7 +113,9 @@ export interface OptionQuote {
   ask: number;
   markPrice: number;
   priceSource?: QuotePriceSource;
+  /** Zero is the unavailable sentinel; ivStatus distinguishes it from a valid observed or modelled value. */
   iv: number;
+  ivStatus?: 'OBSERVED' | 'ESTIMATED' | 'UNAVAILABLE';
   /** Exchange-provided IV at the best bid, in annual decimal units. */
   bidIv?: number;
   /** Exchange-provided IV at the best ask, in annual decimal units. */
