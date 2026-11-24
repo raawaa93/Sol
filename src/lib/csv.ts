@@ -262,7 +262,7 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
     const valuationTime = sourceTimestamp?.getTime() ?? importTime;
     const daysToExpiry = Math.max(0, (new Date(expiry).getTime() - valuationTime) / 86_400_000);
     const inputIv = parseVolatility(readField(row, ['iv', 'impliedvolatility', 'markiv', 'volatility']), delimiter === ';');
-    const hasContractMetadata = Boolean(underlyingKind || exerciseStyle || settlementStyle);
+    const hasContractMetadata = Boolean(underlyingKind || exerciseStyle || settlementStyle || explicitAssetClass || venue || quoteAsset || settlementAsset || contractMultiplier || expiryTimezone);
     const pricingInputs = {
       underlyingKind,
       exerciseStyle,
