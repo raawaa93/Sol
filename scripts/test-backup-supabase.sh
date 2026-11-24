@@ -34,23 +34,11 @@ fi
 MOCK
 chmod +x "$tmp/bin/supabase"
 
-cat > "$tmp/bin/age" <<'MOCK'
-#!/usr/bin/env bash
-set -Eeuo pipefail
-output=""
-input=""
-while (($#)); do
-  case "$1" in
-    -r) shift 2 ;;
-    -o) output="$2"; shift 2 ;;
-    *) input="$1"; shift ;;
-  esac
-done
-test -n "$output" && test -s "$input"
-printf 'age-encryption.org/v1\n' > "$output"
-cat "$input" >> "$output"
-MOCK
-chmod +x "$tmp/bin/age"
+command -v age >/dev/null 2>&1 || { echo "age is required for this test." >&2; exit 1; }
+command -v age-keygen >/dev/null 2>&1 || { echo "age-keygen is required for this test." >&2; exit 1; }
+age-keygen -o "$tmp/identity.txt" 2> "$tmp/keygen.log"
+recipient="$(sed -n 's/^# public key: //p' "$tmp/identity.txt")"
+test -n "$recipient"
 
 PATH="$tmp/bin:$PATH" \
 SUPABASE_DB_URL='postgresql://postgres.oyoyozdugicmnkfhjovo:placeholder@db.oyoyozdugicmnkfhjovo.supabase.co:5432/postgres' \
@@ -59,4 +47,10 @@ BACKUP_OUTPUT_FILE="$tmp/backup.age" \
 bash "$repo_root/scripts/backup-supabase.sh"
 
 grep -q '^age-encryption.org/v1' "$tmp/backup.age"
-echo "Encrypted backup orchestration test passed (mock CLI and mock age; not a live backup)."
+age -d -i "$tmp/identity.txt" -o "$tmp/backup.tar.gz" "$tmp/backup.age"
+mkdir "$tmp/restored"
+tar -xzf "$tmp/backup.tar.gz" -C "$tmp/restored"
+(cd "$tmp/restored" && sha256sum -c SHA256SUMS)
+test -f "$tmp/restored/roles.sql"
+grep -q "volterra_rate_limit_windows" "$tmp/restored/schema.sql"
+echo "Real age encryption/decryption and checksum test passed with a mocked database CLI; no live database was accessed."
