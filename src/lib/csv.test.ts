@@ -121,6 +121,23 @@ test('missing IV is solved from the observed market price and flagged as estimat
   assert.ok(result.warnings.some((warning) => warning.includes('استُنتج IV')));
 });
 
+test('CSV preserves explicit asset class and venue for traditional listed options', () => {
+  const csv = [
+    'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,spot,unit,timestamp,assetClass,venue,quoteAsset,settlementAsset,contractMultiplier,exerciseStyle,settlementStyle',
+    'SPY-261230-700-C,SPY,2026-12-30T08:00:00Z,700,CALL,5.1,5.3,5.2,22%,690,100,2026-11-24T02:00:00Z,EQUITY,CBOE,USD,USD,100,AMERICAN,PHYSICAL',
+  ].join('\\n');
+  const result = parseOptionsCsv(csv);
+
+  assert.equal(result.quotes.length, 1);
+  assert.equal(result.quotes[0].assetClass, 'EQUITY');
+  assert.equal(result.quotes[0].venue, 'CBOE');
+  assert.equal(result.quotes[0].quoteAsset, 'USD');
+  assert.equal(result.quotes[0].settlementAsset, 'USD');
+  assert.equal(result.quotes[0].contractMultiplier, 100);
+  assert.equal(result.quotes[0].exerciseStyle, 'AMERICAN');
+  assert.equal(result.quotes[0].settlementStyle, 'PHYSICAL');
+});
+
 test('CSV symbols and underlying codes support commodities and other multi-asset contracts', () => {
   const csv = [
     header,
