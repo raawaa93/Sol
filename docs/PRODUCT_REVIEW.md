@@ -153,3 +153,10 @@
 
 
 **إضافة:** Deriv لا يظهر ضمن قائمة البلدان المدعومة الرسمية لسوريا، وNinjaTrader يرفض فتح الحساب الممول إذا لم يظهر بلد الإقامة في قائمة الطلب؛ تقرير مستقل يوثق رفض امتثال مباشر لسوريا في 2026. كلاهما لا يمثل مسار تنفيذ مثبتاً للمستخدم. المصادر: https://legacy-docs.deriv.com/docs/country-list ، https://vendor-support.ninjatrader.com/s/article/Applying-for-a-Live-NinjaTrader-Account?language=en_US ، https://unblocksyria.com/en/services/ninjatrader
+
+
+## تحديث مزودي البيانات — 24 نوفمبر 2026
+
+لا يوجد feed مجاني شامل لجميع الخيارات. Alpaca Basic يوفر أسعار خيارات أمريكية indicative لا OPRA الحقيقي؛ MarketData.app Free يقدم 100 credit يومياً وتأخير 24 ساعة وسنة تاريخية؛ Massive Options Basic يوفر EOD بينما flat files غير مشمولة في المجاني؛ بيانات CME/Cboe التقليدية تتطلب منتجاً وترخيصاً/رسوماً منفصلة. لذلك لا نضيف اشتراكاً الآن ضمن سقف 15$/شهر. نستعمل Binance public API للعقود التي يسردها، وCSV/مصادر EOD للتجربة فقط، ونفصل دائماً البيانات المؤخرة أو indicative عن الأسعار القابلة للتنفيذ.
+
+المصادر: https://docs.alpaca.markets/us/docs/about-market-data-api ، https://www.marketdata.app/docs/account/plan-limits/ ، https://massive.com/docs/flat-files/options/quotes?assetClass=options&license=personal&name=options_advanced ، https://www.cmegroup.com/market-data/browse-data.html.html ، https://www.cboe.com/data/market-data-services
