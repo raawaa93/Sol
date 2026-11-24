@@ -252,8 +252,8 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
     const contractInfo = fixture.exchangeInfo.optionContracts?.find((contract) => contract.underlying?.toUpperCase() === indexKey);
     const contractType = (symbolInfo.contractType ?? contractInfo?.contractType ?? '').toUpperCase();
     const underlyingType = (symbolInfo.underlyingType ?? contractInfo?.underlyingType ?? '').toUpperCase();
-    const isCommodity = contractType === 'TRADFI_OPTIONS' || underlyingType === 'COMMODITY';
-    const isCrypto = !isCommodity && (underlyingType === 'CRYPTO' || ['BTC', 'ETH', 'BNB', 'XRP', 'DOGE', 'SOL'].includes(baseAsset));
+    const isCommodity = underlyingType === 'COMMODITY';
+    const isCrypto = !isCommodity && (contractType === 'CRYPTO_OPTIONS' || underlyingType === 'CRYPTO' || ['BTC', 'ETH', 'BNB', 'XRP', 'DOGE', 'SOL'].includes(baseAsset));
     const underlyingKind = isCommodity ? 'PERPETUAL' as const : isCrypto ? 'SPOT' as const : 'UNKNOWN' as const;
     const exerciseStyle = isCommodity || isCrypto ? 'EUROPEAN' as const : 'UNKNOWN' as const;
     const settlementStyle = isCommodity || isCrypto ? 'CASH' as const : 'UNKNOWN' as const;
@@ -319,7 +319,7 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       id: symbol,
       symbol,
       underlying: baseAsset,
-      assetClass: inferAssetClass(baseAsset),
+      assetClass: isCrypto ? 'CRYPTO' : underlyingType === 'EQUITY' ? 'EQUITY' : inferAssetClass(baseAsset),
       venue: 'BINANCE',
       underlyingKind,
       exerciseStyle: exerciseStyle === 'UNKNOWN' ? undefined : exerciseStyle,

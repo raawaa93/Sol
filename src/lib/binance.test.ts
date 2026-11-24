@@ -318,6 +318,11 @@ test('Binance commodity options preserve perpetual-index mechanics and do not re
   assert.equal(snapshot.quotes.length, 1);
   const quote = snapshot.quotes[0];
   assert.equal(quote.underlyingKind, 'PERPETUAL');
+  assert.equal(quote.assetClass, 'METALS');
+  assert.equal(quote.exerciseStyle, 'EUROPEAN');
+  assert.equal(quote.settlementStyle, 'CASH');
+  assert.equal(quote.quoteAsset, 'USDT');
+  assert.equal(quote.settlementAsset, 'USDT');
   assert.equal(quote.pricingStatus, 'OBSERVED_ONLY');
   assert.equal(quote.pricingModel, undefined);
   assert.ok(quote.pricingReason?.toLowerCase().includes('perpetual'));
@@ -354,4 +359,64 @@ test('Binance normalizer excludes contracts with unknown contract unit instead o
   assert.equal(snapshot.quotes[0].symbol, validSymbol);
   assert.equal(snapshot.quotes[0].unit, 1);
   assert.ok(snapshot.warnings.some((warning) => warning.includes('استُبعدت هذه العقود')));
+});
+
+test('Binance contract metadata classifies newly listed crypto assets and leaves unknown mechanics unassigned', () => {
+  const now = Date.UTC(2026, 10, 24, 12);
+  const expiry = now + 30 * 86_400_000;
+  const code = compactDate(expiry);
+  const cryptoSymbol = `AVAX-${code}-40-C`;
+  const unknownSymbol = `ABC-${code}-100-C`;
+  const equitySymbol = `NVDA-${code}-100-C`;
+  const snapshot = normalizeBinanceSnapshot({
+    fetchedAt: now,
+    exchangeInfo: {
+      serverTime: now,
+      optionContracts: [
+        { baseAsset: 'AVAX', quoteAsset: 'USDT', underlying: 'AVAXUSDT', settleAsset: 'USDT', contractType: 'CRYPTO_OPTIONS', underlyingType: 'CRYPTO' },
+        { baseAsset: 'ABC', quoteAsset: 'USD', underlying: 'ABCUSD', settleAsset: 'USD', contractType: 'UNRECOGNIZED_OPTIONS', underlyingType: 'UNRECOGNIZED' },
+        { baseAsset: 'NVDA', quoteAsset: 'USD', underlying: 'NVDAUSD', settleAsset: 'USD', contractType: 'TRADFI_OPTIONS', underlyingType: 'EQUITY' },
+      ],
+      optionSymbols: [
+        { symbol: cryptoSymbol, underlying: 'AVAXUSDT', side: 'CALL', strikePrice: 40, expiryDate: expiry, unit: 1, status: 'TRADING', contractType: 'CRYPTO_OPTIONS', underlyingType: 'CRYPTO' },
+        { symbol: unknownSymbol, underlying: 'ABCUSD', side: 'CALL', strikePrice: 100, expiryDate: expiry, unit: 1, status: 'TRADING', contractType: 'UNRECOGNIZED_OPTIONS', underlyingType: 'UNRECOGNIZED' },
+        { symbol: equitySymbol, underlying: 'NVDAUSD', side: 'CALL', strikePrice: 100, expiryDate: expiry, unit: 1, status: 'TRADING', contractType: 'TRADFI_OPTIONS', underlyingType: 'EQUITY' },
+      ],
+    },
+    marks: [
+      { symbol: cryptoSymbol, markPrice: 5, markIV: 0.7 },
+      { symbol: unknownSymbol, markPrice: 8, markIV: 0.3 },
+      { symbol: equitySymbol, markPrice: 7, markIV: 0.4 },
+    ],
+    indices: [
+      { requestedUnderlying: 'AVAXUSDT', item: { indexPrice: 40, time: now } },
+      { requestedUnderlying: 'ABCUSD', item: { indexPrice: 100, time: now } },
+      { requestedUnderlying: 'NVDAUSD', item: { indexPrice: 100, time: now } },
+    ],
+  });
+
+  const crypto = snapshot.quotes.find((quote) => quote.symbol === cryptoSymbol);
+  const unknown = snapshot.quotes.find((quote) => quote.symbol === unknownSymbol);
+  const equity = snapshot.quotes.find((quote) => quote.symbol === equitySymbol);
+  assert.ok(crypto);
+  assert.ok(unknown);
+  assert.ok(equity);
+  assert.equal(crypto.assetClass, 'CRYPTO');
+  assert.equal(crypto.underlyingKind, 'SPOT');
+  assert.equal(crypto.exerciseStyle, 'EUROPEAN');
+  assert.equal(crypto.settlementStyle, 'CASH');
+  assert.equal(crypto.settlementAsset, 'USDT');
+  assert.equal(crypto.pricingStatus, 'ASSUMED');
+  assert.equal(unknown.assetClass, 'UNKNOWN');
+  assert.equal(unknown.underlyingKind, 'UNKNOWN');
+  assert.equal(unknown.exerciseStyle, undefined);
+  assert.equal(unknown.settlementStyle, undefined);
+  assert.equal(unknown.pricingStatus, 'OBSERVED_ONLY');
+  assert.equal(unknown.pricingModel, undefined);
+  assert.equal(equity.assetClass, 'EQUITY');
+  assert.equal(equity.underlyingKind, 'UNKNOWN');
+  assert.equal(equity.exerciseStyle, undefined);
+  assert.equal(equity.settlementStyle, undefined);
+  assert.equal(equity.pricingStatus, 'OBSERVED_ONLY');
+  assert.equal(equity.pricingModel, undefined);
 });
