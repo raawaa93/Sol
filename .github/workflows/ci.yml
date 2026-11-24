@@ -40,10 +40,12 @@ jobs:
         run: npm test
       - name: Validate production smoke-test script syntax
         run: node --check scripts/smoke-production.mjs
-      - name: Test encrypted backup orchestration with mocks
+      - name: Test age encryption and backup orchestration with a mocked database
         run: |
           bash -n scripts/backup-supabase.sh
           bash -n scripts/test-backup-supabase.sh
+          sudo apt-get update
+          sudo apt-get install --yes age
           bash scripts/test-backup-supabase.sh
       - name: Build the app
         run: npm run build
