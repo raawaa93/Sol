@@ -41,8 +41,10 @@ This is positive, first-party evidence for the general Options service. It does 
 - Underlyings listed in the specification: ETH, BTC, BNB, XRP, DOGE and SOL.
 - Settlement asset: USDT.
 - Automatic exercise at expiry.
-- Short selling requires margin and eligibility; the specification identifies BTC and ETH as eligible short-selling assets, with additional assets subject to venue discretion and participant-specific approval.
-- Short option positions are subject to maintenance/initial margin and liquidation.
+- Short selling is currently available for BTC and ETH only after account upgrade; the FAQ updated 28 July 2026 says BNB, XRP, SOL and DOGE writing is not available at this time.
+- Short positions require initial/maintenance margin and can be liquidated. Long buyers pay the premium upfront and have zero initial/maintenance margin under the published schedule.
+- Ordinary accounts use Cross Margin without portfolio-margin/risk netting across Options, Futures and Margin. Binance explicitly says strategies such as covered calls or spreads that require combined margin calculation are not supported in the standard margin system. Portfolio Margin SPAN is limited to the Enhanced Program with >100M USDT 30-day volume and >1M USDT assets.
+- Binance Options supports Limit orders only; BBO is a limit order priced at the best bid/ask, not a market order.
 
 **Commodity Options (Binance FAQ dated 29 July 2026):**
 - First underlyings: XAUUSDT (gold) and XAGUSDT (silver).
@@ -56,7 +58,7 @@ This is positive, first-party evidence for the general Options service. It does 
 
 **Fees:** use the current Options fee page and account-specific rate at execution time. Promotional or regional rates can change; do not hard-code a fee from an old screenshot or marketing page.
 
-**Conclusion:** Binance is a useful initial crypto-options venue and a potentially useful limited commodity-options venue. It is not the whole options universe. Confirm in the actual Syrian KYC account whether both Crypto Options and Commodity/TradFi Options are enabled before funding or trading those products.
+**Conclusion:** Binance is a useful initial venue for long single-leg options on products enabled for the account. It is not an institutional multi-leg options workstation: ordinary accounts lack cross-product risk netting, short-writing is restricted, and only limit orders are supported. It is not the whole options universe. Confirm in the actual Syrian KYC account whether both Crypto Options and Commodity/TradFi Options are enabled before funding or trading those products.
 
 ### Other crypto venues
 
@@ -198,6 +200,8 @@ Sources:
 - Syria availability announcement: https://www.binance.com/en/support/announcement/detail/7b11496ac43a42ceac50a1895c454d25
 - Crypto Options contract specifications (5 January 2026): https://bin.bnbstatic.com/static/cms/cg08ou2ak0tn7mcplvfg/file/443bcc67fde7274898ff8e3f7af23c7d89e654c5e609d250772e0ddaa96409be.pdf
 - Commodity Options FAQ (29 July 2026): https://www.binance.com/en-UZ/support/faq/detail/dc9e52b4440b48bd900a767cc5024c84
+- Crypto Options short-selling FAQ (updated 28 July 2026): https://www.binance.com/en/support/faq/detail/1ceb77f837344e3085ecf98d9a6a8097
+- Binance Options order types (updated 2 January 2026): https://www.binance.com/en/support/faq/detail/6b0dc23370ee4153a6581355e92555c1
 - Commodity Options launch: https://www.binance.com/en/blog/markets/7906742128714440461
 - Options API market data: https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-options/api/rest-api/market-data
 - Options fee schedule: https://www.binance.com/en-BH/fee/optionsTrading
