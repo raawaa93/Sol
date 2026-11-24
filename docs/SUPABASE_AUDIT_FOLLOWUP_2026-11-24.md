@@ -233,3 +233,40 @@ The experimental Agentic Browsing category differed by environment: local Lighth
 4. Keep the Volterra rate-limit table/function grants locked down; retain the successful RPC path.
 5. Continue investigating a licensed, eligible options data source; do not relabel HTTP 451 as account ineligibility or work around regional restrictions.
 6. Keep the app in read-only analysis and paper mode; no real order execution is implemented or authorized by this audit.
+
+
+## Current runtime recheck — 24 November 2026, 07:35 UTC
+
+This section supersedes only the earlier statements that legacy Edge Function source could not be retrieved and that the Volterra function remained at version 6. Historical observations above are retained as an audit trail.
+
+### Current Supabase state
+
+- Connected account still exposes one project: `Ghaioooth-core`, ref `oyoyozdugicmnkfhjovo`, `ACTIVE_HEALTHY`.
+- Remote migration ledger: 22 versions. Sol repository: 3 migration files (the two Volterra rate-limit migrations plus `20261124052328_remove_non_sol_legacy_schemas_20261124`). The 19 historical versions remain untracked and must be reconciled as history, not blindly replayed.
+- Current application schema: `public`, with `volterra_rate_limit_windows` and `volterra_check_rate_limit`. RLS is enabled on the table; no direct SELECT/INSERT/UPDATE grants are present for `anon`, `authenticated`, or `service_role`. The RPC is SECURITY DEFINER with `search_path = pg_catalog`, fully qualifies the table, and grants EXECUTE only to `service_role`.
+- Current Volterra Edge Function: version 10, `ACTIVE`, `verify_jwt=false` (public read-only browser proxy). Source inspection confirms an origin allowlist for the published GitHub Pages origin, GET/OPTIONS only, endpoint and parameter allowlists, input validation, trusted Cloudflare client-IP extraction, HMAC client hashing, a shared database rate limiter, response caching, and request timeouts. No signed user-data or order endpoint is exposed.
+
+### Legacy Edge Function source verification
+
+Source retrieval now succeeds. All six legacy deployments remain listed as `ACTIVE` and have `verify_jwt=true`, but each source is a short retired handler that returns HTTP 410 with `code: ENDPOINT_RETIRED`:
+
+| Function | Version | Gateway JWT | Source behavior |
+|---|---:|---:|---|
+| `commerce-api` | 5 | true | HTTP 410 / `ENDPOINT_RETIRED` |
+| `rawaa-telegram-test` | 7 | true | HTTP 410 / `ENDPOINT_RETIRED` |
+| `rawaa-telegram-pair` | 8 | true | HTTP 410 / `ENDPOINT_RETIRED` |
+| `rawaa-outbox` | 8 | true | HTTP 410 / `ENDPOINT_RETIRED` |
+| `rawaa-owner-orders` | 10 | true | HTTP 410 / `ENDPOINT_RETIRED` |
+| `rawaa-retention` | 4 | true | HTTP 410 / `ENDPOINT_RETIRED` |
+
+This verifies the retired response behavior from deployed source, not that the deployment records have been deleted. The available Supabase connector exposes no Edge Function delete operation. Do not claim these deployments are removed; they are inert handlers that remain registered as ACTIVE.
+
+### Syrian network observation
+
+The retained Edge Function logs show 50 requests during 07:00:20–07:00:27 UTC with Cloudflare country classification `SY`, user-agent consistent with Chrome on iOS, and HTTP 200 across `exchangeInfo`, `mark`, `ticker`, `index`, `openInterest`, and `depth`. The log rows did not include Origin/Referer, so this supports a successful Syrian-classified browser/network path but does not identify a person or prove account-level Options permissions. US/Iowa server-side requests in the same audit period returned HTTP 451; that result is egress-specific and is not a Syrian eligibility verdict.
+
+### Recovery and cleanup boundary
+
+- No restorable backup has been verified. The Free project has no automated daily/downloadable backup feature in the connected plan record; external backups outside connected sources remain unknown.
+- The earlier deletion of `commerce` and `rawaa_store` and their two Telegram rows remains irreversible from the current project state alone. No placeholder records were recreated and no additional destructive database action was taken.
+- No legacy function was deleted because the connected Supabase tool surface does not provide a delete operation. No paid plan, add-on, or new project was created.
