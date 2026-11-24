@@ -48,7 +48,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-playwright-
       - name: Install Chromium for Lighthouse
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
       - name: Configure Lighthouse Chrome path
         run: |
           CHROME_PATH="$(node --input-type=module -e 'import { chromium } from "@playwright/test"; process.stdout.write(chromium.executablePath())')"
