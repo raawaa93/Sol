@@ -272,7 +272,7 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
       strike,
       daysToExpiry,
       type,
-      rate: riskFreeRate ?? 0,
+      rate: riskFreeRate ?? Number.NaN,
       carryYield,
     };
     let solvedIv = inputIv;
@@ -312,7 +312,8 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
         : modelResult.reason;
 
     const hasObservedTwoSidedQuote = bid > 0 && ask > 0;
-    const markPrice = observedMark || (hasObservedTwoSidedQuote ? (bid + ask) / 2 : modelGreeks?.price ?? 0);
+    const markPrice = observedMark || (hasObservedTwoSidedQuote ? (bid + ask) / 2 : observedPrice || modelGreeks?.price || 0);
+    const priceSource = observedMark ? 'MARK' as const : hasObservedTwoSidedQuote ? 'MID' as const : observedPrice > 0 ? bid > 0 ? 'BID' as const : ask > 0 ? 'ASK' as const : 'LAST' as const : 'MODEL' as const;
     if (markPrice <= 0) {
       counts.invalidRows += 1;
       addRowWarning(`تم تجاهل الصف ${sourceRowNumber}: لا يوجد Mark/Bid/Ask مرصود، ولا يوجد نموذج صالح لتقدير السعر.`);
@@ -390,6 +391,7 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
       bid,
       ask,
       markPrice,
+      priceSource,
       iv: solvedIv,
       delta: modelGreeks?.delta ?? deltaValue ?? 0,
       gamma: modelGreeks?.gamma ?? gammaValue ?? 0,
