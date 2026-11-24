@@ -132,7 +132,7 @@ export default function OpportunityReview({ quotes, market, underlying, dataMode
               && quote.bid > 0 && quote.ask > 0 && quote.ask >= quote.bid
               && quote.unit > 0
               && !['iv', 'daysToExpiry', 'spot', 'unit', 'riskFreeRate', 'carryYield', 'forward'].some((field) => isQuoteFieldEstimated(quote, field));
-            const modelMetrics = modelInputsVerified ? getRiskNeutralExpiryMetrics(quote, quote.ask) : null;
+            const modelMetrics = modelInputsVerified ? getRiskNeutralExpiryMetrics(quote, quote.ask, undefined, dataMode) : null;
             const estimated = quote.estimatedFields?.length
               ? formatEstimatedFields(quote.estimatedFields.slice(0, 4))
               : '';
