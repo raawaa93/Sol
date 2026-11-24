@@ -16,7 +16,7 @@ export interface QuoteDataCoverage {
   liveMarkPriceAvailable: number;
   bidIvAvailable: number;
   askIvAvailable: number;
-  optionMarkBookAvailable: number;
+  optionTickerBookAvailable: number;
 }
 
 export function getQuoteDataCoverage(quotes: OptionQuote[]): QuoteDataCoverage {
@@ -47,7 +47,7 @@ export function getQuoteDataCoverage(quotes: OptionQuote[]): QuoteDataCoverage {
     if (quote.sourceTimestamps?.markPrice) coverage.liveMarkPriceAvailable += 1;
     if (Number.isFinite(quote.bidIv) && (quote.bidIv ?? 0) > 0) coverage.bidIvAvailable += 1;
     if (Number.isFinite(quote.askIv) && (quote.askIv ?? 0) > 0) coverage.askIvAvailable += 1;
-    if (quote.bidAskSource === 'OPTION_MARK_PRICE') coverage.optionMarkBookAvailable += 1;
+    if (quote.bidAskSource === 'OPTION_MARK_PRICE') coverage.optionTickerBookAvailable += 1;
     return coverage;
   }, {
     contracts: 0,
@@ -65,6 +65,6 @@ export function getQuoteDataCoverage(quotes: OptionQuote[]): QuoteDataCoverage {
     liveMarkPriceAvailable: 0,
     bidIvAvailable: 0,
     askIvAvailable: 0,
-    optionMarkBookAvailable: 0,
+    optionTickerBookAvailable: 0,
   });
 }
