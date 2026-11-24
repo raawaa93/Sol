@@ -62,3 +62,14 @@
 ### Phase 1 implementation note — 24 November 2026
 
 PR #119 adds the canonical types and fail-closed validator without wiring the new object into existing analytics. Tests cover standard equity, adjusted multi-component equity/cash delivery, cash-settlement formulas, missing terms, provenance, cross-currency blocking, futures delivery and JSON round-trip preservation. CSV v2 serialization and import/export round-trip remain intentionally unchecked; existing legacy CSV rows are not backfilled.
+
+
+### Provider mapping evidence — 24 November 2026
+
+The adapter work must preserve the differences between Binance's two Options product families:
+
+- **Binance Crypto Options** (/eapi/v1/exchangeInfo): the official market-data schema exposes quoteAsset, settleAsset, underlying, and per-symbol unit, defined as the quantity of underlying represented by one contract. The published schema does not expose the Stock Options multiplier/contractSize pair. Map unit only to the documented contract-unit/deliverable quantity. Do not silently relabel it as a separate premium multiplier; premium price-unit semantics must be independently evidenced before enabling per-contract cost calculations. Source: https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-options/api/rest-api/market-data
+- **Binance Stock Options** (/sapi/v1/equity/option/market/*): official docs explicitly distinguish multiplier (premium-cost multiplier) from contractSize (shares delivered), and expose component-level deliverables including equity and cash. These values can differ for corporate-action-adjusted contracts. Map each field independently; never infer one from the other. Source: https://developers.binance.me/en/docs/catalog/advanced-trading-stock-option-trading/api/rest-api
+- Stock Options documentation also states that the product has separate account enablement/KYC steps, uses USD quote prices and USDC order payment, and does not provide option quotes/Greeks from its reference-data endpoints. This adapter is reference-data only until those capabilities and account permissions are separately verified. Source: https://developers.binance.me/en/docs/products/stock-options/introduction
+
+**Implementation consequence:** the Phase 3 Crypto Options adapter must not invent a premium multiplier from unit; it must keep any unsupported premium scale fail-closed until a documented price-cost formula and source fixture establish the mapping. The Stock Options reference adapter is the positive test case for independent premium multiplier, contractSize and multi-component deliverables. No signed account requests, order routes, or live trading are in scope.
