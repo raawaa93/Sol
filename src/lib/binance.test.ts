@@ -907,6 +907,7 @@ test('Binance live IV cannot retain stale model Greeks when updated inputs inval
     openInterest: 10, volume: 2, spot: 100000, unit: 1, riskFreeRate: 0.02,
     underlyingKind: 'UNKNOWN' as const, exerciseStyle: 'EUROPEAN' as const, settlementStyle: 'CASH' as const,
     pricingStatus: 'ASSUMED' as const, pricingModel: 'BLACK_SCHOLES_CARRY' as const,
+    estimatedFields: ['delta', 'gamma', 'theta', 'vega', 'rho'],
   };
   const updated = applyBinanceOptionTicker(quote, {
     symbol: quote.symbol, eventTime: 1_800_000_001_000, markIv: 0.8,
@@ -916,5 +917,6 @@ test('Binance live IV cannot retain stale model Greeks when updated inputs inval
   assert.equal(updated.delta, 0);
   assert.equal(updated.gamma, 0);
   assert.equal(updated.vega, 0);
+  assert.deepEqual(updated.estimatedFields, []);
   assert.match(updated.pricingReason ?? '', /underlying mechanics/i);
 });
