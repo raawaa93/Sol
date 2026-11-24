@@ -27,6 +27,11 @@ test('Binance time to expiry uses exchange server time rather than the browser c
 
   assert.equal(snapshot.quotes.length, 1);
   assert.equal(snapshot.quotes[0].daysToExpiry, 30);
+  assert.equal(snapshot.quotes[0].underlyingKind, 'SPOT');
+  assert.equal(snapshot.quotes[0].exerciseStyle, 'EUROPEAN');
+  assert.equal(snapshot.quotes[0].settlementStyle, 'CASH');
+  assert.equal(snapshot.quotes[0].pricingStatus, 'SUPPORTED');
+  assert.equal(snapshot.quotes[0].pricingModel, 'BLACK_SCHOLES_CARRY');
 });
 
 test('Binance snapshot normalizer merges the active option universe and public market feeds', () => {
