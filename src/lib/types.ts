@@ -82,7 +82,14 @@ export interface OptionQuote {
   quantityScale?: number;
   riskFreeRate?: number;
   filters?: OptionFilter[];
+  /** Legacy single timestamp: last trade close time only. Never substitute index or receive time. */
   sourceTimestamp?: string;
+  /** Independent exchange timestamps; absent means the endpoint did not publish a timestamp. */
+  sourceTimestamps?: {
+    ticker?: string;
+    index?: string;
+    openInterest?: string;
+  };
   /** Values calculated or defaulted during import or normalisation. */
   estimatedFields?: string[];
 }

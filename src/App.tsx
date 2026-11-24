@@ -128,6 +128,12 @@ function formatDateTime(date: Date): string {
   return new Intl.DateTimeFormat('ar-GB', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(date);
 }
 
+function formatSourceTimestamp(timestamp: string | undefined): string {
+  if (!timestamp) return 'غير منشور من المصدر';
+  const date = new Date(timestamp);
+  return Number.isFinite(date.getTime()) ? `${formatDateTime(date)} UTC` : 'وقت المصدر غير صالح';
+}
+
 function isPaperTrade(value: unknown): value is PaperTrade {
   if (!value || typeof value !== 'object') return false;
   const trade = value as Partial<PaperTrade>;
@@ -965,6 +971,12 @@ function App() {
                 {dataMode === 'BINANCE' && <div className="contract-specs"><span><small>وحدة العقد</small><b>{formatSmallNumber(selectedQuote.unit)} {selectedQuote.underlying}</b></span><span><small>حد الكمية</small><b>{selectedQuote.minQty === undefined ? '—' : formatQuantity(selectedQuote.minQty, selectedQuote)} – {selectedQuote.maxQty === undefined ? '—' : formatQuantity(selectedQuote.maxQty, selectedQuote)}</b></span><span><small>رسوم taker</small><b>{selectedQuote.takerFeeRate === undefined ? '—' : formatPercent(selectedQuote.takerFeeRate, 2)}</b></span></div>}
                 <div className="price-highlight"><span>{dataMode === 'BINANCE' ? 'سعر العقد المرجعي' : 'السعر المرجعي التقديري'}</span><strong>{formatOptionPrice(selectedPremium, selectedQuote)}</strong><small>{priceBasis}</small></div>
                 <div className="quote-row"><span>Bid <b>{formatQuotePrice(selectedQuote.bid, selectedQuote)}</b></span><span>Ask <b>{formatQuotePrice(selectedQuote.ask, selectedQuote)}</b></span></div>
+                {dataMode === 'BINANCE' && <div className="source-time-panel" aria-label="توقيتات مصادر بيانات العقد">
+                  <div><span>آخر تداول · Ticker</span><strong>{formatSourceTimestamp(selectedQuote.sourceTimestamps?.ticker)}</strong></div>
+                  <div><span>مؤشر الأصل · Index</span><strong>{formatSourceTimestamp(selectedQuote.sourceTimestamps?.index)}</strong></div>
+                  <div><span>الفائدة المفتوحة · OI</span><strong>{formatSourceTimestamp(selectedQuote.sourceTimestamps?.openInterest)}</strong></div>
+                  <small>هذه أوقات المصدر لكل نقطة بيانات، وليست وقت استلام التطبيق. Binance لا ينشر توقيتاً مستقلاً في استجابة Mark Price الموثقة.</small>
+                </div>}
                 {dataMode === 'BINANCE' && <div className="iv-source-range" aria-label="قيم IV المتاحة للعقد">
                   <span>Bid IV <b>{selectedQuote.bidIv === undefined ? '—' : formatPercent(selectedQuote.bidIv)}</b></span>
                   <span>{selectedQuote.estimatedFields?.includes('iv') ? 'IV مقدرة' : 'Mark IV'} <b>{formatPercent(selectedQuote.iv)}</b></span>

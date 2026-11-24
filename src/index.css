@@ -271,6 +271,12 @@ h1, h2, h3, p { margin: 0; }
 .contract-specs span { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 6px 7px; border: 1px solid #242f31; border-radius: 6px; background: rgba(9, 14, 15, .45); }
 .contract-specs small { color: #71807a; font-size: 7px; }
 .contract-specs b { color: #c5d2ca; font-family: Inter, sans-serif; font-size: 8px; font-weight: 550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.source-time-panel { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0 0 9px; padding: 8px; border: 1px solid #26302f; border-radius: 8px; background: rgba(8, 13, 14, .3); }
+.source-time-panel > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.source-time-panel span { color: #7d8b83; font-size: 7px; }
+.source-time-panel strong { color: #c3d2c3; font-family: Inter, sans-serif; font-size: 8px; font-weight: 550; overflow-wrap: anywhere; }
+.source-time-panel > small { grid-column: 1 / -1; color: #687874; font-size: 7px; line-height: 1.6; }
+@media (max-width: 520px) { .source-time-panel { grid-template-columns: 1fr; } }
 .copy-symbol { border: 0; color: #85918f; background: transparent; cursor: pointer; font-size: 17px; }
 .copy-symbol:hover { color: var(--green); }
 .price-highlight { display: flex; flex-direction: column; align-items: center; padding: 11px; border: 1px solid #26332e; border-radius: 9px; background: radial-gradient(ellipse at 50% -20%, rgba(167, 217, 124, .09), transparent 62%), #101715; }
