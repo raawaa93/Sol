@@ -55,7 +55,7 @@ export function parseBinanceOptionTradeMessage(
   const tradeId = typeof raw.t === 'string' || typeof raw.t === 'number' ? String(raw.t) : '';
   const executionType = raw.X;
   const tradeSide = raw.S;
-  if (!symbol || !tradeId || !/^\\d+$/.test(tradeId)) return [];
+  if (!symbol || !tradeId || !/^\d+$/.test(tradeId)) return [];
   if (executionType !== 'MARKET' && executionType !== 'BLOCK') return [];
   if (tradeSide !== 'BUY' && tradeSide !== 'SELL') return [];
   if (typeof raw.m !== 'boolean') return [];
