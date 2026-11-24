@@ -960,6 +960,45 @@ function App() {
                       })}
                     </tbody>
                   </table>
+                  <div className="chain-mobile-list" role="list" aria-label="عقود الخيارات">
+                    {filteredQuotes.map((quote) => {
+                      const spread = getSpreadPct(quote);
+                      const isSelected = quote.id === selectedQuote.id;
+                      const quoteReferencePrice = getUnderlyingReferencePrice(quote);
+                      const moneyness = ((quote.strike / quoteReferencePrice) - 1) * 100;
+                      return <button
+                        type="button"
+                        role="listitem"
+                        key={quote.id}
+                        className={`chain-mobile-card ${isSelected ? 'selected' : ''}`}
+                        aria-label={`اختيار العقد ${quote.symbol}`}
+                        aria-pressed={isSelected}
+                        onClick={() => setSelectedId(quote.id)}
+                      >
+                        <span className="chain-mobile-card-head">
+                          <span>
+                            <span className="chain-mobile-card-contract">
+                              <strong>{formatAssetPrice(quote.strike, quoteReferencePrice, getQuoteCurrency(quote) ?? null)}</strong>
+                              <span className={`moneyness ${Math.abs(moneyness) < 2.6 ? 'atm' : ''}`}>{Math.abs(moneyness) < 2.6 ? 'ATM' : `${moneyness > 0 ? '+' : ''}${moneyness.toFixed(1)}%`}</span>
+                            </span>
+                            <span className="chain-mobile-card-symbol">{quote.symbol}</span>
+                          </span>
+                          <span className={`spread-pill ${!Number.isFinite(spread) ? 'unknown' : spread > 8 ? 'wide' : spread > 4 ? 'medium' : 'tight'}`}>{Number.isFinite(spread) ? `${spread.toFixed(1)}%` : 'Spread —'}</span>
+                        </span>
+                        <span className="chain-mobile-quote-grid">
+                          <span><small>Bid</small><b dir="ltr">{formatQuotePrice(quote.bid, quote)}</b></span>
+                          <span><small>Ask</small><b dir="ltr">{formatQuotePrice(quote.ask, quote)}</b></span>
+                          <span><small>IV</small><b dir="ltr" className="iv-cell">{formatPercent(quote.iv)}</b></span>
+                          <span><small>Delta</small><b dir="ltr" className={quote.delta >= 0 ? 'positive-text' : 'negative-text'}>{quote.pricingStatus === 'OBSERVED_ONLY' ? '—' : `${quote.delta.toFixed(3)}${quote.pricingStatus === 'ASSUMED' ? '*' : ''}`}</b></span>
+                        </span>
+                        <span className="chain-mobile-meta">
+                          <span>OI <b dir="ltr">{quote.openInterest === null ? '—' : formatSmallNumber(quote.openInterest)}</b></span>
+                          <span>حجم 24س <b dir="ltr">{quote.volume === null ? '—' : formatSmallNumber(quote.volume)}</b></span>
+                          <span>{isSelected ? 'العقد المحدد' : 'اضغط لعرض التحليل'}</span>
+                        </span>
+                      </button>;
+                    })}
+                  </div>
                   {!filteredQuotes.length && <EmptyState title="لا توجد عقود مطابقة" note="غيّر نوع العقد أو تاريخ الانتهاء أو ابحث برمز مختلف." />}
                 </div>
                 <div className="table-footer"><span>عرض {integerFormat.format(filteredQuotes.length)} عقد من أصل {integerFormat.format(assetQuotes.filter((quote) => quote.expiry === effectiveExpiry && quote.type === selectedType).length)} في هذه السلسلة</span><span><span className={`table-dot ${dataMode === 'BINANCE' ? 'binance-dot' : ''}`} />{dataMode === 'DEMO' ? 'بيانات محاكاة' : dataMode === 'CSV' ? 'بيانات CSV محلية' : 'لقطة سوق عامة من Binance · ليست بثاً لحظياً'}</span></div>
