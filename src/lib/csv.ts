@@ -1,6 +1,5 @@
 import type { AssetClass, ExerciseStyle, OptionQuote, OptionSide, SettlementStyle, Underlying, UnderlyingKind } from './types';
 import { inferAssetClass, parseAssetClass } from './asset-class.ts';
-import { blackScholes, impliedVolatility } from './options.ts';
 import { impliedVolatilityForContract, priceOption } from './pricing-model.ts';
 
 export interface CsvTimestampRange {
@@ -262,7 +261,6 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
     const valuationTime = sourceTimestamp?.getTime() ?? importTime;
     const daysToExpiry = Math.max(0, (new Date(expiry).getTime() - valuationTime) / 86_400_000);
     const inputIv = parseVolatility(readField(row, ['iv', 'impliedvolatility', 'markiv', 'volatility']), delimiter === ';');
-    const hasContractMetadata = Boolean(underlyingKind || exerciseStyle || settlementStyle || explicitAssetClass || venue || quoteAsset || settlementAsset || contractMultiplier || expiryTimezone);
     const pricingInputs = {
       underlyingKind,
       exerciseStyle,
@@ -277,11 +275,7 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
     };
     let solvedIv = inputIv;
     if (solvedIv === undefined) {
-      if (hasContractMetadata) {
-        solvedIv = impliedVolatilityForContract(observedPrice, pricingInputs);
-      } else {
-        solvedIv = impliedVolatility(observedPrice, spot, strike, daysToExpiry, type, riskFreeRate ?? 0);
-      }
+      solvedIv = impliedVolatilityForContract(observedPrice, pricingInputs);
     }
     if (solvedIv === undefined) {
       counts.missingIv += 1;
@@ -299,19 +293,13 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
     if (bid === 0 || ask === 0) counts.missingQuoteSide += 1;
 
     const modelResult = priceOption({ ...pricingInputs, volatility: solvedIv });
-    const legacyModel = !hasContractMetadata
-      ? blackScholes(spot, strike, daysToExpiry, solvedIv, type, riskFreeRate ?? 0)
-      : undefined;
-    const modelGreeks = modelResult.status === 'SUPPORTED' ? modelResult.greeks : legacyModel;
-    const pricingStatus = modelResult.status === 'SUPPORTED' ? 'SUPPORTED' as const
-      : legacyModel ? 'ASSUMED' as const : 'OBSERVED_ONLY' as const;
-    const pricingModel = modelResult.status === 'SUPPORTED' ? modelResult.model
-      : legacyModel ? 'BLACK_SCHOLES_CARRY' as const : undefined;
+    const modelGreeks = modelResult.status === 'SUPPORTED' ? modelResult.greeks : undefined;
+    const pricingStatus = modelResult.status === 'SUPPORTED' ? 'SUPPORTED' as const : 'OBSERVED_ONLY' as const;
+    const pricingModel = modelResult.status === 'SUPPORTED' ? modelResult.model : undefined;
     const pricingReason = modelResult.status === 'SUPPORTED' ? undefined
-      : legacyModel ? 'Legacy CSV lacks explicit contract mechanics; Black–Scholes with the stated/default rate and zero carry is an assumption only.'
-        : underlyingKind === 'PERPETUAL' ? 'Perpetual underlyings are not supported by a validated pricing model.'
-          : exerciseStyle === 'AMERICAN' || exerciseStyle === 'BERMUDAN' ? 'American/Bermudan exercise is not supported by the current European analytical models.'
-            : modelResult.reason;
+      : underlyingKind === 'PERPETUAL' ? 'Perpetual underlyings are not supported by a validated pricing model.'
+        : exerciseStyle === 'AMERICAN' || exerciseStyle === 'BERMUDAN' ? 'American/Bermudan exercise is not supported by the current European analytical models.'
+          : modelResult.reason;
 
     const hasObservedTwoSidedQuote = bid > 0 && ask > 0;
     const markPrice = observedMark || (hasObservedTwoSidedQuote ? (bid + ask) / 2 : observedPrice || modelGreeks?.price || 0);

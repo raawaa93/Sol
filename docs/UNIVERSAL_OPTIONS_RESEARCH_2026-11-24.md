@@ -463,3 +463,31 @@ Sources:
 
 FAQ Binance المنشور في 12 يونيو 2025 يثبت أن المقيمين السوريين يمكنهم التسجيل والتحقق وفق KYC والامتثال، ويذكر صراحةً Options trading ضمن المنتجات المتاحة. هذا دليل على الإتاحة العامة للخيارات للمقيمين السوريين، وليس ضماناً لكل منتج فرعي أو صلاحية بيع/كتابة أو لكل عقد. المصدر: https://www.binance.com/en/support/faq/detail/863795c36a224bd7aa7d677996328ff9
 
+
+
+## إضافة اكتشاف منتج جديد — Binance US Stock Options (24 نوفمبر 2026)
+
+وثائق Binance Developer الرسمية المنشورة حديثاً تعرض عائلة مستقلة باسم **Stock Option Trading** لخيارات الأسهم الأمريكية، منفصلة تماماً عن Crypto Options على `eapi.binance.com` وعن Commodity/TradFi Options. يجب عدم دمج هذه المنتجات في مصدر بيانات واحد أو افتراض تطابق صلاحياتها أو آلياتها.
+
+### ما تثبته الوثائق
+
+- عقود خيارات على أسهم أمريكية مدرجة، برموز OCC مثل `NVDA260930C00100000`.
+- مسارات Market Data تحت `/sapi/v1/equity/option/*`، مع استعلام تواريخ الانتهاء والعقود ومعلومات العقد.
+- نقطة Market Data تتطلب ترويسة `X-MBX-APIKEY`، لكن وثائقها لا تطلب توقيع HMAC لهذه النقاط. هذا لا يعني أنها عامة بلا مفتاح.
+- مواصفات العقد تتضمن `multiplier` و`contractSize` وحالة التداول و`tickSize` و`stepSize` والحدود، و`deliverables` التي قد تكون أسهماً أو نقداً. لا تفترض أن كل عقد يمثل 100 سهم؛ العقود المعدلة بسبب إجراءات الشركات قد تختلف.
+- لا توفر Market Data API أسعار خيارات أو bid/ask أو Greeks أو implied volatility. إنها مرجعية للعقود وقواعدها فقط؛ لا يجوز إظهارها على أنها تغذية أسعار.
+- التداول يتطلب تفعيل المنتج داخل تطبيق Binance، واستبيان المستثمر واختبار المعرفة وقبول الإفصاحات. هذا لا يثبت أهلية المقيم السوري أو تفعيل المنتج لحسابه.
+
+### القرار الهندسي
+
+1. أضف `BINANCE_US_EQUITY_OPTIONS` كمصدر/venue مستقل في نموذج البيانات، ولا تخلطه مع `BINANCE_CRYPTO_OPTIONS` أو `BINANCE_COMMODITY_OPTIONS`.
+2. يمكن بناء موصل مرجعي اختياري للعقود بعد توفير API key مخصص محدود الصلاحيات؛ لا نحتاج ولا نطلب مفاتيح تداول أو صلاحية أوامر.
+3. يجب أن يكون مخرج الموصل `contract reference only` مع deliverables والمضاعف والحالة والقيود. لا تخلق أسعاراً أو Greeks أو IV من بيانات مرجعية ناقصة.
+4. لا نفعّل الموصل في الإنتاج الآن: لا يوجد مفتاح API مخصص في المشروع، والوثائق لا تعطي أسعاراً، كما أن الوضع القانوني المحلي لخيارات الأسهم الأمريكية من سوريا لم يُحسم. يبقى البحث والتصميم دون تداول أو تمويل.
+
+**مصادر Binance الرسمية:**
+- [Stock Option Trading — Introduction](https://developers.binance.me/en/docs/products/stock-options/introduction)
+- [Stock Option Trading — Market Data REST API](https://developers.binance.me/en/docs/catalog/advanced-trading-stock-option-trading/api/rest-api)
+- [Options API — Exchange Information](https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-options/api/rest-api/market-data)
+- [Options API — Public Endpoints Info](https://developers.binance.com/en/docs/products/derivatives-trading-options/common-definition)
+
