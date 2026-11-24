@@ -434,9 +434,9 @@ async function getJson<T>(
   else externalSignal?.addEventListener('abort', abortFromCaller, { once: true });
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   const headers = new Headers({ Accept: 'application/json' });
-  // Supabase has no Syria execution region. Frankfurt is the closest supported
+  // Supabase has no Syria execution region. Zurich is the closest supported
   // region to Syria and avoids running this public-data proxy from US/UK CI edges.
-  if (proxyUrl) headers.set('x-region', 'eu-central-1');
+  if (proxyUrl) headers.set('x-region', 'eu-central-2');
   try {
     const response = await fetch(url, { method: 'GET', headers, signal: controller.signal });
     let payload: unknown;
