@@ -1,5 +1,5 @@
 import type { OptionGreeks, OptionQuote, OptionSide } from './types';
-import { getContractScaleIssue, type ContractScaleSourceMode } from './contract-scale';
+import { getContractScaleIssue, type ContractScaleSourceMode } from './contract-scale.ts';
 
 export function getUnderlyingReferencePrice(quote: OptionQuote): number {
   return quote.underlyingKind === 'FUTURE' ? quote.forward ?? quote.spot : quote.spot;
