@@ -38,6 +38,7 @@ import { DEMO_MARKETS, DEMO_QUOTES, getExpiryChoices } from './lib/demo';
 import { BinanceMarketDataError, fetchBinanceDepth, fetchBinanceOptions } from './lib/binance';
 import type { BinanceDepthSnapshot, BinanceOptionsSnapshot } from './lib/binance';
 import { getLatestQuotePerContract, getMarketSnapshotFromQuotes } from './lib/market';
+import { assessSnapshotFreshness, DEFAULT_SNAPSHOT_STALE_AFTER_MS } from './lib/market-data-health';
 import { downloadCsv, downloadCsvTemplate, MAX_CSV_FILE_BYTES, parseOptionsCsv } from './lib/csv';
 import type { CsvTimestampRange } from './lib/csv';
 import { buildScenarioSeries, getBreakeven, getExpectedMove, getMaxLoss, getMidPrice, getSpreadPct } from './lib/options';
@@ -83,22 +84,28 @@ function formatEstimatedFields(fields: string[] | undefined): string {
   return [...new Set(fields)].map((field) => labels[field] ?? field).join('، ');
 }
 
-function formatSourceAge(sourceTimeRange: CsvTimestampRange | null): string {
-  if (!sourceTimeRange) return 'عمر المصدر غير معلوم';
-  const ageMs = Date.now() - new Date(sourceTimeRange.latest).getTime();
-  if (!Number.isFinite(ageMs)) return 'وقت المصدر غير صالح';
-  if (ageMs < -5 * 60_000) return 'وقت المصدر مستقبلي؛ تحقّق';
+function formatAge(ageMs: number, label: string, futureLabel = 'وقت المصدر مستقبلي؛ تحقّق'): string {
+  if (!Number.isFinite(ageMs)) return 'الوقت غير صالح';
+  if (ageMs < -5 * 60_000) return futureLabel;
   const minutes = Math.max(0, Math.floor(ageMs / 60_000));
   const age = minutes < 1 ? 'أقل من دقيقة' : minutes < 60 ? `${minutes} د` : minutes < 1440 ? `${Math.floor(minutes / 60)} س` : `${Math.floor(minutes / 1440)} يوم`;
-  const partial = sourceTimeRange.timestampedRows < sourceTimeRange.totalRows ? ' · تغطية زمنية جزئية' : '';
-  return `عمر البيانات: ${age}${partial}`;
+  return `${label}: ${age}`;
 }
 
-function formatTimestampAge(timestamp: number): string {
-  const date = new Date(timestamp);
-  if (Number.isNaN(date.getTime())) return 'وقت الجلب غير صالح';
-  const isoTime = date.toISOString();
-  return formatSourceAge({ earliest: isoTime, latest: isoTime, timestampedRows: 1, totalRows: 1 });
+function formatSourceAge(sourceTimeRange: CsvTimestampRange | null, now = Date.now()): string {
+  if (!sourceTimeRange) return 'عمر المصدر غير معلوم';
+  const ageMs = now - new Date(sourceTimeRange.latest).getTime();
+  const age = formatAge(ageMs, 'عمر البيانات');
+  if (age === 'الوقت غير صالح' || age === 'وقت المصدر مستقبلي؛ تحقّق') return age;
+  const partial = sourceTimeRange.timestampedRows < sourceTimeRange.totalRows ? ' · تغطية زمنية جزئية' : '';
+  return `${age}${partial}`;
+}
+
+function formatTimestampAge(timestamp: number, now = Date.now()): string {
+  const ageMs = now - timestamp;
+  if (!Number.isFinite(ageMs)) return 'وقت الجلب غير صالح';
+  if (assessSnapshotFreshness(timestamp, now) === 'future') return 'وقت الاستلام مستقبلي؛ تحقّق';
+  return formatAge(Math.max(0, ageMs), 'عمر الاستلام');
 }
 
 function formatPercent(value: number, digits = 1): string {
@@ -190,6 +197,7 @@ function App() {
   const [binanceLoading, setBinanceLoading] = useState(false);
   const [binanceError, setBinanceError] = useState('');
   const [binanceAccessRestricted, setBinanceAccessRestricted] = useState(false);
+  const [clockNow, setClockNow] = useState(() => Date.now());
   const [binanceDepth, setBinanceDepth] = useState<BinanceDepthSnapshot | null>(null);
   const [binanceDepthLoading, setBinanceDepthLoading] = useState(false);
   const [binanceDepthError, setBinanceDepthError] = useState('');
@@ -216,6 +224,16 @@ function App() {
   const expiryChoices = useMemo(() => getExpiryChoices(quotes, underlying), [quotes, underlying]);
   const selectedExpiryExists = expiryChoices.some((item) => item.value === selectedExpiry);
   const effectiveExpiry = selectedExpiryExists ? selectedExpiry : expiryChoices.find((item) => item.days >= 20 && item.days <= 40)?.value ?? expiryChoices[0]?.value ?? '';
+
+  useEffect(() => {
+    if (dataMode !== 'BINANCE' || !binanceSnapshot) return;
+    const ageMs = Date.now() - binanceSnapshot.fetchedAt;
+    const delayMs = Number.isFinite(ageMs)
+      ? Math.max(0, DEFAULT_SNAPSHOT_STALE_AFTER_MS - ageMs + 1)
+      : 0;
+    const timer = window.setTimeout(() => setClockNow(Date.now()), delayMs);
+    return () => window.clearTimeout(timer);
+  }, [binanceSnapshot?.fetchedAt, dataMode]);
 
   useEffect(() => {
     if (effectiveExpiry && effectiveExpiry !== selectedExpiry) setSelectedExpiry(effectiveExpiry);
@@ -372,15 +390,28 @@ function App() {
 
   const ivRvSpread = !market || market.rv30 === null || market.iv30 === null ? null : market.iv30 - market.rv30;
   const ivTone = ivRvSpread === null ? 'neutral' : ivRvSpread >= 0 ? 'yellow' : 'green';
+  const binanceFreshness = binanceSnapshot
+    ? assessSnapshotFreshness(binanceSnapshot.fetchedAt, clockNow)
+    : 'unknown';
+  const staleThresholdSeconds = DEFAULT_SNAPSHOT_STALE_AFTER_MS / 1000;
+  const binanceAgeDetail = binanceSnapshot
+    ? formatTimestampAge(binanceSnapshot.fetchedAt, clockNow)
+    : '';
+  const binanceStatusClass = dataMode === 'BINANCE' && binanceFreshness === 'stale'
+    ? 'stale'
+    : dataMode === 'BINANCE' && binanceFreshness === 'future' ? 'invalid-time' : '';
   const dataStatusDetail = dataMode === 'DEMO'
     ? `${formatDateTime(new Date())} UTC · محاكاة`
     : dataMode === 'CSV'
-      ? formatSourceAge(sourceTimeRange)
+      ? formatSourceAge(sourceTimeRange, clockNow)
       : binanceSnapshot
-        ? formatTimestampAge(binanceSnapshot.fetchedAt)
+        ? binanceFreshness === 'stale' ? `لقطة قديمة · تجاوزت ${staleThresholdSeconds} ث` : binanceAgeDetail
         : binanceLoading ? 'جارٍ تحميل لقطة السوق' : 'لم تُحمّل بعد';
+  const binanceFetchedAtLabel = binanceSnapshot && Number.isFinite(binanceSnapshot.fetchedAt)
+    ? new Date(binanceSnapshot.fetchedAt).toISOString()
+    : 'وقت جلب غير صالح';
   const dataStatusTitle = dataMode === 'BINANCE' && binanceSnapshot
-    ? `آخر جلب REST عام من Binance: ${new Date(binanceSnapshot.fetchedAt).toISOString()} · لقطة وليست بثاً لحظياً.`
+    ? `آخر جلب REST عام من Binance: ${binanceFetchedAtLabel}. عمر الاستلام محلي، ويصنّف التطبيق اللقطة قديمة بعد ${staleThresholdSeconds} ثانية؛ لا يثبت عمر حقول المصدر. لقطة وليست بثاً لحظياً.`
     : dataMode === 'CSV'
       ? `وقت الاستيراد: ${importedAt ? formatDateTime(importedAt) : '—'} UTC · ${dataStatusDetail}`
       : 'بيانات تجريبية مولّدة محلياً؛ ليست أسعاراً حية.';
@@ -412,6 +443,7 @@ function App() {
         || Math.abs(a.strike - a.spot) - Math.abs(b.strike - b.spot),
       )[0] ?? assetQuotes[0];
 
+      setClockNow(snapshot.fetchedAt);
       setBinanceSnapshot(snapshot);
       setQuotes(snapshot.quotes);
       setDataMode('BINANCE');
@@ -648,7 +680,7 @@ function App() {
         <header className="topbar">
           <div className="breadcrumbs"><span>مساحة العمل</span><span className="crumb-slash">/</span><strong>مختبر الخيارات</strong></div>
           <div className="topbar-actions">
-            <div className="data-status" title={dataStatusTitle}><span className={`pulse-dot ${dataMode !== 'DEMO' ? 'imported' : ''}`} /><span>{dataMode === 'DEMO' ? 'محاكاة' : dataMode === 'CSV' ? 'CSV محلي' : 'Binance'}</span><small>{dataStatusDetail}</small></div>
+            <div className={`data-status ${binanceStatusClass}`} title={dataStatusTitle}><span className={`pulse-dot ${dataMode !== 'DEMO' ? 'imported' : ''} ${binanceStatusClass}`} /><span>{dataMode === 'DEMO' ? 'محاكاة' : dataMode === 'CSV' ? 'CSV محلي' : 'Binance'}</span><small>{dataStatusDetail}</small></div>
             <button className="icon-button help-button" title="حول هذا المختبر" onClick={() => setShowAssumptions((value) => !value)}><CircleHelp size={17} /></button>
             <button className="avatar-button" title="ملف شخصي محلي">م</button>
           </div>
@@ -687,6 +719,21 @@ function App() {
             <div className="compliance-copy"><strong>وضع تحليلي وتجريبي</strong><span>مصدر البيانات موضح في الواجهة: Demo اصطناعي، CSV محلي، أو لقطة REST عامة من Binance عبر وسيط للقراءة فقط، وليست بثاً لحظياً. لا تمثل الأرقام توصية. تحقّق من أهلية الوصول إلى المنتجات المشتقة حسب بلدك والمنصة.</span></div>
             <a href="https://www.fca.org.uk/news/press-releases/fca-lift-ban-crypto-exchange-traded-notes" target="_blank" rel="noreferrer" className="fca-link">معلومات FCA <ExternalLink size={13} /></a>
           </section>
+
+          {dataMode === 'BINANCE' && binanceSnapshot && (binanceFreshness === 'stale' || binanceFreshness === 'future') && (
+            <div className={`source-stale ${binanceFreshness === 'future' ? 'source-stale-clock' : ''}`} role="status">
+              <ShieldAlert size={17} />
+              <div>
+                <strong>{binanceFreshness === 'future' ? 'وقت استلام اللقطة غير متسق' : 'لقطة Binance تجاوزت حدّ العمر المحلي'}</strong>
+                <span>{binanceFreshness === 'future'
+                  ? 'تحقّق من ساعة الجهاز؛ وقت الاستلام مسجل في المستقبل.'
+                  : `تجاوزت اللقطة حدّاً محلياً قدره ${staleThresholdSeconds} ثانية. هذا يقيس وقت استلام اللقطة في التطبيق فقط، ولا يثبت حداثة حقول Binance.`}</span>
+              </div>
+              <button className="button button-ghost" onClick={loadBinanceOptions} disabled={binanceLoading}>
+                <RefreshCw className={binanceLoading ? 'spin' : ''} size={13} /> تحديث اللقطة
+              </button>
+            </div>
+          )}
 
           {binanceError && (
             <div className={`source-error ${binanceAccessRestricted ? 'source-error-restricted' : ''}`} role="alert">

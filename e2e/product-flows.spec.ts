@@ -56,6 +56,7 @@ test('CSV import stays local and supports a non-crypto underlying', async ({ pag
 
 test('Binance order-book UI is exercised only with a deterministic mocked REST snapshot', async ({ page }) => {
   const now = Date.now();
+  await page.clock.install({ time: now });
   const expiryDate = new Date(now + 30 * 86_400_000);
   const expiryCode = expiryDate.toISOString().slice(2, 10).replaceAll('-', '');
   const symbol = `BTC-${expiryCode}-100000-C`;
@@ -131,6 +132,13 @@ test('Binance order-book UI is exercised only with a deterministic mocked REST s
   await expect(sourceGreeks).toContainText('قيم Greeks الخام من Binance لأغراض التدقيق فقط');
   await sourceGreeks.locator('summary').click();
   await expect(sourceGreeks).toContainText('لم تُطبع وحداتها');
+  await expect(page.locator('.data-status')).toContainText('عمر الاستلام');
+  await expect(page.locator('.source-stale')).toHaveCount(0);
+
+  await page.clock.fastForward(61_000);
+  await expect(page.locator('.data-status')).toHaveClass(/stale/);
+  await expect(page.locator('.source-stale')).toContainText('لقطة Binance تجاوزت حدّ العمر المحلي');
+  await expect(page.locator('.source-stale')).toContainText('لا يثبت حداثة حقول Binance');
 });
 
 test('Binance HTTP 451 is shown as an upstream eligibility restriction, without replacing Demo data', async ({ page }) => {
