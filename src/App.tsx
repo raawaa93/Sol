@@ -41,6 +41,7 @@ import { BinanceMarketDataError, fetchBinanceDepth, fetchBinanceOptions } from '
 import type { BinanceDepthSnapshot, BinanceOptionsSnapshot } from './lib/binance';
 import { getAtmTermStructure } from './lib/analysis';
 import { getLatestQuotePerContract, getMarketSnapshotFromQuotes } from './lib/market';
+import { getQuoteDataCoverage } from './lib/quote-data-coverage';
 import { assessSnapshotFreshness, DEFAULT_SNAPSHOT_STALE_AFTER_MS, formatSourceTimestampAge } from './lib/market-data-health';
 import { isQuoteFieldEstimated } from './lib/quote-quality';
 import { getContractScaleIssue, getContractScaleIssueMessage } from './lib/contract-scale';
@@ -436,6 +437,7 @@ function App() {
                 : 'لا يوجد سعر موثوق';
 
   const latestAssetQuotes = useMemo(() => getLatestQuotePerContract(assetQuotes), [assetQuotes]);
+  const quoteDataCoverage = useMemo(() => getQuoteDataCoverage(latestAssetQuotes), [latestAssetQuotes]);
   const smileData = useMemo(() => latestAssetQuotes
     .filter((quote) => quote.daysToExpiry >= 20 && quote.daysToExpiry <= 40
       && !isQuoteFieldEstimated(quote, 'daysToExpiry')
@@ -914,6 +916,40 @@ function App() {
             </div> : <EmptyState title="لا توجد بيانات لهذا الأصل في الملف" note="استورد سلسلة تتضمن عقوداً وسعراً مرجعياً لهذا الأصل، أو استعد بيانات المحاكاة." />}
           </section>
 
+          {dataMode !== 'DEMO' && quoteDataCoverage.contracts > 0 && (
+            <section className="data-coverage-panel" aria-labelledby="data-coverage-title">
+              <div className="data-coverage-heading">
+                <div>
+                  <span className="section-kicker">DATA COVERAGE</span>
+                  <h2 id="data-coverage-title">اكتمال بيانات العقود</h2>
+                  <p>{underlying} · {integerFormat.format(quoteDataCoverage.contracts)} عقداً فريداً بعد إزالة تكرار الملاحظات</p>
+                </div>
+                <span className="data-coverage-source">{dataMode === 'BINANCE' ? 'Binance REST · لقطة' : 'ملف CSV محلي'}</span>
+              </div>
+              <div className="data-coverage-grid">
+                {[
+                  ['Bid + Ask صالحان', quoteDataCoverage.twoSidedQuotes],
+                  ['جانب سعري واحد', quoteDataCoverage.oneSidedQuotes],
+                  ['Bid وAsk غير متاحين', quoteDataCoverage.missingBothSides],
+                  ['Bid/Ask متعارضان', quoteDataCoverage.crossedQuotes],
+                  ['IV مرصود', quoteDataCoverage.observedIv],
+                  ['IV مقدر بالنموذج', quoteDataCoverage.estimatedIv],
+                  ['IV غير متاح', quoteDataCoverage.unavailableIv],
+                  ['عقود لها OI', quoteDataCoverage.openInterestAvailable],
+                  ['عقود لها حجم تداول', quoteDataCoverage.volumeAvailable],
+                  ['مواصفات اقتصادية موثقة', quoteDataCoverage.providerVerifiedEconomics],
+                ].map(([label, count]) => (
+                  <div className="data-coverage-item" key={label}>
+                    <strong>{integerFormat.format(Number(count))}<small> / {integerFormat.format(quoteDataCoverage.contracts)}</small></strong>
+                    <span>{label}</span>
+                    <i><b style={{ width: `${quoteDataCoverage.contracts ? Math.min(100, Number(count) / quoteDataCoverage.contracts * 100) : 0}%` }} /></i>
+                  </div>
+                ))}
+              </div>
+              <p className="data-coverage-note">الأصفار في OI والحجم تُحسب قيماً متاحة، لا حقولاً مفقودة. لا تُستبدل الأسعار أو IV الناقصة بقيم مخمّنة. وجود Bid وAsk لا يضمن التنفيذ أو حداثة السعر.</p>
+            </section>
+          )}
+
           <OpportunityReview
             quotes={assetQuotes}
             market={market ?? null}
@@ -977,7 +1013,7 @@ function App() {
                         const moneyness = ((quote.strike / quoteReferencePrice) - 1) * 100;
                         return <tr key={quote.id} onClick={() => setSelectedId(quote.id)} className={isSelected ? 'selected-row' : ''}>
                           <td><div className="contract-cell"><strong>{formatAssetPrice(quote.strike, quoteReferencePrice, getQuoteCurrency(quote) ?? null)}</strong><span className={`moneyness ${Math.abs(moneyness) < 2.6 ? 'atm' : ''}`}>{Math.abs(moneyness) < 2.6 ? 'ATM' : `${moneyness > 0 ? '+' : ''}${moneyness.toFixed(1)}%`}</span></div><span className="contract-symbol">{quote.symbol}</span></td>
-                          <td>{formatQuotePrice(quote.bid, quote)}</td><td>{formatQuotePrice(quote.ask, quote)}</td><td className="iv-cell">{formatPercent(quote.iv)}</td><td className={quote.delta >= 0 ? 'positive-text' : 'negative-text'}>{quote.pricingStatus === 'OBSERVED_ONLY' ? '—' : `${quote.delta.toFixed(3)}${quote.pricingStatus === 'ASSUMED' ? '*' : ''}`}</td><td>{quote.openInterest === null ? '—' : formatSmallNumber(quote.openInterest)}</td><td>{quote.volume === null ? '—' : formatSmallNumber(quote.volume)}</td><td><span className={`spread-pill ${!Number.isFinite(spread) ? 'unknown' : spread > 8 ? 'wide' : spread > 4 ? 'medium' : 'tight'}`}>{Number.isFinite(spread) ? `${spread.toFixed(1)}%` : '—'}</span></td>
+                          <td>{formatQuotePrice(quote.bid, quote)}</td><td>{formatQuotePrice(quote.ask, quote)}</td><td className="iv-cell">{quote.ivStatus === 'UNAVAILABLE' || quote.iv <= 0 ? '—' : formatPercent(quote.iv)}</td><td className={quote.delta >= 0 ? 'positive-text' : 'negative-text'}>{quote.pricingStatus === 'OBSERVED_ONLY' ? '—' : `${quote.delta.toFixed(3)}${quote.pricingStatus === 'ASSUMED' ? '*' : ''}`}</td><td>{quote.openInterest === null ? '—' : formatSmallNumber(quote.openInterest)}</td><td>{quote.volume === null ? '—' : formatSmallNumber(quote.volume)}</td><td><span className={`spread-pill ${!Number.isFinite(spread) ? 'unknown' : spread > 8 ? 'wide' : spread > 4 ? 'medium' : 'tight'}`}>{Number.isFinite(spread) ? `${spread.toFixed(1)}%` : '—'}</span></td>
                         </tr>;
                       })}
                     </tbody>
@@ -1039,7 +1075,7 @@ function App() {
                 </div>}
                 {dataMode === 'BINANCE' && <div className="iv-source-range" aria-label="قيم IV المتاحة للعقد">
                   <span>Bid IV <b>{selectedQuote.bidIv === undefined ? '—' : formatPercent(selectedQuote.bidIv)}</b></span>
-                  <span>{selectedQuote.estimatedFields?.includes('iv') ? 'IV مقدرة' : 'Mark IV'} <b>{formatPercent(selectedQuote.iv)}</b></span>
+                  <span>{selectedQuote.ivStatus === 'UNAVAILABLE' || selectedQuote.iv <= 0 ? 'IV غير متاح' : selectedQuote.ivStatus === 'ESTIMATED' || selectedQuote.estimatedFields?.includes('iv') ? 'IV مقدر بالنموذج' : 'Mark IV'} <b>{selectedQuote.ivStatus === 'UNAVAILABLE' || selectedQuote.iv <= 0 ? '—' : formatPercent(selectedQuote.iv)}</b></span>
                   <span>Ask IV <b>{selectedQuote.askIv === undefined ? '—' : formatPercent(selectedQuote.askIv)}</b></span>
                 </div>}
                 <div className="quote-quality"><span>الفارق السعري</span><span className={`quality-badge ${!Number.isFinite(spreadPct) ? 'unknown' : spreadPct > 10 ? 'bad' : spreadPct > 4 ? 'warn' : 'good'}`}><i />{Number.isFinite(spreadPct) ? `${quoteQuality} · ${spreadPct.toFixed(1)}%` : 'غير متاح · يلزم Bid وAsk'}</span></div>
