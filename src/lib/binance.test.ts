@@ -276,6 +276,55 @@ test('Binance client routes all public market data through the configured proxy'
   }
 });
 
+
+test('Binance client supports direct public market-data requests from the current browser network', async () => {
+  const now = Date.now();
+  const expiry = now + 28 * 86_400_000;
+  const expiryCode = compactDate(expiry);
+  const symbol = `BTC-${expiryCode}-100000-C`;
+  const requestedUrls: URL[] = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const url = new URL(String(input));
+    requestedUrls.push(url);
+    assert.equal(url.origin, 'https://eapi.binance.com');
+    let payload: unknown;
+    if (url.pathname.endsWith('/exchangeInfo')) {
+      payload = {
+        serverTime: now,
+        optionContracts: [{ baseAsset: 'BTC', quoteAsset: 'USDT', underlying: 'BTCUSDT' }],
+        optionSymbols: [{ symbol, underlying: 'BTCUSDT', quoteAsset: 'USDT', side: 'CALL', strikePrice: 100000, expiryDate: expiry, unit: 1, status: 'TRADING' }],
+      };
+    } else if (url.pathname.endsWith('/mark')) {
+      payload = [{ symbol, markPrice: 5000, markIV: 0.5, delta: 0.55, riskFreeInterest: 0 }];
+    } else if (url.pathname.endsWith('/ticker')) {
+      payload = [{ symbol, bidPrice: 4900, askPrice: 5100, volume: 10, amount: 50000, closeTime: now }];
+    } else if (url.pathname.endsWith('/index')) {
+      payload = [{ underlying: 'BTCUSDT', indexPrice: 100000, time: now }];
+    } else if (url.pathname.endsWith('/openInterest')) {
+      payload = [{ symbol, sumOpenInterest: 5, sumOpenInterestUsd: 500000, timestamp: now }];
+    } else if (url.pathname.endsWith('/depth')) {
+      payload = { lastUpdateId: 7, bids: [['10', '2']], asks: [['11', '3']] };
+    } else {
+      throw new Error(`Unexpected direct Binance URL ${url}`);
+    }
+    return new Response(JSON.stringify(payload), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  };
+
+  try {
+    const snapshot = await fetchBinanceOptions();
+    assert.equal(snapshot.quotes.length, 1);
+    assert.equal(snapshot.quotes[0].openInterestUsd, 500000);
+    const depth = await fetchBinanceDepth(symbol);
+    assert.equal(depth.bids[0].price, 10);
+    assert.equal(depth.asks[0].price, 11);
+    assert.ok(requestedUrls.length >= 6);
+    assert.ok(requestedUrls.every((url) => url.origin === 'https://eapi.binance.com'));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('Binance normalizer models a reference price only when IV is observed and no market price exists', () => {
   const now = Date.now();
   const expiry = now + 45 * 86_400_000;
