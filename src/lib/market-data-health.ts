@@ -22,3 +22,23 @@ export function assessSnapshotFreshness(
   if (ageMs < 0) return 'fresh';
   return ageMs > staleAfterMs ? 'stale' : 'fresh';
 }
+
+
+/**
+ * Formats an exchange-provided timestamp as elapsed time.
+ * Timestamp age is not proof of upstream feed freshness or last-trade time.
+ */
+export function formatSourceTimestampAge(timestamp: string | undefined, now = Date.now()): string {
+  if (!timestamp) return 'غير متاح';
+  const sourceTime = Date.parse(timestamp);
+  if (!Number.isFinite(sourceTime) || !Number.isFinite(now)) return 'وقت غير صالح';
+  const ageMs = now - sourceTime;
+  if (ageMs < -FUTURE_CLOCK_SKEW_TOLERANCE_MS) return 'وقت مستقبلي؛ تحقّق';
+  const seconds = Math.floor(Math.max(0, ageMs) / 1_000);
+  if (seconds < 60) return `منذ ${seconds} ث`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `منذ ${minutes} د`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `منذ ${hours} س`;
+  return `منذ ${Math.floor(hours / 24)} يوم`;
+}
