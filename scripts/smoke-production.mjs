@@ -40,10 +40,16 @@ async function requestJson(endpoint, params = {}) {
   const startedAt = performance.now();
   const response = await fetch(url, {
     method: 'GET',
-    headers: { Accept: 'application/json', Origin: pageOrigin },
+    // GitHub-hosted runners are US-based. Force the nearest supported Supabase
+    // region to Syria so this production check does not test US egress by accident.
+    headers: { Accept: 'application/json', Origin: pageOrigin, 'x-region': 'eu-central-1' },
     signal: timeoutSignal(),
   });
   const elapsedMs = Math.round(performance.now() - startedAt);
+  const executionRegion = response.headers.get('x-sb-edge-region');
+  if (executionRegion !== 'eu-central-1') {
+    throw new Error(`${endpoint}: expected Supabase execution region eu-central-1 (Frankfurt), got ${executionRegion ?? 'unknown'}.`);
+  }
   const allowOrigin = response.headers.get('access-control-allow-origin');
   if (allowOrigin !== pageOrigin) {
     throw new Error(`${endpoint}: expected CORS allow-origin ${pageOrigin}, got ${allowOrigin ?? 'none'}.`);
@@ -58,17 +64,17 @@ async function requestJson(endpoint, params = {}) {
   return { response, payload, elapsedMs };
 }
 
-function recordRegionRestriction(endpoint, response, payload) {
-  const detail = typeof payload?.msg === 'string' ? payload.msg : 'Binance denied the request from the upstream region.';
-  const line = `⚠️ ${endpoint}: proxy reached Binance, but upstream returned HTTP ${response.status} (regional/product restriction). Live data is not verified. ${detail}`;
+function recordUpstreamDenial(endpoint, response, payload) {
+  const detail = typeof payload?.msg === 'string' ? payload.msg : 'Binance rejected the server-side market-data request.';
+  const line = `⚠️ ${endpoint}: Binance returned HTTP ${response.status} to the Supabase proxy executing in Frankfurt (eu-central-1). This tests only this server egress path; it does not test a Syrian user's IP or account eligibility. Live data is not verified. ${detail}`;
   console.warn(line);
-  annotate('warning', 'Binance live data restricted', line);
+  annotate('warning', 'Binance upstream request denied', line);
   appendSummary(`### Live market-data smoke test\n\n${line}\n`);
 }
 
 function ensureOk(endpoint, response, payload) {
   if (response.status === 451) {
-    recordRegionRestriction(endpoint, response, payload);
+    recordUpstreamDenial(endpoint, response, payload);
     return false;
   }
   if (!response.ok) {
