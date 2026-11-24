@@ -448,7 +448,7 @@ test('local portfolio tracks holdings, updates net worth, persists and exports a
   await finance.getByLabel('مضاعف العقد').fill('1');
   await finance.getByLabel('متوسط تكلفة الوحدة').fill('40000');
   await finance.getByLabel('السعر الحالي / Mark').fill('60000');
-  await finance.getByLabel('العملة').last().fill('USD');
+  await finance.locator('.portfolio-form').getByLabel('العملة').fill('USD');
   await finance.getByLabel('مصدر السعر').fill('Playwright deterministic fixture');
   await finance.getByRole('button', { name: 'إضافة إلى المحفظة' }).click();
 
