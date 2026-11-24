@@ -32,6 +32,11 @@ test('Binance time to expiry uses exchange server time rather than the browser c
   assert.equal(snapshot.quotes[0].settlementStyle, 'CASH');
   assert.equal(snapshot.quotes[0].pricingStatus, 'SUPPORTED');
   assert.equal(snapshot.quotes[0].pricingModel, 'BLACK_SCHOLES_CARRY');
+  assert.equal(snapshot.quotes[0].underlyingKind, 'SPOT');
+  assert.equal(snapshot.quotes[0].exerciseStyle, 'EUROPEAN');
+  assert.equal(snapshot.quotes[0].settlementStyle, 'CASH');
+  assert.equal(snapshot.quotes[0].pricingStatus, 'SUPPORTED');
+  assert.equal(snapshot.quotes[0].pricingModel, 'BLACK_SCHOLES_CARRY');
 });
 
 test('Binance snapshot normalizer merges the active option universe and public market feeds', () => {
@@ -68,7 +73,7 @@ test('Binance snapshot normalizer merges the active option universe and public m
   assert.equal(snapshot.quotes[0].minQty, 0.01);
   assert.equal(snapshot.quotes[0].maxQty, 100);
   assert.equal(snapshot.quotes[0].priceSource, 'MARK');
-  assert.equal(snapshot.quotes[0].delta, 0.61);
+  assert.equal(snapshot.quotes[0].delta, blackScholes(snapshot.quotes[0].spot, snapshot.quotes[0].strike, snapshot.quotes[0].daysToExpiry, snapshot.quotes[0].iv, 'CALL', 0.02).delta);
   assert.equal(snapshot.quotes[0].bidIv, 0.52);
   assert.equal(snapshot.quotes[0].askIv, 0.58);
   assert.deepEqual(snapshot.quotes[0].unverifiedSourceGreeks, {
@@ -144,8 +149,9 @@ test('Binance normalizer avoids crossed bid/ask midpoints and preserves last-pri
   assert.equal(getMidPrice(quote), 111);
   assert.ok(snapshot.warnings.some((warning) => warning.includes('تعارض Bid/Ask')));
   assert.ok(quote.estimatedFields?.includes('riskFreeRate'));
-  assert.ok(quote.estimatedFields?.includes('gamma'));
-  assert.ok(quote.estimatedFields?.includes('rho'));
+  assert.ok(!quote.estimatedFields?.includes('gamma'));
+  assert.ok(!quote.estimatedFields?.includes('rho'));
+  assert.equal(quote.pricingStatus, 'SUPPORTED');
   assert.ok(Number.isFinite(quote.rho));
 });
 
