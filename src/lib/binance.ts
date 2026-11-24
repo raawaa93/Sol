@@ -200,6 +200,7 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
   const quotes: OptionQuote[] = [];
   let skipped = 0;
   let estimatedIv = 0;
+  let missingIv = 0;
   let missingBidAsk = 0;
   let missingBidOnly = 0;
   let missingAskOnly = 0;
@@ -288,20 +289,22 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       rate: riskFreeRate,
       carryYield,
     };
-    const iv = observedIv ?? (isCrypto && hasUnitOnePremiumParity && referencePrice !== undefined
+    const calculatedIv = observedIv ?? (isCrypto && hasUnitOnePremiumParity && referencePrice !== undefined
       ? impliedVolatilityForContract(referencePrice, pricingInputs)
       : undefined);
-    if (iv === undefined) {
-      skipped += 1;
-      continue;
-    }
+    const ivStatus = observedIv !== undefined ? 'OBSERVED' as const
+      : calculatedIv !== undefined ? 'ESTIMATED' as const : 'UNAVAILABLE' as const;
+    const iv = calculatedIv ?? 0;
 
-    const pricingResult = isCrypto && hasUnitOnePremiumParity ? priceOption({ ...pricingInputs, volatility: iv })
-      : { status: 'UNSUPPORTED' as const, reason: isCrypto && !hasUnitOnePremiumParity
-        ? 'Binance unit is underlying quantity per contract, not a documented premium multiplier. Premium price and deliverable scales are not separated yet.'
-        : isCommodity
-          ? 'Underlying is the Binance TradFi Perpetual Contract Index; no validated spot or futures pricing model is applied.'
-          : 'Underlying type and contract mechanics are not validated for analytical pricing.' };
+    const pricingResult = iv > 0 && isCrypto && hasUnitOnePremiumParity
+      ? priceOption({ ...pricingInputs, volatility: iv })
+      : { status: 'UNSUPPORTED' as const, reason: ivStatus === 'UNAVAILABLE'
+        ? 'Implied volatility is unavailable from the source and no supported model can derive it from this contract.'
+        : isCrypto && !hasUnitOnePremiumParity
+          ? 'Binance unit is underlying quantity per contract, not a documented premium multiplier. Premium price and deliverable scales are not separated yet.'
+          : isCommodity
+            ? 'Underlying is the Binance TradFi Perpetual Contract Index; no validated spot or futures pricing model is applied.'
+            : 'Underlying type and contract mechanics are not validated for analytical pricing.' };
     const modelGreeks = pricingResult.status === 'SUPPORTED' ? pricingResult.greeks : undefined;
     const priceSource = observedMark ? 'MARK' : twoSidedMid ? 'MID' : lastPrice ? 'LAST' : bid > 0 && !crossedQuote ? 'BID' : ask > 0 && !crossedQuote ? 'ASK' : 'MODEL';
     const markPrice = observedPrice ?? (hasUnitOnePremiumParity ? modelGreeks?.price : undefined);
@@ -310,9 +313,11 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       continue;
     }
     const estimatedFields: string[] = [];
-    if (observedIv === undefined) {
+    if (ivStatus === 'ESTIMATED') {
       estimatedIv += 1;
       estimatedFields.push('iv');
+    } else if (ivStatus === 'UNAVAILABLE') {
+      missingIv += 1;
     }
     if (priceSource === 'MODEL') estimatedFields.push('markPrice');
     if (!bid || !ask) {
@@ -380,6 +385,7 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       markPrice,
       priceSource,
       iv,
+      ivStatus,
       forward: undefined,
       bidIv,
       askIv,
@@ -412,7 +418,8 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
   const availableAssets = [...new Set(quotes.map((quote) => quote.underlying))].sort((a, b) => a.localeCompare(b));
   if (skipped > 0) warnings.push(`تعذّر استكمال بيانات ${skipped} عقد من قائمة Binance؛ قد يكون مؤشر الأصل أو سعر العقد غير متاح.`);
   if (missingIndex > 0) warnings.push(`لم تتوفر أسعار مؤشر Binance لـ${missingIndex} عقد؛ الأصول المتأثرة: ${[...missingIndexAssets].sort().join('، ')}. لم تُستعر أسعار Demo بديلاً عنها.`);
-  if (estimatedIv > 0) warnings.push(`استُنتج IV بنموذج Black–Scholes لـ${estimatedIv} عقد غاب فيها markIV.`);
+  if (estimatedIv > 0) warnings.push(`استُنتج IV بنموذج Black–Scholes لـ${estimatedIv} عقد غاب فيها markIV؛ هذه قيم نموذجية وليست مرصودة.`);
+  if (missingIv > 0) warnings.push(`IV غير متاح لـ${missingIv} عقد؛ أبقينا العقود التي لديها سعر سوق صالح ظاهرة، وحجبنا تحليل IV والنموذج بدلاً من حذفها أو اختلاق قيمة.`);
   if (missingBidAsk > 0) warnings.push(`Bid أو Ask غير متاح لـ${missingBidAsk} عقد (Bid مفقود فقط: ${missingBidOnly}، Ask مفقود فقط: ${missingAskOnly}، كلاهما مفقود: ${missingBothSides})؛ لم يُختلق الطرف الناقص والفارق غير متاح.`);
   if (crossedBidAsk > 0) warnings.push(`تعارض Bid/Ask في ${crossedBidAsk} عقد؛ استُبعد المنتصف من مرجع السعر.`);
   if (missingOpenInterest > 0) warnings.push(`الفائدة المفتوحة غير متاحة لـ${missingOpenInterest} عقد/استحقاق.`);
