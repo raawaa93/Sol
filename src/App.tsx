@@ -487,7 +487,6 @@ function App() {
           usedDirectConnection = true;
         } catch (directError) {
           if (requestId !== binanceRequestId.current) return;
-          setBinanceDirectMode(false);
           setBinanceAccessRestricted(true);
           const detail = directError instanceof Error ? directError.message : String(directError);
           setBinanceError(`أعاد وسيط الخادم HTTP 451، ثم لم تنجح محاولة الاتصال المباشر من متصفحك إلى Binance. قد تمنع الشبكة الطلب أو تمنع CORS قراءة الاستجابة. هذا لا يثبت منع حسابك أو المقيمين في سوريا، ولا يغيّر عنوان IP أو منطقة التنفيذ. صفحة Binance تذكر إتاحة الخيارات عموماً وفق KYC والامتثال، دون ضمان كل منتج فرعي أو صلاحيات الحساب. التفاصيل: ${detail}`);
