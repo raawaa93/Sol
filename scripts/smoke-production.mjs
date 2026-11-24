@@ -315,7 +315,6 @@ async function mapWithConcurrency(items, concurrency, mapper) {
   await Promise.all(workers);
   return results;
 }
-}
 
 main().catch((error) => {
   const message = error instanceof Error ? error.message : String(error);
