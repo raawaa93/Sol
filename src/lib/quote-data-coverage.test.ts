@@ -49,7 +49,7 @@ test('quote coverage distinguishes observed, estimated, and unavailable fields',
     openInterestAvailable: 3,
     volumeAvailable: 3,
     providerVerifiedEconomics: 0,
-    bookTickerAvailable: 0,
+    bookTickerAvailable: 1,
   });
 });
 
