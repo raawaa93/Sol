@@ -92,6 +92,11 @@ Binance خيار عملي مشروط لخيارات الكريبتو والسل�
 
 ### حدود مهمة
 
+
+**U.S. Stock Options:** أطلقت Binance في 1 سبتمبر 2026 خيارات Calls/Puts على أكثر من 1,000 سهم وETF أمريكي مختار. العقود Physically-settled في أسهم حقيقية عبر Nest Trading Limited كـIntroducing Broker وAlpaca Securities LLC كـClearing/Custody Partner. التداول Long-only وLimit orders فقط؛ لا كتابة/Short exposure. رسوم الإطلاق كانت 0.60$ للعقد ويجب التحقق من الجدول الحالي. ساعات التداول 9:30–16:00 ET عادةً، وبعض ETF/ETN حتى 16:15. التمرين يدوي؛ عدم إرسال التعليمات قبل cutoff يؤدي إلى best-efforts auto-liquidation قبل الإغلاق، وليس تمريناً تلقائياً مضموناً.
+
+واجهات Stock Options SAPI تعرض expirations/contracts/exchangeInfo وmultiplier وcontractSize وdeliverables وقواعد العقد فقط؛ لا تعرض option prices/quotes/Greeks/IV. واجهة Binance تقدم quotes متأخرة 15 دقيقة مجاناً ويمكن تفعيل OPRA real-time، مع شهر واحد مضمّن عند توقيع الإفصاح. لا نعامل هذا كـAPI feed قابل للاستخدام الآلي أو ترخيص لإعادة التوزيع. FAQ سوريا منشور قبل إطلاق Stock Options، وإعلان الإطلاق يحذر من اختلاف التوفر الإقليمي؛ لا نفترض تفعيل المنتج للمقيم السوري قبل تأكيد الحساب أو دعم Binance.
+
 - **U.S. Stock Options (إطلاق 1 سبتمبر 2026):** Binance أعلنت عقود Calls/Puts على أكثر من 1,000 سهم وETF أمريكي مختار، بتسوية مادية في أسهم حقيقية عبر Nest Trading Limited كوسيط مُعرّف وAlpaca Securities LLC كوسيط مقاصة/حفظ. المنتج Long-only (Buy Call/Buy Put فقط)، Limit orders فقط، ورسوم الإطلاق المعلنة 0.60$ للعقد؛ يجب التحقق من جدول الرسوم الحالي. ساعات التداول الأمريكية عادة 9:30–16:00 ET وبعض ETF/ETN حتى 16:15. التمرين يحتاج تعليمات يدوية قبل cutoff؛ إذا لم تُرسل، يجري Auto-liquidation على أساس best-efforts قبل الإغلاق، وليس تمريناً تلقائياً مضموناً. لا تعتبره عقداً نقدياً أو Crypto Options.
 - **بيانات Stock Options:** واجهات SAPI للسوق تعيد expirations/contracts/exchangeInfo وmultiplier/contractSize/deliverables وقواعد التداول فقط؛ وثائق API تقول صراحةً إنها لا توفر option prices/quotes/Greeks/IV. واجهة Binance تعرض 15-minute delayed quotes مجاناً، ويمكن تفعيل real-time OPRA quotes؛ FAQ تقول إن توقيع الإفصاح يمنح شهراً من البيانات اللحظية. لا نفترض سعر OPRA بعد الشهر الأول أو ترخيص إعادة العرض. API يتطلب X-MBX-APIKEY، وفتح المنتج يتطلب تفعيله في التطبيق واختبار الملاءمة.
 - **مواصفات الأسهم:** multiplier يحسب تكلفة العقد، بينما contractSize يحدد عدد الأسهم المسلمة؛ قد يختلفان بعد corporate action. يجب حفظ rootSymbol وdeliverables وتوقيت expiry في America/New_York. لا تستخدم multiplier=100 افتراضياً للعقود المعدلة.
@@ -118,7 +123,7 @@ Binance خيار عملي مشروط لخيارات الكريبتو والسل�
 
 ### النتيجة
 
-Binance تكفي كبداية لشراء الخيارات أحادية الرجل على المنتجات التي يتيحها الحساب، لكنها ليست منصة مناسبة لاستراتيجيات متعددة الأرجل تعتمد على هامش مجمّع؛ فالكتابة محدودة، ولا يوجد Risk Netting للمستخدم العادي، والأوامر Limit فقط. وهي **لا تكفي وحدها لتحقيق هدف تغطية جميع أسواق الخيارات وفئات الأصول**. لا يوجد حتى تاريخ هذا البحث وسيط تقليدي تم إثبات قبوله للمقيم السوري مع صلاحية خيارات CME/أسهم/مؤشرات. يجب مواصلة فحص Optimus وAMP وغيرهما عبر الامتثال، لا عبر VPN أو إنشاء حسابات تجريبية ببيانات غير صحيحة.
+Binance تغطي الآن Crypto Options وXAU/XAG Commodity Options وبعض U.S. Stock/ETF Options، لكنها لا تغطي خيارات العقود الآجلة والفائدة والعملات والطاقة والزراعة والمؤشرات العالمية. كما أن Stock Options طويلة فقط، تحتاج تمريناً يدوياً، ولا توفر API أسعار/Greeks/IV. لذلك هي أفضل بداية مشروطة وليست منصة شاملة؛ ولا يوجد حتى تاريخ هذا البحث وسيط/FCM تقليدي تم إثبات قبوله للمقيم السوري لخيارات CME/المؤشرات/الفائدة/FX. يجب مواصلة فحص Optimus وAMP وغيرهما عبر الامتثال، لا عبر VPN أو إنشاء حسابات تجريبية ببيانات غير صحيحة.
 
 ## 4. مقارنة مختصرة للمنصات
 
@@ -361,3 +366,6 @@ Gate EU ممنوع للمقيم السوري وفق الاتفاقية الأو�
 - Stock Options FAQ (updated 9 Oct 2026): https://www.binance.com/en-PH/support/faq/detail/3dddc209bb564b448c0948fc4c5e6d80
 - Stock Options REST API (reference data only): https://developers.binance.me/en/docs/catalog/advanced-trading-stock-option-trading/api/rest-api
 - Stock Options API introduction: https://developers.binance.me/en/docs/products/stock-options/introduction
+
+
+**مصادر Stock Options:** https://www.binance.com/en/blog/markets/3413696947185733989 ، https://www.binance.com/en-PH/support/faq/detail/3dddc209bb564b448c0948fc4c5e6d80 ، https://developers.binance.me/en/docs/products/stock-options/introduction ، https://developers.binance.me/en/docs/catalog/advanced-trading-stock-option-trading/api/rest-api .
