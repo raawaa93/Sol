@@ -324,9 +324,13 @@ export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptio
   const modelUpdate = event.markIv !== undefined && quote.pricingStatus === 'ASSUMED' && quote.pricingModel
     ? priceOption({ ...quote, volatility: event.markIv, rate: quote.riskFreeRate ?? Number.NaN })
     : undefined;
+  const greekFields = ['delta', 'gamma', 'theta', 'vega', 'rho'];
   const updated: OptionQuote = {
     ...quote,
-    ...(quote.estimatedFields ? { estimatedFields: quote.estimatedFields.filter((field) => !observedFields.includes(field)) } : {}),
+    ...(quote.estimatedFields ? {
+      estimatedFields: quote.estimatedFields.filter((field) => !observedFields.includes(field)
+        && (!modelUpdate || !greekFields.includes(field))),
+    } : {}),
     ...(useTickerBid ? { bid: event.bestBid, ...(event.bestBidQuantity !== undefined ? { bidQuantity: event.bestBidQuantity } : {}) } : {}),
     ...(useTickerAsk ? { ask: event.bestAsk, ...(event.bestAskQuantity !== undefined ? { askQuantity: event.bestAskQuantity } : {}) } : {}),
     ...(useTickerBid || useTickerAsk ? { bidAskSource: 'OPTION_TICKER' as const } : {}),
@@ -344,12 +348,8 @@ export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptio
   };
   if (modelUpdate) {
     if (modelUpdate.status === 'SUPPORTED') {
-      const g = modelUpdate.greeks;
-      updated.delta = g.delta;
-      updated.gamma = g.gamma;
-      updated.theta = g.thetaPerDay;
-      updated.vega = g.vegaPerVolPoint;
-      updated.rho = g.rhoPerRatePoint;
+      const { delta, gamma, thetaPerDay, vegaPerVolPoint, rhoPerRatePoint } = modelUpdate.greeks;
+      Object.assign(updated, { delta, gamma, theta: thetaPerDay, vega: vegaPerVolPoint, rho: rhoPerRatePoint });
     } else {
       updated.delta = updated.gamma = updated.theta = updated.vega = updated.rho = 0;
       updated.pricingStatus = 'OBSERVED_ONLY';
