@@ -1,14 +1,14 @@
-# Project Context Lock — Volterra
+# Project Context Lock — Sol Financial Intelligence
 
 **Status:** ACTIVE  
-**Canonical project:** Volterra Multi-Asset Options Decision Lab  
+**Canonical project:** Sol Financial and Investment Intelligence Assistant  
 **Repository:** https://github.com/raawaa93/Sol  
 **Default branch:** main  
 **Last verified:** 24 November 2026
 
 ## 1. Product identity and scope
 
-Volterra is a provider-neutral research, analysis and paper-trading workspace for **vanilla options across all asset classes and venues**. The target universe includes crypto, listed equities and ETFs, indices, options on futures (rates, FX, energy, metals and agriculture), and other genuine options markets where lawful access and reliable data exist.
+Sol is a personal financial and investment intelligence assistant. It helps the user understand personal finances, monitor and analyze investments, research markets and assets, compare strategies, assess risk, and make evidence-backed decisions. It is **not an autonomous trading system** and must not place orders, move funds, or take irreversible financial actions. The existing multi-asset options decision lab remains a specialist module within the broader product, not the product's entire scope. The broader scope includes personal cash flow and net worth, liabilities and goals, multi-asset portfolios, company and macro research, strategy analysis, and investment decision journaling. Coverage must distinguish target, implemented, live-verified and legally/contractually accessible data.
 
 Gold and silver are individual underlyings, not the product definition. Never reduce this project to gold-only or crypto-only. Never classify a perpetual, CFD, binary/event contract, prediction market, tokenized share or synthetic payoff as an exchange-listed vanilla option.
 
@@ -86,6 +86,9 @@ No second execution venue for a Syrian resident has been verified for global lis
 - Do not place live trades or bypass a legal/account restriction. Paper and read-only research remain the operating mode until the Syria legal gate is cleared.
 
 ## 8. Canonical project documents
+
+- [Sol Financial Intelligence product charter and architecture](docs/SOL_FINANCIAL_INTELLIGENCE_CHARTER_2026-11-24.md) — personal finance, portfolio intelligence, research, strategy, risk, AI governance and roadmap.
+
 
 - AGENTS.md — repository-wide agent instructions.
 - README.md — current user-visible behavior and test commands.

@@ -1,13 +1,14 @@
 # Mandatory project identity gate
 
-**Before any work, read [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md).** It is the canonical project lock for this repository. Confirm the repository is raawaa93/Sol and the task belongs to Volterra. Do not import unrelated historical project context. Follow the scope, legal gate and change-control protocol in PROJECT_CONTEXT.md.
+**Before any work, read [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md).** It is the canonical project lock for this repository. Confirm the repository is raawaa93/Sol and the task belongs to Sol Financial and Investment Intelligence. Do not import unrelated historical project context. Follow the scope, legal gate and change-control protocol in PROJECT_CONTEXT.md.
 
 ---
 
 # Repository-wide operating instructions
 
 ## Product scope
-- The product's research universe is **options across all asset classes and venues**, not gold-only and not crypto-only. Include listed equity/index options, options on futures (rates, FX, energy, metals, agriculture), crypto options, and other legally accessible option markets.
+- The product is **Sol Financial and Investment Intelligence Assistant**: personal finance, portfolio/wealth analysis, investment research, strategy comparison, risk management and evidence-backed decision support. It is not an autonomous trading system and must not place live orders or move funds.
+- The existing research universe of genuine vanilla options across asset classes and venues remains a specialist module. Include listed equity/index options, options on futures (rates, FX, energy, metals, agriculture), crypto options and other legally accessible option markets. Do not reduce the overall product to options, gold-only or crypto-only.
 - Gold (XAU) and silver (XAG) are individual underlyings, not the product scope.
 - Always distinguish intended coverage from implemented coverage. Current Demo includes BTC, ETH, SOL, XRP, DOGE, BNB, XAU, XAG, CL and BZ. Live data is Binance-specific and limited to instruments returned by its current catalogue. CSV is more generic. This is not universal live market coverage.
 - Never label a perpetual, CFD, binary contract, prediction market or synthetic payoff as an exchange-listed option. Describe rights, exercise style, expiry, settlement, multiplier, collateral and margin explicitly.
@@ -33,7 +34,7 @@
 - Revalidate platform and product eligibility before every new execution integration and after material terms/regulatory changes.
 
 ## Trading, data and safety boundaries
-- Current Volterra application is research, analysis, CSV replay and PAPER only. It does not send orders and must not gain live execution credentials by accident.
+- Current Sol application is research, analysis, CSV replay and PAPER only. It does not send orders and must not gain live execution credentials by accident.
 - Separate research/public-data adapters from authenticated account/execution adapters. No private trading keys in browser code, GitHub Actions logs, source control, screenshots or client storage.
 - Do not label Demo or model-derived data as live. Preserve provider, legal entity, instrument ID, source timestamp, receive timestamp, currency, multiplier, exercise style, settlement, expiry, fees, margin method and per-field provenance.
 - Never claim a strategy has an edge from an in-sample backtest. Include bid/ask fills, fees, slippage, liquidity, partial fills, expiry/assignment, margin/liquidation, funding/carry, delistings, outages and out-of-sample/forward validation.
@@ -44,7 +45,7 @@
 - Keep financial calculations unit-aware and instrument-specific. Never compare OI, volume, prices or Greeks across venues without multiplier, currency and settlement normalization.
 
 ## Durable context
-Keep the multi-asset scope, Syrian residence, VPN connectivity distinction, platform findings and execution guardrails in repository documentation. Update this file and docs/PLATFORM_ELIGIBILITY_2026-11-24.md when verified facts change. Do not describe the project as a gold-only tool. Use “Volterra Multi-Asset Options Decision Lab” consistently.
+Keep the personal finance and investment intelligence scope, multi-asset options specialist module, Syrian residence, VPN connectivity distinction, platform findings, privacy boundaries and no-trading-execution guardrails in repository documentation. Update this file and docs/PLATFORM_ELIGIBILITY_2026-11-24.md when verified facts change. Do not describe the project as a gold-only tool. Use “Sol Financial and Investment Intelligence Assistant” consistently.
 
 ## قرار تغطية المنتجات — مراجعة المصادر الرسمية في 24 نوفمبر 2026
 
