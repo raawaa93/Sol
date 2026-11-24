@@ -69,7 +69,7 @@ This is positive, first-party evidence for the general Options service. It does 
 
 **Fees:** use the current Options fee page and account-specific rate at execution time. Promotional or regional rates can change; do not hard-code a fee from an old screenshot or marketing page.
 
-**Conclusion:** Binance is a useful initial venue for long single-leg Crypto, XAU/XAG Commodity and U.S. Stock/ETF options only where the account has product access. It is not an institutional multi-leg options workstation: ordinary accounts lack cross-product risk netting, short-writing is restricted, and only limit orders are supported. It is not the whole options universe. Confirm in the actual Syrian KYC account whether both Crypto Options and Commodity/TradFi Options are enabled before funding or trading those products.
+**Conclusion:** Binance is a useful initial venue for long single-leg Crypto, XAU/XAG Commodity and U.S. Stock/ETF options only where the account has product access. It is not an institutional multi-leg options workstation: ordinary accounts lack cross-product risk netting, short-writing is restricted, and only limit orders are supported. It is not the whole options universe. Confirm in the actual Syrian KYC account whether Crypto Options, Commodity/TradFi Options and U.S. Stock Options are each enabled before funding or trading those products.
 
 ### Other crypto venues
 
