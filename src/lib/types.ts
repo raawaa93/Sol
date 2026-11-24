@@ -114,6 +114,7 @@ export interface PaperTrade {
   pricePrecision?: number;
   fees: number;
   spotAtEntry: number;
+  quoteAsset?: string;
   status: 'PAPER';
 }
 
