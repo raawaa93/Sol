@@ -71,7 +71,7 @@ export function valueDeliverablePackage(
 ): EconomicsCalculationResult<DeliverablePackageValue> {
   const blocked = readinessFailure(economics);
   if (blocked) return blocked;
-  if (economics.exercise.settlement !== 'PHYSICAL') return { ok: false, reason: 'INVALID_INPUT', details: ['PHYSICAL_SETTLEMENT_REQUIRED'] };
+  if (economics.exercise.settlement !== 'PHYSICAL' && economics.exercise.settlement !== 'FUTURE_DELIVERY') return { ok: false, reason: 'INVALID_INPUT', details: ['PHYSICAL_OR_FUTURE_DELIVERY_REQUIRED'] };
   const components: DeliverableComponentValue[] = [];
   const totalsByCurrency: Record<string, number> = {};
   for (const deliverable of economics.exercise.deliverables) {
