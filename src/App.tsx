@@ -377,9 +377,7 @@ function App() {
   const hasModelGreeks = (selectedQuote.pricingStatus ?? (dataMode === 'DEMO' ? 'ASSUMED' : 'OBSERVED_ONLY')) !== 'OBSERVED_ONLY';
   const quoteAssetLabel = dataMode === 'DEMO'
     ? 'USDT'
-    : selectedQuote.quoteAsset
-      ?? assetQuotes.find((quote) => quote.quoteAsset)?.quoteAsset
-      ?? (dataMode === 'CSV' ? undefined : 'USDT');
+    : selectedQuote.quoteAsset ?? (dataMode === 'CSV' ? undefined : 'USDT');
   const underlyingReferencePrice = getUnderlyingReferencePrice(selectedQuote);
   const expectedMove = hasModelGreeks ? getExpectedMove(underlyingReferencePrice, selectedQuote.iv, selectedQuote.daysToExpiry) : undefined;
   const scenarioSeries = useMemo(() => buildScenarioSeries(selectedQuote, selectedPremium, safeQuantity, safeFees), [safeFees, safeQuantity, selectedPremium, selectedQuote]);
