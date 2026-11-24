@@ -189,7 +189,7 @@ Gate launched U.S. stock options on an initial nine U.S. underlyings (including 
 
 The Gate pages reviewed do not clearly establish that these contracts are listed on a U.S. options exchange or cleared through OCC. Do not label them OCC-listed or equivalent to CBOE/NYSE standard contracts without explicit contract documentation. Gate's generic global agreement does not expressly name Syria in its published list, but the list is non-exhaustive; an older agreement PDF lists Syria, and the current Gate EU User Agreement (1 March 2026) explicitly lists Syria as Restricted. Absence from the generic list is not approval for a non-EU entity.
 
-**Decision:** Gate is an inquiry candidate only. Before use, obtain written confirmation for Syrian residence and the exact U.S. Stock Options product, and verify the counterparty, exchange/clearing status, settlement calculation, order types, short-writing permissions, fees, data API and withdrawal path.
+**Decision:** Gate EU explicitly excludes Syrian residents under its 1 March 2026 agreement. Any non-EU Gate entity remains unverified despite the generic global terms; before use, obtain written confirmation naming the contracting entity and the exact U.S. Stock Options or Crypto Options product, and verify counterparty, exchange/clearing, settlement, order types, short-writing, fees, API and withdrawals.
 
 Sources:
 - Launch announcement: https://www.gate.com/it/announcements/article/102291
@@ -335,7 +335,7 @@ Sources:
 **مقارنة عملية مع Binance:**
 - Gate أقوى تقنياً في مرونة أوامر الخيارات (market/IV/IOC/POC) وواجهات WS/REST والـshort/margin telemetry الموثقة.
 - Binance أقوى حالياً في وضوح أهلية سوريا الرسمية، ولديها خيارات كريبتو إضافة إلى XAU/XAG Commodity Options؛ لكنها تقيد الكتابة والهامش والأوامر كما هو موثق في هذا الملف.
-- لا نختار Gate بدلاً من Binance حتى يصل تأكيد أهلية مكتوب من Gate Global؛ وإذا أكدوا القبول، نختبر حساب Demo/Simulated Trading ونقارن السيولة والرسوم والمضاعفات والتسوية وعمق السوق قبل أي تمويل.
+- Gate EU مستبعد للمقيم السوري؛ ولا نختار أي كيان Gate غير أوروبي قبل تأكيد أهلية مكتوب يحدد الكيان والمنتج. إذا أكدوا القبول، نختبر حساب Demo/Simulated Trading ونقارن السيولة والرسوم والمضاعفات والتسوية وعمق السوق قبل أي تمويل.
 
 المصادر:
 - Gate Global User Agreement (القائمة الحالية غير حصرية): https://www.gate.com/legal/user-agreement
