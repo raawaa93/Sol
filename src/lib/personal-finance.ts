@@ -299,7 +299,6 @@ export interface PortfolioSummary {
   marketValue: number | null;
   costBasis: number | null;
   unrealizedPnl: number | null;
-  unrealizedPnlPct: number | null;
   holdings: PortfolioHoldingAnalysis[];
   allocations: Array<{ assetClass: PortfolioAssetClass; marketValue: number | null; weightPct: number | null }>;
   concentration: {
@@ -400,7 +399,6 @@ export function calculatePortfolio(
     marketValue: convertedTotal,
     costBasis: convertedCost,
     unrealizedPnl: complete ? marketValue - costBasis : null,
-    unrealizedPnlPct: complete && costBasis > 0 ? ((marketValue - costBasis) / costBasis) * 100 : null,
     holdings: withWeights,
     allocations,
     concentration: { largestHoldingPct, topThreePct, largestAssetClassPct, warnings },
