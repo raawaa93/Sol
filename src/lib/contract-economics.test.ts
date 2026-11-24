@@ -187,6 +187,21 @@ test('rejects a missing deliverables array instead of treating it as empty', () 
   assert.equal(result.valid, false);
 });
 
+
+test('accepts futures delivery only with explicit point value and currency', () => {
+  const result = validateContractEconomics(standardEquity({
+    exercise: {
+      style: 'EUROPEAN',
+      settlement: 'FUTURE_DELIVERY',
+      aggregateExerciseCash: { basis: 'STRIKE_MULTIPLIER', currency: 'USD', multiplier: 1 },
+      settlementCurrency: 'USD',
+      deliverables: [{ type: 'FUTURE', symbol: 'CL', amount: 1, currency: 'USD', pointValue: 1000 }],
+    },
+  }));
+  assert.equal(result.valid, true);
+  assert.equal(result.supported, true);
+});
+
 test('rejects invalid premium scale and missing provider provenance', () => {
   const result = validateContractEconomics(standardEquity({
     premium: { multiplier: 0, quoteCurrency: 'usd', priceUnit: 'PER_CONTRACT' },
