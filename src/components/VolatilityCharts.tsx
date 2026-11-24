@@ -39,6 +39,7 @@ function ChartEmptyState({ title, note }: { title: string; note: string }) {
 }
 
 export default function VolatilityCharts({ smileData, termData, underlying, selectedQuote, selectedType }: VolatilityChartsProps) {
+  const referencePrice = selectedQuote.underlyingKind === 'FUTURE' ? selectedQuote.forward ?? selectedQuote.spot : selectedQuote.spot;
   return (
     <>
       <article className="panel chart-panel">
