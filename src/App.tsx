@@ -71,7 +71,7 @@ function getUnderlyingName(underlying: string): string {
   return UNDERLYING_NAMES[underlying] ?? 'Underlying asset';
 }
 
-function formatMoney(value: number, digits = 2, currency: string | null = 'USDT'): string {
+function formatMoney(value: number, digits: number, currency: string | null): string {
   return formatNumber(value, digits) + (Number.isFinite(value) && currency ? ' ' + currency : '');
 }
 
