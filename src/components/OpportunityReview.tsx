@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import { ArrowUpLeft, Info, ShieldAlert } from 'lucide-react';
 import { getComparableDeltaSkew, getIvRvSpread, getReviewCandidates, getTermStructureContext } from '../lib/analysis';
-import { getSpreadPct } from '../lib/options';
+import { getRiskNeutralExpiryMetrics, getSpreadPct } from '../lib/options';
+import { isQuoteFieldEstimated } from '../lib/quote-quality';
 import { formatAssetPrice, formatSmallNumber } from '../lib/format';
 import type { AssetSnapshot, OptionQuote, Underlying } from '../lib/types';
 
@@ -123,6 +124,11 @@ export default function OpportunityReview({ quotes, market, underlying, dataMode
           {candidates.map((quote) => {
             const spread = getSpreadPct(quote);
             const spreadClass = getSpreadClass(spread);
+            const modelInputsVerified = dataMode !== 'DEMO'
+              && quote.bid > 0 && quote.ask > 0 && quote.ask >= quote.bid
+              && quote.unit > 0
+              && !['iv', 'daysToExpiry', 'spot', 'unit'].some((field) => isQuoteFieldEstimated(quote, field));
+            const modelMetrics = modelInputsVerified ? getRiskNeutralExpiryMetrics(quote, quote.ask) : null;
             const estimated = quote.estimatedFields?.length
               ? formatEstimatedFields(quote.estimatedFields.slice(0, 4))
               : '';
@@ -136,6 +142,8 @@ export default function OpportunityReview({ quotes, market, underlying, dataMode
                 <strong className="review-symbol">{quote.symbol}</strong>
                 <span className="review-contract-meta">{formatAssetPrice(quote.strike, quote.spot)} · {Math.round(quote.daysToExpiry)} يوم · Δ {quote.delta.toFixed(2)}</span>
                 <span className="review-market-meta">IV {formatPercent(quote.iv)} · OI {quote.openInterest === null ? '—' : formatSmallNumber(quote.openInterest)} · حجم {quote.volume === null ? '—' : formatSmallNumber(quote.volume)}</span>
+                {modelMetrics && <span className="review-model-meta">احتمال الربح عند الانتهاء: {formatPercent(modelMetrics.probabilityOfProfit)} · EV محايد/عقد: {modelMetrics.expectedExpiryPnlPerUnit * quote.unit >= 0 ? '+' : ''}{formatSmallNumber(modelMetrics.expectedExpiryPnlPerUnit * quote.unit)} USDT</span>}
+                {modelMetrics && <small className="review-model-note">قياس محايد للمخاطر عند IV المدخل وr=0%، قبل الرسوم والانزلاق؛ ليس احتمالاً واقعياً ولا توقعاً للسوق.</small>}
                 {estimated && <small className="review-estimated">حقول تقديرية: {estimated}</small>}
                 <span className="review-open">افتح العقد في الماسح</span>
               </button>
