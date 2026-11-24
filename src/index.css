@@ -275,6 +275,7 @@ h1, h2, h3, p { margin: 0; }
 .source-time-panel > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .source-time-panel span { color: #7d8b83; font-size: 7px; }
 .source-time-panel strong { color: #c3d2c3; font-family: Inter, sans-serif; font-size: 8px; font-weight: 550; overflow-wrap: anywhere; }
+.source-time-panel > div > small { color: #84958b; font-size: 7px; line-height: 1.3; }
 .source-time-panel > small { grid-column: 1 / -1; color: #687874; font-size: 7px; line-height: 1.6; }
 @media (max-width: 520px) { .source-time-panel { grid-template-columns: 1fr; } }
 .copy-symbol { border: 0; color: #85918f; background: transparent; cursor: pointer; font-size: 17px; }
