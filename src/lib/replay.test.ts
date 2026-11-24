@@ -108,7 +108,7 @@ test('portfolio drawdown follows source-time order across different option symbo
     quote('2026-11-24T10:00:00.000Z', { symbol: 'A', id: 'A', ask: 10, bid: 9 }),
     quote('2026-11-24T11:00:00.000Z', { symbol: 'A', id: 'A', ask: 6, bid: 5 }),
     quote('2026-11-24T12:00:00.000Z', { symbol: 'C', id: 'C', ask: 10, bid: 9 }),
-    quote('2026-11-24T13:00:00.000Z', { symbol: 'C', id: 'C', ask: 3, bid: 2 }),
+    quote('2026-11-24T13:00:00.000Z', { symbol: 'C', id: 'C', ask: 2.1, bid: 2 }),
   ], config);
   assert.deepEqual(result.trades.map((trade) => trade.symbol), ['A', 'B', 'C']);
   assert.equal(result.maxDrawdown, 8);
