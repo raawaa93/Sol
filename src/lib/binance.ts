@@ -320,7 +320,14 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
     if (!modelGreeks) estimatedFields.push('delta', 'gamma', 'theta', 'vega', 'rho');
 
     const expiry = new Date(expiryDate).toISOString();
-    const timestamp = ticker?.closeTime ?? indexTimestampByUnderlying.get(indexKey);
+    const tickerTimestamp = finiteNumber(ticker?.closeTime);
+    const indexTimestamp = indexTimestampByUnderlying.get(indexKey);
+    const openInterestTimestamp = finiteNumber(openInterest?.timestamp);
+    const sourceTimestamps = {
+      ...(tickerTimestamp !== undefined && tickerTimestamp > 0 ? { ticker: new Date(tickerTimestamp).toISOString() } : {}),
+      ...(indexTimestamp !== undefined && indexTimestamp > 0 ? { index: new Date(indexTimestamp).toISOString() } : {}),
+      ...(openInterestTimestamp !== undefined && openInterestTimestamp > 0 ? { openInterest: new Date(openInterestTimestamp).toISOString() } : {}),
+    };
     const filters = Array.isArray(symbolInfo.filters) ? symbolInfo.filters : undefined;
     const lotSizeFilter = filters?.find((filter) => ['LOT_SIZE', 'MARKET_LOT_SIZE'].includes(filter.filterType.toUpperCase()));
     const minQty = positiveNumber(symbolInfo.minQty) ?? positiveNumber(lotSizeFilter?.minQty);
@@ -380,7 +387,8 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       priceScale: finiteNumber(symbolInfo.priceScale),
       quantityScale: finiteNumber(symbolInfo.quantityScale),
       filters,
-      sourceTimestamp: timestamp ? new Date(timestamp).toISOString() : undefined,
+      sourceTimestamp: sourceTimestamps.ticker,
+      sourceTimestamps,
       estimatedFields,
     });
   }
