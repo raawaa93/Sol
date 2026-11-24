@@ -15,10 +15,10 @@
 
 ## Phase 1 — Canonical types and validators
 
-- [ ] Add ContractEconomics, PremiumScale, ExerciseTerms, DeliverableComponent and provenance types.
-- [ ] Add strict validators for positive scales, currencies, delivery component completeness and aggregate exercise cash.
+- [x] Add ContractEconomics, PremiumScale, ExerciseTerms, DeliverableComponent and provenance types.
+- [x] Add strict validators for positive scales, currencies, delivery component completeness, aggregate exercise cash and source provenance.
 - [ ] Add round-trip serialization tests for CSV v2 fields.
-- [ ] Keep legacy fields read-only/observed-only unless a source adapter maps them.
+- [x] Keep legacy fields read-only/observed-only unless a source adapter maps them.
 
 ## Phase 2 — Premium cost and exercise payoff primitives
 
@@ -57,3 +57,8 @@
 - Playwright coverage for CSV import, mobile contract details and blocked unsupported products.
 - Full CI, bundle budgets, Lighthouse, Project Context Guard and published-site smoke tests.
 - No live trading, private keys, paid APIs or production database migrations in the first phases.
+
+
+### Phase 1 implementation note — 24 November 2026
+
+PR #119 adds the canonical types and fail-closed validator without wiring the new object into existing analytics. Tests cover standard equity, adjusted multi-component equity/cash delivery, cash-settlement formulas, missing terms, provenance, cross-currency blocking, futures delivery and JSON round-trip preservation. CSV v2 serialization and import/export round-trip remain intentionally unchecked; existing legacy CSV rows are not backfilled.
