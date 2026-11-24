@@ -50,7 +50,7 @@ function black76(
     const intrinsic = type === 'CALL' ? Math.max(forward - strike, 0) : Math.max(strike - forward, 0);
     return {
       price: intrinsic,
-      delta: type === 'CALL' ? (forward > strike ? 1 : 0) : (forward < strike ? -1 : 0),
+      delta: (type === 'CALL' ? forward > strike : forward < strike) ? (type === 'CALL' ? 1 : -1) : forward === strike ? (type === 'CALL' ? 0.5 : -0.5) : 0,
       gamma: 0,
       thetaPerDay: 0,
       vegaPerVolPoint: 0,
