@@ -2,11 +2,14 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { blackScholes, estimateGreekPnl, getBreakeven, getExpiryPnl, getExpectedMove, getMaxLoss, getRiskNeutralExpiryMetrics, getSpreadPct, impliedVolatility, normalCdf } from './options.ts';
 import type { OptionQuote } from './types';
+import { priceOption } from './pricing-model.ts';
 
 const call: OptionQuote = {
   id: 'BTC-test-C', symbol: 'BTC-test-C', underlying: 'BTC', expiry: '2026-12-30T08:00:00.000Z',
   daysToExpiry: 30, strike: 100, type: 'CALL', bid: 4.9, ask: 5.1, markPrice: 5,
   iv: 0.4, delta: 0.5, gamma: 0.01, theta: -0.1, vega: 0.2, rho: 0.03, openInterest: 10, volume: 4, spot: 100, unit: 1,
+  underlyingKind: 'SPOT', exerciseStyle: 'EUROPEAN', settlementStyle: 'CASH', carryYield: 0, riskFreeRate: 0.05,
+  pricingStatus: 'SUPPORTED', pricingModel: 'BLACK_SCHOLES_CARRY',
 };
 
 const put: OptionQuote = { ...call, id: 'BTC-test-P', symbol: 'BTC-test-P', type: 'PUT', delta: -0.5 };
@@ -130,6 +133,41 @@ test('risk-neutral expiry metrics reproduce the Black–Scholes discounted-payof
   assert.ok(Math.abs((metrics?.expectedIntrinsicPerUnit ?? 0) - priced.price * Math.exp(0.05)) < 1e-10);
   assert.ok(Math.abs(metrics?.modelValueGapPerUnit ?? 1) < 1e-10);
   assert.ok(metrics?.probabilityInTheMoney !== undefined && metrics.probabilityInTheMoney > 0.5);
+});
+
+test('risk-neutral futures-option metrics use Black-76 and the forward distribution', () => {
+  const future = {
+    ...call,
+    underlyingKind: 'FUTURE' as const,
+    forward: 100,
+    spot: 97,
+    exerciseStyle: 'EUROPEAN' as const,
+    settlementStyle: 'PHYSICAL' as const,
+    carryYield: undefined,
+    pricingModel: 'BLACK_76' as const,
+  };
+  const model = priceOption({
+    underlyingKind: 'FUTURE',
+    exerciseStyle: 'EUROPEAN',
+    settlementStyle: 'PHYSICAL',
+    forward: 100,
+    strike: 100,
+    daysToExpiry: 365,
+    volatility: 0.2,
+    type: 'CALL',
+    rate: 0.05,
+  });
+  assert.equal(model.status, 'SUPPORTED');
+  if (model.status !== 'SUPPORTED') return;
+  const metrics = getRiskNeutralExpiryMetrics(future, model.greeks.price);
+  assert.ok(metrics);
+  assert.ok(Math.abs((metrics?.expectedIntrinsicPerUnit ?? 0) - model.greeks.price * Math.exp(0.05)) < 1e-10);
+  assert.ok(Math.abs(metrics?.modelValueGapPerUnit ?? 1) < 1e-10);
+});
+
+test('risk-neutral expiry metrics reject observed-only and non-European contracts', () => {
+  assert.equal(getRiskNeutralExpiryMetrics({ ...call, pricingStatus: 'OBSERVED_ONLY' }, 5), null);
+  assert.equal(getRiskNeutralExpiryMetrics({ ...call, exerciseStyle: 'AMERICAN' }, 5), null);
 });
 
 test('risk-neutral probability of profit uses the paid premium and differs from probability ITM', () => {
