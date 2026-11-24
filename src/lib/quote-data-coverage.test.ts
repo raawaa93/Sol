@@ -34,7 +34,7 @@ test('quote coverage distinguishes observed, estimated, and unavailable fields',
     quote({ ivStatus: 'OBSERVED' }),
     quote({ id: 'estimated', ivStatus: 'ESTIMATED', estimatedFields: ['iv'] }),
     quote({ id: 'missing-iv', iv: 0, ivStatus: 'UNAVAILABLE', bid: 0, ask: 8, openInterest: null, volume: null }),
-    quote({ id: 'crossed', bid: 12, ask: 10, sourceTimestamps: { bookTicker: '2026-11-24T10:00:00.000Z' } }),
+    quote({ id: 'crossed', bid: 12, ask: 10, bidIv: 0.5, askIv: 0.6, sourceTimestamps: { bookTicker: '2026-11-24T10:00:00.000Z', markPrice: '2026-11-24T10:00:00.000Z' } }),
   ]);
 
   assert.deepEqual(coverage, {
@@ -50,6 +50,9 @@ test('quote coverage distinguishes observed, estimated, and unavailable fields',
     volumeAvailable: 3,
     providerVerifiedEconomics: 0,
     bookTickerAvailable: 1,
+    liveMarkPriceAvailable: 1,
+    bidIvAvailable: 1,
+    askIvAvailable: 1,
   });
 });
 

@@ -95,6 +95,18 @@ export interface BinanceBookTickerEvent {
   transactionTime?: number;
 }
 
+export interface BinanceOptionMarkPriceEvent {
+  symbol: string;
+  eventTime: number;
+  markPrice?: number;
+  indexPrice?: number;
+  bidIv?: number;
+  askIv?: number;
+  markIv?: number;
+  riskFreeRate?: number;
+  sourceGreeks: { delta?: number; gamma?: number; theta?: number; vega?: number };
+}
+
 
 interface BinanceIndex {
   underlying?: string;
@@ -197,6 +209,111 @@ export function applyBinanceBookTicker(quote: OptionQuote, event: BinanceBookTic
       ...(timestamp !== undefined && timestamp > 0 ? { bookTicker: new Date(timestamp).toISOString() } : {}),
     },
   };
+}
+
+/** Parse Binance Options @optionMarkPrice events (raw or combined stream payloads). */
+export function parseBinanceOptionMarkPriceMessage(payload: unknown): BinanceOptionMarkPriceEvent[] {
+  let decoded = payload;
+  if (typeof decoded === 'string') {
+    try { decoded = JSON.parse(decoded) as unknown; } catch { return []; }
+  }
+  if (!decoded || typeof decoded !== 'object') return [];
+  const envelope = decoded as Record<string, unknown>;
+  const raw = envelope.data ?? decoded;
+  const candidates = Array.isArray(raw) ? raw : [raw];
+  return candidates.flatMap((candidate): BinanceOptionMarkPriceEvent[] => {
+    if (!candidate || typeof candidate !== 'object') return [];
+    const data = candidate as Record<string, unknown>;
+    if (data.e !== 'optionMarkPrice' || typeof data.s !== 'string' || !data.s) return [];
+    const eventTime = finiteNumber(data.E as string | number | undefined);
+    if (eventTime === undefined || eventTime <= 0) return [];
+    const markPrice = positiveNumber(data.mp as string | number | undefined);
+    const indexPrice = positiveNumber(data.i as string | number | undefined);
+    const bidIv = positiveNumber(data.b as string | number | undefined);
+    const askIv = positiveNumber(data.a as string | number | undefined);
+    const markIv = positiveNumber(data.vo as string | number | undefined);
+    const riskFreeRate = finiteNumber(data.rf as string | number | undefined);
+    const sourceGreeks = {
+      delta: finiteNumber(data.d as string | number | undefined),
+      gamma: finiteNumber(data.g as string | number | undefined),
+      theta: finiteNumber(data.t as string | number | undefined),
+      vega: finiteNumber(data.v as string | number | undefined),
+    };
+    if ([markPrice, indexPrice, bidIv, askIv, markIv, riskFreeRate, ...Object.values(sourceGreeks)]
+      .every((value) => value === undefined)) return [];
+    return [{
+      symbol: data.s,
+      eventTime,
+      ...(markPrice !== undefined ? { markPrice } : {}),
+      ...(indexPrice !== undefined ? { indexPrice } : {}),
+      ...(bidIv !== undefined ? { bidIv } : {}),
+      ...(askIv !== undefined ? { askIv } : {}),
+      ...(markIv !== undefined ? { markIv } : {}),
+      ...(riskFreeRate !== undefined ? { riskFreeRate } : {}),
+      sourceGreeks,
+    }];
+  });
+}
+
+/** Apply only fields explicitly present in the venue event; keep source Greeks auditable and model Greeks model-derived. */
+export function applyBinanceOptionMarkPrice(quote: OptionQuote, event: BinanceOptionMarkPriceEvent): OptionQuote {
+  const previousTimestamp = quote.sourceTimestamps?.markPrice
+    ? new Date(quote.sourceTimestamps.markPrice).getTime()
+    : 0;
+  if (event.eventTime < previousTimestamp) return quote;
+
+  const iv = event.markIv ?? quote.iv;
+  const spot = event.indexPrice ?? quote.spot;
+  const rate = event.riskFreeRate ?? quote.riskFreeRate ?? 0;
+  const sourceHasGreeks = Object.values(event.sourceGreeks).some((value) => value !== undefined);
+  const observedFields = [
+    ...(event.markPrice !== undefined ? ['markPrice'] : []),
+    ...(event.markIv !== undefined ? ['iv'] : []),
+    ...(event.riskFreeRate !== undefined ? ['riskFreeRate'] : []),
+  ];
+  const next: OptionQuote = {
+    ...quote,
+    ...(quote.estimatedFields ? { estimatedFields: quote.estimatedFields.filter((field) => !observedFields.includes(field)) } : {}),
+    ...(event.markPrice !== undefined ? { markPrice: event.markPrice, priceSource: 'MARK' as const } : {}),
+    ...(event.markIv !== undefined ? { iv: event.markIv, ivStatus: 'OBSERVED' as const } : {}),
+    ...(event.bidIv !== undefined ? { bidIv: event.bidIv } : {}),
+    ...(event.askIv !== undefined ? { askIv: event.askIv } : {}),
+    ...(event.indexPrice !== undefined ? { spot: event.indexPrice } : {}),
+    ...(event.riskFreeRate !== undefined ? { riskFreeRate: event.riskFreeRate } : {}),
+    ...(sourceHasGreeks ? { unverifiedSourceGreeks: {
+      ...quote.unverifiedSourceGreeks,
+      ...event.sourceGreeks,
+    } } : {}),
+    sourceTimestamps: {
+      ...quote.sourceTimestamps,
+      markPrice: new Date(event.eventTime).toISOString(),
+      ...(event.indexPrice !== undefined ? { index: new Date(event.eventTime).toISOString() } : {}),
+    },
+  };
+
+  if (next.pricingModel && next.pricingStatus !== 'OBSERVED_ONLY' && iv > 0) {
+    const model = priceOption({
+      underlyingKind: next.underlyingKind ?? 'UNKNOWN',
+      exerciseStyle: next.exerciseStyle ?? 'UNKNOWN',
+      settlementStyle: next.settlementStyle ?? 'UNKNOWN',
+      spot,
+      forward: next.forward,
+      strike: next.strike,
+      daysToExpiry: next.daysToExpiry,
+      type: next.type,
+      rate,
+      carryYield: next.carryYield,
+      volatility: iv,
+    });
+    if (model.status === 'SUPPORTED') {
+      next.delta = model.greeks.delta;
+      next.gamma = model.greeks.gamma;
+      next.theta = model.greeks.thetaPerDay;
+      next.vega = model.greeks.vegaPerVolPoint;
+      next.rho = model.greeks.rhoPerRatePoint;
+    }
+  }
+  return next;
 }
 
 function normaliseSide(value: string | undefined, symbol: string): OptionSide | undefined {

@@ -13,6 +13,9 @@ export interface QuoteDataCoverage {
   volumeAvailable: number;
   providerVerifiedEconomics: number;
   bookTickerAvailable: number;
+  liveMarkPriceAvailable: number;
+  bidIvAvailable: number;
+  askIvAvailable: number;
 }
 
 export function getQuoteDataCoverage(quotes: OptionQuote[]): QuoteDataCoverage {
@@ -40,6 +43,9 @@ export function getQuoteDataCoverage(quotes: OptionQuote[]): QuoteDataCoverage {
       coverage.providerVerifiedEconomics += 1;
     }
     if (quote.sourceTimestamps?.bookTicker) coverage.bookTickerAvailable += 1;
+    if (quote.sourceTimestamps?.markPrice) coverage.liveMarkPriceAvailable += 1;
+    if (Number.isFinite(quote.bidIv) && (quote.bidIv ?? 0) > 0) coverage.bidIvAvailable += 1;
+    if (Number.isFinite(quote.askIv) && (quote.askIv ?? 0) > 0) coverage.askIvAvailable += 1;
     return coverage;
   }, {
     contracts: 0,
@@ -54,5 +60,8 @@ export function getQuoteDataCoverage(quotes: OptionQuote[]): QuoteDataCoverage {
     volumeAvailable: 0,
     providerVerifiedEconomics: 0,
     bookTickerAvailable: 0,
+    liveMarkPriceAvailable: 0,
+    bidIvAvailable: 0,
+    askIvAvailable: 0,
   });
 }
