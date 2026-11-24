@@ -70,7 +70,25 @@ function assertNonNegativeFinite(amount: number, label: string): void {
 }
 
 function validTimestamp(value: string, label: string): void {
-  if (!value || !Number.isFinite(Date.parse(value))) throw new Error(`${label} must be a valid timestamp`);
+  if (!/^\\d{4}-\\d{2}-\\d{2}T/.test(value) || !Number.isFinite(Date.parse(value))) {
+    throw new Error(`${label} must be a valid ISO timestamp`);
+  }
+}
+
+function validateFxRates(rates: FxRate[]): void {
+  const pairs = new Set<string>();
+  for (const item of rates) {
+    const base = normalizeCurrency(item.baseCurrency);
+    const quote = normalizeCurrency(item.quoteCurrency);
+    if (base === quote) throw new Error('FX pair currencies must be different');
+    const pair = `${base}/${quote}`;
+    if (pairs.has(pair)) throw new Error(`Duplicate FX pair: ${pair}`);
+    pairs.add(pair);
+    assertNonNegativeFinite(item.rate, 'FX rate');
+    if (item.rate === 0) throw new Error('FX rate must be greater than zero');
+    if (!item.source.trim()) throw new Error('FX rate source is required');
+    validTimestamp(item.observedAt, 'FX observation time');
+  }
 }
 
 function getConversion(
@@ -116,6 +134,7 @@ export function calculateNetWorth(
   fxRates: FxRate[] = [],
 ): NetWorthSummary {
   const target = normalizeCurrency(reportingCurrency);
+  validateFxRates(fxRates);
   const ids = new Set<string>();
   const currencyTotals = new Map<string, { assets: number; liabilities: number }>();
   const convertedBalances: NetWorthSummary['convertedBalances'] = [];
@@ -165,6 +184,7 @@ export function calculateMonthlyCashFlow(
 ): CashFlowSummary {
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(period)) throw new Error('Period must use YYYY-MM format');
   const target = normalizeCurrency(reportingCurrency);
+  validateFxRates(fxRates);
   const ids = new Set<string>();
   const missing = new Set<string>();
   const categories = new Map<string, { INCOME: number; EXPENSE: number }>();
