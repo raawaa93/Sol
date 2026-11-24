@@ -344,3 +344,12 @@ Sources:
 - Gate EU User Agreement (1 March 2026): https://eu.gate.com/en-eu/legal/user-agreement
 - Gate Event Contracts Agreement: https://www.gate.com/es/help/event-contracts/faq/100616
 - Gate Global User Agreement: https://www.gate.com/legal/user-agreement
+
+
+## 12. مقارنة السيولة الفعلية في خيارات الكريبتو — Q3 2026
+
+بيانات Orbit Markets المنشورة في 27 أكتوبر 2026 تعرض متوسط حجم يومي إجمالي قدره 7.33 مليار دولار عبر أكبر ثماني منصات خيارات كريبتو في Q3 2026: Deribit 28.6%، IBIT options 27.6%، Bybit 19.3%، Binance 13.2% (نحو 0.97 مليار دولار ADV)، OKX 8.2%، Bullish 1.3%، Derive 1.1%، وCME 0.6%. Gate لم تظهر ضمن هذه القائمة. هذا لا يثبت أن حجم Gate صفر؛ لكنه يعني أن المصدر لا يقدم دليلاً على سيولة خيارات Gate مماثلة للمنصات الرئيسية. أرقام Q3 مجمعة وليست لقطة لحظية ولا بديلاً عن قياس bid/ask depth لكل عقد.
+
+**القرار:** Binance لديها دليل سوقي أفضل على حجم تداول خيارات قابل للقياس من Gate، إضافة إلى وضوح أهلية سوريا العامة. Deribit هو الأعلى في هذه العينة لكنه غير متاح للمقيم السوري. Gate لديها API مرن لكن أهلية سوريا غير محسومة وسيولتها المقارنة غير مثبتة؛ لذلك لا نبدل Binance بها. إذا ثبتت أهلية Gate لاحقاً، نختبرها على حساب تجريبي ونقيس لكل عقد spread/depth/OI/volume/fill quality على الأقل 30 يوماً قبل أي تمويل.
+
+المصدر: Orbit Markets, “Current State of the Crypto Options Market”, 27 Oct 2026: https://www.orbitmarkets.io/post/current-state-of-the-crypto-options-market
