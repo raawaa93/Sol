@@ -1,5 +1,9 @@
 # Repository-wide operating instructions
 
+## Project skills
+- For any venue, options-market, contract, pricing, strategy, data-source or eligibility analysis, follow [skills/volterra-options-research/SKILL.md](skills/volterra-options-research/SKILL.md).
+- For UI changes, mobile/RTL, accessibility, performance, SEO or browser QA, follow [skills/volterra-ui-quality/SKILL.md](skills/volterra-ui-quality/SKILL.md).
+
 ## Product scope
 - The product's research universe is **options across all asset classes and venues**, not gold-only and not crypto-only. Include listed equity/index options, options on futures (rates, FX, energy, metals, agriculture), crypto options, and other legally accessible option markets.
 - Gold (XAU) and silver (XAG) are individual underlyings, not the product scope.
