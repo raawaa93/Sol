@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { ArrowUpLeft, Info, ShieldAlert } from 'lucide-react';
 import { getComparableDeltaSkew, getIvRvSpread, getReviewCandidates, getTermStructureContext } from '../lib/analysis';
 import { getSpreadPct } from '../lib/options';
@@ -60,22 +61,22 @@ function formatEstimatedFields(fields: string[] | undefined): string {
 }
 
 export default function OpportunityReview({ quotes, market, underlying, dataMode, onReviewQuote }: OpportunityReviewProps) {
-  const ivRvSpread = getIvRvSpread(market);
-  const skew = getComparableDeltaSkew(quotes);
-  const term = getTermStructureContext(quotes);
-  const candidates = getReviewCandidates(quotes);
+  const ivRvSpread = useMemo(() => getIvRvSpread(market), [market]);
+  const skew = useMemo(() => getComparableDeltaSkew(quotes), [quotes]);
+  const term = useMemo(() => getTermStructureContext(quotes), [quotes]);
+  const candidates = useMemo(() => getReviewCandidates(quotes), [quotes]);
   const ivRvDetail = market?.iv30 !== null && market?.iv30 !== undefined && market?.rv30 !== null && market?.rv30 !== undefined
     ? `IV30 ${formatPercent(market.iv30)} · RV30 ${formatPercent(market.rv30)}`
     : 'تحتاج المقارنة IV وبيانات سعر تاريخية متوافقة';
   const skewDetail = skew
     ? `Put IV ${formatPercent(skew.putIv)} · Call IV ${formatPercent(skew.callIv)} · |Δ| ${skew.putAbsDelta.toFixed(2)}/${skew.callAbsDelta.toFixed(2)}`
-    : 'يلزم وجود جناحي Put وCall ببيانات Delta قابلة للمقارنة';
+    : 'يلزم IV وDelta ومدة انتهاء غير معلّمة كتقديرية على جناحي Put وCall';
   const termDetail = term
     ? [term.front, term.near, term.back]
       .filter((point, index, list) => point && list.findIndex((candidate) => candidate?.expiry === point.expiry) === index)
       .map((point) => `${Math.round(point!.daysToExpiry)}d ${formatPercent(point!.iv)}`)
       .join(' · ')
-    : 'لا تتوفر استحقاقات كافية لبناء منحنى تقلب';
+    : 'لا تتوفر قيم IV ومدة انتهاء غير معلّمة كتقديرية لبناء المنحنى';
 
   return (
     <section className="section-anchor opportunity-section" id="opportunities" aria-labelledby="opportunities-heading">
@@ -100,14 +101,14 @@ export default function OpportunityReview({ quotes, market, underlying, dataMode
           title="انحراف الجناحين · 25Δ تقريباً"
           value={skew ? formatVolPoints(skew.putMinusCallIv) : 'غير متاح'}
           detail={skewDetail}
-          note="Put IV − Call IV عند Delta مطلقة متقاربة وفي الاستحقاق نفسه؛ ليست استراتيجية تداول بحد ذاتها."
+          note="Put IV − Call IV عند Delta مطلقة متقاربة في استحقاق واحد؛ تُستبعد حقول IV/Delta المعلّمة كتقديرية ولا تُشتق المفقودة."
           tone={skew && skew.putMinusCallIv > 0 ? 'accent' : 'neutral'}
         />
         <MetricCard
           title="بنية الأجل · ATM IV"
           value={term ? `${Math.round(term.near.daysToExpiry)}d · ${formatPercent(term.near.iv)}` : 'غير متاح'}
           detail={termDetail}
-          note="وسيط IV قرب Spot لكل استحقاق؛ المنحنى يصف الأسعار الحالية ولا يتنبأ بها."
+          note="وسيط IV غير المعلّم كتقديري قرب Spot؛ المنحنى يصف القيم المتاحة ولا يتنبأ بها."
           tone="neutral"
         />
       </div>
@@ -117,7 +118,7 @@ export default function OpportunityReview({ quotes, market, underlying, dataMode
           <div><span className="section-kicker">REVIEW QUEUE · {underlying}</span><h3>عقود للتمحيص، لا للشراء التلقائي</h3></div>
           <span>{candidates.length ? `${candidates.length} عقود ثنائية الجانب` : 'لا توجد عروض مكتملة'}</span>
         </div>
-        <p className="watchlist-method">يفضّل الماسح استحقاق 20–40 يوماً و|Delta| بين 0.25 و0.75 إن توفرا، ثم يرتب وفق ضيق Bid/Ask، فالفائدة المفتوحة والحجم. هذا ترتيب أولي لا يدخل عمق دفتر الأوامر ولا يحسب ربحاً متوقعاً؛ افتح عقد Binance لمراجعة لقطة أفضل 20 مستوى والحجم الظاهر قبل الحكم على قابلية التنفيذ.</p>
+        <p className="watchlist-method">يفضّل الماسح استحقاق 20–40 يوماً و|Delta| بين 0.25 و0.75 فقط إذا لم تُعلّم الحقول كتقديرية؛ ثم يرتب وفق ضيق Bid/Ask، فالفائدة المفتوحة والحجم. هذا ترتيب أولي لا يدخل عمق دفتر الأوامر ولا يحسب ربحاً متوقعاً؛ افتح عقد Binance لمراجعة لقطة أفضل 20 مستوى والحجم الظاهر قبل الحكم على قابلية التنفيذ.</p>
         {candidates.length ? <div className="review-candidate-grid">
           {candidates.map((quote) => {
             const spread = getSpreadPct(quote);

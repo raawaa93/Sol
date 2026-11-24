@@ -1,5 +1,6 @@
 import { getLatestQuotePerContract } from './market.ts';
 import { getSpreadPct } from './options.ts';
+import { isQuoteFieldEstimated } from './quote-quality.ts';
 import type { AssetSnapshot, OptionQuote, OptionSide } from './types';
 
 export interface DeltaSkewComparison {
@@ -40,23 +41,35 @@ export function getIvRvSpread(market: AssetSnapshot | null): number | null {
   return market.iv30 - market.rv30;
 }
 
-/** Compare put/call IV at observed, approximately matched 25-delta wings on one expiry. */
+/** Compare unestimated put/call IV at approximately matched 25-delta wings on one expiry. */
 export function getComparableDeltaSkew(quotes: OptionQuote[], targetAbsDelta = 0.25): DeltaSkewComparison | null {
   if (!Number.isFinite(targetAbsDelta) || targetAbsDelta <= 0 || targetAbsDelta >= 1) return null;
-  const rows = getLatestQuotePerContract(quotes);
-  const expiries = [...new Map(rows.map((quote) => [quote.expiry, quote])).values()]
+  const rows = getLatestQuotePerContract(quotes).filter((quote) => Number.isFinite(quote.daysToExpiry)
+    && quote.daysToExpiry > 0
+    && !isQuoteFieldEstimated(quote, 'daysToExpiry')
+    && !isQuoteFieldEstimated(quote, 'iv')
+    && !isQuoteFieldEstimated(quote, 'delta')
+    && quote.iv > 0 && Number.isFinite(quote.iv) && Number.isFinite(quote.delta));
+  const rowsByExpiry = new Map<string, OptionQuote[]>();
+  rows.forEach((quote) => {
+    const expiryRows = rowsByExpiry.get(quote.expiry) ?? [];
+    expiryRows.push(quote);
+    rowsByExpiry.set(quote.expiry, expiryRows);
+  });
+  const expiries = [...rowsByExpiry.entries()]
+    .flatMap(([expiry, expiryRows]) => {
+      const daysToExpiry = median(expiryRows.map((quote) => quote.daysToExpiry));
+      return daysToExpiry === null ? [] : [{ expiry, expiryRows, daysToExpiry }];
+    })
     .sort((a, b) => Math.abs(a.daysToExpiry - 30) - Math.abs(b.daysToExpiry - 30));
   const comparisons: Array<DeltaSkewComparison & { matchError: number; deltaGap: number }> = [];
   const deltaTolerance = 0.12;
 
-  for (const expiryQuote of expiries) {
-    const expiryRows = rows.filter((quote) => quote.expiry === expiryQuote.expiry);
+  for (const { expiry, expiryRows, daysToExpiry } of expiries) {
     const calls = expiryRows.filter((quote) => quote.type === 'CALL'
-      && Math.abs(Math.abs(quote.delta) - targetAbsDelta) <= deltaTolerance
-      && quote.iv > 0 && Number.isFinite(quote.iv));
+      && Math.abs(Math.abs(quote.delta) - targetAbsDelta) <= deltaTolerance);
     const puts = expiryRows.filter((quote) => quote.type === 'PUT'
-      && Math.abs(Math.abs(quote.delta) - targetAbsDelta) <= deltaTolerance
-      && quote.iv > 0 && Number.isFinite(quote.iv));
+      && Math.abs(Math.abs(quote.delta) - targetAbsDelta) <= deltaTolerance);
     const pairs: Array<{ call: OptionQuote; put: OptionQuote; matchError: number; deltaGap: number }> = [];
 
     calls.forEach((call) => puts.forEach((put) => {
@@ -77,8 +90,8 @@ export function getComparableDeltaSkew(quotes: OptionQuote[], targetAbsDelta = 0
     const pair = pairs[0];
     if (!pair) continue;
     comparisons.push({
-      expiry: expiryQuote.expiry,
-      daysToExpiry: expiryQuote.daysToExpiry,
+      expiry,
+      daysToExpiry,
       targetAbsDelta,
       callAbsDelta: Math.abs(pair.call.delta),
       putAbsDelta: Math.abs(pair.put.delta),
@@ -96,10 +109,14 @@ export function getComparableDeltaSkew(quotes: OptionQuote[], targetAbsDelta = 0
   return comparisons[0] ?? null;
 }
 
-/** Build an ATM volatility term structure, aggregating duplicate call/put strikes by median IV. */
+/** Build an ATM term structure from unestimated IV and expiry values, using median IV per strike. */
 export function getAtmTermStructure(quotes: OptionQuote[]): AtmTermPoint[] {
-  const rows = getLatestQuotePerContract(quotes).filter((quote) => quote.daysToExpiry > 0
-    && quote.spot > 0 && quote.iv > 0 && Number.isFinite(quote.iv));
+  const rows = getLatestQuotePerContract(quotes).filter((quote) => Number.isFinite(quote.daysToExpiry)
+    && quote.daysToExpiry > 0
+    && !isQuoteFieldEstimated(quote, 'daysToExpiry')
+    && !isQuoteFieldEstimated(quote, 'iv')
+    && Number.isFinite(quote.spot) && quote.spot > 0
+    && quote.iv > 0 && Number.isFinite(quote.iv));
   const byExpiry = new Map<string, OptionQuote[]>();
   rows.forEach((quote) => {
     const group = byExpiry.get(quote.expiry) ?? [];
@@ -156,15 +173,27 @@ function compareReviewQuality(a: OptionQuote, b: OptionQuote): number {
   const volumeA = a.volume ?? -1;
   const volumeB = b.volume ?? -1;
   if (volumeA !== volumeB) return volumeB - volumeA;
-  const deltaDistance = Math.abs(Math.abs(a.delta) - 0.5) - Math.abs(Math.abs(b.delta) - 0.5);
-  if (Math.abs(deltaDistance) > 1e-8) return deltaDistance;
-  return Math.abs(a.daysToExpiry - 30) - Math.abs(b.daysToExpiry - 30);
+  const aHasUnestimatedDelta = Number.isFinite(a.delta) && Math.abs(a.delta) <= 1 && !isQuoteFieldEstimated(a, 'delta');
+  const bHasUnestimatedDelta = Number.isFinite(b.delta) && Math.abs(b.delta) <= 1 && !isQuoteFieldEstimated(b, 'delta');
+  if (aHasUnestimatedDelta !== bHasUnestimatedDelta) return aHasUnestimatedDelta ? -1 : 1;
+  if (aHasUnestimatedDelta && bHasUnestimatedDelta) {
+    const deltaDistance = Math.abs(Math.abs(a.delta) - 0.5) - Math.abs(Math.abs(b.delta) - 0.5);
+    if (Math.abs(deltaDistance) > 1e-8) return deltaDistance;
+  }
+
+  const aHasUnestimatedExpiry = Number.isFinite(a.daysToExpiry) && !isQuoteFieldEstimated(a, 'daysToExpiry');
+  const bHasUnestimatedExpiry = Number.isFinite(b.daysToExpiry) && !isQuoteFieldEstimated(b, 'daysToExpiry');
+  if (aHasUnestimatedExpiry !== bHasUnestimatedExpiry) return aHasUnestimatedExpiry ? -1 : 1;
+  if (aHasUnestimatedExpiry && bHasUnestimatedExpiry) {
+    return Math.abs(a.daysToExpiry - 30) - Math.abs(b.daysToExpiry - 30);
+  }
+  return 0;
 }
 
 /**
- * Return a small, direction-neutral watchlist of observed two-sided quotes.
- * It prefers 20–40 DTE and |delta| 0.25–0.75 when available, ranking only
- * quote width and displayed OI/volume—not expected return or probability.
+ * Return a small, direction-neutral watchlist of valid two-sided quote rows.
+ * It prefers unestimated 20–40 DTE and unestimated |delta| 0.25–0.75 when
+ * available, ranking only quote width and displayed OI/volume—not expected return or probability.
  */
 export function getReviewCandidates(quotes: OptionQuote[], limit = 3): OptionQuote[] {
   const count = Math.max(1, Math.floor(limit));
@@ -173,17 +202,22 @@ export function getReviewCandidates(quotes: OptionQuote[], limit = 3): OptionQuo
     && Number.isFinite(getSpreadPct(quote)));
   if (!validQuotes.length) return [];
 
-  const nearExpiry = validQuotes.filter((quote) => quote.daysToExpiry >= 20 && quote.daysToExpiry <= 40);
+  const nearExpiry = validQuotes.filter((quote) => !isQuoteFieldEstimated(quote, 'daysToExpiry')
+    && quote.daysToExpiry >= 20 && quote.daysToExpiry <= 40);
   const datedPool = nearExpiry.length ? nearExpiry : validQuotes;
-  const nearAtm = datedPool.filter((quote) => Math.abs(quote.delta) >= 0.25 && Math.abs(quote.delta) <= 0.75);
-  const pool = (nearAtm.length ? nearAtm : datedPool).sort(compareReviewQuality);
+  const nearAtm = datedPool.filter((quote) => !isQuoteFieldEstimated(quote, 'delta')
+    && Number.isFinite(quote.delta) && Math.abs(quote.delta) <= 1
+    && Math.abs(quote.delta) >= 0.25 && Math.abs(quote.delta) <= 0.75);
+  const pool = [...(nearAtm.length ? nearAtm : datedPool)].sort(compareReviewQuality);
+  const fallbackPool = [...datedPool].sort(compareReviewQuality);
   const chosen: OptionQuote[] = [];
 
   (['CALL', 'PUT'] as OptionSide[]).forEach((type) => {
-    const candidate = pool.find((quote) => quote.type === type);
+    const candidate = pool.find((quote) => quote.type === type)
+      ?? fallbackPool.find((quote) => quote.type === type);
     if (candidate) chosen.push(candidate);
   });
-  pool.forEach((quote) => {
+  [...pool, ...fallbackPool].forEach((quote) => {
     if (chosen.length < count && !chosen.some((candidate) => candidate.id === quote.id)) chosen.push(quote);
   });
 

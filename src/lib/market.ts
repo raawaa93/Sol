@@ -1,4 +1,5 @@
 import { getMidPrice } from './options.ts';
+import { isQuoteFieldEstimated } from './quote-quality.ts';
 import type { AssetSnapshot, OptionQuote, Underlying } from './types';
 
 function contractKey(quote: OptionQuote): string {
@@ -29,7 +30,10 @@ export function getMarketSnapshotFromQuotes(quotes: OptionQuote[], underlying: U
 
   const spots = rows.map((quote) => quote.spot).sort((a, b) => a - b);
   const near30Iv = rows
-    .filter((quote) => quote.daysToExpiry >= 20 && quote.daysToExpiry <= 40)
+    .filter((quote) => quote.daysToExpiry >= 20 && quote.daysToExpiry <= 40
+      && !isQuoteFieldEstimated(quote, 'daysToExpiry')
+      && !isQuoteFieldEstimated(quote, 'iv')
+      && quote.iv > 0 && Number.isFinite(quote.iv))
     .map((quote) => quote.iv)
     .sort((a, b) => a - b);
   const oiRows = rows.filter((quote) => quote.openInterestUsd != null || quote.openInterest !== null);

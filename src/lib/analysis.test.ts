@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { AssetSnapshot, OptionQuote, OptionSide } from './types.ts';
-import { getComparableDeltaSkew, getIvRvSpread, getReviewCandidates, getTermStructureContext } from './analysis.ts';
+import { getAtmTermStructure, getComparableDeltaSkew, getIvRvSpread, getReviewCandidates, getTermStructureContext } from './analysis.ts';
 
 function quote(overrides: Partial<OptionQuote> = {}): OptionQuote {
   return {
@@ -69,6 +69,34 @@ test('25-delta skew compares same-expiry call and put wings with similar absolut
   assert.equal(getComparableDeltaSkew([call, put], 1), null);
 });
 
+test('volatility surfaces exclude fields explicitly marked as estimated', () => {
+  const unmarkedCall = option('CALL', { iv: 0.48, delta: 0.27 });
+  const unmarkedPut = option('PUT', { iv: 0.6, delta: -0.23 });
+  assert.ok(getComparableDeltaSkew([unmarkedCall, unmarkedPut]));
+  assert.equal(getComparableDeltaSkew([
+    { ...unmarkedCall, estimatedFields: ['iv'] }, unmarkedPut,
+  ]), null);
+  assert.equal(getComparableDeltaSkew([
+    { ...unmarkedCall, estimatedFields: ['delta'] }, unmarkedPut,
+  ]), null);
+  assert.equal(getComparableDeltaSkew([
+    { ...unmarkedCall, estimatedFields: ['daysToExpiry'] }, unmarkedPut,
+  ]), null);
+  assert.deepEqual(getAtmTermStructure([quote({ estimatedFields: ['iv'] })]), []);
+  assert.deepEqual(getAtmTermStructure([
+    quote({ id: 'estimated-expiry', symbol: 'estimated-expiry', strike: 105, estimatedFields: ['daysToExpiry'] }),
+  ]), []);
+});
+
+test('volatility comparisons ignore non-finite expiry and spot inputs', () => {
+  const call = option('CALL', { daysToExpiry: Number.POSITIVE_INFINITY });
+  const put = option('PUT', { daysToExpiry: Number.POSITIVE_INFINITY });
+
+  assert.equal(getComparableDeltaSkew([call, put]), null);
+  assert.deepEqual(getAtmTermStructure([quote({ daysToExpiry: Number.POSITIVE_INFINITY })]), []);
+  assert.deepEqual(getAtmTermStructure([quote({ spot: Number.POSITIVE_INFINITY })]), []);
+});
+
 test('ATM term structure uses nearest-to-ATM strikes and compares front, near and back expiries', () => {
   const rows = [
     quote({ id: 'front-c', symbol: 'front-c', expiry: '2026-12-07T08:00:00.000Z', daysToExpiry: 14, strike: 100, iv: 0.65 }),
@@ -86,7 +114,31 @@ test('ATM term structure uses nearest-to-ATM strikes and compares front, near an
   assert.equal(getTermStructureContext([]), null);
 });
 
-test('review candidates prefer observed two-sided quotes and include both option sides when possible', () => {
+test('review candidate delta preferences ignore model-derived deltas', () => {
+  const modelAtm = option('CALL', {
+    id: 'model-atm', symbol: 'model-atm', bid: 9, ask: 11, delta: 0.5,
+    estimatedFields: ['delta'],
+  });
+  const unmarkedWideDelta = option('CALL', {
+    id: 'unmarked-wide-delta', symbol: 'unmarked-wide-delta', bid: 9.9, ask: 10.1, delta: 0.8,
+  });
+
+  assert.equal(getReviewCandidates([modelAtm, unmarkedWideDelta], 1)[0].id, 'unmarked-wide-delta');
+});
+
+test('review candidates keep a two-sided watchlist when one side has only a model-derived delta', () => {
+  const call = option('CALL', { id: 'unmarked-call', symbol: 'unmarked-call', bid: 9.95, ask: 10.05, delta: 0.5 });
+  const put = option('PUT', {
+    id: 'estimated-put', symbol: 'estimated-put', bid: 9.9, ask: 10.1, delta: -0.5,
+    estimatedFields: ['delta'],
+  });
+  const candidates = getReviewCandidates([call, put], 2);
+
+  assert.deepEqual(candidates.map((candidate) => candidate.type).sort(), ['CALL', 'PUT']);
+  assert.equal(candidates.find((candidate) => candidate.type === 'PUT')?.id, 'estimated-put');
+});
+
+test('review candidates prefer tight two-sided quotes and include both option sides when possible', () => {
   const narrowCall = option('CALL', {
     id: 'narrow-call', symbol: 'narrow-call', bid: 9.95, ask: 10.05, openInterest: 10,
   });

@@ -48,6 +48,19 @@ test('untimestamped duplicate rows do not get summed as separate contracts', () 
   assert.equal(latest[0].openInterest, 30);
 });
 
+test('30-day IV aggregation excludes fields explicitly marked as estimated', () => {
+  const inferred = quote({
+    id: 'model-iv', symbol: 'model-iv', iv: 0.8, estimatedFields: ['iv'],
+  });
+  const unmarkedIv = quote({
+    id: 'unmarked-iv', symbol: 'unmarked-iv', strike: 110, type: 'PUT', iv: 0.4,
+  });
+
+  assert.equal(getMarketSnapshotFromQuotes([inferred, unmarkedIv], 'BTC')?.iv30, 0.4);
+  assert.equal(getMarketSnapshotFromQuotes([inferred], 'BTC')?.iv30, null);
+  assert.equal(getMarketSnapshotFromQuotes([quote({ estimatedFields: ['daysToExpiry'] })], 'BTC')?.iv30, null);
+});
+
 test('market totals use direct quote turnover when present and option premium for fallback estimates', () => {
   const estimated = quote({
     openInterest: 10,

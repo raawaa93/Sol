@@ -37,8 +37,10 @@ import MarketDepthPanel from './components/MarketDepthPanel';
 import { DEMO_MARKETS, DEMO_QUOTES, getExpiryChoices } from './lib/demo';
 import { BinanceMarketDataError, fetchBinanceDepth, fetchBinanceOptions } from './lib/binance';
 import type { BinanceDepthSnapshot, BinanceOptionsSnapshot } from './lib/binance';
+import { getAtmTermStructure } from './lib/analysis';
 import { getLatestQuotePerContract, getMarketSnapshotFromQuotes } from './lib/market';
 import { assessSnapshotFreshness, DEFAULT_SNAPSHOT_STALE_AFTER_MS } from './lib/market-data-health';
+import { isQuoteFieldEstimated } from './lib/quote-quality';
 import { downloadCsv, downloadCsvTemplate, MAX_CSV_FILE_BYTES, parseOptionsCsv } from './lib/csv';
 import type { CsvTimestampRange } from './lib/csv';
 import { buildScenarioSeries, getBreakeven, getExpectedMove, getMaxLoss, getMidPrice, getSpreadPct } from './lib/options';
@@ -376,17 +378,21 @@ function App() {
                 ? 'Ask فقط · لا يتوفر Bid أو Mark'
                 : 'لا يوجد سعر موثوق';
 
-  const smileData = useMemo(() => {
-    const target = getLatestQuotePerContract(assetQuotes).filter((quote) => quote.daysToExpiry >= 20 && quote.daysToExpiry <= 40 && quote.type === selectedType);
-    return target.sort((a, b) => a.strike - b.strike).map((quote) => ({ strike: quote.strike, iv: quote.iv, delta: quote.delta }));
-  }, [assetQuotes, selectedType]);
+  const latestAssetQuotes = useMemo(() => getLatestQuotePerContract(assetQuotes), [assetQuotes]);
+  const smileData = useMemo(() => latestAssetQuotes
+    .filter((quote) => quote.daysToExpiry >= 20 && quote.daysToExpiry <= 40
+      && !isQuoteFieldEstimated(quote, 'daysToExpiry')
+      && quote.type === selectedType && !isQuoteFieldEstimated(quote, 'iv')
+      && quote.iv > 0 && Number.isFinite(quote.iv))
+    .sort((a, b) => a.strike - b.strike)
+    .map((quote) => ({ strike: quote.strike, iv: quote.iv })), [latestAssetQuotes, selectedType]);
 
-  const termData = useMemo(() => expiryChoices.map((choice) => {
-    const expiryQuotes = getLatestQuotePerContract(assetQuotes).filter((quote) => quote.expiry === choice.value);
-    const referenceSpot = market?.spot ?? assetQuotes[0]?.spot ?? 0;
-    const atm = [...expiryQuotes].sort((a, b) => Math.abs(a.strike - referenceSpot) - Math.abs(b.strike - referenceSpot))[0];
-    return { expiry: choice.label, days: choice.days, iv: atm?.iv ?? market?.iv30 ?? 0 };
-  }), [assetQuotes, expiryChoices, market]);
+  const termData = useMemo(() => getAtmTermStructure(assetQuotes)
+    .map((point) => ({
+      expiry: `${Math.round(point.daysToExpiry)} يوم`,
+      days: point.daysToExpiry,
+      iv: point.iv,
+    })), [assetQuotes]);
 
   const ivRvSpread = !market || market.rv30 === null || market.iv30 === null ? null : market.iv30 - market.rv30;
   const ivTone = ivRvSpread === null ? 'neutral' : ivRvSpread >= 0 ? 'yellow' : 'green';
@@ -759,7 +765,7 @@ function App() {
             <div className="section-title-row compact-title"><div><span className="section-kicker">MARKET SNAPSHOT</span><h2>لقطة السوق</h2></div><div className="snapshot-meta"><span className="live-hollow" />{dataMode === 'DEMO' ? 'قيم توضيحية مولّدة' : dataMode === 'CSV' ? 'مصدر الملف الذي استوردته' : `Binance REST · ${integerFormat.format(binanceSnapshot?.activeSymbols ?? 0)} عقد نشط / ${integerFormat.format(binanceSnapshot?.quotes.length ?? 0)} محلل`}<span className="meta-separator">·</span><span>{underlying}/USDT</span></div></div>
             {market ? <div className="stats-grid">
               <StatCard label={`السعر المرجعي · ${underlying}`} value={formatAssetPrice(market.spot, market.spot)} change={dataMode === 'DEMO' ? formatSignedPercent(DEMO_MARKETS[underlying].dayChangePct) : undefined} tone={dataMode === 'DEMO' ? (DEMO_MARKETS[underlying].dayChangePct >= 0 ? 'positive' : 'negative') : 'neutral'} footnote={dataMode === 'DEMO' ? 'قيمة محاكاة — ليست سعر Binance' : dataMode === 'BINANCE' ? 'مؤشر الأصل من Binance Options REST' : 'وسيط الأسعار الواردة في CSV'} icon={<span className="asset-symbol">{underlying === 'BTC' ? '₿' : underlying === 'ETH' ? 'Ξ' : underlying.slice(0, 3)}</span>} />
-              <StatCard label="التقلب الضمني · 30 يوم" value={market.iv30 === null ? 'غير متاح' : formatPercent(market.iv30)} change={market.iv30 === null ? 'لا يوجد أجل قريب' : dataMode === 'DEMO' ? 'قيمة مولّدة' : dataMode === 'BINANCE' ? 'سلسلة الخيارات' : 'تقريب من السلسلة'} tone={market.iv30 === null ? 'neutral' : 'accent'} footnote={market.iv30 === null ? 'يلزم وجود خيارات بين 20 و40 يوماً' : dataMode === 'DEMO' ? 'بيانات محاكاة وليست حية' : dataMode === 'BINANCE' ? 'وسيط IV لعقود 20–40 يوماً؛ قد يتضمن استنتاجاً' : 'وسيط صفوف 20–40 يوماً المتاحة'} icon={<Activity size={17} />} />
+              <StatCard label="التقلب الضمني · 30 يوم" value={market.iv30 === null ? 'غير متاح' : formatPercent(market.iv30)} change={market.iv30 === null ? 'لا يوجد IV صالح' : dataMode === 'DEMO' ? 'قيمة مولّدة' : dataMode === 'BINANCE' ? 'سلسلة الخيارات' : 'تقريب من السلسلة'} tone={market.iv30 === null ? 'neutral' : 'accent'} footnote={market.iv30 === null ? 'لا يتوفر IV وأجل 20–40 يوماً غير معلّمين كتقديريين' : dataMode === 'DEMO' ? 'بيانات محاكاة وليست حية' : dataMode === 'BINANCE' ? 'وسيط IV غير المعلّم كتقديري لعقود 20–40 يوماً' : 'وسيط IV غير المعلّم كتقديري لصفوف 20–40 يوماً بوقت صالح'} icon={<Activity size={17} />} />
               <StatCard label="التقلب المحقّق · 30 يوم" value={market.rv30 === null ? 'غير متاح' : formatPercent(market.rv30)} change={market.rv30 === null ? 'يلزم تاريخ الأصل' : 'مرجع توضيحي'} tone="neutral" footnote={market.rv30 === null ? dataMode === 'BINANCE' ? 'لقطة REST لا توفر تاريخاً كافياً' : 'CSV لا يتضمن سلسلة أسعار تاريخية' : 'المحاكاة تستخدم قيمة ثابتة'} icon={<LineChart size={17} />} />
               <StatCard label="IV − RV" value={ivRvSpread === null ? 'غير متاح' : `${ivRvSpread >= 0 ? '+' : ''}${(ivRvSpread * 100).toFixed(1)} نقطة`} change={ivRvSpread === null ? 'بيانات غير كافية' : 'قراءة وصفية'} tone={ivTone === 'yellow' ? 'accent' : ivTone === 'green' ? 'positive' : 'neutral'} footnote={ivRvSpread === null ? 'لا نخلط بيانات تاريخية غير متوفرة' : 'ليس إشارة بيع أو شراء'} icon={<Gauge size={17} />} />
               <StatCard label="الفائدة المفتوحة الاسمية" value={market.openInterestUsd === null ? 'غير متاح' : formatCompact(market.openInterestUsd)} change="من صفوف اللقطة" tone="neutral" footnote={market.openInterestUsd === null ? 'لا تتوفر قيمة مباشرة أو بيانات OI قابلة للتحويل' : dataMode === 'DEMO' ? 'قيمة تقريبية مولّدة' : market.openInterestUsdEstimated ? 'تقدير من OI × السعر المرجعي × وحدة العقد' : dataMode === 'BINANCE' ? 'مجموع sumOpenInterestUsd من Binance' : 'قيمة USD واردة في ملف CSV'} icon={<Layers3 size={17} />} />
