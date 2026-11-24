@@ -347,7 +347,6 @@ export function calculatePortfolio(
     const multiplier = holding.quantity * holding.contractMultiplier;
     const nativeMarketValue = multiplier * holding.marketPrice;
     const nativeCostBasis = multiplier * holding.averageCost;
-    const nativePnl = nativeMarketValue - nativeCostBasis;
     const marketConversion = getConversion(nativeMarketValue, currency, target, fxRates);
     const costConversion = getConversion(nativeCostBasis, currency, target, fxRates);
     if (!marketConversion || !costConversion) missing.add(currency);
