@@ -9,7 +9,7 @@
 
 المستخدم مقيم فعلياً في **سوريا**، وليس في المملكة المتحدة. قد يستخدم VPN للاتصال بالإنترنت فقط؛ لا يجوز استنتاج الإقامة أو الأهلية من بلد خروج الشبكة، ولا يُستخدم VPN لتجاوز شروط المنصات.
 
-صفحة Binance الرسمية المخصصة للمقيمين السوريين (يونيو 2025) تقول إن السوريين المقيمين في سوريا يمكنهم التسجيل والتحقق وفق KYC والامتثال، وتدرج **Options trading** صراحةً ضمن المنتجات المتاحة. هذا يدعم أهلية خدمة الخيارات العامة، لكنه لا يحسم أهلية كل منتج أُطلق لاحقاً: Commodity/TradFi Options على XAU/XAG أُطلقت في يوليو 2026، أي بعد FAQ سوريا. لذلك يجب تأكيد تفعيل Crypto Options وCommodity Options كلٌ على حدة في الحساب السوري. Binance هي مرشح التنفيذ الأول المشروط، وليست منصة لكل أسواق الخيارات. ولا يُعد خطأ HTTP 451 من GitHub Actions دليلاً على منع المستخدم السوري أو منع Binance عالمياً.
+صفحة Binance الرسمية المخصصة للمقيمين السوريين (يونيو 2025) تقول إن السوريين المقيمين في سوريا يمكنهم التسجيل والتحقق وفق KYC والامتثال، وتدرج **Options trading** صراحةً ضمن المنتجات المتاحة. هذا يدعم أهلية خدمة الخيارات العامة، لكنه لا يحسم أهلية المنتجات التي أُطلقت لاحقاً: Commodity/TradFi Options على XAU/XAG في يوليو 2026 وU.S. Stock Options في 1 سبتمبر 2026. يجب تأكيد ظهور كل منتج وصلاحيته داخل الحساب السوري. Stock Options أمريكية الأسهم/ETFs، Physically-settled وLong-only، مع API مرجعي لا يعرض quotes/Greeks/IV؛ والتمرين يدوي مع خطر Auto-liquidation عند عدم إرسال التعليمات. Binance مرشح التنفيذ الأول المشروط، وليست منصة لكل أسواق الخيارات. ولا يُعد خطأ HTTP 451 من GitHub Actions دليلاً على منع المستخدم السوري أو منع Binance عالمياً.
 
 المصادر:
 - https://www.binance.com/en/support/faq/detail/863795c36a224bd7aa7d677996328ff9
@@ -25,7 +25,7 @@
 - https://www.okx.com/en-gb/help/us-risk-and-compliance-disclosures
 - https://www.interactivebrokers.com/en/accounts/open-account-country-list.php
 
-**هل Binance تكفي؟** تكفي كبداية لشراء خيارات الكريبتو أحادية الرجل وبعض خيارات السلع التي تدرجها وتسمح بها حسابياً؛ لا توفر كامل نطاق خيارات الأسهم والمؤشرات والفائدة والعملات والطاقة والزراعة. كتابة Crypto Options متاحة حالياً لـBTC وETH فقط، وتتطلب هامشاً ويمكن تصفيتها؛ BNB/XRP/SOL/DOGE لا تدعم الكتابة حالياً. Commodity Options على XAU/XAG متاحة للتجزئة long-only. الحساب العادي لا يطبق Portfolio Margin أو Risk Netting بين أرجل الاستراتيجيات، والأوامر Limit فقط؛ لذلك لا نعتبر Binance مناسبة لاستراتيجيات متعددة الأرجل تعتمد على تعويض الهامش.
+**هل Binance تكفي؟** تغطي الآن خيارات الكريبتو، وبعض السلع (XAU/XAG)، وخيارات أسهم/ETFs أمريكية long-only بتسوية مادية؛ لكنها لا توفر كامل نطاق خيارات المؤشرات والفائدة والعملات والطاقة والزراعة، ولا توفر عبر Stock Options API أسعاراً/Greeks/IV. أهلية المنتج الأمريكي للمقيم السوري تحتاج تحققاً منفصلاً. كتابة Crypto Options متاحة حالياً لـBTC وETH فقط، وتتطلب هامشاً ويمكن تصفيتها؛ BNB/XRP/SOL/DOGE لا تدعم الكتابة حالياً. Commodity Options على XAU/XAG متاحة للتجزئة long-only. الحساب العادي لا يطبق Portfolio Margin أو Risk Netting بين أرجل الاستراتيجيات، والأوامر Limit فقط؛ لذلك لا نعتبر Binance مناسبة لاستراتيجيات متعددة الأرجل تعتمد على تعويض الهامش.
 
 المصادر:
 - https://www.binance.com/en-UZ/support/faq/detail/dc9e52b4440b48bd900a767cc5024c84
@@ -229,3 +229,5 @@
 المصادر: https://www.gate.com/legal/user-agreement ، https://www.gate.com/docs/agreement.pdf ، https://www.gate.com/en-us/legal/user-agreement ، https://www.gate.com/docs/developers/apiv4/en/options/ ، https://www.gate.com/docs/developers/options/ws/en/ ، https://www.gate.com/help/other/optionsbasics/46255/european-options-settlement-methods-explained
 
 تقرير Orbit Markets لـQ3 2026 لم يدرج Gate ضمن أكبر 8 منصات خيارات كريبتو، بينما قدّر Binance عند 13.2% وDeribit عند 28.6%. عدم الإدراج لا يعني صفراً، لكنه لا يدعم افتراض سيولة مماثلة؛ لا تبديل قبل قياس عمق كل عقد. المصدر: https://www.orbitmarkets.io/post/current-state-of-the-crypto-options-market
+
+مصادر Stock Options: https://www.binance.com/en/blog/markets/3413696947185733989 ، https://www.binance.com/en-PH/support/faq/detail/3dddc209bb564b448c0948fc4c5e6d80 ، https://developers.binance.me/en/docs/products/stock-options/introduction .
