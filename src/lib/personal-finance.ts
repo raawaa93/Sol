@@ -288,12 +288,7 @@ export interface PortfolioHolding {
 
 export interface PortfolioHoldingAnalysis {
   holding: PortfolioHolding;
-  marketValue: number;
-  costBasis: number;
-  unrealizedPnl: number;
-  unrealizedPnlPct: number | null;
   reportingMarketValue: number | null;
-  reportingCostBasis: number | null;
   reportingUnrealizedPnl: number | null;
   weightPct: number | null;
 }
@@ -312,7 +307,6 @@ export interface PortfolioSummary {
     largestHoldingPct: number | null;
     topThreePct: number | null;
     largestAssetClassPct: number | null;
-    herfindahlIndex: number | null;
     warnings: Array<'SINGLE_POSITION_OVER_25_PERCENT' | 'TOP_THREE_OVER_60_PERCENT' | 'ASSET_CLASS_OVER_70_PERCENT'>;
   };
 }
@@ -326,7 +320,6 @@ export function calculatePortfolio(
   const target = normalizeCurrency(reportingCurrency);
   validateFxRates(fxRates);
   const ids = new Set<string>();
-  const symbols = new Set<string>();
   const missing = new Set<string>();
   const classTotals = new Map<PortfolioAssetClass, number>();
   let marketValue = 0;
@@ -338,8 +331,6 @@ export function calculatePortfolio(
     const symbol = holding.symbol.trim().toUpperCase();
     if (!/^[A-Z0-9._:-]{1,32}$/.test(symbol)) throw new Error('Holding symbol is invalid');
     if (!holding.name.trim()) throw new Error('Holding name is required');
-    if (symbols.has(symbol)) throw new Error(`Duplicate holding symbol: ${symbol}`);
-    symbols.add(symbol);
     if (!['EQUITY', 'ETF', 'CRYPTO', 'BOND', 'COMMODITY', 'OPTION', 'CASH', 'OTHER'].includes(holding.assetClass)) {
       throw new Error('Unsupported portfolio asset class');
     }
@@ -373,12 +364,7 @@ export function calculatePortfolio(
 
     return {
       holding,
-      marketValue: nativeMarketValue,
-      costBasis: nativeCostBasis,
-      unrealizedPnl: nativePnl,
-      unrealizedPnlPct: nativeCostBasis > 0 ? (nativePnl / nativeCostBasis) * 100 : null,
       reportingMarketValue: convertedMarketValue,
-      reportingCostBasis: convertedCostBasis,
       reportingUnrealizedPnl: convertedPnl,
       weightPct: null,
     };
@@ -405,8 +391,6 @@ export function calculatePortfolio(
   const topThreePct = complete && sortedWeights.length ? sortedWeights.slice(0, 3).reduce((sum, value) => sum + value, 0) : null;
   const largestAssetClassPct = complete && allocations.length
     ? Math.max(...allocations.map((item) => item.weightPct ?? 0)) : null;
-  const herfindahlIndex = complete && marketValue > 0
-    ? withWeights.reduce((sum, item) => sum + ((item.weightPct ?? 0) / 100) ** 2, 0) : null;
   const warnings: PortfolioSummary['concentration']['warnings'] = [];
   if (largestHoldingPct !== null && largestHoldingPct > 25) warnings.push('SINGLE_POSITION_OVER_25_PERCENT');
   if (topThreePct !== null && topThreePct > 60) warnings.push('TOP_THREE_OVER_60_PERCENT');
@@ -422,6 +406,6 @@ export function calculatePortfolio(
     unrealizedPnlPct: complete && costBasis > 0 ? ((marketValue - costBasis) / costBasis) * 100 : null,
     holdings: withWeights,
     allocations,
-    concentration: { largestHoldingPct, topThreePct, largestAssetClassPct, herfindahlIndex, warnings },
+    concentration: { largestHoldingPct, topThreePct, largestAssetClassPct, warnings },
   };
 }
