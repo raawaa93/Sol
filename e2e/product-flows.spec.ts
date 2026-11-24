@@ -132,33 +132,33 @@ test('asset-class selector covers every canonical class and unknown imports with
   await expect(page.locator('#scanner')).not.toContainText('CARBON-CALL');
 });
 
-test('CSV import stays local and powers a timestamped XAU execution replay', async ({ page }) => {
+test('CSV import stays local and replays only an explicitly scaled supported crypto option', async ({ page }) => {
   const expiry = new Date(Date.now() + 40 * 86_400_000).toISOString();
   const firstTime = new Date(Date.now() - 2 * 60 * 60_000).toISOString();
   const secondTime = new Date(Date.now() - 60 * 60_000).toISOString();
-  const header = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,delta,gamma,theta,vega,openInterest,volume,spot,unit,timestamp';
+  const header = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,delta,gamma,theta,vega,openInterest,volume,spot,unit,timestamp,assetClass,venue,underlyingKind,exerciseStyle,settlementStyle,quoteAsset,settlementAsset,contractMultiplier';
   const first = [
-    'XAU-custom-P', 'XAU', expiry, '4000', 'PUT', '50', '52', '51', '45%',
-    '', '', '', '', '', '', '4100', '1', firstTime,
+    'BTC-custom-P', 'BTC', expiry, '40000', 'PUT', '50', '52', '51', '45%',
+    '', '', '', '', '', '', '41000', '1', firstTime, 'CRYPTO', 'BINANCE', 'SPOT', 'EUROPEAN', 'CASH', 'USDT', 'USDT', '1',
   ].join(',');
   const second = [
-    'XAU-custom-P', 'XAU', expiry, '4000', 'PUT', '60', '61', '60.5', '45%',
-    '', '', '', '', '', '', '4100', '1', secondTime,
+    'BTC-custom-P', 'BTC', expiry, '40000', 'PUT', '60', '61', '60.5', '45%',
+    '', '', '', '', '', '', '41000', '1', secondTime, 'CRYPTO', 'BINANCE', 'SPOT', 'EUROPEAN', 'CASH', 'USDT', 'USDT', '1',
   ].join(',');
   const csv = `${header}\n${first}\n${second}`;
 
   await page.locator('input[type="file"]').setInputFiles({
-    name: 'xau-history.csv',
+    name: 'btc-history.csv',
     mimeType: 'text/csv',
     buffer: Buffer.from(csv),
   });
 
   await expect(page.getByText('تم استيراد 2 عقد محلياً.')).toBeVisible();
-  await expect(page.locator('#overview-metrics')).toContainText('XAU');
-  await expect(page.locator('#scanner')).toContainText('XAU-custom-P');
+  await expect(page.locator('#overview-metrics')).toContainText('BTC');
+  await expect(page.locator('#scanner')).toContainText('BTC-custom-P');
   await expect(page.locator('#historical-replay')).toContainText('إعادة تشغيل تاريخية محافظة');
-  await expect(page.locator('#historical-replay .replay-trades tbody tr')).toHaveCount(1);
-  await expect(page.locator('#historical-replay')).toContainText('+8');
+  await expect(page.locator('#historical-replay .replay-trades tbody tr')).toHaveCount(0);
+  await expect(page.locator('#historical-replay')).toContainText('مقياس عقد غير متحقق 2');
 });
 
 test('Binance order-book UI is exercised only with a deterministic mocked REST snapshot', async ({ page }) => {
@@ -298,12 +298,35 @@ test('mismatched contract multiplier keeps quotes visible but blocks per-contrac
   await expect(page.locator('.source-card')).toContainText('ملف محلي مستورد');
   await page.getByRole('combobox', { name: 'اختر فئة الأصل' }).selectOption('ENERGY');
   await expect(page.locator('#scanner')).toContainText('CL-UNVERIFIED-70-C');
+  await expect(page.locator('#opportunities')).not.toContainText('EV محايد/عقد');
   await expect(page.locator('#trade-lab')).toContainText('غير متاح');
+  await expect(page.locator('#trade-lab .budget-row')).toBeHidden();
+  await expect(page.locator('#trade-lab')).toContainText('لا يثبت مطابقة deliverables لمواصفات البورصة');
   await expect(page.locator('#trade-lab').getByRole('button', { name: 'أضف إلى الدفتر التجريبي' })).toBeDisabled();
   await expect(page.locator('#payoff .empty-state')).toContainText('حساب P&L لكل عقد غير متاح');
   await expect(page.locator('#payoff')).toContainText('يختلف contractMultiplier عن unit');
   await expect(page.locator('#historical-replay')).toContainText('مقياس عقد غير متحقق 2');
   await expect(page.locator('#greeks')).toContainText('نحجب حساسية المركز المجمعة');
+  await expect(page.locator('#greeks .greeks-mobile-card').first().locator('.greeks-mobile-values small').first()).toHaveText('القيمة لكل وحدة مرجعية');
+});
+
+
+test('CSV cannot spoof a Demo venue label to unlock per-contract P&L', async ({ page }) => {
+  const expiry = new Date(Date.now() + 45 * 86_400_000).toISOString();
+  const header = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,spot,unit,timestamp,assetClass,venue,underlyingKind,exerciseStyle,settlementStyle,quoteAsset,settlementAsset,contractMultiplier,riskFreeRate,carryYield';
+  const row = ['BTC-CSV-DEMO-100-C', 'BTC', expiry, '100', 'CALL', '2.0', '2.2', '2.1', '20%', '100', '1', new Date().toISOString(), 'CRYPTO', 'DEMO', 'SPOT', 'EUROPEAN', 'CASH', 'USDT', 'USDT', '1', '0%', '0%'].join(',');
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'spoofed-demo-venue.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from([header, row].join('\n')),
+  });
+
+  await expect(page.locator('.source-card')).toContainText('ملف محلي مستورد');
+  await expect(page.locator('#trade-lab')).toContainText('غير متاح');
+  await expect(page.locator('#trade-lab .budget-row')).toBeHidden();
+  await expect(page.locator('#trade-lab')).toContainText('لم يتم التحقق من نموذج مقياس هذا السوق');
+  await expect(page.locator('#opportunities')).not.toContainText('EV محايد/عقد');
+  await expect(page.locator('#trade-lab').getByRole('button', { name: 'أضف إلى الدفتر التجريبي' })).toBeDisabled();
 });
 
 test('mobile option chain renders compact cards and selects a contract without table overflow', async ({ page }) => {
@@ -342,7 +365,7 @@ test('mobile Greeks and paper journal use readable cards instead of wide tables'
   await expect(page.locator('.greeks-table-wrap')).toBeHidden();
   await expect(greekList.locator('.greeks-mobile-card')).toHaveCount(5);
   await expect(greekList).toContainText('Delta');
-  await expect(greekList).toContainText('القيمة لكل عقد');
+  await expect(greekList).toContainText('القيمة لكل وحدة مرجعية');
   await expect(greekList).toContainText('حساسية الكمية الحالية');
 
   await page.getByRole('button', { name: 'أضف إلى الدفتر التجريبي' }).click();
