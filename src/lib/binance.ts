@@ -1,6 +1,7 @@
 import type { OptionFilter, OptionQuote, OptionSide, Underlying } from './types.ts';
 import { impliedVolatilityForContract, priceOption } from './pricing-model.ts';
 import { inferAssetClass } from './asset-class.ts';
+import { mapBinanceCryptoOptionEconomics } from './binance-crypto-options-economics.ts';
 
 const BINANCE_OPTIONS_API = 'https://eapi.binance.com';
 const REQUEST_TIMEOUT_MS = 12_000;
@@ -338,6 +339,17 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       ...(openInterestTimestamp !== undefined && openInterestTimestamp > 0 ? { openInterest: new Date(openInterestTimestamp).toISOString() } : {}),
     };
     const filters = Array.isArray(symbolInfo.filters) ? symbolInfo.filters : undefined;
+    const contractEconomics = isCrypto && underlyingType === 'CRYPTO' && contractType === 'CRYPTO_OPTIONS'
+      ? mapBinanceCryptoOptionEconomics({
+        symbol,
+        underlyingType,
+        contractType,
+        unit,
+        quoteAsset: symbolInfo.quoteAsset ?? contractInfo?.quoteAsset ?? '',
+        settleAsset: contractInfo?.settleAsset ?? '',
+        serverTime,
+      }) ?? undefined
+      : undefined;
     const lotSizeFilter = filters?.find((filter) => ['LOT_SIZE', 'MARKET_LOT_SIZE'].includes(filter.filterType.toUpperCase()));
     const minQty = positiveNumber(symbolInfo.minQty) ?? positiveNumber(lotSizeFilter?.minQty);
     const maxQty = positiveNumber(symbolInfo.maxQty) ?? positiveNumber(lotSizeFilter?.maxQty);
@@ -352,6 +364,7 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       settlementStyle: settlementStyle === 'UNKNOWN' ? undefined : settlementStyle,
       quoteAsset: symbolInfo.quoteAsset ?? contractInfo?.quoteAsset,
       settlementAsset: contractInfo?.settleAsset,
+      contractEconomics,
       // Binance publishes `unit` (underlying quantity per contract), not a separate contractMultiplier.
       carryYield,
       riskFreeRate,
