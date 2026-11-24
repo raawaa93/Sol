@@ -280,7 +280,16 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
       carryYield,
     };
     let solvedIv = inputIv;
+    const hasVerifiedScaleForIv = inputUnit !== undefined
+      && (contractMultiplier === undefined
+        || Math.abs(contractMultiplier - inputUnit) <= Math.max(1e-9, inputUnit * 1e-9));
     if (solvedIv === undefined) {
+      if (!hasVerifiedScaleForIv) {
+        counts.missingIv += 1;
+        counts.invalidRows += 1;
+        addRowWarning(`تم تجاهل الصف ${sourceRowNumber}: لا يمكن استنتاج IV من سعر السوق قبل التحقق من unit ومضاعف العقد؛ أدخل IV مرصوداً أو مواصفات مقياس متطابقة.`);
+        return;
+      }
       solvedIv = impliedVolatilityForContract(observedPrice, pricingInputs);
     }
     if (solvedIv === undefined) {
