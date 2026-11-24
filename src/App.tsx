@@ -112,7 +112,7 @@ function formatSourceAge(sourceTimeRange: CsvTimestampRange | null, now = Date.n
 function formatTimestampAge(timestamp: number, now = Date.now()): string {
   const ageMs = now - timestamp;
   if (!Number.isFinite(ageMs)) return 'وقت الجلب غير صالح';
-  if (assessSnapshotFreshness(timestamp, now) === 'future') return 'وقت الاستلام مستقبلي؛ تحقّق';
+  if (ageMs < -5_000) return 'وقت الاستلام مستقبلي؛ تحقّق';
   return formatAge(ageMs, 'عمر الاستلام');
 }
 
