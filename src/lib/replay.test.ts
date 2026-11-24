@@ -113,6 +113,23 @@ test('CSV replay rejects American physical equity even with matching numeric sca
   assert.equal(result.skipped.invalidContractScale, 2);
 });
 
+
+test('replay skips a trade when contract scale or settlement currency changes between entry and exit', () => {
+  const unitChanged = replayLongOptionSnapshots([
+    quote('2026-11-24T10:00:00.000Z', { unit: 1, contractMultiplier: 1 }),
+    quote('2026-11-24T11:00:00.000Z', { unit: 2, contractMultiplier: 2 }),
+  ], config);
+  assert.equal(unitChanged.trades.length, 0);
+  assert.equal(unitChanged.skipped.invalidContractScale, 1);
+
+  const currencyChanged = replayLongOptionSnapshots([
+    quote('2026-11-24T10:00:00.000Z', { quoteAsset: 'USDT', settlementAsset: 'USDT' }),
+    quote('2026-11-24T11:00:00.000Z', { quoteAsset: 'USDC', settlementAsset: 'USDC' }),
+  ], config);
+  assert.equal(currencyChanged.trades.length, 0);
+  assert.equal(currencyChanged.skipped.invalidContractScale, 1);
+});
+
 test('replay does not look ahead beyond the exit grace window and avoids overlapping trades', () => {
   const result = replayLongOptionSnapshots([
     quote('2026-11-24T10:00:00.000Z'),

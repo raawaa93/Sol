@@ -3,6 +3,21 @@ import { isQuoteFieldEstimated } from './quote-quality.ts';
 import { getContractScaleIssue } from './contract-scale.ts';
 import type { OptionQuote } from './types.ts';
 
+function hasSameContractScale(entry: OptionQuote, exit: OptionQuote): boolean {
+  const tolerance = Math.max(1e-9, Math.abs(entry.unit) * 1e-9);
+  return Number.isFinite(entry.unit)
+    && Number.isFinite(exit.unit)
+    && Math.abs(entry.unit - exit.unit) <= tolerance
+    && entry.contractMultiplier === exit.contractMultiplier
+    && entry.quoteAsset === exit.quoteAsset
+    && entry.settlementAsset === exit.settlementAsset
+    && entry.venue === exit.venue
+    && entry.assetClass === exit.assetClass
+    && entry.underlyingKind === exit.underlyingKind
+    && entry.exerciseStyle === exit.exerciseStyle
+    && entry.settlementStyle === exit.settlementStyle;
+}
+
 export interface OptionReplayConfig {
   holdingPeriodMs: number;
   maxExitDelayMs: number;
@@ -142,6 +157,15 @@ export function replayLongOptionSnapshots(
       if (!exit || exit.timestamp > targetExitTime + config.maxExitDelayMs) {
         skipped.noExitSnapshot += 1;
         index += 1;
+        continue;
+      }
+
+      // A contract can be adjusted or its quote/settlement terms can change
+      // while retaining the same symbol. Never apply the entry scale to an exit
+      // snapshot whose contract economics differ.
+      if (!hasSameContractScale(entry.quote, exit.quote)) {
+        skipped.invalidContractScale += 1;
+        index = exitIndex + 1;
         continue;
       }
 
