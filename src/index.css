@@ -459,6 +459,21 @@ h1, h2, h3, p { margin: 0; }
   .scanner-section { margin-top: 24px; }
   .scanner-layout { grid-template-columns: 1fr; gap: 10px; }
   .chain-toolbar { align-items: flex-start; flex-direction: column; padding: 10px; }
+  .chain-table-wrap { overflow-x: hidden; overflow-y: auto; }
+  .chain-table { display: none; }
+  .chain-mobile-list { display: grid; gap: 8px; padding: 10px; }
+  .chain-mobile-card { display: flex; width: 100%; flex-direction: column; gap: 9px; padding: 11px; border: 1px solid #263330; border-radius: 10px; background: #0e1517; color: #dce6df; text-align: right; cursor: pointer; }
+  .chain-mobile-card.selected { border-color: rgba(183, 244, 119, .42); background: linear-gradient(110deg, rgba(183, 244, 119, .075), rgba(14, 21, 23, .98)); box-shadow: inset -2px 0 0 var(--green); }
+  .chain-mobile-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .chain-mobile-card-contract { display: flex; align-items: center; gap: 8px; }
+  .chain-mobile-card-contract strong { color: #e4ece5; font-size: 12px; font-weight: 700; }
+  .chain-mobile-card-symbol { display: block; margin-top: 4px; color: #73817b; font-family: Inter, Arial, sans-serif; font-size: 8px; direction: ltr; text-align: right; }
+  .chain-mobile-quote-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+  .chain-mobile-quote-grid > span { display: flex; min-width: 0; flex-direction: column; gap: 4px; padding: 7px 8px; border: 1px solid #202c2b; border-radius: 7px; background: rgba(20, 29, 30, .8); }
+  .chain-mobile-quote-grid small { color: #788781; font-size: 8px; }
+  .chain-mobile-quote-grid b { overflow: hidden; color: #dce6df; font-family: Inter, Arial, sans-serif; font-size: 10px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+  .chain-mobile-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; color: #77847d; font-size: 8px; }
+  .chain-mobile-meta b { margin-right: 4px; color: #b8c5bc; font-family: Inter, Arial, sans-serif; font-weight: 600; }
   .chain-controls { width: 100%; justify-content: space-between; }
   .search-control { flex: 1; max-width: 190px; }
   .option-tabs button span { display: none; }
