@@ -219,35 +219,49 @@ async function main() {
   const groups = [...assetGroups.values()];
   const indexAndOiResults = await mapWithConcurrency(groups, 3, async (group) => {
     const indexResult = await requestJson('index', { underlying: group.underlying });
-    if (!ensureOk(`index ${group.underlying}`, indexResult.response, indexResult.payload)) {
+    if (indexResult.response.status === 451) {
+      ensureOk(`index ${group.underlying}`, indexResult.response, indexResult.payload);
       return { group, index: undefined, openInterestCount: 0, upstreamDenied: true };
+    }
+    if (!indexResult.response.ok) {
+      const detail = typeof indexResult.payload?.msg === 'string' ? indexResult.payload.msg : '';
+      return { group, index: undefined, openInterestCount: 0, issue: `index HTTP ${indexResult.response.status}${detail ? `: ${detail}` : ''}` };
     }
     const indexItem = Array.isArray(indexResult.payload) ? indexResult.payload[0] : indexResult.payload;
     const spot = finitePositive(indexItem?.indexPrice);
-    if (!spot) throw new Error(`index ${group.underlying} did not return a positive indexPrice.`);
+    if (!spot) {
+      return { group, index: undefined, openInterestCount: 0, issue: 'index response missing positive indexPrice' };
+    }
 
     const representative = chooseRepresentative(group.symbols, spot);
     const expiry = String(representative?.symbol ?? '').split('-')[1];
     if (!representative || !/^\d{6}$/.test(expiry)) {
-      throw new Error(`No valid active expiry found for ${group.underlying}.`);
+      return { group, index: spot, openInterestCount: 0, issue: 'no valid active expiry' };
     }
     const oiResult = await requestJson('openInterest', {
       underlyingAsset: group.baseAsset,
       expiration: expiry,
     });
-    if (!ensureOk(`openInterest ${group.baseAsset} ${expiry}`, oiResult.response, oiResult.payload)) {
+    if (oiResult.response.status === 451) {
+      ensureOk(`openInterest ${group.baseAsset} ${expiry}`, oiResult.response, oiResult.payload);
       return { group, index: spot, openInterestCount: 0, upstreamDenied: true };
+    }
+    if (!oiResult.response.ok) {
+      const detail = typeof oiResult.payload?.msg === 'string' ? oiResult.payload.msg : '';
+      return { group, index: spot, representative, openInterestCount: 0, issue: `openInterest HTTP ${oiResult.response.status}${detail ? `: ${detail}` : ''}` };
     }
     const oiItems = Array.isArray(oiResult.payload)
       ? oiResult.payload
       : oiResult.payload && typeof oiResult.payload === 'object' ? [oiResult.payload] : null;
-    if (!oiItems) throw new Error(`openInterest returned an invalid response for ${group.baseAsset} ${expiry}.`);
+    if (!oiItems) {
+      return { group, index: spot, representative, openInterestCount: 0, issue: 'openInterest response shape invalid' };
+    }
     return { group, index: spot, representative, openInterestCount: oiItems.length };
   });
   if (indexAndOiResults.some((item) => item.upstreamDenied)) return;
   const indexedAssets = indexAndOiResults.filter((item) => finitePositive(item.index));
-  if (indexedAssets.length !== groups.length) {
-    throw new Error(`Only ${indexedAssets.length} of ${groups.length} active underlyings returned index prices.`);
+  if (!indexedAssets.length) {
+    throw new Error(`No active underlying returned a valid index price (${groups.length} checked).`);
   }
 
   const targetAsset = indexedAssets.find((item) => item.group.baseAsset === 'BTC') ?? indexedAssets[0];
@@ -281,7 +295,10 @@ async function main() {
 
   const oiRecords = indexAndOiResults.reduce((sum, item) => sum + item.openInterestCount, 0);
   const testedAssets = indexedAssets.map((item) => `${item.group.baseAsset}/${item.group.underlyingType}`).join(', ');
-  const line = `PASS — published app shell HTTP ${pageResponse.status} (${pageMs} ms); exchangeInfo active symbols ${activeSymbols.length}; mark records ${marks.length}; ticker records ${tickers.length}; index prices ${indexedAssets.length}/${groups.length} underlyings [${testedAssets}]; open-interest records ${oiRecords}; ${target.symbol} mark=${targetHasMark ? 'yes' : 'no'} ticker=${targetHasTicker ? 'yes' : 'no'}; depth ${bidCount} bids/${askCount} asks (${depthResult.elapsedMs} ms). Read-only point-in-time REST check; not streaming or an execution guarantee.`;
+  const unavailableAssets = indexAndOiResults.filter((item) => item.issue)
+    .map((item) => `${item.group.baseAsset}: ${item.issue}`).join('; ');
+  const coverageNote = unavailableAssets ? ` Partial endpoint coverage: ${unavailableAssets}.` : '';
+  const line = `PASS — published app shell HTTP ${pageResponse.status} (${pageMs} ms); exchangeInfo active symbols ${activeSymbols.length}; mark records ${marks.length}; ticker records ${tickers.length}; index prices ${indexedAssets.length}/${groups.length} underlyings [${testedAssets}]; open-interest records ${oiRecords}; ${target.symbol} mark=${targetHasMark ? 'yes' : 'no'} ticker=${targetHasTicker ? 'yes' : 'no'}; depth ${bidCount} bids/${askCount} asks (${depthResult.elapsedMs} ms). Read-only point-in-time REST check; not streaming or an execution guarantee.${coverageNote}`;
   console.log(line);
   annotate('notice', 'Live Binance options market coverage', line);
   appendSummary(`### Live Binance options market coverage\\n\\n${line}\\n`);
