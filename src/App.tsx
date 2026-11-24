@@ -993,7 +993,7 @@ function App() {
                   <h2 id="data-coverage-title">اكتمال بيانات العقود</h2>
                   <p>{underlying} · {integerFormat.format(quoteDataCoverage.contracts)} عقداً فريداً بعد إزالة تكرار الملاحظات</p>
                 </div>
-                <span className="data-coverage-source">{dataMode === 'BINANCE' ? 'Binance REST · لقطة' : 'ملف CSV محلي'}</span>
+                <span className="data-coverage-source">{dataMode === 'BINANCE' ? `BookTicker · ${bookTickerStatus === 'connected' ? 'متصل' : bookTickerStatus === 'connecting' ? 'جارٍ الاتصال' : bookTickerStatus === 'reconnecting' ? 'إعادة اتصال' : 'غير نشط'}` : 'ملف CSV محلي'}</span>
               </div>
               <div className="data-coverage-grid">
                 {[
@@ -1007,6 +1007,7 @@ function App() {
                   ['عقود لها OI', quoteDataCoverage.openInterestAvailable],
                   ['عقود لها حجم تداول', quoteDataCoverage.volumeAvailable],
                   ['مواصفات اقتصادية موثقة', quoteDataCoverage.providerVerifiedEconomics],
+                  ['عقود وصلها BookTicker', quoteDataCoverage.bookTickerAvailable],
                 ].map(([label, count]) => (
                   <div className="data-coverage-item" key={label}>
                     <strong>{integerFormat.format(Number(count))}<small> / {integerFormat.format(quoteDataCoverage.contracts)}</small></strong>
@@ -1016,6 +1017,7 @@ function App() {
                 ))}
               </div>
               <p className="data-coverage-note">الأصفار في OI والحجم تُحسب قيماً متاحة، لا حقولاً مفقودة. لا تُستبدل الأسعار أو IV الناقصة بقيم مخمّنة. وجود Bid وAsk لا يضمن التنفيذ أو حداثة السعر.</p>
+              {dataMode === 'BINANCE' && <p className="data-coverage-note">BookTicker: {bookTickerStatus === 'connected' ? 'متصل' : bookTickerStatus === 'connecting' ? 'جارٍ الاتصال' : bookTickerStatus === 'reconnecting' ? 'يعيد الاتصال تلقائياً' : 'غير نشط'} · الاشتراك في {integerFormat.format(bookTickerTargets.length)} من {integerFormat.format(bookTickerCandidates.length)} عقد ناقص، بحد أقصى 180 رمزاً · {integerFormat.format(bookTickerUpdates)} تحديثاً مستلماً. إذا لم ينشر المزود تحديثاً، يبقى الحقل ناقصاً.</p>}
             </section>
           )}
 
@@ -1140,7 +1142,8 @@ function App() {
                   <div><span>آخر تداول ضمن 24 ساعة · Ticker</span><strong>{formatSourceTimestamp(selectedQuote.sourceTimestamps?.ticker)}</strong><small>{formatSourceTimestampAge(selectedQuote.sourceTimestamps?.ticker)}</small></div>
                   <div><span>مؤشر الأصل · Index</span><strong>{formatSourceTimestamp(selectedQuote.sourceTimestamps?.index)}</strong><small>{formatSourceTimestampAge(selectedQuote.sourceTimestamps?.index)}</small></div>
                   <div><span>الفائدة المفتوحة · OI</span><strong>{formatSourceTimestamp(selectedQuote.sourceTimestamps?.openInterest)}</strong><small>{formatSourceTimestampAge(selectedQuote.sourceTimestamps?.openInterest)}</small></div>
-                  <small>العمر هو الزمن المنقضي منذ التوقيت المنشور لكل نقطة، ولا يثبت حداثة تدفق الأسعار. closeTime هو وقت آخر صفقة حدثت ضمن نافذة 24 ساعة، ولا يثبت حداثة بقية حقول Ticker. هذه ليست أوقات استلام التطبيق؛ وMark Price لا يتضمن توقيتاً مستقلاً موثقاً في هذه الاستجابة.</small>
+                  <div><span>أفضل Bid/Ask · BookTicker</span><strong>{formatSourceTimestamp(selectedQuote.sourceTimestamps?.bookTicker)}</strong><small>{formatSourceTimestampAge(selectedQuote.sourceTimestamps?.bookTicker)}</small></div>
+                  <small>العمر هو الزمن المنقضي منذ التوقيت المنشور لكل نقطة. BookTicker يخص أفضل Bid/Ask فقط ولا يضمن التنفيذ؛ closeTime يخص آخر صفقة ضمن نافذة 24 ساعة. هذه أوقات المصدر وليست أوقات استلام التطبيق، وMark Price لا يتضمن توقيتاً مستقلاً موثقاً في استجابة REST.</small>
                 </div>}
                 {dataMode === 'BINANCE' && <div className="iv-source-range" aria-label="قيم IV المتاحة للعقد">
                   <span>Bid IV <b>{selectedQuote.bidIv === undefined ? '—' : formatPercent(selectedQuote.bidIv)}</b></span>
