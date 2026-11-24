@@ -22,6 +22,7 @@ test('synthetic Demo scale is trusted only in Demo mode', () => {
 test('documented Binance European cash-settled crypto uses exchange unit in Binance mode', () => {
   assert.equal(getContractScaleIssue(binanceCrypto, 'BINANCE'), undefined);
   assert.equal(getContractScaleIssue({ ...binanceCrypto, venue: 'OTHER' }, 'BINANCE'), 'UNSUPPORTED_CONTRACT_SCALE');
+  assert.equal(getContractScaleIssue({ ...binanceCrypto, settlementAsset: 'BTC' }, 'BINANCE'), 'UNSUPPORTED_CONTRACT_SCALE');
 });
 
 test('CSV crypto requires a named non-Demo venue and explicit matching multiplier', () => {
