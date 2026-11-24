@@ -220,7 +220,7 @@ async function main() {
   const indexAndOiResults = await mapWithConcurrency(groups, 3, async (group) => {
     const indexResult = await requestJson('index', { underlying: group.underlying });
     if (!ensureOk(`index ${group.underlying}`, indexResult.response, indexResult.payload)) {
-      return { group, index: undefined, openInterestCount: 0 };
+      return { group, index: undefined, openInterestCount: 0, upstreamDenied: true };
     }
     const indexItem = Array.isArray(indexResult.payload) ? indexResult.payload[0] : indexResult.payload;
     const spot = finitePositive(indexItem?.indexPrice);
@@ -236,7 +236,7 @@ async function main() {
       expiration: expiry,
     });
     if (!ensureOk(`openInterest ${group.baseAsset} ${expiry}`, oiResult.response, oiResult.payload)) {
-      return { group, index: spot, openInterestCount: 0 };
+      return { group, index: spot, openInterestCount: 0, upstreamDenied: true };
     }
     const oiItems = Array.isArray(oiResult.payload)
       ? oiResult.payload
@@ -244,6 +244,7 @@ async function main() {
     if (!oiItems) throw new Error(`openInterest returned an invalid response for ${group.baseAsset} ${expiry}.`);
     return { group, index: spot, representative, openInterestCount: oiItems.length };
   });
+  if (indexAndOiResults.some((item) => item.upstreamDenied)) return;
   const indexedAssets = indexAndOiResults.filter((item) => finitePositive(item.index));
   if (indexedAssets.length !== groups.length) {
     throw new Error(`Only ${indexedAssets.length} of ${groups.length} active underlyings returned index prices.`);
