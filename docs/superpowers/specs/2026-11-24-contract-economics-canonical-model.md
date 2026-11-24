@@ -62,8 +62,14 @@ type ContractEconomics = {
     deliverables: Array<
       | { type: 'EQUITY' | 'UNDERLYING'; symbol: string; amount: number; currency?: string }
       | { type: 'CASH'; currency: string; amount: number }
-      | { type: 'FUTURE'; symbol: string; amount: number; pointValue?: number }
+      | { type: 'FUTURE'; symbol: string; amount: number; currency?: string; pointValue?: number }
     >;
+    cashSettlement?: {
+      formula: 'INTRINSIC_VALUE';
+      reference: 'SPOT' | 'FORWARD' | 'INDEX';
+      currency: string;
+      multiplier: number;
+    };
   };
   provenance: {
     status: 'PROVIDER_VERIFIED' | 'USER_ASSERTED' | 'SYNTHETIC_DEMO' | 'UNKNOWN';
@@ -84,6 +90,8 @@ The exact TypeScript shape may be refined during implementation, but the semanti
 - Deliverables must be preserved as a list; never collapse multiple equity/cash components into one number.
 - Aggregate exercise cash must be source-defined or model-defined by a validated adapter; never default it to strike × premium multiplier.
 - Missing/unknown fields stay unknown.
+- Cash-settled contracts require an explicit settlement formula, reference price type, multiplier and currency; no generic formula is inferred from settlement style alone.
+- Every known settlement requires a settlement currency. Deliverable components without a currency, or cross-currency totals without FX evidence, remain unsupported.
 - A CSV's `venue` string is a user assertion, not provider provenance.
 - Demo provenance is assigned by the application, never by CSV data.
 - Provider metadata and raw source fields must remain traceable for audit.
