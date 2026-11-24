@@ -6,7 +6,7 @@
 
 ## 1. Executive decision
 
-1. Keep Binance as the first **technical data candidate** for the products it lists; do not treat it as cleared for live execution from Syria until local legal status and account-level product permissions are confirmed. Binance's Syria-specific FAQ says Syrian residents may register and verify subject to KYC/compliance, but its enumerated product list does not explicitly name Options. It is not proof of Crypto, Commodity or Stock Options eligibility; confirm each product and permission separately.
+1. Keep Binance as the first **technical data candidate** for the products it lists; do not treat it as cleared for live execution from Syria until local legal status and account-level product permissions are confirmed. Binance's Syria-specific FAQ says Syrian residents may register and verify subject to KYC/compliance, and explicitly lists “Options trading” among the products generally available. This is evidence of general Options availability, not proof that every sub-product (Crypto, Commodity/TradFi or U.S. Stock Options) or account permission is enabled; confirm each product and permission separately.
 2. Binance is not a universal options venue. Its currently documented product families include crypto options and commodity options (currently XAUUSDT and XAGUSDT in the first batch). This is not a substitute for the full listed equity, index, rates, FX, energy and agricultural options markets.
 3. Deribit, Bybit and OKX explicitly restrict Syria in the reviewed current terms. Do not attempt to use them from Syria through VPN/IP masking.
 4. AMP Futures explicitly excludes Syria in its official high-risk country image. Optimus Futures and Ironbeam describe international account opening but do not publish Syria-specific acceptance; they remain unverified prospects, not approved routes. IBKR's current eligibility information does not establish acceptance of a Syrian resident.
@@ -32,7 +32,7 @@ A perpetual, future, CFD, tokenized stock, binary contract, prediction market or
 
 ### Binance
 
-Binance's Syria-specific help article, published 12 June 2025, states that Syrian nationals residing in Syria may register and verify if they pass KYC and compliance checks. The products enumerated on that page do not explicitly name Options. It also says that previous blocked accounts may require support review.
+Binance's Syria-specific help article, published 12 June 2025, states that Syrian nationals residing in Syria may register and verify if they pass KYC and compliance checks. The FAQ's enumerated product list includes Options trading, but it does not distinguish every sub-product or account-level permission. It also says that previous blocked accounts may require support review.
 
 This is positive, first-party evidence for the general Options service. It does **not** establish that every newly launched sub-product or every short-option permission is enabled for each account.
 
@@ -250,7 +250,7 @@ Sources:
 
 ### Venue selection for the actual user
 
-1. **Technical/data candidate only, not cleared for live trading from Syria:** Binance accepts Syrian resident registration subject to KYC, but the Syria FAQ does not explicitly list Options in its enumerated product list. More importantly, Syrian Central Bank and Securities Authority statements raise a serious domestic-law issue for crypto and FX activity. Keep Volterra read-only/Paper until local legal status is clarified; verify each Binance product separately.
+1. **Technical/data candidate only, not cleared for live trading from Syria:** Binance accepts Syrian resident registration subject to KYC, but the Syria FAQ explicitly lists Options trading generally, while exact sub-product permissions remain account-specific. More importantly, Syrian Central Bank and Securities Authority statements raise a serious domestic-law issue for crypto and FX activity. Keep Volterra read-only/Paper until local legal status is clarified; verify each Binance product separately.
 2. **No currently confirmed second execution venue:** Deribit, Bybit, OKX and Paradex list Syria restrictions; Hyperliquid's trading gate has been observed blocking Syria; Bitget Stock+ is reported to exclude Syria; IBKR and AMP do not establish eligibility. **Gate EU is explicitly excluded**; a non-EU Gate entity remains unresolved because regional terms differ and no written Syrian approval exists. Optimus and Ironbeam remain inquiry-only.
 3. **Research architecture:** venue-neutral canonical contracts, separate adapter per exchange/FCM, common provenance/freshness, normalized multiplier/currency/settlement, independent pricing and risk engines, and no cross-venue equivalence unless contract terms prove it.
 4. **No VPN workaround:** use VPN only for connectivity/privacy where lawful and allowed; do not route execution through another country to misrepresent residence or defeat a venue's terms.
@@ -323,7 +323,7 @@ Sources:
 
 **مقارنة عملية مع Binance:**
 - Gate أقوى تقنياً في مرونة أوامر الخيارات (market/IV/IOC/POC) وواجهات WS/REST والـshort/margin telemetry الموثقة.
-- Binance أوضح في السماح بالتسجيل السوري العام، لكن FAQ لا تسمي Options صراحةً؛ لديها بيانات/منتجات كريبتو وXAU/XAG، مع قيود الكتابة والهامش والأوامر كما هو موثق. لا نوصي بتنفيذ حي من سوريا حتى توضيح القانون المحلي.
+- FAQ Binance السورية تسمي تداول الخيارات ضمن المنتجات المتاحة عموماً للمقيمين السوريين وفق KYC والامتثال؛ لكنها لا تضمن تفعيل كل منتج فرعي أو صلاحية الحساب. بيانات Binance تشمل خيارات الكريبتو والسلع XAU/XAG، مع قيود الكتابة والهامش والأوامر كما هو موثق. لا نوصي بتنفيذ حي من سوريا حتى توضيح القانون المحلي.
 - لا نختار Gate بدلاً من Binance حتى يصل تأكيد أهلية مكتوب من Gate Global؛ وإذا أكدوا القبول، نختبر حساب Demo/Simulated Trading ونقارن السيولة والرسوم والمضاعفات والتسوية وعمق السوق قبل أي تمويل.
 
 المصادر:
@@ -352,7 +352,7 @@ Sources:
 
 ### أهلية سوريا والمنصات البديلة
 
-- Binance نشرت FAQ تقول إن السوريين المقيمين في سوريا يستطيعون التسجيل والتحقق وفق KYC، لكن قائمة المنتجات المسماة فيها لا تذكر Options صراحةً. لا تستنتج أهلية الخيارات من أهلية الحساب؛ تحقق من كل منتج على حدة، مع بقاء القانون المحلي مانعاً للتنفيذ الحي حتى يتضح.
+- FAQ Binance تقول إن السوريين المقيمين في سوريا يستطيعون التسجيل والتحقق وفق KYC، وتذكر تداول الخيارات ضمن المنتجات المتاحة عموماً. لا تستنتج من ذلك تفعيل Crypto/Commodity/Stock Options أو صلاحية الكتابة لكل حساب؛ تحقق من المنتج والصلاحية منفصلين، مع بقاء القانون المحلي مانعاً للتنفيذ الحي حتى يتضح.
 - Bybit وDeribit وOKX تذكر سوريا صراحةً ضمن المناطق المستبعدة/المقيدة. **Gate Global حالة مختلفة:** اتفاقيته الحالية لا تذكر سوريا في القائمة المنشورة لكنها تصفها بأنها غير حصرية، بينما اتفاقية أقدم تذكر سوريا؛ لذلك Gate Global مرشح استفسار مكتوب فقط، وليس منصة مقبولة أو محظورة مثبتة. Gate US كيان منفصل لا ينطبق على المقيم السوري. لا تستخدم VPN لتجاوز قيود أي منتج.
 - قائمة IBKR الرسمية للبلدان المتاحة لا تتضمن سوريا وقت الفحص؛ لا نفترض إمكانية فتح حساب أو تداول Cboe/CME من خلالها.
 - Paradex يذكر سوريا صراحة في Restricted Persons؛ لا يستخدم كبديل.
@@ -453,5 +453,5 @@ Sources:
 
 ### تصحيح أهلية Binance
 
-FAQ Binance المنشور في 12 يونيو 2025 يثبت أن المقيمين السوريين يمكنهم التسجيل والتحقق وفق KYC والامتثال، ويقول إنهم يستطيعون الوصول إلى مجموعة واسعة من المنتجات. لكن قائمة المنتجات المسماة في الصفحة (P2P، COIN-M، USDⓈ-M Futures، Convert/Block Trade، Margin، Spot، Copy Trading، Alpha، Wallet) **لا تسمي Options صراحةً**. لذلك لا نستخدم الصفحة كدليل صريح على أهلية Options؛ يجب التحقق من تفعيل Crypto Options لكل حساب ومن Commodity/Stock Options كلٌ على حدة أو الحصول على جواب دعم مكتوب. المصدر: https://www.binance.com/en/support/faq/detail/863795c36a224bd7aa7d677996328ff9
+FAQ Binance المنشور في 12 يونيو 2025 يثبت أن المقيمين السوريين يمكنهم التسجيل والتحقق وفق KYC والامتثال، ويقول إنهم يستطيعون الوصول إلى مجموعة واسعة من المنتجات. وتسمي الصفحة صراحةً تداول الخيارات ضمن المنتجات المتاحة عموماً. هذا دليل على إتاحة عامة للخدمة، لكنه لا يثبت تفعيل Crypto Options أو Commodity/TradFi Options أو U.S. Stock Options لكل حساب؛ يجب التحقق من المنتج الفرعي والصلاحية كلٌ على حدة أو الحصول على جواب دعم مكتوب. المصدر: https://www.binance.com/en/support/faq/detail/863795c36a224bd7aa7d677996328ff9
 
