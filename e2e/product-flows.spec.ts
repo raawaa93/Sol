@@ -38,7 +38,7 @@ test('CSV asset-class and venue filters isolate traditional listed option contra
   const header = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,spot,unit,timestamp,assetClass,venue,quoteAsset,settlementAsset,contractMultiplier,exerciseStyle,settlementStyle';
   const call = ['SPY-261230-700-C', 'SPY', expiry, '700', 'CALL', '5.1', '5.3', '5.2', '22%', '690', '100', new Date().toISOString(), 'EQUITY', 'CBOE', 'USD', 'USD', '100', 'AMERICAN', 'PHYSICAL'].join(',');
   const put = ['SPY-261230-680-P', 'SPY', expiry, '680', 'PUT', '4.1', '4.3', '4.2', '24%', '690', '100', new Date().toISOString(), 'EQUITY', 'ISE', 'USD', 'USD', '100', 'AMERICAN', 'PHYSICAL'].join(',');
-  const csv = `${header}\\n${call}\\n${put}`;
+  const csv = `${header}\n${call}\n${put}`;
 
   await page.locator('input[type="file"]').setInputFiles({
     name: 'spy-options.csv',
