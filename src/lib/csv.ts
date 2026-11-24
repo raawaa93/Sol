@@ -186,15 +186,18 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
     const row: Record<string, string> = {};
     headers.forEach((header, index) => { row[header] = cells[index] ?? ''; });
     const sourceRowNumber = rowIndex + 2;
-    const canonicalEconomicsFields = Object.fromEntries(
-      CONTRACT_ECONOMICS_CSV_V2_FIELDS.map((field) => [field, row[normalizeHeader(field)] ?? '']),
-    );
+    const canonicalEconomicsFields: Record<string, string> = {};
+    CONTRACT_ECONOMICS_CSV_V2_FIELDS.forEach((field) => {
+      canonicalEconomicsFields[field] = row[normalizeHeader(field)] ?? '';
+    });
     const hasCanonicalEconomicsFields = Object.values(canonicalEconomicsFields).some((value) => value.trim() !== '');
     const canonicalEconomics = hasCanonicalEconomicsFields
       ? parseContractEconomicsCsvV2(canonicalEconomicsFields)
       : undefined;
     if (canonicalEconomics?.warning) {
       addRowWarning(`الصف ${sourceRowNumber}: ${canonicalEconomics.warning}`);
+    } else if (canonicalEconomics?.economics) {
+      addRowWarning(`الصف ${sourceRowNumber}: تم استيراد الشروط الاقتصادية كمدخلات USER_ASSERTED؛ لا تُعدّ إثباتاً من مزود ولا تفعّل الحسابات.`);
     }
 
     const symbol = readField(row, ['symbol', 'contract', 'instrument']) ?? '';
@@ -480,7 +483,7 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
 }
 
 export function downloadCsvTemplate(): void {
-  const template = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,delta,gamma,theta,vega,rho,openInterest,openInterestUsd,volume,volumeQuote,spot,forward,unit,timestamp,assetClass,venue,underlyingKind,carryYield,riskFreeRate,quoteAsset,settlementAsset,contractMultiplier,exerciseStyle,settlementStyle,expiryTimezone';
+  const template = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,delta,gamma,theta,vega,rho,openInterest,openInterestUsd,volume,volumeQuote,spot,forward,unit,timestamp,assetClass,venue,underlyingKind,carryYield,riskFreeRate,quoteAsset,settlementAsset,contractMultiplier,exerciseStyle,settlementStyle,expiryTimezone,' + CONTRACT_ECONOMICS_CSV_V2_FIELDS.join(',');
   const blob = new Blob([template], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
