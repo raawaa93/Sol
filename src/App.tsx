@@ -285,22 +285,24 @@ function App() {
     const connect = () => {
       if (!active) return;
       setBookTickerStatus(attempts === 0 ? 'connecting' : 'reconnecting');
+      let connection: WebSocket;
       try {
-        socket = new WebSocket('wss://fstream.binance.com/public/stream');
+        connection = new WebSocket('wss://fstream.binance.com/public/stream');
+        socket = connection;
       } catch {
         scheduleRetry();
         return;
       }
-      socket.onopen = () => {
-        if (!active || !socket) return;
+      connection.onopen = () => {
+        if (!active) return;
         setBookTickerStatus('connected');
-        socket.send(JSON.stringify({
+        connection.send(JSON.stringify({
           method: 'SUBSCRIBE',
           params: bookTickerTargets.map((symbol) => `${symbol.toLowerCase()}@bookTicker`),
           id: Math.floor(Date.now() % 2_147_483_647),
         }));
       };
-      socket.onmessage = (event) => {
+      connection.onmessage = (event) => {
         if (!active) return;
         const ticker = parseBinanceBookTickerMessage(event.data);
         if (!ticker) return;
@@ -309,10 +311,10 @@ function App() {
           : quote));
         setBookTickerUpdates((current) => current + 1);
       };
-      socket.onerror = () => {
-        if (active) socket?.close();
+      connection.onerror = () => {
+        if (active) connection.close();
       };
-      socket.onclose = () => scheduleRetry();
+      connection.onclose = () => scheduleRetry();
     };
 
     connect();
