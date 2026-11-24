@@ -326,8 +326,9 @@ export function getExpiryPnl(quote: OptionQuote, expirySpot: number, premiumPerU
 
 export function buildScenarioSeries(quote: OptionQuote, premium: number, quantity: number, fees: number) {
   const moves = [-0.2, -0.15, -0.1, -0.05, 0, 0.05, 0.1, 0.15, 0.2];
+  const referencePrice = quote.underlyingKind === 'FUTURE' ? quote.forward ?? quote.spot : quote.spot;
   return moves.map((move) => {
-    const expirySpot = quote.spot * (1 + move);
+    const expirySpot = referencePrice * (1 + move);
     return {
       move,
       label: `${move > 0 ? '+' : ''}${Math.round(move * 100)}%`,
@@ -350,7 +351,8 @@ export interface GreekShock {
 
 /** Local first/second-order Greek P&L approximation. It excludes cross-Greeks, fees and execution effects. */
 export function estimateGreekPnl(quote: OptionQuote, quantity: number, shock: GreekShock): number {
-  const spotChange = quote.spot * (shock.spotMovePercent ?? 0) / 100;
+  const referencePrice = quote.underlyingKind === 'FUTURE' ? quote.forward ?? quote.spot : quote.spot;
+  const spotChange = referencePrice * (shock.spotMovePercent ?? 0) / 100;
   const unitPnl = quote.delta * spotChange
     + 0.5 * quote.gamma * spotChange * spotChange
     + quote.vega * (shock.volatilityMovePoints ?? 0)
