@@ -51,10 +51,26 @@ function readinessFailure(economics: ContractEconomics): CalculationFailure | un
   return undefined;
 }
 
+/**
+ * Premium debit/credit is an independent capability. It requires a structurally
+ * valid contract and provider-verified premium scale, but does not require the
+ * exercise/settlement adapter to be ready.
+ */
+function premiumReadinessFailure(economics: ContractEconomics): CalculationFailure | undefined {
+  const validation = validateContractEconomics(economics);
+  if (!validation.valid) {
+    return { ok: false, reason: 'CONTRACT_NOT_ADAPTER_READY', details: validation.issues };
+  }
+  if (economics.provenance.status !== 'PROVIDER_VERIFIED') {
+    return { ok: false, reason: 'CONTRACT_NOT_ADAPTER_READY', details: ['PROVIDER_VERIFIED_PREMIUM_SCALE_REQUIRED'] };
+  }
+  return undefined;
+}
+
 /** Premium cash uses only premium.multiplier; exercise/deliverable scales are never consulted. */
 export function calculatePremiumCash(input: PremiumCashInput): EconomicsCalculationResult<PremiumCashValue> {
   const { economics, premiumPrice, contracts, fees = 0 } = input;
-  const blocked = readinessFailure(economics);
+  const blocked = premiumReadinessFailure(economics);
   if (blocked) return blocked;
   if (!finiteNonNegative(premiumPrice) || !finitePositive(contracts) || !finiteNonNegative(fees)) return { ok: false, reason: 'INVALID_INPUT' };
   const multiplier = economics.premium.multiplier;
