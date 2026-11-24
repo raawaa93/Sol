@@ -7,10 +7,12 @@ export type ContractSettlementMechanic = SettlementStyle | 'FUTURE_DELIVERY';
 export type PremiumPriceUnit = 'PER_UNDERLYING_UNIT' | 'PER_CONTRACT';
 export type ContractEconomicsProvenanceStatus = 'PROVIDER_VERIFIED' | 'USER_ASSERTED' | 'SYNTHETIC_DEMO' | 'UNKNOWN';
 
-export type ContractDeliverable =
+export type DeliverableComponent =
   | { type: 'EQUITY' | 'UNDERLYING'; symbol: string; amount: number; currency?: string }
   | { type: 'CASH'; currency: string; amount: number }
   | { type: 'FUTURE'; symbol: string; amount: number; currency?: string; pointValue?: number };
+
+export type ContractDeliverable = DeliverableComponent;
 
 export type AggregateExerciseCash =
   | { basis: 'STRIKE_MULTIPLIER'; currency: string; multiplier: number }
@@ -23,32 +25,38 @@ export interface CashSettlementFormula {
   multiplier: number;
 }
 
+export interface PremiumScale {
+  multiplier: number;
+  quoteCurrency: string;
+  priceUnit: PremiumPriceUnit;
+}
+
+export interface ExerciseTerms {
+  style: ExerciseStyle;
+  settlement: ContractSettlementMechanic;
+  aggregateExerciseCash?: AggregateExerciseCash;
+  settlementCurrency?: string;
+  deliverables: DeliverableComponent[];
+  cashSettlement?: CashSettlementFormula;
+}
+
+export interface ContractEconomicsProvenance {
+  status: ContractEconomicsProvenanceStatus;
+  provider?: string;
+  sourceRef?: string;
+  retrievedAt?: string;
+  rawFields?: Record<string, string | number | boolean | null>;
+}
+
 /**
  * Canonical economic terms. Premium scale, exercise cash and the delivered
  * package are deliberately independent; adapters must map source fields
  * without inferring missing terms from a symbol or venue label.
  */
 export interface ContractEconomics {
-  premium: {
-    multiplier: number;
-    quoteCurrency: string;
-    priceUnit: PremiumPriceUnit;
-  };
-  exercise: {
-    style: ExerciseStyle;
-    settlement: ContractSettlementMechanic;
-    aggregateExerciseCash?: AggregateExerciseCash;
-    settlementCurrency?: string;
-    deliverables: ContractDeliverable[];
-    cashSettlement?: CashSettlementFormula;
-  };
-  provenance: {
-    status: ContractEconomicsProvenanceStatus;
-    provider?: string;
-    sourceRef?: string;
-    retrievedAt?: string;
-    rawFields?: Record<string, string | number | boolean | null>;
-  };
+  premium: PremiumScale;
+  exercise: ExerciseTerms;
+  provenance: ContractEconomicsProvenance;
 }
 
 export type Underlying = string;
