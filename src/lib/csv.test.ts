@@ -125,6 +125,17 @@ test('missing IV is solved only when explicit European spot contract mechanics a
   assert.ok(result.warnings.some((warning) => warning.includes('استُنتج IV')));
 });
 
+test('CSV never infers IV when the contract scale is missing or disagrees with multiplier metadata', () => {
+  const expiry = new Date(Date.now() + 45 * 86_400_000).toISOString();
+  const header = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,spot,unit,timestamp,assetClass,venue,underlyingKind,exerciseStyle,settlementStyle,carryYield,riskFreeRate,contractMultiplier';
+  const missingUnit = 'SPY-MISSING-SCALE,SPY,' + expiry + ',100,CALL,2,2.2,2.1,,100,,2026-11-24T02:00:00Z,EQUITY,CBOE,SPOT,EUROPEAN,CASH,0%,0%,100';
+  const mismatched = 'SPY-MISMATCHED-SCALE,SPY,' + expiry + ',100,CALL,2,2.2,2.1,,100,100,2026-11-24T02:00:00Z,EQUITY,CBOE,SPOT,EUROPEAN,CASH,0%,0%,50';
+  const result = parseOptionsCsv([header, missingUnit, mismatched].join('\n'));
+
+  assert.equal(result.quotes.length, 0);
+  assert.ok(result.warnings.some((warning) => warning.includes('لا يمكن استنتاج IV من سعر السوق قبل التحقق من unit ومضاعف العقد')));
+});
+
 test('CSV without explicit contract mechanics does not infer IV or Greeks from a generic Black-Scholes fallback', () => {
   const expiry = new Date(Date.now() + 30 * 86_400_000).toISOString();
   const marketPrice = blackScholes(100, 100, 30, 0.4, 'CALL').price;
