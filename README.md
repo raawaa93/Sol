@@ -1,5 +1,7 @@
 # Volterra Multi-Asset Options Decision Lab
 
+**Canonical project context:** read [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) before making changes. It defines the all-asset-class options scope, Syrian residency/legal gate, platform eligibility and implementation boundaries.
+
 واجهة عربية RTL لمختبر خيارات متعدد الأصول والأسواق: كريبتو، أسهم ومؤشرات، خيارات عقود آجلة على الفائدة والعملات والطاقة والمعادن والزراعة، والسلع. هذا هو نطاق المنتج المستهدف؛ أما التغطية الحية المنفذة حالياً فأضيق ويجب عرضها بحسب المصدر والعقود التي يعيدها فعلياً. هذه النسخة تعليمية/تجريبية فقط: لا تتصل بحساب Binance، ولا تنفّذ أوامر، ولا تحتوي الواجهة على مفاتيح Binance API خاصة.
 
 **نطاق المشروع الدائم وأهلية المنصات:** اقرأ [AGENTS.md](AGENTS.md)، [بحث جميع أسواق الخيارات والمنصات](docs/UNIVERSAL_OPTIONS_RESEARCH_2026-11-24.md)، [مراجعة أهلية المنصات](docs/PLATFORM_ELIGIBILITY_2026-11-24.md)، [سياق الإقامة والعقوبات السورية](docs/SYRIA_RESIDENCY_AND_SANCTIONS_2026-11-24.md)، و[تدقيق الواجهة](docs/UX_AUDIT_2026-11-24.md). الذهب أصل واحد فقط، والمستخدم مقيم في سوريا؛ لا تستنتج الإقامة من VPN أو عنوان IP.
