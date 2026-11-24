@@ -374,7 +374,7 @@ export interface GreekShock {
 
 /** Local first/second-order Greek P&L approximation. It excludes cross-Greeks, fees and execution effects. */
 export function estimateGreekPnl(quote: OptionQuote, quantity: number, shock: GreekShock): number {
-  const referencePrice = quote.underlyingKind === 'FUTURE' ? quote.forward ?? quote.spot : quote.spot;
+  const referencePrice = getUnderlyingReferencePrice(quote);
   const spotChange = referencePrice * (shock.spotMovePercent ?? 0) / 100;
   const unitPnl = quote.delta * spotChange
     + 0.5 * quote.gamma * spotChange * spotChange
