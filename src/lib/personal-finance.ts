@@ -274,7 +274,6 @@ export type PortfolioAssetClass = 'EQUITY' | 'ETF' | 'CRYPTO' | 'BOND' | 'COMMOD
 export interface PortfolioHolding {
   id: string;
   symbol: string;
-  name: string;
   assetClass: PortfolioAssetClass;
   quantity: number;
   averageCost: number;
@@ -330,7 +329,6 @@ export function calculatePortfolio(
     ids.add(holding.id);
     const symbol = holding.symbol.trim().toUpperCase();
     if (!/^[A-Z0-9._:-]{1,32}$/.test(symbol)) throw new Error('Holding symbol is invalid');
-    if (!holding.name.trim()) throw new Error('Holding name is required');
     if (!['EQUITY', 'ETF', 'CRYPTO', 'BOND', 'COMMODITY', 'OPTION', 'CASH', 'OTHER'].includes(holding.assetClass)) {
       throw new Error('Unsupported portfolio asset class');
     }
