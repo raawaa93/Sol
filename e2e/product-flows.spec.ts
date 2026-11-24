@@ -20,6 +20,14 @@ test('Demo explicitly labels synthetic data and asset switching updates the mark
   await expect(page.locator('#scanner')).toContainText('XRP');
 });
 
+test('option type selector exposes an accessible group and pressed state', async ({ page }) => {
+  const optionType = page.getByRole('group', { name: 'نوع الخيار' });
+  await expect(optionType).toBeVisible();
+  await expect(optionType.getByRole('button', { name: /Call/ })).toHaveAttribute('aria-pressed', 'true');
+  await optionType.getByRole('button', { name: /Put/ }).click();
+  await expect(optionType.getByRole('button', { name: /Put/ })).toHaveAttribute('aria-pressed', 'true');
+});
+
 test('global instrument search and local watchlist work across reloads', async ({ page }) => {
   const search = page.getByRole('searchbox', { name: 'ابحث عن رمز أو أصل' });
   await search.fill('XRP');
