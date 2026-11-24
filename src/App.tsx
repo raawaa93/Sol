@@ -383,21 +383,21 @@ function App() {
   const safeFees = Number.isFinite(fees) ? Math.max(0, fees) : 0;
   const safeRiskBudget = Number.isFinite(riskBudget) ? Math.max(0, riskBudget) : 0;
   const contractScaleIssue = getContractScaleIssue(selectedQuote);
-  const hasVerifiedContractScale = contractScaleIssue === undefined;
+  const hasExplicitConsistentContractScale = contractScaleIssue === undefined;
   const contractScaleIssueMessage = contractScaleIssue ? getContractScaleIssueMessage(contractScaleIssue) : '';
-  const totalCost = hasVerifiedContractScale ? selectedPremium * safeQuantity * selectedQuote.unit + safeFees : Number.NaN;
-  const breakEven = hasVerifiedContractScale ? getBreakeven(selectedQuote, selectedPremium, safeFees, safeQuantity) : Number.NaN;
-  const maxLoss = hasVerifiedContractScale ? getMaxLoss(selectedPremium, safeQuantity, selectedQuote.unit, safeFees) : Number.NaN;
-  const hasModelGreeks = hasVerifiedContractScale && (selectedQuote.pricingStatus ?? (dataMode === 'DEMO' ? 'ASSUMED' : 'OBSERVED_ONLY')) !== 'OBSERVED_ONLY';
+  const totalCost = hasExplicitConsistentContractScale ? selectedPremium * safeQuantity * selectedQuote.unit + safeFees : Number.NaN;
+  const breakEven = hasExplicitConsistentContractScale ? getBreakeven(selectedQuote, selectedPremium, safeFees, safeQuantity) : Number.NaN;
+  const maxLoss = hasExplicitConsistentContractScale ? getMaxLoss(selectedPremium, safeQuantity, selectedQuote.unit, safeFees) : Number.NaN;
+  const hasModelGreeks = hasExplicitConsistentContractScale && (selectedQuote.pricingStatus ?? (dataMode === 'DEMO' ? 'ASSUMED' : 'OBSERVED_ONLY')) !== 'OBSERVED_ONLY';
   const quoteAssetLabel = getQuoteCurrency(selectedQuote);
   const openInterestCurrencyLabel = market?.openInterestCurrency ?? null;
   const volumeCurrencyLabel = market?.volume24hCurrency ?? null;
   const underlyingReferencePrice = getUnderlyingReferencePrice(selectedQuote);
   const expectedMove = hasModelGreeks ? getExpectedMove(underlyingReferencePrice, selectedQuote.iv, selectedQuote.daysToExpiry) : undefined;
-  const scenarioSeries = useMemo(() => hasVerifiedContractScale
+  const scenarioSeries = useMemo(() => hasExplicitConsistentContractScale
     ? buildScenarioSeries(selectedQuote, selectedPremium, safeQuantity, safeFees)
-    : [], [hasVerifiedContractScale, safeFees, safeQuantity, selectedPremium, selectedQuote]);
-  const rawAffordableQty = hasVerifiedContractScale && selectedPremium > 0
+    : [], [hasExplicitConsistentContractScale, safeFees, safeQuantity, selectedPremium, selectedQuote]);
+  const rawAffordableQty = hasExplicitConsistentContractScale && selectedPremium > 0
     ? Math.floor(Math.max(0, safeRiskBudget - safeFees) / (selectedPremium * selectedQuote.unit) / quantityStep + 1e-9) * quantityStep
     : 0;
   const affordableQty = selectedQuote.maxQty === undefined ? rawAffordableQty : Math.min(rawAffordableQty, selectedQuote.maxQty);
@@ -678,7 +678,7 @@ function App() {
   };
 
   const savePaperTrade = () => {
-    if (!hasVerifiedContractScale) {
+    if (!hasExplicitConsistentContractScale) {
       notify(contractScaleIssueMessage);
       return;
     }
@@ -748,7 +748,7 @@ function App() {
   };
 
   const handleBudgetClick = () => {
-    if (!hasVerifiedContractScale) {
+    if (!hasExplicitConsistentContractScale) {
       notify(contractScaleIssueMessage);
       return;
     }
@@ -1042,14 +1042,14 @@ function App() {
                   <label><span>{dataMode === 'BINANCE' ? 'كمية العقود' : 'الكمية'} <small>{dataMode === 'BINANCE' ? 'حسب مواصفات Binance' : 'من الأصل'}</small></span><input type="number" min={dataMode === 'BINANCE' ? minimumQuantity : 0.01} step={dataMode === 'BINANCE' ? quantityStep : 0.01} max={dataMode === 'BINANCE' ? selectedQuote.maxQty : undefined} value={quantity} onChange={(event) => setQuantity(Math.max(0, Number(event.target.value)))} /></label>
                   <label><span>الرسوم التقديرية <small>{quoteAssetLabel ?? 'عملة غير محددة'}</small></span><input type="number" min="0" step="0.1" value={fees} onChange={(event) => setFees(Math.max(0, Number(event.target.value)))} /></label>
                 </div>
-                <div className="budget-row"><label htmlFor="risk-budget">حد الميزانية التجريبية</label><div><input id="risk-budget" type="number" min="0" step="10" value={riskBudget} onChange={(event) => setRiskBudget(Math.max(0, Number(event.target.value)))} /><span>{quoteAssetLabel ?? 'عملة غير محددة'}</span><button onClick={handleBudgetClick} title="احسب كمية لا تتجاوز الميزانية">احسب الكمية</button></div></div>
+                {hasExplicitConsistentContractScale && <div className="budget-row"><label htmlFor="risk-budget">حد الميزانية التجريبية</label><div><input id="risk-budget" type="number" min="0" step="10" value={riskBudget} onChange={(event) => setRiskBudget(Math.max(0, Number(event.target.value)))} /><span>{quoteAssetLabel ?? 'عملة غير محددة'}</span><button onClick={handleBudgetClick} title="احسب كمية لا تتجاوز الميزانية">احسب الكمية</button></div></div>}
                 <div className="risk-summary">
-                  <div><span>تكلفة القسط + الرسوم</span><strong>{hasVerifiedContractScale ? formatMoney(totalCost, 2, quoteAssetLabel ?? null) : 'غير متاح'}</strong></div>
-                  <div><span>نقطة التعادل عند الانتهاء</span><strong>{hasVerifiedContractScale ? formatMoney(breakEven, 0, quoteAssetLabel ?? null) : 'غير متاح'}</strong></div>
-                  <div className="risk-row"><span>أقصى خسارة للمشتري</span><strong className="loss-value">{hasVerifiedContractScale ? formatMoney(maxLoss, 2, quoteAssetLabel ?? null) : 'غير متاح'}</strong></div>
+                  <div><span>تكلفة القسط + الرسوم</span><strong>{hasExplicitConsistentContractScale ? formatMoney(totalCost, 2, quoteAssetLabel ?? null) : 'غير متاح'}</strong></div>
+                  <div><span>نقطة التعادل عند الانتهاء</span><strong>{hasExplicitConsistentContractScale ? formatMoney(breakEven, 0, quoteAssetLabel ?? null) : 'غير متاح'}</strong></div>
+                  <div className="risk-row"><span>أقصى خسارة للمشتري</span><strong className="loss-value">{hasExplicitConsistentContractScale ? formatMoney(maxLoss, 2, quoteAssetLabel ?? null) : 'غير متاح'}</strong></div>
                 </div>
-                <div className="analysis-footnote"><Info size={13} /><span>{contractScaleIssue ? `${contractScaleIssueMessage} ` : ''}{dataMode !== 'DEMO' && selectedQuote.estimatedFields?.length ? `حقول مقدّرة أو افتراضية في هذا العقد: ${formatEstimatedFields(selectedQuote.estimatedFields)}. ` : ''}الحساب لا يضيف تلقائياً رسوم المنصة أو أثر التنفيذ؛ أدخل الرسوم الفعلية وراجع وحدة العقد.</span></div>
-                <button className="button button-paper" onClick={savePaperTrade} disabled={!hasVerifiedContractScale}><Plus size={16} /> أضف إلى الدفتر التجريبي</button>
+                <div className="analysis-footnote"><Info size={13} /><span>{contractScaleIssue ? `${contractScaleIssueMessage} ` : ''}{dataMode !== 'DEMO' && selectedQuote.estimatedFields?.length ? `حقول مقدّرة أو افتراضية في هذا العقد: ${formatEstimatedFields(selectedQuote.estimatedFields)}. ` : ''}اتساق unit وcontractMultiplier إن توفرا هو تحقق داخلي من الحقول فقط، ولا يثبت مطابقة deliverables لمواصفات البورصة. الحساب لا يضيف تلقائياً رسوم المنصة أو أثر التنفيذ؛ أدخل الرسوم الفعلية وراجع وحدة العقد.</span></div>
+                <button className="button button-paper" onClick={savePaperTrade} disabled={!hasExplicitConsistentContractScale}><Plus size={16} /> أضف إلى الدفتر التجريبي</button>
                 <div className="no-signal"><ShieldAlert size={15} /><span>لا يصدر المختبر توصية شراء أو بيع.</span></div>
               </aside>
             </div>
@@ -1068,7 +1068,7 @@ function App() {
           <section className="section-anchor payoff-section" id="payoff">
             <div className="section-title-row"><div><span className="section-kicker">EXPIRY SCENARIOS</span><h2>ماذا لو انتهى العقد عند مستويات مختلفة؟</h2><p>ربح/خسارة الخيار المشترى عند الانتهاء · قبل إضافة أي رسوم غير مدخلة</p></div><div className="scenario-controls"><span className="scenario-key"><i className="profit-key" /> صافي P&amp;L</span><span className="scenario-key"><i className="zero-key" /> التعادل</span></div></div>
             <div className="panel payoff-panel">
-              {hasVerifiedContractScale
+              {hasExplicitConsistentContractScale
                 ? <DeferredPayoffChart scenarioSeries={scenarioSeries} selectedQuote={selectedQuote} />
                 : <div className="empty-state"><strong>حساب P&amp;L لكل عقد غير متاح</strong><span>{contractScaleIssueMessage}</span></div>}
               <div className="scenario-side">
