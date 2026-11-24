@@ -786,6 +786,7 @@ test('Binance optionMarkPrice updates mark, IV and index while retaining source 
     underlyingKind: 'SPOT' as const, exerciseStyle: 'EUROPEAN' as const, settlementStyle: 'CASH' as const,
     pricingStatus: 'ASSUMED' as const, pricingModel: 'BLACK_SCHOLES_CARRY' as const,
     sourceTimestamps: { markPrice: '2026-11-24T10:00:00.000Z' },
+    estimatedFields: ['iv', 'markPrice', 'riskFreeRate', 'delta'],
   };
   const event = {
     symbol: quote.symbol, eventTime: 1_800_000_001_000, markPrice: 5200, indexPrice: 101000,
@@ -801,6 +802,7 @@ test('Binance optionMarkPrice updates mark, IV and index while retaining source 
   assert.equal(updated.askIv, 0.62);
   assert.equal(updated.spot, 101000);
   assert.equal(updated.riskFreeRate, 0.03);
+  assert.deepEqual(updated.estimatedFields, ['delta']);
   assert.equal(updated.sourceTimestamps?.markPrice, new Date(event.eventTime).toISOString());
   assert.equal(updated.sourceTimestamps?.index, new Date(event.eventTime).toISOString());
   assert.equal(updated.unverifiedSourceGreeks?.delta, 0.99);
