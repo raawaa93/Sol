@@ -125,7 +125,7 @@ test('CSV preserves explicit asset class and venue for traditional listed option
   const csv = [
     'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,spot,unit,timestamp,assetClass,venue,quoteAsset,settlementAsset,contractMultiplier,exerciseStyle,settlementStyle',
     'SPY-261230-700-C,SPY,2026-12-30T08:00:00Z,700,CALL,5.1,5.3,5.2,22%,690,100,2026-11-24T02:00:00Z,EQUITY,CBOE,USD,USD,100,AMERICAN,PHYSICAL',
-  ].join('\\n');
+  ].join('\n');
   const result = parseOptionsCsv(csv);
 
   assert.equal(result.quotes.length, 1);
