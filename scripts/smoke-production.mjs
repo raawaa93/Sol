@@ -40,6 +40,8 @@ async function requestJson(endpoint, params = {}) {
   const startedAt = performance.now();
   const response = await fetch(url, {
     method: 'GET',
+    // GitHub-hosted runners are US-based. Force the nearest supported Supabase
+    // region to Syria so this production check does not test US egress by accident.
     headers: { Accept: 'application/json', Origin: pageOrigin },
     signal: timeoutSignal(),
   });
@@ -160,44 +162,118 @@ async function main() {
   });
   if (!activeSymbols.length) throw new Error('exchangeInfo returned no active option symbols.');
 
+  const contracts = Array.isArray(info.optionContracts) ? info.optionContracts : [];
   const contractForSymbol = (symbol) => {
     const underlying = String(symbol?.underlying ?? '').toUpperCase();
-    const contract = Array.isArray(info.optionContracts)
-      ? info.optionContracts.find((item) => String(item?.underlying ?? '').toUpperCase() === underlying)
-      : undefined;
-    return { underlying, baseAsset: String(contract?.baseAsset ?? symbol?.symbol?.split('-')[0] ?? '').toUpperCase() };
+    const contract = contracts.find((item) => String(item?.underlying ?? '').toUpperCase() === underlying);
+    return {
+      underlying,
+      baseAsset: String(contract?.baseAsset ?? symbol?.symbol?.split('-')[0] ?? '').toUpperCase(),
+      underlyingType: String(symbol?.underlyingType ?? contract?.underlyingType ?? 'UNKNOWN').toUpperCase(),
+    };
   };
-  const btcContract = Array.isArray(info.optionContracts)
-    ? info.optionContracts.find((item) => String(item?.baseAsset ?? '').toUpperCase() === 'BTC')
-    : undefined;
-  const chosenContract = btcContract ?? contractForSymbol(activeSymbols[0]);
-  const underlying = String(chosenContract?.underlying ?? activeSymbols[0]?.underlying ?? '').toUpperCase();
-  const baseAsset = String(chosenContract?.baseAsset ?? activeSymbols[0]?.symbol?.split('-')[0] ?? '').toUpperCase();
-  const candidateSymbols = activeSymbols.filter((item) => {
-    const details = contractForSymbol(item);
-    return (underlying && details.underlying === underlying) || (!underlying && details.baseAsset === baseAsset);
-  });
-  const usableSymbols = candidateSymbols.length ? candidateSymbols : activeSymbols;
-  const indexResult = underlying
-    ? await requestJson('index', { underlying })
-    : undefined;
-  if (indexResult && !ensureOk('index', indexResult.response, indexResult.payload)) return;
-  const indexPayload = indexResult?.payload;
-  const indexItem = Array.isArray(indexPayload) ? indexPayload[0] : indexPayload;
-  const spot = finitePositive(indexItem?.indexPrice);
-  if (indexResult && !spot) throw new Error('index response did not contain a positive finite indexPrice.');
 
-  const target = [...usableSymbols].sort((a, b) => {
-    const expiryA = Number(a.expiryDate);
-    const expiryB = Number(b.expiryDate);
-    const daysA = (expiryA - serverTime) / 86_400_000;
-    const daysB = (expiryB - serverTime) / 86_400_000;
+  // Exercise every public read-only market feed used by the app, not just the
+  // BTC index and depth endpoints. Mark/ticker are bulk feeds; index and open
+  // interest are sampled once for each distinct active underlying.
+  const [marksResult, tickersResult] = await Promise.all([
+    requestJson('mark'),
+    requestJson('ticker'),
+  ]);
+  if (!ensureOk('mark', marksResult.response, marksResult.payload)) return;
+  if (!ensureOk('ticker', tickersResult.response, tickersResult.payload)) return;
+  if (!Array.isArray(marksResult.payload) || !marksResult.payload.length) {
+    throw new Error('mark returned no option mark/IV records.');
+  }
+  if (!Array.isArray(tickersResult.payload) || !tickersResult.payload.length) {
+    throw new Error('ticker returned no option ticker records.');
+  }
+  const marks = marksResult.payload.filter((item) => typeof item?.symbol === 'string');
+  const tickers = tickersResult.payload.filter((item) => typeof item?.symbol === 'string');
+  if (!marks.length || !tickers.length) {
+    throw new Error('mark/ticker responses did not contain symbol-keyed records.');
+  }
+  const markSymbols = new Set(marks.map((item) => item.symbol));
+  const tickerSymbols = new Set(tickers.map((item) => item.symbol));
+
+  const assetGroups = new Map();
+  for (const symbol of activeSymbols) {
+    const details = contractForSymbol(symbol);
+    if (!details.underlying || !details.baseAsset) continue;
+    const current = assetGroups.get(details.underlying) ?? { ...details, symbols: [] };
+    current.symbols.push(symbol);
+    assetGroups.set(details.underlying, current);
+  }
+  if (!assetGroups.size) throw new Error('exchangeInfo did not identify any active option underlyings.');
+
+  const finiteTimestamp = (value) => finitePositive(value);
+  const chooseRepresentative = (symbols, spot) => [...symbols].sort((a, b) => {
+    const daysA = (Number(a.expiryDate) - serverTime) / 86_400_000;
+    const daysB = (Number(b.expiryDate) - serverTime) / 86_400_000;
     const expiryDistance = Math.abs(daysA - 30) - Math.abs(daysB - 30);
     if (Math.abs(expiryDistance) > 1e-9) return expiryDistance;
     if (spot) return Math.abs(Number(a.strikePrice) - spot) - Math.abs(Number(b.strikePrice) - spot);
     return Number(a.strikePrice) - Number(b.strikePrice);
-  }).find((item) => /^[A-Z0-9]{2,16}-\d{6}-\d+(?:\.\d+)?-[CP]$/.test(item.symbol));
-  if (!target) throw new Error('Could not select a valid active option symbol for the live depth check.');
+  })[0];
+
+  const groups = [...assetGroups.values()];
+  const indexAndOiResults = await mapWithConcurrency(groups, 3, async (group) => {
+    const indexResult = await requestJson('index', { underlying: group.underlying });
+    if (indexResult.response.status === 451) {
+      ensureOk(`index ${group.underlying}`, indexResult.response, indexResult.payload);
+      return { group, index: undefined, openInterestCount: 0, upstreamDenied: true };
+    }
+    if (!indexResult.response.ok) {
+      const detail = typeof indexResult.payload?.msg === 'string' ? indexResult.payload.msg : '';
+      return { group, index: undefined, openInterestCount: 0, issue: `index HTTP ${indexResult.response.status}${detail ? `: ${detail}` : ''}` };
+    }
+    const indexItem = Array.isArray(indexResult.payload) ? indexResult.payload[0] : indexResult.payload;
+    const spot = finitePositive(indexItem?.indexPrice);
+    if (!spot) {
+      return { group, index: undefined, openInterestCount: 0, issue: 'index response missing positive indexPrice' };
+    }
+
+    const representative = chooseRepresentative(group.symbols, spot);
+    const expiry = String(representative?.symbol ?? '').split('-')[1];
+    if (!representative || !/^\d{6}$/.test(expiry)) {
+      return { group, index: spot, openInterestCount: 0, issue: 'no valid active expiry' };
+    }
+    const oiResult = await requestJson('openInterest', {
+      underlyingAsset: group.baseAsset,
+      expiration: expiry,
+    });
+    if (oiResult.response.status === 451) {
+      ensureOk(`openInterest ${group.baseAsset} ${expiry}`, oiResult.response, oiResult.payload);
+      return { group, index: spot, openInterestCount: 0, upstreamDenied: true };
+    }
+    if (!oiResult.response.ok) {
+      const detail = typeof oiResult.payload?.msg === 'string' ? oiResult.payload.msg : '';
+      return { group, index: spot, representative, openInterestCount: 0, issue: `openInterest HTTP ${oiResult.response.status}${detail ? `: ${detail}` : ''}` };
+    }
+    const oiItems = Array.isArray(oiResult.payload)
+      ? oiResult.payload
+      : oiResult.payload && typeof oiResult.payload === 'object' ? [oiResult.payload] : null;
+    if (!oiItems) {
+      return { group, index: spot, representative, openInterestCount: 0, issue: 'openInterest response shape invalid' };
+    }
+    return { group, index: spot, representative, openInterestCount: oiItems.length };
+  });
+  if (indexAndOiResults.some((item) => item.upstreamDenied)) return;
+  const indexedAssets = indexAndOiResults.filter((item) => finitePositive(item.index));
+  if (!indexedAssets.length) {
+    throw new Error(`No active underlying returned a valid index price (${groups.length} checked).`);
+  }
+
+  const targetAsset = indexedAssets.find((item) => item.group.baseAsset === 'BTC') ?? indexedAssets[0];
+  const target = chooseRepresentative(targetAsset.group.symbols, targetAsset.index);
+  if (!target || !/^[A-Z0-9]{2,16}-\d{6}-\d+(?:\.\d+)?-[CP]$/.test(target.symbol)) {
+    throw new Error('Could not select a valid active option symbol for the live depth check.');
+  }
+  const targetHasMark = markSymbols.has(target.symbol);
+  const targetHasTicker = tickerSymbols.has(target.symbol);
+  if (!targetHasMark && !targetHasTicker) {
+    throw new Error(`Neither mark nor ticker returned the selected active symbol ${target.symbol}.`);
+  }
 
   const depthResult = await requestJson('depth', { symbol: target.symbol, limit: '20' });
   if (!ensureOk('depth', depthResult.response, depthResult.payload)) return;
@@ -213,14 +289,35 @@ async function main() {
     const line = `depth returned HTTP ${depthResult.response.status} for ${target.symbol}, but no positive visible bid/ask levels. This does not confirm usable liquidity.`;
     console.warn(line);
     annotate('warning', 'No visible order-book liquidity', line);
-    appendSummary(`### Live market-data smoke test\n\n⚠️ ${line}\n`);
+    appendSummary(`### Live market-data smoke test\\n\\n⚠️ ${line}\\n`);
     return;
   }
 
-  const line = `PASS — published app shell HTTP ${pageResponse.status} (${pageMs} ms); live exchangeInfo/index/depth proxy responses were valid; depth for ${target.symbol} returned ${bidCount} bids and ${askCount} asks (${depthResult.elapsedMs} ms). This is a point-in-time REST check, not streaming or an execution guarantee.`;
+  const oiRecords = indexAndOiResults.reduce((sum, item) => sum + item.openInterestCount, 0);
+  const testedAssets = indexedAssets.map((item) => `${item.group.baseAsset}/${item.group.underlyingType}`).join(', ');
+  const unavailableAssets = indexAndOiResults.filter((item) => item.issue)
+    .map((item) => `${item.group.baseAsset}: ${item.issue}`).join('; ');
+  const coverageNote = unavailableAssets ? ` Partial endpoint coverage: ${unavailableAssets}.` : '';
+  const line = `PASS — published app shell HTTP ${pageResponse.status} (${pageMs} ms); exchangeInfo active symbols ${activeSymbols.length}; mark records ${marks.length}; ticker records ${tickers.length}; index prices ${indexedAssets.length}/${groups.length} underlyings [${testedAssets}]; open-interest records ${oiRecords}; ${target.symbol} mark=${targetHasMark ? 'yes' : 'no'} ticker=${targetHasTicker ? 'yes' : 'no'}; depth ${bidCount} bids/${askCount} asks (${depthResult.elapsedMs} ms). Read-only point-in-time REST check; not streaming or an execution guarantee.${coverageNote}`;
   console.log(line);
-  annotate('notice', 'Live Binance market-data smoke', line);
-  appendSummary(`### Live market-data smoke test\n\n${line}\n`);
+  annotate('notice', 'Live Binance options market coverage', line);
+  appendSummary(`### Live Binance options market coverage\\n\\n${line}\\n`);
+}
+
+async function mapWithConcurrency(items, concurrency, mapper) {
+  const results = new Array(items.length);
+  let nextIndex = 0;
+  const workers = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+    while (true) {
+      const index = nextIndex;
+      nextIndex += 1;
+      if (index >= items.length) return;
+      results[index] = await mapper(items[index]);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
 }
 
 main().catch((error) => {
