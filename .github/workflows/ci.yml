@@ -42,7 +42,8 @@ jobs:
         run: node --check scripts/smoke-production.mjs
       - name: Test encrypted backup orchestration with mocks
         run: |
-          bash -n scripts/backup-supabase.sh scripts/test-backup-supabase.sh
+          bash -n scripts/backup-supabase.sh
+          bash -n scripts/test-backup-supabase.sh
           bash scripts/test-backup-supabase.sh
       - name: Build the app
         run: npm run build
