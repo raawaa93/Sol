@@ -247,10 +247,6 @@ export function parseBinanceOptionMarkPriceMessage(payload: unknown): BinanceOpt
     const eventTime = finiteNumber(data.E as string | number | undefined);
     if (eventTime === undefined || eventTime <= 0) return [];
     const markPrice = positiveNumber(data.mp as string | number | undefined);
-    const bestBid = positiveNumber(data.bo as string | number | undefined);
-    const bestAsk = positiveNumber(data.ao as string | number | undefined);
-    const bestBidQuantity = finiteNumber(data.bq as string | number | undefined);
-    const bestAskQuantity = finiteNumber(data.aq as string | number | undefined);
     const indexPrice = positiveNumber(data.i as string | number | undefined);
     const bidIv = positiveNumber(data.b as string | number | undefined);
     const askIv = positiveNumber(data.a as string | number | undefined);
@@ -262,16 +258,12 @@ export function parseBinanceOptionMarkPriceMessage(payload: unknown): BinanceOpt
       theta: finiteNumber(data.t as string | number | undefined),
       vega: finiteNumber(data.v as string | number | undefined),
     };
-    if ([markPrice, bestBid, bestAsk, indexPrice, bidIv, askIv, markIv, riskFreeRate, ...Object.values(sourceGreeks)]
+    if ([markPrice, indexPrice, bidIv, askIv, markIv, riskFreeRate, ...Object.values(sourceGreeks)]
       .every((value) => value === undefined)) return [];
     return [{
       symbol: data.s,
       eventTime,
       ...(markPrice !== undefined ? { markPrice } : {}),
-      ...(bestBid !== undefined ? { bestBid } : {}),
-      ...(bestAsk !== undefined ? { bestAsk } : {}),
-      ...(bestBidQuantity !== undefined && bestBidQuantity >= 0 ? { bestBidQuantity } : {}),
-      ...(bestAskQuantity !== undefined && bestAskQuantity >= 0 ? { bestAskQuantity } : {}),
       ...(indexPrice !== undefined ? { indexPrice } : {}),
       ...(bidIv !== undefined ? { bidIv } : {}),
       ...(askIv !== undefined ? { askIv } : {}),
