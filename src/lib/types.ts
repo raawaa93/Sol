@@ -19,7 +19,7 @@ export interface OptionFilter {
 }
 
 export interface UnverifiedSourceGreeks {
-  /** Raw exchange values kept for diagnostics only; units are not normalised or used in calculations. */
+  /** Raw source values kept for diagnostics only; units are not normalised or used in calculations. */
   delta?: number;
   gamma?: number;
   theta?: number;
