@@ -13,6 +13,8 @@ function quote(timestamp: string, overrides: Partial<OptionQuote> = {}): OptionQ
     underlyingKind: 'SPOT',
     exerciseStyle: 'EUROPEAN',
     settlementStyle: 'CASH',
+    quoteAsset: 'USDT',
+    settlementAsset: 'USDT',
     expiry: '2026-11-25T21:00:00.000Z',
     daysToExpiry: 1,
     strike: 4000,
