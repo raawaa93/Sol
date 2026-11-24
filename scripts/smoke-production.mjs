@@ -232,7 +232,7 @@ async function main() {
 
     const representative = chooseRepresentative(group.symbols, spot);
     const expiry = String(representative?.symbol ?? '').split('-')[1];
-    if (!representative || !/^\\d{6}$/.test(expiry)) {
+    if (!representative || !/^\d{6}$/.test(expiry)) {
       throw new Error(`No valid active expiry found for ${group.underlying}.`);
     }
     const oiResult = await requestJson('openInterest', {
@@ -255,7 +255,7 @@ async function main() {
 
   const targetAsset = indexedAssets.find((item) => item.group.baseAsset === 'BTC') ?? indexedAssets[0];
   const target = chooseRepresentative(targetAsset.group.symbols, targetAsset.index);
-  if (!target || !/^[A-Z0-9]{2,16}-\\d{6}-\\d+(?:\\.\\d+)?-[CP]$/.test(target.symbol)) {
+  if (!target || !/^[A-Z0-9]{2,16}-\d{6}-\d+(?:\.\d+)?-[CP]$/.test(target.symbol)) {
     throw new Error('Could not select a valid active option symbol for the live depth check.');
   }
   const targetHasMark = markSymbols.has(target.symbol);
