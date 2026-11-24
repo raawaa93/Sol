@@ -106,3 +106,17 @@ No HTTP 200 response was observed for version 6 in this log window. This is cons
 - Branch: `ops/supabase-production-audit-2026-11-24`
 - Changes: this audit document only.
 - No production database or runtime changes.
+
+
+## Latest deployment verification — 24 November 2026, 05:19 UTC
+
+The post-merge workflow run for main commit `3ab1e642701d2ce13b24671cab3694ac3aee3d0a` completed successfully:
+
+- CI run [45331623042](https://github.com/raawaa93/Sol/actions/runs/45331623042): unit/property tests, build, compressed bundle budget, and Playwright browser journeys all passed.
+- Pages run [45331623265](https://github.com/raawaa93/Sol/actions/runs/45331623265): build, deployment, published smoke test, production Lighthouse, summary, and report artifact upload all passed.
+- Project Context Guard run [45331623071](https://github.com/raawaa93/Sol/actions/runs/45331623071) passed.
+- Published app shell returned HTTP 200 in 83 ms.
+- Published Lighthouse median across three runs: Performance 99, Accessibility 100, Best Practices 100, SEO 100; FCP 784 ms, LCP 784 ms, TBT 98 ms, CLS 0.000; transfer size 104 KiB.
+- The published smoke test also confirmed the Binance proxy reached the upstream but `exchangeInfo` returned HTTP 451 with a regional/product restriction message. The app deployment and proxy transport are healthy; live Binance market data remains unavailable from this runtime.
+
+This deployment contains the workflow-only changes from PR #35; no application runtime or Supabase database code changed in that commit. These results supersede the earlier 801 ms LCP / 113 ms TBT measurement for this deployed build.
