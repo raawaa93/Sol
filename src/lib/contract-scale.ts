@@ -6,7 +6,7 @@ export type ContractScaleSourceMode = 'DEMO' | 'CSV' | 'BINANCE';
 
 type ScaleMetadata = Pick<OptionQuote,
   'unit' | 'contractMultiplier' | 'estimatedFields' | 'venue' | 'assetClass'
-  | 'underlyingKind' | 'exerciseStyle' | 'settlementStyle' | 'quoteAsset' | 'settlementAsset'
+  | 'underlyingKind' | 'exerciseStyle' | 'settlementStyle' | 'quoteAsset' | 'settlementAsset' | 'quoteAsset' | 'settlementAsset'
 >;
 
 function hasSupportedCryptoScaleProfile(quote: ScaleMetadata): boolean {
