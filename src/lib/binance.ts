@@ -252,8 +252,12 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
     const contractInfo = fixture.exchangeInfo.optionContracts?.find((contract) => contract.underlying?.toUpperCase() === indexKey);
     const contractType = (symbolInfo.contractType ?? contractInfo?.contractType ?? '').toUpperCase();
     const underlyingType = (symbolInfo.underlyingType ?? contractInfo?.underlyingType ?? '').toUpperCase();
+    const hasExplicitUnderlyingType = underlyingType.length > 0;
+    const hasExplicitContractType = contractType.length > 0;
     const isCommodity = underlyingType === 'COMMODITY';
-    const isCrypto = !isCommodity && (contractType === 'CRYPTO_OPTIONS' || underlyingType === 'CRYPTO' || ['BTC', 'ETH', 'BNB', 'XRP', 'DOGE', 'SOL'].includes(baseAsset));
+    const isCrypto = underlyingType === 'CRYPTO'
+      || (!hasExplicitUnderlyingType && contractType === 'CRYPTO_OPTIONS')
+      || (!hasExplicitUnderlyingType && !hasExplicitContractType && ['BTC', 'ETH', 'BNB', 'XRP', 'DOGE', 'SOL'].includes(baseAsset));
     const underlyingKind = isCommodity ? 'PERPETUAL' as const : isCrypto ? 'SPOT' as const : 'UNKNOWN' as const;
     const exerciseStyle = isCommodity || isCrypto ? 'EUROPEAN' as const : 'UNKNOWN' as const;
     const settlementStyle = isCommodity || isCrypto ? 'CASH' as const : 'UNKNOWN' as const;
@@ -319,7 +323,11 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       id: symbol,
       symbol,
       underlying: baseAsset,
-      assetClass: isCrypto ? 'CRYPTO' : underlyingType === 'EQUITY' ? 'EQUITY' : inferAssetClass(baseAsset),
+      assetClass: underlyingType === 'CRYPTO' || (!hasExplicitUnderlyingType && contractType === 'CRYPTO_OPTIONS') || (!hasExplicitUnderlyingType && !hasExplicitContractType && isCrypto)
+        ? 'CRYPTO'
+        : underlyingType === 'EQUITY' ? 'EQUITY'
+          : isCommodity ? inferAssetClass(baseAsset)
+            : hasExplicitUnderlyingType || hasExplicitContractType ? 'UNKNOWN' : inferAssetClass(baseAsset),
       venue: 'BINANCE',
       underlyingKind,
       exerciseStyle: exerciseStyle === 'UNKNOWN' ? undefined : exerciseStyle,
