@@ -46,7 +46,8 @@ import { downloadCsv, downloadCsvTemplate, MAX_CSV_FILE_BYTES, parseOptionsCsv }
 import type { CsvTimestampRange } from './lib/csv';
 import { buildScenarioSeries, getBreakeven, getExpectedMove, getMaxLoss, getMidPrice, getSpreadPct } from './lib/options';
 import { formatAssetPrice, formatOptionPrice, formatQuantity, formatSmallNumber, getOptionPricePrecision, getQuantityPrecision } from './lib/format';
-import type { OptionQuote, OptionSide, PaperTrade, Underlying } from './lib/types';
+import type { AssetClass, OptionQuote, OptionSide, PaperTrade, Underlying } from './lib/types';
+import { ASSET_CLASS_LABELS } from './lib/asset-class';
 
 const integerFormat = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 const UNDERLYING_NAMES: Record<string, string> = {
@@ -194,6 +195,8 @@ function EmptyState({ title, note }: { title: string; note: string }) {
 
 function App() {
   const [underlying, setUnderlying] = useState<Underlying>('BTC');
+  const [assetClassFilter, setAssetClassFilter] = useState<AssetClass | 'ALL'>('ALL');
+  const [venueFilter, setVenueFilter] = useState('ALL');
   const [quotes, setQuotes] = useState<OptionQuote[]>(DEMO_QUOTES);
   const [dataMode, setDataMode] = useState<'DEMO' | 'CSV' | 'BINANCE'>('DEMO');
   const [binanceSnapshot, setBinanceSnapshot] = useState<BinanceOptionsSnapshot | null>(null);
@@ -242,11 +245,16 @@ function App() {
     if (effectiveExpiry && effectiveExpiry !== selectedExpiry) setSelectedExpiry(effectiveExpiry);
   }, [effectiveExpiry, selectedExpiry]);
 
-  const assetQuotes = useMemo(() => quotes.filter((quote) => quote.underlying === underlying), [quotes, underlying]);
-  const assetChoices = useMemo(() => dataMode === 'DEMO'
-    ? Object.keys(DEMO_MARKETS)
-    : [...new Set(quotes.map((quote) => quote.underlying))].sort((a, b) => a.localeCompare(b)), [dataMode, quotes]);
-  const market = useMemo(() => dataMode === 'DEMO' ? DEMO_MARKETS[underlying] : getMarketSnapshotFromQuotes(quotes, underlying), [dataMode, quotes, underlying]);
+  const availableAssetClasses = useMemo(() => [...new Set(quotes.map((quote) => quote.assetClass ?? 'UNKNOWN'))]
+    .sort((a, b) => a.localeCompare(b)), [quotes]);
+  const classQuotes = useMemo(() => quotes.filter((quote) => assetClassFilter === 'ALL' || quote.assetClass === assetClassFilter), [assetClassFilter, quotes]);
+  const venueChoices = useMemo(() => [...new Set(classQuotes.map((quote) => quote.venue).filter((venue): venue is string => Boolean(venue)))]
+    .sort((a, b) => a.localeCompare(b)), [classQuotes]);
+  const scopedQuotes = useMemo(() => classQuotes.filter((quote) => venueFilter === 'ALL' || quote.venue === venueFilter), [classQuotes, venueFilter]);
+  const assetQuotes = useMemo(() => scopedQuotes.filter((quote) => quote.underlying === underlying), [scopedQuotes, underlying]);
+  const assetChoices = useMemo(() => [...new Set(scopedQuotes.map((quote) => quote.underlying))]
+    .sort((a, b) => a.localeCompare(b)), [scopedQuotes]);
+  const market = useMemo(() => dataMode === 'DEMO' ? DEMO_MARKETS[underlying] : getMarketSnapshotFromQuotes(scopedQuotes, underlying), [dataMode, scopedQuotes, underlying]);
   const filteredQuotes = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     return assetQuotes
@@ -256,14 +264,15 @@ function App() {
   }, [assetQuotes, effectiveExpiry, searchQuery, selectedType]);
 
   const selectedQuote = useMemo(() => {
-    const chosen = quotes.find((quote) => quote.id === selectedId);
+    const chosen = scopedQuotes.find((quote) => quote.id === selectedId);
     if (chosen && chosen.underlying === underlying && chosen.expiry === effectiveExpiry && chosen.type === selectedType) return chosen;
     return filteredQuotes[0]
       ?? assetQuotes.find((quote) => quote.expiry === effectiveExpiry && quote.type === selectedType)
       ?? assetQuotes[0]
+      ?? scopedQuotes[0]
       ?? quotes[0]
       ?? DEMO_QUOTES[0];
-  }, [assetQuotes, effectiveExpiry, filteredQuotes, quotes, selectedId, selectedType, underlying]);
+  }, [assetQuotes, effectiveExpiry, filteredQuotes, quotes, scopedQuotes, selectedId, selectedType, underlying]);
 
   useEffect(() => {
     if (dataMode !== 'BINANCE') {
@@ -454,6 +463,8 @@ function App() {
       setBinanceSnapshot(snapshot);
       setQuotes(snapshot.quotes);
       setDataMode('BINANCE');
+      setAssetClassFilter('ALL');
+      setVenueFilter('ALL');
       setImportedAt(null);
       setSourceTimeRange(null);
       setCsvWarnings([]);
@@ -491,10 +502,10 @@ function App() {
     target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const changeUnderlying = (next: Underlying) => {
-    if (dataMode !== 'DEMO' && !quotes.some((quote) => quote.underlying === next)) return;
+  const selectUnderlyingFromQuotes = (next: Underlying, sourceQuotes: OptionQuote[]) => {
+    const nextQuotes = sourceQuotes.filter((quote) => quote.underlying === next);
+    if (!nextQuotes.length) return;
     setUnderlying(next);
-    const nextQuotes = quotes.filter((quote) => quote.underlying === next);
     const calls = nextQuotes.filter((quote) => quote.type === 'CALL');
     const near30Calls = calls.filter((quote) => quote.daysToExpiry >= 20 && quote.daysToExpiry <= 40);
     const defaultQuote = [...(near30Calls.length ? near30Calls : calls)].sort((a, b) =>
@@ -508,6 +519,23 @@ function App() {
       if (dataMode === 'BINANCE') setQuantity(defaultQuote.minQty ?? getQuantityStep(defaultQuote));
     }
     setSearchQuery('');
+  };
+
+  const changeUnderlying = (next: Underlying) => selectUnderlyingFromQuotes(next, scopedQuotes);
+
+  const changeAssetClass = (next: AssetClass | 'ALL') => {
+    const nextQuotes = quotes.filter((quote) => next === 'ALL' || quote.assetClass === next);
+    const nextUnderlying = nextQuotes.some((quote) => quote.underlying === underlying) ? underlying : nextQuotes[0]?.underlying;
+    setAssetClassFilter(next);
+    setVenueFilter('ALL');
+    if (nextUnderlying) selectUnderlyingFromQuotes(nextUnderlying, nextQuotes);
+  };
+
+  const changeVenue = (next: string) => {
+    const nextQuotes = classQuotes.filter((quote) => next === 'ALL' || quote.venue === next);
+    const nextUnderlying = nextQuotes.some((quote) => quote.underlying === underlying) ? underlying : nextQuotes[0]?.underlying;
+    setVenueFilter(next);
+    if (nextUnderlying) selectUnderlyingFromQuotes(nextUnderlying, nextQuotes);
   };
 
   const handleCsvUpload = (file?: File) => {
@@ -531,6 +559,8 @@ function App() {
       }
       setQuotes(result.quotes);
       setDataMode('CSV');
+      setAssetClassFilter('ALL');
+      setVenueFilter('ALL');
       setImportedAt(new Date());
       setSourceTimeRange(result.sourceTimeRange ?? null);
       setCsvWarnings(result.warnings);
@@ -554,6 +584,8 @@ function App() {
     setBinanceAccessRestricted(false);
     setQuotes(DEMO_QUOTES);
     setDataMode('DEMO');
+    setAssetClassFilter('ALL');
+    setVenueFilter('ALL');
     setImportedAt(null);
     setSourceTimeRange(null);
     setCsvWarnings([]);
@@ -701,6 +733,14 @@ function App() {
               <p>حلّل العقد، اختبر السيناريو، وسجّل قرارك — من دون تنفيذ أوامر.</p>
             </div>
             <div className="heading-actions">
+              <label className="select-control asset-class-select"><span>فئة الأصل</span><select value={assetClassFilter} onChange={(event) => changeAssetClass(event.target.value as AssetClass | 'ALL')} aria-label="اختر فئة الأصل">
+                <option value="ALL">كل الفئات</option>
+                {availableAssetClasses.map((item) => <option key={item} value={item}>{ASSET_CLASS_LABELS[item]}</option>)}
+              </select><ChevronDown size={13} /></label>
+              {venueChoices.length > 1 && <label className="select-control venue-select"><span>المنصة</span><select value={venueFilter} onChange={(event) => changeVenue(event.target.value)} aria-label="اختر المنصة">
+                <option value="ALL">كل المنصات</option>
+                {venueChoices.map((item) => <option key={item} value={item}>{item}</option>)}
+              </select><ChevronDown size={13} /></label>}
               {dataMode === 'BINANCE' ? (
                 <label className="select-control asset-select"><span>الأصل</span><select value={underlying} onChange={(event) => changeUnderlying(event.target.value)} aria-label="اختر أصل Binance">
                   {assetChoices.map((item) => <option key={item} value={item}>{item} · {getUnderlyingName(item)}</option>)}

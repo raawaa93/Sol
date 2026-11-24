@@ -1,5 +1,6 @@
 import type { OptionFilter, OptionQuote, OptionSide, Underlying } from './types.ts';
 import { blackScholes, impliedVolatility } from './options.ts';
+import { inferAssetClass } from './asset-class.ts';
 
 const BINANCE_OPTIONS_API = 'https://eapi.binance.com';
 const REQUEST_TIMEOUT_MS = 12_000;
@@ -290,6 +291,8 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       id: symbol,
       symbol,
       underlying: baseAsset,
+      assetClass: inferAssetClass(baseAsset),
+      venue: 'BINANCE',
       expiry,
       daysToExpiry,
       strike,

@@ -1,5 +1,6 @@
 import type { AssetSnapshot, OptionQuote, Underlying } from './types';
 import { blackScholes } from './options.ts';
+import { inferAssetClass } from './asset-class.ts';
 
 /** Synthetic teaching values only; none of these spot prices or market statistics are live. */
 export const DEMO_MARKETS: Record<Underlying, AssetSnapshot> = {
@@ -182,6 +183,7 @@ export function createDemoQuotes(markets = DEMO_MARKETS): OptionQuote[] {
             id: symbol,
             symbol,
             underlying,
+            assetClass: inferAssetClass(underlying),
             expiry,
             daysToExpiry: days,
             strike,
