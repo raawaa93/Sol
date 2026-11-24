@@ -72,9 +72,7 @@ function getUnderlyingName(underlying: string): string {
 }
 
 function formatMoney(value: number, digits = 2, currency: string | null = 'USDT'): string {
-  if (!Number.isFinite(value)) return '—';
-  const formatted = new Intl.NumberFormat('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value);
-  return formatted + (currency ? ' ' + currency : '');
+  return formatNumber(value, digits) + (currency ? ' ' + currency : '');
 }
 
 function formatCompact(value: number, currency: string | null): string {
