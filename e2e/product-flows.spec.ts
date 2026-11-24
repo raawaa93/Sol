@@ -298,6 +298,7 @@ test('mismatched contract multiplier keeps quotes visible but blocks per-contrac
   await expect(page.locator('.source-card')).toContainText('ملف محلي مستورد');
   await page.getByRole('combobox', { name: 'اختر فئة الأصل' }).selectOption('ENERGY');
   await expect(page.locator('#scanner')).toContainText('CL-UNVERIFIED-70-C');
+  await expect(page.locator('#opportunities')).not.toContainText('EV محايد/عقد');
   await expect(page.locator('#trade-lab')).toContainText('غير متاح');
   await expect(page.locator('#trade-lab .budget-row')).toBeHidden();
   await expect(page.locator('#trade-lab')).toContainText('لا يثبت مطابقة deliverables لمواصفات البورصة');
@@ -324,6 +325,7 @@ test('CSV cannot spoof a Demo venue label to unlock per-contract P&L', async ({ 
   await expect(page.locator('#trade-lab')).toContainText('غير متاح');
   await expect(page.locator('#trade-lab .budget-row')).toBeHidden();
   await expect(page.locator('#trade-lab')).toContainText('لم يتم التحقق من نموذج مقياس هذا السوق');
+  await expect(page.locator('#opportunities')).not.toContainText('EV محايد/عقد');
   await expect(page.locator('#trade-lab').getByRole('button', { name: 'أضف إلى الدفتر التجريبي' })).toBeDisabled();
 });
 
