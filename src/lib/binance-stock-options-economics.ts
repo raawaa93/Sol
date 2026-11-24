@@ -68,7 +68,7 @@ export function mapBinanceStockOptionEconomics(
       priceUnit: 'PER_UNDERLYING_UNIT',
     },
     exercise: {
-      style: 'AMERICAN',
+      style: 'UNKNOWN',
       settlement: 'PHYSICAL',
       settlementCurrency: 'USD',
       aggregateExerciseCash: {
