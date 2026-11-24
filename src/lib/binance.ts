@@ -249,8 +249,9 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
     const observedRiskFreeRate = finiteNumber(mark?.riskFreeInterest);
     const riskFreeRate = observedRiskFreeRate ?? 0;
     const referencePrice = twoSidedMid ?? observedMark ?? lastPrice ?? oneSidedQuote;
-    const contractType = (symbolInfo.contractType ?? '').toUpperCase();
-    const underlyingType = (symbolInfo.underlyingType ?? '').toUpperCase();
+    const contractInfo = fixture.exchangeInfo.optionContracts?.find((contract) => contract.underlying?.toUpperCase() === indexKey);
+    const contractType = (symbolInfo.contractType ?? contractInfo?.contractType ?? '').toUpperCase();
+    const underlyingType = (symbolInfo.underlyingType ?? contractInfo?.underlyingType ?? '').toUpperCase();
     const isCommodity = contractType === 'TRADFI_OPTIONS' || underlyingType === 'COMMODITY';
     const isCrypto = !isCommodity && (underlyingType === 'CRYPTO' || ['BTC', 'ETH', 'BNB', 'XRP', 'DOGE', 'SOL'].includes(baseAsset));
     const underlyingKind = isCommodity ? 'PERPETUAL' as const : isCrypto ? 'SPOT' as const : 'UNKNOWN' as const;
@@ -322,8 +323,8 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       underlyingKind,
       exerciseStyle: exerciseStyle === 'UNKNOWN' ? undefined : exerciseStyle,
       settlementStyle: settlementStyle === 'UNKNOWN' ? undefined : settlementStyle,
-      quoteAsset: symbolInfo.quoteAsset ?? fixture.exchangeInfo.optionContracts?.find((contract) => contract.underlying?.toUpperCase() === indexKey)?.quoteAsset,
-      settlementAsset: fixture.exchangeInfo.optionContracts?.find((contract) => contract.underlying?.toUpperCase() === indexKey)?.settleAsset,
+      quoteAsset: symbolInfo.quoteAsset ?? contractInfo?.quoteAsset,
+      settlementAsset: contractInfo?.settleAsset,
       contractMultiplier: positiveNumber(symbolInfo.unit) ?? 1,
       carryYield,
       riskFreeRate,
