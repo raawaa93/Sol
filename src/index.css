@@ -229,7 +229,7 @@ h1, h2, h3, p { margin: 0; }
 .chain-table-wrap { overflow: auto; max-height: 420px; scrollbar-color: #354340 transparent; scrollbar-width: thin; }
 .chain-table, .journal-table { border-collapse: collapse; width: 100%; font-family: Inter, "Segoe UI", Tahoma, sans-serif; }
 .chain-table { min-width: 680px; }
-.chain-table th { position: sticky; top: 0; z-index: 2; padding: 10px 10px; border-bottom: 1px solid #242e31; color: #73817f; background: #11181b; text-align: right; font-size: 8px; font-weight: 600; white-space: nowrap; }
+.chain-table th { position: sticky; top: 0; z-index: 2; padding: 10px 10px; border-bottom: 1px solid #242e31; color: #85938f; background: #11181b; text-align: right; font-size: 8px; font-weight: 600; white-space: nowrap; }
 .chain-table th:first-child { padding-right: 15px; }
 .chain-table td { padding: 9px 10px; border-bottom: 1px solid rgba(36, 46, 49, .66); color: #a8b3ad; font-size: 9px; direction: ltr; text-align: right; white-space: nowrap; }
 .chain-table td:first-child { padding-right: 15px; text-align: right; direction: rtl; }
