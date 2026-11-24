@@ -266,8 +266,14 @@ export function applyBinanceOptionMarkPrice(quote: OptionQuote, event: BinanceOp
   const spot = event.indexPrice ?? quote.spot;
   const rate = event.riskFreeRate ?? quote.riskFreeRate ?? 0;
   const sourceHasGreeks = Object.values(event.sourceGreeks).some((value) => value !== undefined);
+  const observedFields = [
+    ...(event.markPrice !== undefined ? ['markPrice'] : []),
+    ...(event.markIv !== undefined ? ['iv'] : []),
+    ...(event.riskFreeRate !== undefined ? ['riskFreeRate'] : []),
+  ];
   const next: OptionQuote = {
     ...quote,
+    ...(quote.estimatedFields ? { estimatedFields: quote.estimatedFields.filter((field) => !observedFields.includes(field)) } : {}),
     ...(event.markPrice !== undefined ? { markPrice: event.markPrice, priceSource: 'MARK' as const } : {}),
     ...(event.markIv !== undefined ? { iv: event.markIv, ivStatus: 'OBSERVED' as const } : {}),
     ...(event.bidIv !== undefined ? { bidIv: event.bidIv } : {}),
