@@ -215,14 +215,9 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
     const contractMultiplier = parsePositiveNumber(readField(row, ['contractMultiplier', 'multiplierValue', 'multiplier']), delimiter === ';');
     const inputUnit = parsePositiveNumber(readField(row, ['unit', 'contractunit']), delimiter === ';');
     if (contractMultiplier !== undefined && inputUnit === undefined) {
-      counts.invalidRows += 1;
-      addRowWarning(`تم تجاهل الصف ${sourceRowNumber}: لا يمكن استخدام contractMultiplier بديلاً عن unit؛ أدخل وحدة الأصل لكل عقد صراحةً.`);
-      return;
-    }
-    if (contractMultiplier !== undefined && inputUnit !== undefined && Math.abs(contractMultiplier - inputUnit) > Math.max(1e-9, inputUnit * 1e-9)) {
-      counts.invalidRows += 1;
-      addRowWarning(`تم تجاهل الصف ${sourceRowNumber}: contractMultiplier لا يساوي unit؛ العقود ذات التسليم/المضاعف المعدّل غير مدعومة حالياً.`);
-      return;
+      addRowWarning(`الصف ${sourceRowNumber}: contractMultiplier ليس بديلاً عن unit؛ استُخدمت قيمة unit الافتراضية 1 والمعلّمة كتقديرية.`);
+    } else if (contractMultiplier !== undefined && inputUnit !== undefined && Math.abs(contractMultiplier - inputUnit) > Math.max(1e-9, inputUnit * 1e-9)) {
+      addRowWarning(`الصف ${sourceRowNumber}: contractMultiplier يختلف عن unit؛ تُحفظ القيمتان منفصلتين، لكن حسابات العقد الحالية تستخدم unit فقط ولا تمثل deliverables المعدّلة.`);
     }
     const expiryTimezone = readField(row, ['expiryTimezone', 'timezone'])?.trim();
     const typeText = (readField(row, ['type', 'optiontype', 'side']) ?? parsedSymbol.type ?? '').toUpperCase();
