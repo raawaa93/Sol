@@ -1,6 +1,6 @@
 export type OptionSide = 'CALL' | 'PUT';
 export type AssetClass = 'CRYPTO' | 'EQUITY' | 'INDEX' | 'RATES' | 'FX' | 'ENERGY' | 'METALS' | 'AGRICULTURE' | 'OTHER' | 'UNKNOWN';
-export type UnderlyingKind = 'SPOT' | 'FUTURE' | 'INDEX' | 'FX_SPOT' | 'UNKNOWN';
+export type UnderlyingKind = 'SPOT' | 'FUTURE' | 'PERPETUAL' | 'INDEX' | 'FX_SPOT' | 'UNKNOWN';
 export type ExerciseStyle = 'EUROPEAN' | 'AMERICAN' | 'BERMUDAN' | 'UNKNOWN';
 export type SettlementStyle = 'CASH' | 'PHYSICAL' | 'UNKNOWN';
 export type Underlying = string;
