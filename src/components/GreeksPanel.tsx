@@ -119,7 +119,7 @@ export default function GreeksPanel({ quote, quantity, dataMode }: GreeksPanelPr
               </div>
               <div className="greeks-mobile-values">
                 <div><small>القيمة لكل عقد</small><strong dir="ltr">{modelAvailable ? formatSmallNumber(row.value) : '—'}</strong></div>
-                <div><small>حساسية الكمية الحالية</small><strong dir="ltr">{modelAvailable ? (row.amount ? formatSmallAmount(row.positionValue, quoteCurrency ?? null) : formatSmallNumber(row.positionValue)) : '—'}</strong></div>
+                <div><small>حساسية الكمية الحالية</small><strong dir="ltr">{modelAvailable && hasVerifiedContractScale ? (row.amount ? formatSmallAmount(row.positionValue, quoteCurrency ?? null) : formatSmallNumber(row.positionValue)) : '—'}</strong></div>
               </div>
               <p>{row.meaning}</p>
               <small className="greeks-mobile-unit">{row.positionUnit}</small>
