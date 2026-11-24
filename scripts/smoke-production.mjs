@@ -60,7 +60,8 @@ async function requestJson(endpoint, params = {}) {
 
 function recordUpstreamDenial(endpoint, response, payload) {
   const detail = typeof payload?.msg === 'string' ? payload.msg : 'Binance rejected the server-side market-data request.';
-  const line = `⚠️ ${endpoint}: Binance returned HTTP ${response.status} to the current Supabase proxy egress path. This tests only this server-side request; it does not test a user's IP or account eligibility. Live data is not verified. ${detail}`;
+  const edgeRegion = response.headers.get('x-sb-edge-region') ?? 'unknown';
+  const line = `⚠️ ${endpoint}: Binance returned HTTP ${response.status} from Supabase Edge region ${edgeRegion}. This tests only this server-side request and region; it does not test a user's IP or account eligibility. Live data is not verified. ${detail}`;
   console.warn(line);
   annotate('warning', 'Binance upstream request denied', line);
   appendSummary(`### Live market-data smoke test\n\n${line}\n`);

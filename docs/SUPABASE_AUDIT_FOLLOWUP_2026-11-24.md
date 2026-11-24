@@ -320,3 +320,14 @@ No migration history rows were deleted or rewritten during this revalidation. Th
 ### Backup and public-repository boundary
 
 The GitHub repository is public. Never commit database dumps, Auth data, rate-limit rows, or unencrypted backup artifacts to it. Supabase Free has no automatic daily backups; the supported no-cost route is a manual CLI logical dump using a database connection string and Docker. The required database password is not available through the connected tools, so no dump or restore test has been completed. See the new recovery runbook for exact scope, exclusions, and the one-time credential boundary.
+
+
+## Regional Binance egress recheck — 24 November 2026, 07:57 UTC
+
+The published-site smoke test after PR #84 received HTTP 451 for `exchangeInfo`, but the request was made by a GitHub Actions runner in San Antonio, Texas (US), with user-agent `node`. Supabase logs identify the Edge Function execution region as `us-east-2` for that request.
+
+A separate 8-second window at 07:00:20–07:00:28 UTC contains 50 Edge Function invocations classified by Cloudflare as client country `SY`, client region `Damascus Governorate`, with an iPhone Chrome user-agent. All 50 returned HTTP 200, covering `exchangeInfo`, `mark`, `ticker`, `index`, `openInterest`, and `depth`. A matching runtime event for the Syrian-classified `exchangeInfo` request records execution region `eu-west-2`.
+
+Supabase documents that Edge Functions execute in the region closest to the invoking user. The app does not set `x-region` or `forceFunctionRegion`; automatic regional routing remains enabled. The evidence is therefore consistent with region-specific Binance egress policy: the observed Damascus-to-`eu-west-2` route succeeded while the US CI-to-`us-east-2` route was denied. It does **not** establish a global Binance outage, nor does it prove account eligibility or legal permission. Do not pin all users to an EU region to suppress the US 451; keep automatic regional routing and test each actual user path separately.
+
+The production smoke script now includes the returned `x-sb-edge-region` in any upstream 451 warning so future CI reports show which regional egress path was tested.
