@@ -138,7 +138,11 @@ Repeat the repair command only for the 19 explicitly listed legacy versions. In 
 
 This repair has **not** been run. The history rows are intentionally retained until the dump and restore path are proven.
 
-## 8. Mobile-only setup instructions\n\nFor iPhone and Android tablet users without a local computer, follow [the mobile-first setup guide](MOBILE_BACKUP_SETUP_2026-11-24.md). It uses GitHub and Supabase browser pages and, only if free Codespaces quota is available, a temporary browser terminal to generate the age key. Do not enable paid Codespaces usage or expose the private identity.\n\n## 9. Remaining blockers
+## 8. Mobile-only setup instructions
+
+For iPhone and Android tablet users without a local computer, follow [the mobile-first setup guide](MOBILE_BACKUP_SETUP_2026-11-24.md). It uses GitHub and Supabase browser pages and, only if free Codespaces quota is available, a temporary browser terminal to generate the age key. Do not enable paid Codespaces usage or expose the private identity.
+
+## 9. Remaining blockers
 
 - [ ] Repository owner configures `SUPABASE_DB_URL` as an Actions secret and `AGE_RECIPIENT` as an Actions variable; neither is visible/writable through the connected GitHub tools.
 - [ ] Generate an age key pair offline and keep the private identity outside GitHub.
