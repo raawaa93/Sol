@@ -960,7 +960,7 @@ function App() {
                       })}
                     </tbody>
                   </table>
-                  <div className="chain-mobile-list" role="list" aria-label="عقود الخيارات">
+                  <div className="chain-mobile-list" role="group" aria-label="عقود الخيارات">
                     {filteredQuotes.map((quote) => {
                       const spread = getSpreadPct(quote);
                       const isSelected = quote.id === selectedQuote.id;
@@ -968,7 +968,6 @@ function App() {
                       const moneyness = ((quote.strike / quoteReferencePrice) - 1) * 100;
                       return <button
                         type="button"
-                        role="listitem"
                         key={quote.id}
                         className={`chain-mobile-card ${isSelected ? 'selected' : ''}`}
                         aria-label={`اختيار العقد ${quote.symbol}`}
