@@ -17,7 +17,7 @@
 
 - [x] Add ContractEconomics, PremiumScale, ExerciseTerms, DeliverableComponent and provenance types.
 - [x] Add strict validators for positive scales, currencies, delivery component completeness, aggregate exercise cash and source provenance.
-- [ ] Add round-trip serialization tests for CSV v2 fields.
+- [x] Add round-trip serialization tests for CSV v2 fields.
 - [x] Keep legacy fields read-only/observed-only unless a source adapter maps them.
 
 **Phase 1 verification:** PR #119 merged. `adapterReady` means structurally complete and trusted enough to pass to a provider/model adapter; it does not imply that any pricing or Greek model supports the instrument. No runtime calculations or provider adapters were enabled in Phase 1.
@@ -48,9 +48,9 @@
 ## Phase 5 — UI, CSV and migration
 
 - [ ] Show premium multiplier, deliverables, aggregate exercise cash, quote/settlement currencies and provenance in contract detail.
-- [ ] Add CSV v2 columns for premium scale, deliverable components and exercise cash.
-- [ ] Preserve older CSV rows for observation; no silent backfill.
-- [ ] Add unsupported-state explanations and export/import round-trip tests.
+- [x] Add CSV v2 columns for premium scale, deliverable components and exercise cash.
+- [x] Preserve older CSV rows for observation; no silent backfill.
+- [x] Add unsupported-state explanations and export/import round-trip tests.
 
 ## Verification gates
 
@@ -95,3 +95,16 @@ Verification on commit `171c0b762eb79ce5d0592060a7f66f03a03278d9`:
 - The accessibility-tree defect found in the previous published report was fixed; the new published report confirms the agentic accessibility-tree audit passes.
 
 No existing P&L, Greeks, opportunity EV, replay, CSV import/export or production calculation paths have been switched to these primitives yet. That remains Phase 4/5 work; no claim of full analytics integration is made.
+
+
+### CSV v2 implementation — merged 24 November 2026
+
+PR #124 merged as `037d776cb1c30808bffa12b024e2e03ddb7b886e`.
+
+- Added a versioned CSV v2 codec for premium multiplier/currency/price unit, exercise style and settlement, aggregate exercise cash, deliverable components, and cash-settlement formula.
+- Extended the downloadable options CSV template and parser.
+- JSON deliverables are preserved as quoted CSV cells and round-trip tested.
+- Imported economics are always marked `USER_ASSERTED`; any claimed provider status/provider/source/timestamp is retained only as raw audit data. CSV content cannot promote itself to `PROVIDER_VERIFIED` or enable calculations.
+- Legacy CSV rows remain accepted and are not silently backfilled with canonical terms.
+
+Verification on PR head `0be47bc03b423d5d4f82894c86d3c7416f6ea2a6`: CI passed (unit/property tests, mocked backup encryption/orchestration, production build, bundle budgets, Playwright journeys); Project Context Guard passed; Lighthouse completed successfully. No production pricing or trading path was enabled by this change.
