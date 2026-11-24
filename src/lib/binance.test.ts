@@ -824,6 +824,13 @@ test('Binance optionMarkPrice updates mark, IV and index while retaining source 
   assert.equal(fallback.askQuantity, 2.5);
   assert.equal(fallback.bidAskSource, 'OPTION_MARK_PRICE');
 
+  const partialQuote = { ...fallbackQuote, bid: 5050 };
+  const partial = applyBinanceOptionMarkPrice(partialQuote, event);
+  assert.equal(partial.bid, 5050, 'valid existing bid is preserved');
+  assert.equal(partial.ask, 5300, 'only the missing ask is filled');
+  assert.equal(partial.bidQuantity, undefined);
+  assert.equal(partial.askQuantity, 2.5);
+
   const liveBookQuote = {
     ...fallbackQuote,
     sourceTimestamps: { bookTicker: '2026-11-24T10:00:00.000Z' },
