@@ -309,7 +309,9 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
       : legacyModel ? 'BLACK_SCHOLES_CARRY' as const : undefined;
     const pricingReason = modelResult.status === 'SUPPORTED' ? undefined
       : legacyModel ? 'Legacy CSV lacks explicit contract mechanics; Black–Scholes with the stated/default rate and zero carry is an assumption only.'
-        : modelResult.reason;
+        : underlyingKind === 'PERPETUAL' ? 'Perpetual underlyings are not supported by a validated pricing model.'
+          : exerciseStyle === 'AMERICAN' || exerciseStyle === 'BERMUDAN' ? 'American/Bermudan exercise is not supported by the current European analytical models.'
+            : modelResult.reason;
 
     const hasObservedTwoSidedQuote = bid > 0 && ask > 0;
     const markPrice = observedMark || (hasObservedTwoSidedQuote ? (bid + ask) / 2 : observedPrice || modelGreeks?.price || 0);
@@ -329,7 +331,7 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
     const thetaValue = parseNumber(readField(row, ['theta', 'thetaperday']), delimiter === ';');
     const vegaValue = parseNumber(readField(row, ['vega', 'vegaperpoint']), delimiter === ';');
     const rhoValue = parseNumber(readField(row, ['rho', 'rhoperpoint']), delimiter === ';');
-    if (!modelGreeks && (deltaValue === undefined || gammaValue === undefined || thetaValue === undefined || vegaValue === undefined || rhoValue === undefined)) {
+    if (deltaValue === undefined || gammaValue === undefined || thetaValue === undefined || vegaValue === undefined || rhoValue === undefined) {
       counts.modeledGreeks += 1;
       if (deltaValue === undefined) estimatedFields.push('delta');
       if (gammaValue === undefined) estimatedFields.push('gamma');
@@ -393,11 +395,11 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
       markPrice,
       priceSource,
       iv: solvedIv,
-      delta: modelGreeks?.delta ?? deltaValue ?? 0,
-      gamma: modelGreeks?.gamma ?? gammaValue ?? 0,
-      theta: modelGreeks?.thetaPerDay ?? thetaValue ?? 0,
-      vega: modelGreeks?.vegaPerVolPoint ?? vegaValue ?? 0,
-      rho: modelGreeks?.rhoPerRatePoint ?? rhoValue ?? 0,
+      delta: pricingStatus === 'SUPPORTED' ? modelGreeks?.delta ?? deltaValue ?? 0 : deltaValue ?? modelGreeks?.delta ?? 0,
+      gamma: pricingStatus === 'SUPPORTED' ? modelGreeks?.gamma ?? gammaValue ?? 0 : gammaValue ?? modelGreeks?.gamma ?? 0,
+      theta: pricingStatus === 'SUPPORTED' ? modelGreeks?.thetaPerDay ?? thetaValue ?? 0 : thetaValue ?? modelGreeks?.thetaPerDay ?? 0,
+      vega: pricingStatus === 'SUPPORTED' ? modelGreeks?.vegaPerVolPoint ?? vegaValue ?? 0 : vegaValue ?? modelGreeks?.vegaPerVolPoint ?? 0,
+      rho: pricingStatus === 'SUPPORTED' ? modelGreeks?.rhoPerRatePoint ?? rhoValue ?? 0 : rhoValue ?? modelGreeks?.rhoPerRatePoint ?? 0,
       unverifiedSourceGreeks: [deltaValue, gammaValue, thetaValue, vegaValue].some((value) => value !== undefined)
         ? { delta: deltaValue, gamma: gammaValue, theta: thetaValue, vega: vegaValue }
         : undefined,
