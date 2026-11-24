@@ -3,6 +3,7 @@ import { ArrowUpLeft, Info, ShieldAlert } from 'lucide-react';
 import { getComparableDeltaSkew, getIvRvSpread, getReviewCandidates, getTermStructureContext } from '../lib/analysis';
 import { getRiskNeutralExpiryMetrics, getSpreadPct, getUnderlyingReferencePrice } from '../lib/options';
 import { isQuoteFieldEstimated } from '../lib/quote-quality';
+import { getContractScaleIssue } from '../lib/contract-scale';
 import { formatAssetPrice, formatSmallAmount, formatSmallNumber, getQuoteCurrency } from '../lib/format';
 import type { AssetSnapshot, OptionQuote, Underlying } from '../lib/types';
 
@@ -125,6 +126,7 @@ export default function OpportunityReview({ quotes, market, underlying, dataMode
             const spread = getSpreadPct(quote);
             const spreadClass = getSpreadClass(spread);
             const modelInputsVerified = dataMode !== 'DEMO'
+              && getContractScaleIssue(quote, dataMode) === undefined
               && quote.pricingStatus === 'SUPPORTED'
               && quote.exerciseStyle === 'EUROPEAN'
               && quote.bid > 0 && quote.ask > 0 && quote.ask >= quote.bid
