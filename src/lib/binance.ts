@@ -347,19 +347,18 @@ export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptio
     },
   };
   if (modelUpdate?.status === 'SUPPORTED') {
-    const { greeks } = modelUpdate;
-    Object.assign(updated, {
-      delta: greeks.delta, gamma: greeks.gamma, theta: greeks.thetaPerDay,
-      vega: greeks.vegaPerVolPoint, rho: greeks.rhoPerRatePoint,
-      pricingModel: modelUpdate.model,
-    });
+    const g = modelUpdate.greeks;
+    updated.delta = g.delta;
+    updated.gamma = g.gamma;
+    updated.theta = g.thetaPerDay;
+    updated.vega = g.vegaPerVolPoint;
+    updated.rho = g.rhoPerRatePoint;
+    updated.pricingModel = modelUpdate.model;
   } else if (modelUpdate?.status === 'UNSUPPORTED') {
-    Object.assign(updated, {
-      delta: 0, gamma: 0, theta: 0, vega: 0, rho: 0,
-      pricingStatus: 'OBSERVED_ONLY' as const,
-      pricingModel: undefined,
-      pricingReason: modelUpdate.reason,
-    });
+    updated.delta = updated.gamma = updated.theta = updated.vega = updated.rho = 0;
+    updated.pricingStatus = 'OBSERVED_ONLY';
+    updated.pricingModel = undefined;
+    updated.pricingReason = modelUpdate.reason;
   }
   return updated;
 }
