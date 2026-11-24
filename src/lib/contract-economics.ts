@@ -4,6 +4,7 @@ export type ContractEconomicsIssueCode =
   | 'INVALID_PREMIUM_MULTIPLIER'
   | 'INVALID_PREMIUM_CURRENCY'
   | 'INVALID_PREMIUM_PRICE_UNIT'
+  | 'INVALID_PREMIUM_SCALE_COMBINATION'
   | 'INVALID_EXERCISE_STYLE'
   | 'INVALID_SETTLEMENT_STYLE'
   | 'INVALID_SETTLEMENT_CURRENCY'
@@ -27,7 +28,7 @@ export type ContractEconomicsUnsupportedReason =
 
 export interface ContractEconomicsValidation {
   valid: boolean;
-  supported: boolean;
+  adapterReady: boolean;
   issues: ContractEconomicsIssueCode[];
   unsupportedReasons: ContractEconomicsUnsupportedReason[];
 }
@@ -68,8 +69,9 @@ function validAggregateExerciseCash(value: ContractEconomics['exercise']['aggreg
 /**
  * Validates canonical contract terms without inferring missing values.
  * valid means the supplied structure is internally well-formed.
- * supported is stricter: unknown/user-asserted terms and unconverted
- * cross-currency totals are not eligible for derived contract analytics.
+ * adapterReady means terms and provenance are complete enough to be handed
+ * to a market-specific adapter. It does NOT mean any pricing/Greek adapter
+ * supports this contract; that capability must be checked separately.
  */
 export function validateContractEconomics(economics: ContractEconomics): ContractEconomicsValidation {
   const issues: ContractEconomicsIssueCode[] = [];
@@ -79,6 +81,10 @@ export function validateContractEconomics(economics: ContractEconomics): Contrac
   if (!isCurrency(economics?.premium?.quoteCurrency)) issues.push('INVALID_PREMIUM_CURRENCY');
   if (!['PER_UNDERLYING_UNIT', 'PER_CONTRACT'].includes(economics?.premium?.priceUnit)) {
     issues.push('INVALID_PREMIUM_PRICE_UNIT');
+  }
+  if (economics?.premium?.priceUnit === 'PER_CONTRACT'
+    && economics.premium.multiplier !== 1) {
+    issues.push('INVALID_PREMIUM_SCALE_COMBINATION');
   }
 
   const exercise = economics?.exercise;
@@ -181,7 +187,7 @@ export function validateContractEconomics(economics: ContractEconomics): Contrac
   const uniqueUnsupported = [...new Set(unsupportedReasons)];
   return {
     valid: uniqueIssues.length === 0,
-    supported: uniqueIssues.length === 0 && uniqueUnsupported.length === 0,
+    adapterReady: uniqueIssues.length === 0 && uniqueUnsupported.length === 0,
     issues: uniqueIssues,
     unsupportedReasons: uniqueUnsupported,
   };
