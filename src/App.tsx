@@ -37,7 +37,7 @@ import OpportunityReview from './components/OpportunityReview';
 import HistoricalReplayPanel from './components/HistoricalReplayPanel';
 import MarketDepthPanel from './components/MarketDepthPanel';
 import { DEMO_MARKETS, DEMO_QUOTES, getExpiryChoices } from './lib/demo';
-import { applyBinanceBookTicker, applyBinanceOptionMarkPrice, BinanceMarketDataError, fetchBinanceDepth, fetchBinanceOptions, parseBinanceBookTickerMessage, parseBinanceOptionMarkPriceMessage } from './lib/binance';
+import { applyBinanceBookTicker, applyBinanceOptionMarkPrice, applyBinanceOptionTicker, BinanceMarketDataError, fetchBinanceDepth, fetchBinanceOptions, parseBinanceBookTickerMessage, parseBinanceOptionMarkPriceMessage, parseBinanceOptionTickerMessage } from './lib/binance';
 import type { BinanceDepthSnapshot, BinanceOptionsSnapshot } from './lib/binance';
 import { getAtmTermStructure } from './lib/analysis';
 import { getLatestQuotePerContract, getMarketSnapshotFromQuotes } from './lib/market';
@@ -293,10 +293,16 @@ function App() {
       .sort((a, b) => Math.abs(a.strike - getUnderlyingReferencePrice(a)) - Math.abs(b.strike - getUnderlyingReferencePrice(b)))
     : [], [binanceSnapshot, dataMode, effectiveExpiry, selectedType, underlying]);
   const bookTickerTargets = useMemo(() => bookTickerCandidates.slice(0, 180).map((quote) => quote.symbol), [bookTickerCandidates]);
-  const optionMarkTarget = useMemo(() => {
-    if (dataMode !== 'BINANCE' || !binanceSnapshot) return '';
-    const quote = binanceSnapshot.quotes.find((item) => item.underlying === underlying && item.quoteAsset);
-    return quote ? `${underlying}${quote.quoteAsset}` : `${underlying}USDT`;
+  const optionMarkTarget = useMemo(() => (
+    dataMode === 'BINANCE' && binanceSnapshot ? underlying.toLowerCase() : ''
+  ), [binanceSnapshot, dataMode, underlying]);
+  const optionTickerTargets = useMemo(() => {
+    if (dataMode !== 'BINANCE' || !binanceSnapshot) return [];
+    const expiries = new Set(binanceSnapshot.quotes
+      .filter((quote) => quote.underlying === underlying)
+      .map((quote) => quote.symbol.split('-')[1])
+      .filter((expiry): expiry is string => Boolean(expiry && /^\d{6}$/.test(expiry))));
+    return [...expiries].sort().map((expiry) => `${underlying.toLowerCase()}@ticker@${expiry}`);
   }, [binanceSnapshot, dataMode, underlying]);
   const assetChoices = useMemo(() => [...new Set(scopedQuotes.map((quote) => quote.underlying))]
     .sort((a, b) => a.localeCompare(b)), [scopedQuotes]);
@@ -355,7 +361,7 @@ function App() {
         if (!active) return;
         connection.send(JSON.stringify({
           method: 'SUBSCRIBE',
-          params: [`${optionMarkTarget.toLowerCase()}@optionMarkPrice`],
+          params: [`${optionMarkTarget}@markPrice`, ...optionTickerTargets],
           id: subscriptionId,
         }));
       };
@@ -377,17 +383,21 @@ function App() {
             // The market event parser below rejects malformed payloads.
           }
         }
-        const events = parseBinanceOptionMarkPriceMessage(message.data);
-        if (!events.length) return;
+        const markEvents = parseBinanceOptionMarkPriceMessage(message.data);
+        const tickerEvents = parseBinanceOptionTickerMessage(message.data);
+        if (!markEvents.length && !tickerEvents.length) return;
         setOptionMarkStatus('connected');
         setQuotes((current) => {
-          const bySymbol = new Map(events.map((event) => [event.symbol, event]));
+          const marksBySymbol = new Map(markEvents.map((event) => [event.symbol, event]));
+          const tickersBySymbol = new Map(tickerEvents.map((event) => [event.symbol, event]));
           return current.map((quote) => {
-            const update = bySymbol.get(quote.symbol);
-            return update ? applyBinanceOptionMarkPrice(quote, update) : quote;
+            const mark = marksBySymbol.get(quote.symbol);
+            const ticker = tickersBySymbol.get(quote.symbol);
+            const withMark = mark ? applyBinanceOptionMarkPrice(quote, mark) : quote;
+            return ticker ? applyBinanceOptionTicker(withMark, ticker) : withMark;
           });
         });
-        setOptionMarkUpdates((current) => current + events.length);
+        setOptionMarkUpdates((current) => current + markEvents.length + tickerEvents.length);
       };
       connection.onerror = () => {
         if (active) connection.close();
@@ -401,7 +411,7 @@ function App() {
       if (retryTimer !== undefined) window.clearTimeout(retryTimer);
       socket?.close();
     };
-  }, [optionMarkTarget, dataMode]);
+  }, [optionMarkTarget, optionTickerTargets, dataMode]);
 
   useEffect(() => {
     if (dataMode !== 'BINANCE' || !bookTickerTargets.length) {
@@ -1102,7 +1112,9 @@ function App() {
                   ['مواصفات اقتصادية موثقة', quoteDataCoverage.providerVerifiedEconomics],
                   ['عقود وصلها BookTicker', quoteDataCoverage.bookTickerAvailable],
                   ['عقود وصلها Mark Price حي', quoteDataCoverage.liveMarkPriceAvailable],
-                  ['عقود لديها Bid/Ask احتياطي من Mark Price', quoteDataCoverage.optionMarkBookAvailable],
+                  ['عقود وصلها Option Ticker حي', quoteDataCoverage.liveOptionTickerAvailable],
+                  ['عقود تتوفر لها كميات أفضل Bid/Ask', quoteDataCoverage.bestBookQuantitiesAvailable],
+                  ['عقود لديها Bid/Ask من Ticker', quoteDataCoverage.optionTickerBookAvailable],
                   ['Bid IV متاح', quoteDataCoverage.bidIvAvailable],
                   ['Ask IV متاح', quoteDataCoverage.askIvAvailable],
                 ].map(([label, count]) => (
@@ -1115,7 +1127,7 @@ function App() {
               </div>
               <p className="data-coverage-note">الأصفار في OI والحجم تُحسب قيماً متاحة، لا حقولاً مفقودة. لا تُستبدل الأسعار أو IV الناقصة بقيم مخمّنة. وجود Bid وAsk لا يضمن التنفيذ أو حداثة السعر.</p>
               {dataMode === 'BINANCE' && <p className="data-coverage-note">BookTicker: {bookTickerStatus === 'connected' ? 'متصل' : bookTickerStatus === 'connecting' ? 'جارٍ الاتصال' : bookTickerStatus === 'reconnecting' ? 'يعيد الاتصال تلقائياً' : 'غير نشط'} · الاشتراك في {integerFormat.format(bookTickerTargets.length)} من {integerFormat.format(bookTickerCandidates.length)} عقد ناقص، بحد أقصى 180 رمزاً · {integerFormat.format(bookTickerUpdates)} تحديثاً مستلماً. إذا لم ينشر المزود تحديثاً، يبقى الحقل ناقصاً.</p>}
-              {dataMode === 'BINANCE' && <p className="data-coverage-note">Option Mark Price: {optionMarkStatus === 'connected' ? 'متصل' : optionMarkStatus === 'connecting' ? 'جارٍ الاتصال' : optionMarkStatus === 'reconnecting' ? 'إعادة اتصال' : 'غير نشط'} · {optionMarkTarget} · {integerFormat.format(optionMarkUpdates)} تحديثات أسعار وIV وبيانات مصدرية مستلمة. توقيت الحدث من Binance، ولا تُستخدم Greeks المصدرية مباشرة في حسابات النموذج.</p>}
+              {dataMode === 'BINANCE' && <p className="data-coverage-note">Option Mark Price + Ticker: {optionMarkStatus === 'connected' ? 'متصل' : optionMarkStatus === 'connecting' ? 'جارٍ الاتصال' : optionMarkStatus === 'reconnecting' ? 'إعادة اتصال' : 'غير نشط'} · {optionMarkTarget}@markPrice + {integerFormat.format(optionTickerTargets.length)} قنوات انتهاء · {integerFormat.format(optionMarkUpdates)} أحداث سوق مستلمة. توقيت الحدث من Binance، ولا تُستخدم Greeks المصدرية مباشرة في حسابات النموذج.</p>}
             </section>
           )}
 
