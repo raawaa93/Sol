@@ -198,7 +198,7 @@ NautilusTrader مرشح محرك أحداث واختبار تاريخي متعد
 
 أُضيفت مراجعة المصادر الرسمية والاختبارات المنشورة التالية؛ وهي لا تغيّر قاعدة الإقامة الصادقة:
 
-- **Gate Global:** اتفاقية المستخدم العالمية الحالية لا تذكر سوريا في قائمة القيود المنشورة، لكنها تصف القائمة بأنها غير حصرية وتجيز تقييد خدمات أو منتجات معينة حسب البلد. وثيقة Gate أقدم (PDF، 2022) تذكر سوريا صراحةً. لذلك لا يصح تصنيفه محظوراً أو مؤهلاً من هذا التناقض وحده؛ يبقى مرشح استفسار مكتوب. Gate US كيان منفصل يشترط إقامة أمريكية، ولا ينطبق على المقيم السوري. المصادر: https://www.gate.com/legal/user-agreement ، https://www.gate.com/docs/agreement.pdf ، https://www.gate.com/en-us/legal/user-agreement
+- **Gate Global:** اتفاقية المستخدم العالمية الحالية لا تذكر سوريا في قائمة القيود المنشورة، لكنها تصف القائمة بأنها غير حصرية وتجيز تقييد خدمات أو منتجات معينة حسب البلد. وثيقة Gate أقدم (PDF، 2022) تذكر سوريا صراحةً، والأهم أن اتفاقية Gate EU الحالية (1 مارس 2026) تذكر سوريا صراحةً ضمن Restricted Locations وتحظر استخدام الخدمات من هناك. لذلك Gate EU غير متاح للمقيم السوري. أي كيان Gate آخر يبقى غير مثبت الأهلية حتى تحدد Gate كتابةً الكيان المتعاقد وتؤكد قبول الإقامة السورية والخيارات. Gate US كيان منفصل يشترط إقامة أمريكية، ولا ينطبق على المقيم السوري. المصادر: https://www.gate.com/legal/user-agreement ، https://www.gate.com/docs/agreement.pdf ، https://eu.gate.com/en-eu/legal/user-agreement ، https://www.gate.com/en-us/legal/user-agreement
 - **Bitget Stock+:** قبول Bitget العام للسوريين منذ 12 يونيو 2025 لا يعني قبول منتج Stock+؛ فهو حساب أوراق مالية فرعي منفصل. تغطية الإطلاق في 22 يونيو 2026 أدرجت سوريا ضمن البلدان المستثناة من Stock+. القرار: لا استخدام قبل رد كتابي من Bitget/Parsa، مع ترجيح عدم الأهلية وفق قائمة الإطلاق المنشورة. المصادر: https://www.bitget.com/support/articles/12560603829392 ، https://www.bitget.live/support/articles/12560603887309 ، https://www.theblock.co/news/markets/2026-06-22-bitget-us-stock-purchases-crypto-405507
 - **Paradex:** صفحة Restricted Persons الرسمية تذكر سوريا صراحةً، وشروطها تمنع الوصول والاستخدام وتمنع VPN بغرض تجاوز القيود. غير متاح للمستخدم السوري. المصادر: https://paradex.trade/restricted-persons ، https://www.paradex.trade/terms-of-service
 - **Hyperliquid:** الشروط تستخدم قيد المناطق الخاضعة للعقوبات/ضوابط التصدير، واختبارات مستقلة منشورة في أكتوبر 2026 سجلت حظر واجهة/بوابة التداول من سوريا. لا نعتبره مسار تنفيذ. كما أن HIP-4 outcome markets عقود نتائج/ثنائية وليست Vanilla Options؛ وHIP-3 perps ليست خيارات. المصادر: https://hyperliquid.gitbook.io/hyperliquid-docs/policies/terms-of-use ، https://restricted.cp0x.com/monitor/hyperliquid ، https://research.castlelabs.io/p/mapping-onchain-options-exchanges
@@ -266,3 +266,13 @@ NautilusTrader مرشح محرك أحداث واختبار تاريخي متعد
 - Gate Options WebSocket: https://www.gate.com/docs/developers/options/ws/en/
 - Gate European cash-settlement Help: https://www.gate.com/help/other/optionsbasics/46255/european-options-settlement-methods-explained
 - Gate crypto-options trading guide (5 Nov 2026): https://www.gate.com/learn/articles/how-to-trade-crypto-options-on-gate
+
+
+### تصحيح أهلية Gate EU — مصدر رسمي أحدث
+
+اتفاقية Gate Technology Ltd الأوروبية المنشورة على eu.gate.com، والمحدثة في 1 مارس 2026، تسمي سوريا صراحةً ضمن Restricted Locations في البند 4.2 (وتعيد شرط الإقامة في البند 5.1.v). لذلك لا يجوز أن نستنتج من صفحة Gate Global العامة التي لا تعرض سوريا في قائمتها أن المستخدم السوري مقبول. Gate لديها كيانات/اتفاقيات إقليمية متعددة؛ يجب تحديد الكيان الذي سيبرم العقد مع المستخدم. **Gate EU: ممنوع للمقيم السوري حسب الاتفاقية. Gate Global غير الأوروبي: غير مثبت، ولا يُستخدم حتى تأكيد كتابي من Compliance يحدد الكيان ويوافق على الإقامة السورية وخيارات Crypto Options تحديداً.** كما أن اتفاقية Gate Event Contracts تذكر سوريا ضمن Excluded Jurisdictions، ولا يجوز خلطها مع Crypto Options.
+
+المصادر الرسمية:
+- Gate EU User Agreement (1 March 2026): https://eu.gate.com/en-eu/legal/user-agreement
+- Gate Event Contracts Agreement: https://www.gate.com/es/help/event-contracts/faq/100616
+- Gate Global User Agreement: https://www.gate.com/legal/user-agreement
