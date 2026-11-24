@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   formatAssetPrice,
   formatNumber,
+  getFormatter,
   formatOptionPrice,
   formatQuantity,
   formatSmallAmount,
@@ -56,5 +57,5 @@ test('underlying prices adapt to the asset scale and preserve the selected curre
   assert.equal(formatAssetPrice(0, 0.0001, null), '0');
   assert.equal(formatNumber(Number.POSITIVE_INFINITY, 2), '—');
   assert.equal(formatNumber(1.5, 2), '1.50');
-  assert.equal(formatNumber(1.5, 2, 0), '1.5');
+  assert.equal(getFormatter(2, 0).format(1.5), '1.5');
 });
