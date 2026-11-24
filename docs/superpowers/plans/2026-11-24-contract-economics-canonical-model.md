@@ -152,3 +152,17 @@ Official Binance Stock Options market-data documentation defines:
 The mapper preserves `multiplier`, `contractSize`, root/underlying symbols and component deliverables independently. It does **not** infer an exercise style or aggregate exercise-cash obligation because the reference fields used here do not establish those terms. Settlement and exercise style remain `UNKNOWN`, so the canonical validator keeps all calculations blocked. This is reference metadata only, not a pricing/Greeks adapter or trading integration.
 
 Test vectors cover standard contracts and an adjusted contract with 10 shares plus a USD cash component while premium multiplier remains 100; incomplete and unrecognized deliverable data are rejected.
+
+
+### Canonical cash-settlement expiry payoff primitive — implementation branch, 24 November 2026
+
+Added `calculateCashSettlementPayoff` as a pure, fail-closed calculation for contracts whose provider-verified canonical terms explicitly specify `CASH` settlement with `INTRINSIC_VALUE` formula.
+
+- Payout uses the cash-settlement formula multiplier.
+- Entry premium uses the independent premium multiplier.
+- CALL/PUT intrinsic value, contract count and supplied fees are applied separately.
+- Quote and settlement currency must already pass canonical validation; no FX conversion is inferred.
+- Physical delivery, unknown settlement, unsupported formulas and invalid numeric inputs are rejected.
+- Reference tests cover a call, a put, worthless expiry and unknown settlement.
+
+This is a calculation primitive only. It is not yet wired into the legacy payoff chart, break-even, max-loss, scenario, EV, Greeks or replay paths. In particular, break-even and max-loss need product-specific payoff bounds and must not be inferred for physical multi-component deliverables by this helper.
