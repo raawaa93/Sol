@@ -61,25 +61,29 @@ The app's observed count of 336 contracts with at least one missing side (Bid or
 
 ## Rolling 24-hour regional egress recheck — through 08:22 UTC
 
-A read-only aggregate of the deployed v10 function logs covered 2026-11-23 08:22 UTC through 2026-11-24 08:22 UTC. It grouped by Cloudflare client-country classification, Supabase execution region, and response status; no client IPs or identity data are reproduced here.
+A read-only aggregate of all logs for the same function endpoint covered 2026-11-23 08:22 UTC through 2026-11-24 08:22 UTC and includes deployment versions 1–10. The first table groups by Cloudflare client-country classification, Supabase execution region, response status and reports the versions contributing to each total; no client IPs or identity data are reproduced here.
 
-| Client-country classification | Supabase Edge region | Requests | Outcome | First → last observed (UTC) |
+| Client-country classification | Supabase Edge region | Requests | Outcome | Versions | First → last observed (UTC) |
 |---|---|---:|---|---|
-| SY | eu-west-2 | 50 | HTTP 200 | 07:00:20 → 07:00:27 |
-| GB | eu-west-2 | 337 | HTTP 200 | 15:23:03 (23 Nov) → 06:54:35 |
-| US | eu-central-2 | 6 | HTTP 200 | 06:39:37 → 06:43:40 |
-| US | us-west-1 | 12 | HTTP 451 | 01:54:38 → 08:18:06 |
-| US | us-west-2 | 8 | HTTP 451 | 01:25:44 → 08:11:01 |
-| US | us-east-2 | 15 | HTTP 451 | 01:29:13 → 08:01:19 |
-| US | us-east-1 | 23 | HTTP 451 | 15:18:15 (23 Nov) → 07:39:33 |
-| US | us-east-1 | 5 | HTTP 400 | 03:54:18 → 08:05:06 |
+| SY | eu-west-2 | 50 | HTTP 200 | 10 | 07:00:20 → 07:00:27 |
+| GB | eu-west-2 | 337 | HTTP 200 | 3, 4, 5, 10 | 15:23:03 (23 Nov) → 06:54:35 |
+| US | eu-central-2 | 6 | HTTP 200 | 8, 9 | 06:39:37 → 06:43:40 |
+| US | us-west-1 | 12 | HTTP 451 | 6, 7, 10 | 01:54:38 → 08:18:06 |
+| US | us-west-2 | 8 | HTTP 451 | 6, 7, 10 | 01:25:44 → 08:11:01 |
+| US | us-east-2 | 15 | HTTP 451 | 6, 7, 10 | 01:29:13 → 08:01:19 |
+| US | us-east-1 | 23 | HTTP 451 | 1, 5, 6, 7, 10 | 15:18:15 (23 Nov) → 07:39:33 |
+| US | us-east-1 | 5 | HTTP 400 | 6, 7, 10 | 03:54:18 → 08:05:06 |
 
 The latest observed HTTP 451 was an exchangeInfo request at 08:18:06 UTC from a US-classified caller executed in us-west-1. The 58 HTTP 451 responses across four US execution regions coexist with successful requests from SY/GB classifications through eu-west-2 and from a US-classified caller through eu-central-2.
 
+### Version 10 only
+
+Filtering the same 24-hour window to deployment version `10` changes the interpretation materially: 50 SY-classified requests returned HTTP 200 in eu-west-2; 92 GB-classified requests returned HTTP 200 in eu-west-2; 12 US-classified requests returned HTTP 451 across us-east-1, us-east-2, us-west-1 and us-west-2; and 2 US-classified requests returned HTTP 400 in us-east-1. There were **no US-classified HTTP 200 responses on version 10** in this window. The six US-classified HTTP 200 responses in eu-central-2 came from older versions 8 and 9, not version 10.
+
 ### Interpretation
 
-- This is evidence of regional/request-path-dependent outcomes, not a universal Binance outage and not a blanket statement that every US request is denied.
-- The 50 SY-classified successes are still the most recent Syrian-classified burst in this log window. No later SY-classified request appears in this aggregate.
+- This is evidence of region-, request-path- and deployment-version-dependent outcomes, not a universal Binance outage and not a blanket statement that every US request is denied.
+- The 50 SY-classified successes all came from version 10 and are the most recent Syrian-classified burst in this log window. No later SY-classified request appears in this aggregate.
 - Logs for these successful requests did not contain Origin or Referer values. They cannot be attributed conclusively to the published browser app or to a specific person/device.
 - Supabase's automatic edge routing remains enabled. No region pinning, proxy rotation, IP masking, VPN geofencing bypass, or residence changes were introduced.
 - The published app's smoke test is run from US infrastructure; its HTTP 451 is not a test of the user's Syrian ISP or Binance account.
