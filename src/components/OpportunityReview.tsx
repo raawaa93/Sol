@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { ArrowUpLeft, Info, ShieldAlert } from 'lucide-react';
 import { getComparableDeltaSkew, getIvRvSpread, getReviewCandidates, getTermStructureContext } from '../lib/analysis';
-import { getRiskNeutralExpiryMetrics, getSpreadPct } from '../lib/options';
+import { getRiskNeutralExpiryMetrics, getSpreadPct, getUnderlyingReferencePrice } from '../lib/options';
 import { isQuoteFieldEstimated } from '../lib/quote-quality';
 import { formatAssetPrice, formatSmallNumber } from '../lib/format';
 import type { AssetSnapshot, OptionQuote, Underlying } from '../lib/types';
@@ -142,7 +142,7 @@ export default function OpportunityReview({ quotes, market, underlying, dataMode
                   <ArrowUpLeft size={14} />
                 </span>
                 <strong className="review-symbol">{quote.symbol}</strong>
-                <span className="review-contract-meta">{formatAssetPrice(quote.strike, quote.underlyingKind === 'FUTURE' ? quote.forward ?? quote.spot : quote.spot)} · {Math.round(quote.daysToExpiry)} يوم · Δ {quote.delta.toFixed(2)}</span>
+                <span className="review-contract-meta">{formatAssetPrice(quote.strike, getUnderlyingReferencePrice(quote))} · {Math.round(quote.daysToExpiry)} يوم · Δ {quote.delta.toFixed(2)}</span>
                 <span className="review-market-meta">IV {formatPercent(quote.iv)} · OI {quote.openInterest === null ? '—' : formatSmallNumber(quote.openInterest)} · حجم {quote.volume === null ? '—' : formatSmallNumber(quote.volume)}</span>
                 {modelMetrics && <span className="review-model-meta">احتمال الربح عند الانتهاء: {formatPercent(modelMetrics.probabilityOfProfit)} · EV محايد/عقد: {modelMetrics.expectedExpiryPnlPerUnit * quote.unit >= 0 ? '+' : ''}{formatSmallNumber(modelMetrics.expectedExpiryPnlPerUnit * quote.unit)} USDT</span>}
                 {modelMetrics && <small className="review-model-note">قياس محايد للمخاطر وفق {quote.pricingModel === 'BLACK_76' ? 'Black–76' : 'Black–Scholes مع Carry'} وبالمعدل والـCarry المسجلين في العقد، قبل الرسوم والانزلاق؛ ليس احتمالاً واقعياً ولا توقعاً للسوق.</small>}
