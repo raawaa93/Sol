@@ -37,7 +37,7 @@ npm run build
 - نقطة النهاية المنشورة: `https://oyoyozdugicmnkfhjovo.supabase.co/functions/v1/volterra-binance-market-data`.
 - يحقن سير عمل GitHub Pages قيمة `VITE_BINANCE_PROXY_URL` وقت البناء. أصل المتصفح المسموح به للوسيط هو `https://raawaa93.github.io` وحده؛ لا تنسخ رابط الإنتاج إلى `.env.local` أو تستخدمه من `localhost`. تظل أوضاع Demo وCSV والاختبارات المحلية مستقلة عن الوسيط.
 - مصدر الكود في `supabase/functions/volterra-binance-market-data`. إعداد `verify_jwt = false` مقصود لأن الموقع ثابت؛ يقيّد الوسيط المسارات إلى واجهات السوق العامة الست `exchangeInfo` و`mark` و`ticker` و`index` و`openInterest` و`depth` فقط، ولا يقدّم endpoints للتداول أو بيانات الحساب. CORS ليس مصادقة، لكنه يسمح للمتصفح من أصل الموقع المنشور وحده.
-- آخر فحص إنتاجي للموقع والوسيط [أعاد من Binance HTTP 451](https://github.com/raawaa93/Sol/actions/runs/45306026952) مع إشارة إلى بند `b. Eligibility`؛ كانت Edge Function والخدمات الأساسية في Supabase نشطة وسليمة. هذا رفض من المصدر للمنطقة/المنتج، لا مشكلة CORS أو إعداد محلي. يصنف التطبيق الرفض صراحةً، ويبقي Demo/CSV واضحين ولا يلتف على القيود؛ لا تُعامل أي لقطة سابقة كأنها تحديث جديد.
+- آخر فحص إنتاجي للموقع والوسيط [أعاد من Binance HTTP 451](https://github.com/raawaa93/Sol/actions/runs/45307591480) مع إشارة إلى بند `b. Eligibility`؛ كانت Edge Function والخدمات الأساسية في Supabase نشطة وسليمة. هذا رفض من المصدر للمنطقة/المنتج، لا مشكلة CORS أو إعداد محلي. يصنف التطبيق الرفض صراحةً، ويبقي Demo/CSV واضحين ولا يلتف على القيود؛ لا تُعامل أي لقطة سابقة كأنها تحديث جديد.
 - لإعادة نشر تحديثات الوسيط باستخدام Supabase CLI: `supabase functions deploy volterra-binance-market-data --project-ref oyoyozdugicmnkfhjovo`. لا تضف مفاتيح Binance أو أسرار Supabase إلى الواجهة.
 
 ## استيراد CSV
@@ -89,7 +89,7 @@ symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,delta,gamma,theta,vega
 
 1. حفظ أوقات مصدر مستقلة لكل feed، ثم تحذير stale موحّد عند اختلاف أوقات mark وSpot وOI.
 2. جمع تاريخ للأسعار/IV/Bid/Ask والرسوم لتقييم الاستراتيجيات خارج العينة ومن دون تسرب مستقبلي؛ لا يُسمّى ذلك backtest حتى تتوفر البيانات.
-3. إضافة E2E للمتصفح واختبار لوحة الأصول على الهاتف ولوحة المفاتيح، ثم قياس Lighthouse بعد baseline حقيقي.
+3. توسيع E2E ليشمل لوحة المفاتيح وإمكانية الوصول والحالات الطرفية؛ Playwright وLighthouse CI يعملان الآن، لكن يلزم RUM اختياري بعد مراجعة الخصوصية.
 4. قبل استخدام Greeks غير نموذجية، توحيد وحدات كل منصة/مضاعف ومقارنة عينات بمحرك مستقل مثل QuantLib.
 
 ## مراجع للتطوير
