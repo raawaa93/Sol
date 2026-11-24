@@ -32,6 +32,7 @@
 - Never claim a strategy has an edge from an in-sample backtest. Include bid/ask fills, fees, slippage, liquidity, partial fills, expiry/assignment, margin/liquidation, funding/carry, delistings, outages and out-of-sample/forward validation.
 - No live order placement or paid market-data subscription without a separate operational decision after compliance, risk and cost validation. Prefer free/public permitted data first; keep recurring spend at or below the user's USD 15/month ceiling unless changed by the user.
 - Treat account-level and location-specific access errors separately from network errors. HTTP 451 from a CI runner is not proof of global unavailability or this user's account eligibility.
+- There is no verified free universal real-time options feed covering all asset classes. Free U.S. equity-options tiers are indicative, end-of-day or at least 24-hour delayed; they are research-only and must never be used as executable quotes or realistic fill data. Check identity classification, exchange entitlements, personal-use/redistribution terms and residence acceptance before adding any provider.
 - Keep financial calculations unit-aware and instrument-specific. Never compare OI, volume, prices or Greeks across venues without multiplier, currency and settlement normalization.
 
 ## Durable context
