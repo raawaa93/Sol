@@ -31,3 +31,29 @@ All timestamps below are UTC on 2026-11-24.
 ## Next verification
 
 For an end-to-end browser confirmation, open the published app and load Binance data from the intended device/network. Confirm the UI reports live data and that requests to the proxy return HTTP 200. If the proxy returns 451, check whether the direct public-data request from that browser succeeds; a browser/network CORS failure must remain clearly distinguished from account eligibility.
+
+
+## Syrian network observation — 07:00 UTC
+
+A later production request burst was recorded on 2026-11-24 between 07:00:20 and 07:00:27 UTC:
+
+| Field | Observed value |
+|---|---|
+| Cloudflare country classification | SY |
+| Cloudflare city/region classification | Damascus / Damascus Governorate |
+| Requests | 50 |
+| HTTP outcomes | 50 × HTTP 200 |
+| Browser signature | iPhone / Chrome on iOS |
+| Endpoints represented | exchangeInfo, mark, ticker, index, openInterest, depth |
+| Supabase function | Active, version 10 |
+| Edge deployment | eu-west-2 |
+
+The request burst demonstrates that the deployed read-only proxy successfully retrieved Binance public Options market data for requests whose Cloudflare network metadata was classified as Syrian. It is consistent with a successful iPhone browser session, but the available log rows did not contain Origin or Referer values; therefore this log evidence alone cannot tie the requests to the published page or to a particular person. The accompanying UI screenshot is separate evidence that the app rendered a Binance snapshot.
+
+This verifies public market-data network reachability through the proxy from a Syrian-classified network path at that time. It does not verify Binance account-level eligibility, entitlement to every options sub-product, legal permission to trade from Syria, or uninterrupted future availability. It does not justify live order execution.
+
+The earlier US/GB observations remain valid historical comparisons: US server-side requests returned HTTP 451, while GB requests returned HTTP 200. Do not treat any one server egress result as the user's account eligibility.
+
+## Data completeness note
+
+The app's observed count of 336 contracts with at least one missing side (Bid or Ask) is a quote-availability limitation, not evidence that the proxy failed. The normalizer intentionally preserves a missing side as unavailable instead of fabricating a price. A contract with no complete two-sided quote must not be treated as executable or used to infer a reliable spread. The displayed Greeks Gamma, Theta, Vega and Rho remain model-derived where indicated; public market-data access does not make them exchange-observed values.
