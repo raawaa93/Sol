@@ -150,3 +150,6 @@
 **القرار:** لا توجد حتى الآن منصة ثانية ثبت قبولها للمستخدم السوري لتداول الخيارات القياسية متعددة الأصول. Binance هي المرشح الأول المشروط فقط بسبب FAQ سوريا الرسمي، ولا تُعتبر كافية لتغطية جميع أسواق الخيارات. Optimus وIronbeam استفسار امتثال مكتوب فقط. لا يُستخدم VPN لتغيير بلد الإقامة أو تجاوز الحظر.
 
 المصادر التفصيلية في [UNIVERSAL_OPTIONS_RESEARCH_2026-11-24.md](UNIVERSAL_OPTIONS_RESEARCH_2026-11-24.md) و[PLATFORM_ELIGIBILITY_2026-11-24.md](PLATFORM_ELIGIBILITY_2026-11-24.md).
+
+
+**إضافة:** Deriv لا يظهر ضمن قائمة البلدان المدعومة الرسمية لسوريا، وNinjaTrader يرفض فتح الحساب الممول إذا لم يظهر بلد الإقامة في قائمة الطلب؛ تقرير مستقل يوثق رفض امتثال مباشر لسوريا في 2026. كلاهما لا يمثل مسار تنفيذ مثبتاً للمستخدم. المصادر: https://legacy-docs.deriv.com/docs/country-list ، https://vendor-support.ninjatrader.com/s/article/Applying-for-a-Live-NinjaTrader-Account?language=en_US ، https://unblocksyria.com/en/services/ninjatrader
