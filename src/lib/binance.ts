@@ -324,13 +324,9 @@ export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptio
   const modelUpdate = event.markIv !== undefined && quote.pricingStatus === 'ASSUMED' && quote.pricingModel
     ? priceOption({ ...quote, volatility: event.markIv, rate: quote.riskFreeRate ?? Number.NaN })
     : undefined;
-  const greekFields = ['delta', 'gamma', 'theta', 'vega', 'rho'];
   const updated: OptionQuote = {
     ...quote,
-    ...(quote.estimatedFields ? {
-      estimatedFields: quote.estimatedFields.filter((field) => !observedFields.includes(field)
-        && (!modelUpdate || !greekFields.includes(field))),
-    } : {}),
+    ...(quote.estimatedFields ? { estimatedFields: quote.estimatedFields.filter((field) => !observedFields.includes(field)) } : {}),
     ...(useTickerBid ? { bid: event.bestBid, ...(event.bestBidQuantity !== undefined ? { bidQuantity: event.bestBidQuantity } : {}) } : {}),
     ...(useTickerAsk ? { ask: event.bestAsk, ...(event.bestAskQuantity !== undefined ? { askQuantity: event.bestAskQuantity } : {}) } : {}),
     ...(useTickerBid || useTickerAsk ? { bidAskSource: 'OPTION_TICKER' as const } : {}),
@@ -346,19 +342,20 @@ export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptio
       optionTicker: new Date(eventTimestamp).toISOString(),
     },
   };
-  if (modelUpdate?.status === 'SUPPORTED') {
-    const g = modelUpdate.greeks;
-    updated.delta = g.delta;
-    updated.gamma = g.gamma;
-    updated.theta = g.thetaPerDay;
-    updated.vega = g.vegaPerVolPoint;
-    updated.rho = g.rhoPerRatePoint;
-    updated.pricingModel = modelUpdate.model;
-  } else if (modelUpdate?.status === 'UNSUPPORTED') {
-    updated.delta = updated.gamma = updated.theta = updated.vega = updated.rho = 0;
-    updated.pricingStatus = 'OBSERVED_ONLY';
-    updated.pricingModel = undefined;
-    updated.pricingReason = modelUpdate.reason;
+  if (modelUpdate) {
+    if (modelUpdate.status === 'SUPPORTED') {
+      const g = modelUpdate.greeks;
+      updated.delta = g.delta;
+      updated.gamma = g.gamma;
+      updated.theta = g.thetaPerDay;
+      updated.vega = g.vegaPerVolPoint;
+      updated.rho = g.rhoPerRatePoint;
+    } else {
+      updated.delta = updated.gamma = updated.theta = updated.vega = updated.rho = 0;
+      updated.pricingStatus = 'OBSERVED_ONLY';
+      delete updated.pricingModel;
+      updated.pricingReason = modelUpdate.reason;
+    }
   }
   return updated;
 }
