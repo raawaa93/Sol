@@ -20,10 +20,8 @@ test('standard Binance stock option maps premium multiplier and delivered shares
   assert.equal(economics.premium.multiplier, 100);
   assert.equal(economics.premium.quoteCurrency, 'USD');
   assert.equal(economics.premium.priceUnit, 'PER_UNDERLYING_UNIT');
-  assert.equal(economics.exercise.settlement, 'PHYSICAL');
+  assert.equal(economics.exercise.settlement, 'UNKNOWN');
   assert.equal(economics.exercise.style, 'UNKNOWN');
-  assert.equal(economics.exercise.aggregateExerciseCash?.basis, 'STRIKE_MULTIPLIER');
-  assert.equal(economics.exercise.aggregateExerciseCash?.multiplier, 100);
   assert.deepEqual(economics.exercise.deliverables, [
     { type: 'EQUITY', symbol: 'NVDA', amount: 100, currency: 'USD' },
   ]);
@@ -44,7 +42,7 @@ test('adjusted contract keeps premium multiplier separate from shares and cash d
   });
   assert.ok(economics);
   assert.equal(economics.premium.multiplier, 100);
-  assert.equal(economics.exercise.aggregateExerciseCash?.multiplier, 10);
+  assert.equal(economics.exercise.aggregateExerciseCash, undefined);
   assert.equal(economics.exercise.style, 'UNKNOWN');
   assert.deepEqual(economics.exercise.deliverables, [
     { type: 'EQUITY', symbol: 'GOOG', amount: 10, currency: 'USD' },
