@@ -1,0 +1,4 @@
+project_id = "oyoyozdugicmnkfhjovo"
+
+[functions.volterra-binance-market-data]
+verify_jwt = false
