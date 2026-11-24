@@ -41,10 +41,10 @@
 - Add an optional InstrumentMetadata shape to OptionQuote and PaperTrade: venue, assetClass, underlyingKind, quoteAsset, settlementAsset, multiplier, exerciseStyle, settlementStyle, expiryTimezone, sourceTimestamp and provenance.
 - CSV accepts explicit metadata columns; absent metadata remains unknown.
 
-- [ ] Add CSV tests for non-crypto metadata round-trip and unknown/invalid enum values.
-- [ ] Run the focused CSV tests and observe the expected failure.
-- [ ] Implement metadata parsing/validation without guessing absent fields.
-- [ ] Run focused tests, then the full unit/property suite.
+- [x] Add CSV tests for non-crypto metadata round-trip and unknown/invalid enum values.
+- [x] Run the focused CSV tests and observe the expected failure.
+- [x] Implement metadata parsing/validation without guessing absent fields.
+- [x] Run focused tests, then the full unit/property suite.
 
 ### Task 2: Provider normalization
 
@@ -76,10 +76,11 @@
 - Preserve current selected underlying if still valid; otherwise choose the first available result only within the active filters.
 - Show empty states when a filter has no instruments.
 
-- [ ] Add Playwright coverage for filtering Crypto, Metals and Energy plus an unknown CSV asset class.
-- [ ] Run E2E and verify the new test fails for the missing filter.
-- [ ] Implement the selector and responsive styles.
-- [ ] Run E2E, unit tests and production build.
+- [x] Add Playwright coverage for imported Equity contracts across two venues.
+- [x] Run E2E and verify the new test fails for the missing filter.
+- [x] Implement Asset Class and Venue selectors and responsive styles.
+- [x] Run E2E, unit tests and production build.
+- [ ] Add broader Playwright coverage for all asset classes and empty states.
 
 ### Task 4: Mobile chain and contract details
 
@@ -112,10 +113,11 @@
 - Add Black-76 for futures options with forward price and discount factor.
 - Return an explicit unsupported result when required contract mechanics are missing.
 
-- [ ] Add failing tests for Black–Scholes vs Black-76 routing and unsupported contracts.
-- [ ] Implement minimal model selection.
-- [ ] Verify known analytical values and finite-difference Greeks.
-- [ ] Run full suite and build.
+- [x] Add failing tests for Black–Scholes vs Black-76 routing and unsupported contracts.
+- [x] Implement a standalone contract-aware pricing library with explicit European exercise, settlement, rate and carry requirements.
+- [x] Verify analytical values, put-call parity and finite-difference Greeks.
+- [x] Run full suite and build.
+- [ ] Wire the pricing router into CSV normalization, source quote valuation and UI risk panels; keep unsupported mechanics visibly blocked.
 
 ## Rollout
 
