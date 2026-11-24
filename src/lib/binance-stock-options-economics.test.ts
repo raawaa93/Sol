@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { mapBinanceStockOptionEconomics } from './binance-stock-options-economics.ts';
-import { calculatePremiumCash, calculateAggregateExerciseCash, valueDeliverablePackage } from './contract-economics-calculations.ts';
 
 const base = {
   symbol: 'NVDA260930C00100000',
@@ -22,6 +21,7 @@ test('standard Binance stock option maps premium multiplier and delivered shares
   assert.equal(economics.premium.quoteCurrency, 'USD');
   assert.equal(economics.premium.priceUnit, 'PER_UNDERLYING_UNIT');
   assert.equal(economics.exercise.settlement, 'PHYSICAL');
+  assert.equal(economics.exercise.style, 'UNKNOWN');
   assert.equal(economics.exercise.aggregateExerciseCash?.basis, 'STRIKE_MULTIPLIER');
   assert.equal(economics.exercise.aggregateExerciseCash?.multiplier, 100);
   assert.deepEqual(economics.exercise.deliverables, [
@@ -45,17 +45,13 @@ test('adjusted contract keeps premium multiplier separate from shares and cash d
   assert.ok(economics);
   assert.equal(economics.premium.multiplier, 100);
   assert.equal(economics.exercise.aggregateExerciseCash?.multiplier, 10);
+  assert.equal(economics.exercise.style, 'UNKNOWN');
   assert.deepEqual(economics.exercise.deliverables, [
     { type: 'EQUITY', symbol: 'GOOG', amount: 10, currency: 'USD' },
     { type: 'CASH', currency: 'USD', amount: 125.5 },
   ]);
 
-  const premium = calculatePremiumCash({ economics, premiumPrice: 2.5, contracts: 2 });
-  assert.equal(premium.ok && premium.value.amount, 500);
-  const exerciseCash = calculateAggregateExerciseCash(economics, 100, 2);
-  assert.equal(exerciseCash.ok && exerciseCash.value.amount, 2_000);
-  const packageValue = valueDeliverablePackage(economics, { GOOG: { price: 150, currency: 'USD' } });
-  assert.equal(packageValue.ok && packageValue.value.totalsByCurrency.USD, 1_625);
+  // Reference-only mapping: undocumented exercise style keeps calculations blocked.
 });
 
 test('stock option adapter rejects inferred or incomplete metadata', () => {
