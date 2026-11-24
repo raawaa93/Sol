@@ -96,7 +96,7 @@ while (($#)); do
   esac
 done
 test -n "$output"
-printf '%s\\n' 'not an age ciphertext' > "$output"
+printf '%s\n' 'not an age ciphertext' > "$output"
 BAD_AGE
 chmod +x "$tmp/bad-bin/age"
 expect_failure "reject output that is not age ciphertext" \
