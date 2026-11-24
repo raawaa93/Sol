@@ -363,6 +363,7 @@ function App() {
   const scenarioSeries = useMemo(() => buildScenarioSeries(selectedQuote, selectedPremium, safeQuantity, safeFees), [safeFees, safeQuantity, selectedPremium, selectedQuote]);
   const rawAffordableQty = selectedPremium > 0 ? Math.floor(Math.max(0, safeRiskBudget - safeFees) / (selectedPremium * selectedQuote.unit) / quantityStep + 1e-9) * quantityStep : 0;
   const affordableQty = selectedQuote.maxQty === undefined ? rawAffordableQty : Math.min(rawAffordableQty, selectedQuote.maxQty);
+  const modelPriceLabel = selectedQuote.pricingModel === 'BLACK_76' ? 'Black–76' : 'Black–Scholes مع Carry';
   const spreadPct = getSpreadPct(selectedQuote);
   const quoteQuality = !Number.isFinite(spreadPct) ? 'غير متاح' : spreadPct <= 4 ? 'ضيق نسبياً' : spreadPct <= 10 ? 'متوسط' : 'واسع';
   const hasValidTwoSidedQuote = selectedQuote.bid > 0 && selectedQuote.ask >= selectedQuote.bid;
@@ -371,8 +372,8 @@ function App() {
       : selectedQuote.priceSource === 'LAST' ? 'آخر تداول من Binance'
         : selectedQuote.priceSource === 'BID' ? 'Bid فقط من Binance'
           : selectedQuote.priceSource === 'ASK' ? 'Ask فقط من Binance'
-            : selectedQuote.priceSource === 'MODEL' ? 'تقدير Black–Scholes · ليس سعراً مرصوداً'
-              : selectedQuote.estimatedFields?.includes('markPrice') ? 'تقدير Black–Scholes · ليس سعراً مرصوداً'
+            : selectedQuote.priceSource === 'MODEL' ? `تقدير ${modelPriceLabel} · ليس سعراً مرصوداً`
+              : selectedQuote.estimatedFields?.includes('markPrice') ? `تقدير ${modelPriceLabel} · ليس سعراً مرصوداً`
                 : 'سعر مرجعي من Binance';
   const priceBasis = dataMode === 'DEMO'
     ? 'منتصف Bid/Ask · بيانات محاكاة'
@@ -381,7 +382,7 @@ function App() {
       : dataMode === 'BINANCE'
         ? binancePriceBasis
         : selectedQuote.estimatedFields?.includes('markPrice') && selectedQuote.markPrice > 0
-          ? 'تقدير Black–Scholes · ليس سعراً مرصوداً'
+          ? `تقدير ${modelPriceLabel} · ليس سعراً مرصوداً`
           : selectedQuote.markPrice > 0
             ? 'Mark من الملف · طرف سوق ناقص'
             : selectedQuote.bid > 0
@@ -949,7 +950,7 @@ function App() {
 
           <section className="model-strip">
             <button className="model-toggle" onClick={() => setShowAssumptions((value) => !value)}><div className="model-icon"><Info size={16} /></div><div><strong>افتراضات النموذج وحدوده</strong><span>{dataMode === 'BINANCE' ? 'Binance REST snapshot · Mark/IV عند التوفر · بعض Greeks نموذجية' : dataMode === 'CSV' ? 'CSV محلي · Black–Scholes تقديري للقيم الناقصة' : 'Black–Scholes توضيحي · فائدة مفترضة 0% · تسوية أوروبية'}</span></div><ChevronDown className={showAssumptions ? 'rotated' : ''} size={16} /></button>
-            {showAssumptions && <div className="model-details">{dataMode === 'BINANCE' ? <><p>تمر طلبات Binance عبر وسيط Supabase عام محدود بواجهات بيانات السوق للقراءة فقط لتوافق CORS؛ يطلب exchangeInfo لاكتشاف العقود النشطة وmark/ticker/index وopenInterest لبيانات السوق. لا يخزن الوسيط مفاتيح API ولا يقبل مسارات حساب أو تداول، ولا يتجاوز قيود Binance الجغرافية. ما يظهر لقطة REST عند آخر تحديث وليس بثاً لحظياً؛ وقد تتغير العقود أو تتأخر البيانات أو تُحجب حسب الشبكة والمنطقة.</p><p>تُعرض Mark/IV وBid/Ask والمؤشر والفائدة المفتوحة عند توفرها. يستخدم التحليل Delta من Binance عند وجوده ويقدّر Gamma وTheta وVega وRho بنموذج Black–Scholes؛ ويعلّم القيم المستنتجة والافتراضات. Rho لكل نقطة مئوية من معدل سنوي مركب باستمرار، ووحدة `riskFreeInterest` تحتاج تحققاً من المصدر. قد تختلف وحدات العقد وGreeks عن افتراضات النموذج، لذا لا تُعاملها كقياسات تداول موثقة ولا تعتمد عليها مالياً.</p></> : <><p>{dataMode === 'DEMO' ? 'هذه نسخة محاكاة: بيانات الأسعار في وضع Demo مولدة وليست متصلة بـBinance. تسعير العرض يتم بنموذج Black–Scholes مبسط مع معدل فائدة 0%؛ وقد تختلف أسواق العملات المشفرة بسبب الابتسامة، القفزات، السيولة، التمويل، والفروقات بين السعر النظري وسعر التنفيذ.' : 'يستخدم المحلل في CSV السعر المتوسط من Bid/Ask إن توفرا، ويحسب القيم المفقودة تقريبياً. النتائج لا تشمل الرسوم تلقائياً إلا إذا أدخلتها؛ تحقّق من الوحدات والطوابع الزمنية.'}</p><p>لا يستخدم المختبر مصادر بديلة خفية ولا يخلط بيانات Demo ببيانات CSV أو Binance. لا تستخدم المحاكاة لاتخاذ قرار مالي مباشر.</p></>}</div>}
+            {showAssumptions && <div className="model-details">{dataMode === 'BINANCE' ? <><p>تمر طلبات Binance عبر وسيط Supabase عام محدود بواجهات بيانات السوق للقراءة فقط لتوافق CORS؛ يطلب exchangeInfo لاكتشاف العقود النشطة وmark/ticker/index وopenInterest لبيانات السوق. لا يخزن الوسيط مفاتيح API ولا يقبل مسارات حساب أو تداول، ولا يتجاوز قيود Binance الجغرافية. ما يظهر لقطة REST عند آخر تحديث وليس بثاً لحظياً؛ وقد تتغير العقود أو تتأخر البيانات أو تُحجب حسب الشبكة والمنطقة.</p><p>تُعرض Mark/IV وBid/Ask والمؤشر والفائدة المفتوحة عند توفرها. خيارات الكريبتو المعروفة تُنمذج كخيارات أوروبية على مؤشر Spot باستخدام Black–Scholes مع Carry، مع افتراض carry=0 إذا لم يتوفر من المصدر؛ لذلك تظهر بحالة «افتراض معلن». تُحفظ Greeks الخام من Binance للتدقيق فقط ولا تُخلط مع Greeks المحسوبة. أما Commodity/TradFi Options المرتبطة بمؤشر Perpetual، وأي نوع أصل غير معروف، فتعرض بيانات السوق المرصودة فقط وتُحجب Greeks والحركة الضمنية إلى أن يتوفر نموذج مثبت. لا نستخدم Black–Scholes تلقائياً على الذهب أو العقود الدائمة. Rho لكل نقطة مئوية من معدل سنوي مركب باستمرار، ووحدة `riskFreeInterest` تحتاج تحققاً من المصدر.</p></> : <><p>{dataMode === 'DEMO' ? 'هذه نسخة محاكاة: بيانات الأسعار مولدة وليست متصلة بمنصة. تستخدم Black–76 لعقود CL/BZ الآجلة وBlack–Scholes مع Carry لبقية الأصول، مع افتراض معدل فائدة وCarry يساويان 0%. كل القيم اصطناعية.' : 'يستخدم CSV نموذج Black–76 للعقود الآجلة فقط عند توفر Forward ومعدل فائدة ومواصفات أوروبية وتسوية صريحة؛ ويستخدم Black–Scholes مع Carry لعقود Spot/Index/FX عند إدخال المعدل والـCarry. العقود الأمريكية أو الدائمة أو غير المكتملة تبقى بيانات مرصودة فقط. ملفات CSV القديمة بلا مواصفات تستخدم BSM افتراضياً مع وسم واضح «افتراض معلن». تحقّق من الوحدات والطوابع الزمنية.'}</p><p>لا يستخدم المختبر مصادر بديلة خفية ولا يخلط بيانات Demo ببيانات CSV أو Binance. لا تستخدم المحاكاة لاتخاذ قرار مالي مباشر.</p></>}</div>}
           </section>
 
           <section className="section-anchor journal-section" id="journal">
