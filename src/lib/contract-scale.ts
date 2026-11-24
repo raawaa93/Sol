@@ -1,7 +1,7 @@
 import { isQuoteFieldEstimated } from './quote-quality.ts';
 import type { OptionQuote } from './types.ts';
 
-export type ContractScaleIssue = 'UNIT_UNVERIFIED' | 'MULTIPLIER_MISMATCH';
+export type ContractScaleIssue = 'UNIT_UNVERIFIED' | 'MULTIPLIER_MISMATCH' | 'UNSUPPORTED_CONTRACT_SCALE';
 
 /**
  * The current scalar P&L model is valid only when the underlying contract unit
@@ -9,7 +9,7 @@ export type ContractScaleIssue = 'UNIT_UNVERIFIED' | 'MULTIPLIER_MISMATCH';
  * Futures and adjusted deliverables with distinct scales need a richer model.
  */
 export function getContractScaleIssue(
-  quote: Pick<OptionQuote, 'unit' | 'contractMultiplier' | 'estimatedFields'>,
+  quote: Pick<OptionQuote, 'unit' | 'contractMultiplier' | 'estimatedFields' | 'venue' | 'assetClass' | 'underlyingKind' | 'exerciseStyle' | 'settlementStyle'>,
 ): ContractScaleIssue | undefined {
   if (!Number.isFinite(quote.unit) || quote.unit <= 0 || isQuoteFieldEstimated(quote, 'unit')) {
     return 'UNIT_UNVERIFIED';
@@ -25,11 +25,24 @@ export function getContractScaleIssue(
     }
   }
 
+  const isSyntheticDemo = quote.venue === 'DEMO';
+  const isDocumentedBinanceCrypto = quote.venue === 'BINANCE'
+    && quote.assetClass === 'CRYPTO'
+    && quote.underlyingKind === 'SPOT'
+    && quote.exerciseStyle === 'EUROPEAN'
+    && quote.settlementStyle === 'CASH';
+
+  if (!isSyntheticDemo && !isDocumentedBinanceCrypto) {
+    return 'UNSUPPORTED_CONTRACT_SCALE';
+  }
+
   return undefined;
 }
 
 export function getContractScaleIssueMessage(issue: ContractScaleIssue): string {
   return issue === 'UNIT_UNVERIFIED'
     ? 'وحدة العقد غير موثّقة أو افتراضية؛ أوقفنا حسابات الكمية والربح والخسارة لكل عقد.'
-    : 'يختلف contractMultiplier عن unit؛ مقياس التسعير والتسليم غير ممثل بعد، لذلك أوقفنا حسابات العقد والمحاكاة التاريخية.';
+    : issue === 'MULTIPLIER_MISMATCH'
+      ? 'يختلف contractMultiplier عن unit؛ مقياس التسعير والتسليم غير ممثل بعد، لذلك أوقفنا حسابات العقد والمحاكاة التاريخية.'
+      : 'لم يتم التحقق من نموذج مقياس هذا السوق والعقد؛ نعرض الأسعار المرصودة فقط ونوقف P&L لكل عقد والمحاكاة التاريخية إلى أن تتوفر بيانات المضاعف والتسليم المناسبة.';
 }
