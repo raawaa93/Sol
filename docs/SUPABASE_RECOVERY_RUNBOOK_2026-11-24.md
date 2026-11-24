@@ -43,9 +43,9 @@ Run from a trusted environment with Docker and a current Supabase CLI. Prefer th
 mkdir -p sol-backup
 umask 077
 
-supabase db dump --db-url "$SUPABASE_DB_URL" -f sol-backup/roles.sql --role-only
-supabase db dump --db-url "$SUPABASE_DB_URL" -f sol-backup/schema.sql
-supabase db dump --db-url "$SUPABASE_DB_URL" -f sol-backup/data.sql --use-copy --data-only -x "storage.buckets_vectors" -x "storage.vector_indexes"
+supabase db dump --remote="$SUPABASE_DB_URL" -f sol-backup/roles.sql --role-only
+supabase db dump --remote="$SUPABASE_DB_URL" -f sol-backup/schema.sql
+supabase db dump --remote="$SUPABASE_DB_URL" -f sol-backup/data.sql --use-copy --data-only -x "storage.buckets_vectors" -x "storage.vector_indexes"
 
 sha256sum sol-backup/*.sql > sol-backup/SHA256SUMS
 ```
@@ -56,7 +56,15 @@ Encrypt the resulting archive with a strong encryption tool and a key held outsi
 
 ## 5. Restore verification plan
 
-Before treating a backup as reliable:
+Before loading a dump into a fresh Supabase project, revoke the platform's default privileges for client roles so the target project's defaults do not accidentally widen access. Apply and review these statements before restoring the schema:
+
+```sql
+ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM anon, authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON FUNCTIONS FROM anon, authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON SEQUENCES FROM anon, authenticated;
+```
+
+Then:
 
 1. Restore into an isolated disposable PostgreSQL/Supabase environment, never over the live project.
 2. Restore roles first, then schema, then data, following the official CLI guide and its privilege/default-grant cautions.
@@ -71,7 +79,16 @@ No isolated restore has been run yet; the current state is **not** a verified ba
 
 The remote migration ledger contains 22 rows; the Sol repository tracks only the three migrations listed above. The other 19 historical rows refer to removed legacy application objects. Their SQL text remains stored in the remote migration ledger, but the corresponding live application schemas, tables and functions are absent.
 
-Do not replay or re-add those historical migrations to `supabase/migrations`. After capturing a fresh schema dump and verifying the clean Sol schema, use the Supabase CLI's documented `migration repair --status reverted` operation to remove only the 19 obsolete history records, then verify that local and remote migration lists contain the same three Sol migrations. Supabase documents that `reverted` deletes the history record and does not reverse SQL objects: [migration repair reference](https://supabase.com/docs/reference/cli/supabase-migration-repair).
+Do not replay or re-add those historical migrations to `supabase/migrations`. After capturing a fresh schema dump and verifying the clean Sol schema, use the Supabase CLI v3 command below to remove only the 19 obsolete history records, then verify that local and remote migration lists contain the same three Sol migrations:
+
+```bash
+supabase migration list --remote="$SUPABASE_DB_URL"
+# After reviewing the list and backup/restore evidence:
+supabase migration repair <legacy-version> --status reverted --remote="$SUPABASE_DB_URL" --yes
+supabase migration list --remote="$SUPABASE_DB_URL"
+```
+
+Repeat the repair command only for the 19 explicitly listed legacy versions. In CLI v3, `--remote` can target a database URL; URLs must be RFC 3986 encoded. Do not run this against the production database until the schema dump and isolated restore have passed. Supabase documents that `reverted` deletes the history record and does not reverse SQL objects: [migration repair reference](https://supabase.com/docs/reference/cli/supabase-migration-repair).
 
 This repair has **not** been run. The history rows are intentionally retained until the dump and restore path are proven.
 
