@@ -1,15 +1,36 @@
 import { isQuoteFieldEstimated } from './quote-quality.ts';
 import type { OptionQuote } from './types.ts';
 
-export type ContractScaleIssue = 'UNIT_UNVERIFIED' | 'MULTIPLIER_MISMATCH';
+export type ContractScaleIssue = 'UNIT_UNVERIFIED' | 'MULTIPLIER_MISMATCH' | 'UNSUPPORTED_CONTRACT_SCALE';
+export type ContractScaleSourceMode = 'DEMO' | 'CSV' | 'BINANCE';
+
+type ScaleMetadata = Pick<OptionQuote,
+  'unit' | 'contractMultiplier' | 'estimatedFields' | 'venue' | 'assetClass'
+  | 'underlyingKind' | 'exerciseStyle' | 'settlementStyle' | 'quoteAsset' | 'settlementAsset'
+>;
+
+function hasSupportedCryptoScaleProfile(quote: ScaleMetadata): boolean {
+  return quote.assetClass === 'CRYPTO'
+    && quote.underlyingKind === 'SPOT'
+    && quote.exerciseStyle === 'EUROPEAN'
+    && quote.settlementStyle === 'CASH'
+    && Boolean(quote.quoteAsset)
+    && quote.quoteAsset === quote.settlementAsset;
+}
 
 /**
- * The current scalar P&L model is valid only when the underlying contract unit
- * is explicit and any separately supplied contract multiplier agrees with it.
- * Futures and adjusted deliverables with distinct scales need a richer model.
+ * Only the active app data mode may establish provenance. A CSV row can contain
+ * venue="DEMO" or venue="BINANCE"; those strings are user input, not proof that
+ * the row came from those sources.
+ *
+ * The current scalar P&L model is restricted to synthetic Demo fixtures and
+ * explicitly documented European cash-settled crypto spot contracts. For CSV,
+ * both unit and a matching contractMultiplier are required. Internal field
+ * consistency is not independent verification of exchange deliverables.
  */
 export function getContractScaleIssue(
-  quote: Pick<OptionQuote, 'unit' | 'contractMultiplier' | 'estimatedFields'>,
+  quote: ScaleMetadata,
+  sourceMode: ContractScaleSourceMode = 'CSV',
 ): ContractScaleIssue | undefined {
   if (!Number.isFinite(quote.unit) || quote.unit <= 0 || isQuoteFieldEstimated(quote, 'unit')) {
     return 'UNIT_UNVERIFIED';
@@ -25,11 +46,29 @@ export function getContractScaleIssue(
     }
   }
 
-  return undefined;
+  if (sourceMode === 'DEMO') {
+    return quote.venue === 'DEMO' ? undefined : 'UNSUPPORTED_CONTRACT_SCALE';
+  }
+
+  if (!hasSupportedCryptoScaleProfile(quote)) {
+    return 'UNSUPPORTED_CONTRACT_SCALE';
+  }
+
+  if (sourceMode === 'BINANCE') {
+    return quote.venue === 'BINANCE' ? undefined : 'UNSUPPORTED_CONTRACT_SCALE';
+  }
+
+  // CSV metadata is user-supplied. Require a named non-Demo venue and an
+  // explicit matching multiplier; never trust venue labels as source identity.
+  const hasNamedVenue = Boolean(quote.venue && quote.venue !== 'DEMO');
+  const hasExplicitMultiplier = quote.contractMultiplier !== undefined;
+  return hasNamedVenue && hasExplicitMultiplier ? undefined : 'UNSUPPORTED_CONTRACT_SCALE';
 }
 
 export function getContractScaleIssueMessage(issue: ContractScaleIssue): string {
   return issue === 'UNIT_UNVERIFIED'
     ? 'وحدة العقد غير موثّقة أو افتراضية؛ أوقفنا حسابات الكمية والربح والخسارة لكل عقد.'
-    : 'يختلف contractMultiplier عن unit؛ مقياس التسعير والتسليم غير ممثل بعد، لذلك أوقفنا حسابات العقد والمحاكاة التاريخية.';
+    : issue === 'MULTIPLIER_MISMATCH'
+      ? 'يختلف contractMultiplier عن unit؛ مقياس التسعير والتسليم غير ممثل بعد، لذلك أوقفنا حسابات العقد والمحاكاة التاريخية.'
+      : 'لم يتم التحقق من نموذج مقياس هذا السوق والعقد؛ نعرض الأسعار المرصودة فقط ونوقف P&L لكل عقد والمحاكاة التاريخية إلى أن تتوفر بيانات المضاعف والتسليم المناسبة.';
 }
