@@ -101,6 +101,34 @@ The connected Supabase function-source retrieval action returned internal errors
 
 This does not prove that no external scheduler exists. It does mean the available project/repository/automation evidence does not establish a working schedule for `rawaa-retention` or `rawaa-outbox`. Confirm the actual scheduler and its authentication before relying on automatic retention or notification delivery.
 
+## Runtime boundary verification — 24 November 2026, 05:15 UTC
+
+A second read-only pass checked effective schema privileges, function execution grants, the remote migration ledger, scheduler artifacts, and the retained 24-hour function logs.
+
+### Effective database access
+
+- `anon` and `authenticated` have no USAGE on `commerce` or `rawaa_store`, and no direct SELECT/INSERT grants on the audited `commerce`, `rawaa_store`, or Volterra rate-limit tables.
+- `service_role` has USAGE on `rawaa_store`, but not on `commerce`. The legacy Commerce API therefore cannot be assumed to have direct service-role table access; its actual access path must be confirmed from its function source or RPC dependencies.
+- `public.volterra_rate_limit_windows` has RLS enabled, no direct table grant to client roles or `service_role`, and no policies. Its `public.volterra_check_rate_limit` SECURITY DEFINER RPC is executable by `service_role` only. This is the intended service-side boundary; do not add client policies or table grants to silence the RLS advisor.
+- The private `rawaa_store` schema still contains one row in each of `telegram_pairing_challenge` and `telegram_recipient`. These are persisted operational records, not empty placeholder tables. Do not truncate or drop them without an owner-approved migration and recovery point.
+
+### Migration and scheduler drift
+
+- The remote migration ledger contains 21 versions; this repository tracks only the two Volterra migrations. The 19 unmatched versions include 12 early Gaiooth control-plane/scheduler migrations, six Rawaa Store migrations, and one Commerce spine migration.
+- The historical `create_gaiooth_scheduler` migration contains DDL for `public.gaiooth_schedules` and `public.claim_gaiooth_schedules`, but neither object exists in the current live schema. No Gaiooth/Council scheduler tables or functions were found in the current catalog. This is migration-history residue, not evidence of an active scheduler.
+- `pg_cron` and `pg_net` are not installed; `cron.job` is absent. The Sol repository's only scheduled workflow is the weekly Lighthouse baseline. The connected Activepieces project has one manual-trigger flow that dispatches a workflow in the separate Raawaa Engine repository; it is not a scheduled Sol or Rawaa retention/outbox job.
+- Therefore, no active database scheduler or scheduled retention/outbox caller has been established from the inspected sources.
+
+### Edge Function evidence and limitation
+
+- During the retained 24-hour log window, `function_edge_logs` and `function_logs` contained records for the Volterra function only; no legacy Rawaa/Commerce function IDs appeared. On Free, this is only a statement about the retained window, not proof that the legacy functions are unused.
+- `commerce-api`, `rawaa-retention`, and `rawaa-outbox` are active and have gateway `verify_jwt=false`. The Supabase function-source retrieval endpoint repeatedly returned an internal MCP error, so their application-level authentication and side effects could not be verified.
+- Keep these functions enabled until source, callers, schedules, secrets, and a tested restore path are available. No function or data was changed.
+
+### Decision
+
+The active project is secure against direct `anon`/`authenticated` table access in the audited schemas, but it is not a Sol-only backend. The safest next step remains to recover the authoritative owner/repository for the 19 unmatched migrations and obtain a tested off-site logical backup before any legacy cleanup. No paid resource was created and no production DDL was applied.
+
 ## Auth leaked-password warning: Free-plan limitation
 
 Supabase's current Password Security documentation says leaked-password protection is available on Pro and above. The organization is on the Free plan. Therefore this warning cannot be cleared as a no-cost setting in the current plan. No upgrade, billing change, or paid workaround was attempted.
