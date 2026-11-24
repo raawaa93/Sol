@@ -196,7 +196,7 @@ test('CSV routes explicit European futures options to Black-76 using the forward
   const csv = [
     'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,spot,unit,timestamp,assetClass,venue,underlyingKind,forward,riskFreeRate,exerciseStyle,settlementStyle,quoteAsset,settlementAsset,contractMultiplier',
     'CL-261230-70-C,CL,2026-12-30T08:00:00Z,70,CALL,2.0,2.2,2.1,20%,68.5,1,2026-11-24T02:00:00Z,ENERGY,CME,FUTURE,69,3%,EUROPEAN,PHYSICAL,USD,USD,1000',
-  ].join('\\n');
+  ].join('\n');
   const result = parseOptionsCsv(csv);
   assert.equal(result.quotes.length, 1, JSON.stringify(result.warnings));
   assert.equal(result.quotes[0].pricingStatus, 'SUPPORTED');
