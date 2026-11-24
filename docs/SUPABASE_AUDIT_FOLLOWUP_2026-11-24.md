@@ -95,7 +95,7 @@ The connected Supabase function-source retrieval action returned internal errors
 
 - `pg_cron` and `pg_net` are not installed in the current database.
 - The `cron.job` relation does not exist.
-- No scheduled workflow is present in the Sol repository's three GitHub Actions workflows.
+- The Sol repository has one scheduled GitHub Actions workflow: a weekly local Lighthouse performance baseline. No Sol workflow schedules or invokes the Rawaa retention/outbox functions.
 - The only connected Activepieces flow is `Raawaa GitHub Workflow Control`; it is a manual-trigger flow that dispatches a workflow in the separate `ghith93/raawaa-autonomous-engine` repository. It is not a Sol scheduler, and it was not run or modified.
 - No invocation records for the Rawaa Edge Function IDs appeared in the available 30-day Edge Function log query; the returned records were for the Volterra function only.
 
