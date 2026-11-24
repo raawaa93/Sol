@@ -375,9 +375,11 @@ function App() {
   const breakEven = getBreakeven(selectedQuote, selectedPremium, safeFees, safeQuantity);
   const maxLoss = getMaxLoss(selectedPremium, safeQuantity, selectedQuote.unit, safeFees);
   const hasModelGreeks = (selectedQuote.pricingStatus ?? (dataMode === 'DEMO' ? 'ASSUMED' : 'OBSERVED_ONLY')) !== 'OBSERVED_ONLY';
-  const quoteAssetLabel = selectedQuote.quoteAsset
-    ?? assetQuotes.find((quote) => quote.quoteAsset)?.quoteAsset
-    ?? (dataMode === 'CSV' ? undefined : 'USDT');
+  const quoteAssetLabel = dataMode === 'DEMO'
+    ? 'USDT'
+    : selectedQuote.quoteAsset
+      ?? assetQuotes.find((quote) => quote.quoteAsset)?.quoteAsset
+      ?? (dataMode === 'CSV' ? undefined : 'USDT');
   const underlyingReferencePrice = getUnderlyingReferencePrice(selectedQuote);
   const expectedMove = hasModelGreeks ? getExpectedMove(underlyingReferencePrice, selectedQuote.iv, selectedQuote.daysToExpiry) : undefined;
   const scenarioSeries = useMemo(() => buildScenarioSeries(selectedQuote, selectedPremium, safeQuantity, safeFees), [safeFees, safeQuantity, selectedPremium, selectedQuote]);
