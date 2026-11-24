@@ -1211,7 +1211,6 @@ function App() {
                         type="button"
                         key={quote.id}
                         className={`chain-mobile-card ${isSelected ? 'selected' : ''}`}
-                        aria-label={`اختيار العقد ${quote.symbol}`}
                         aria-pressed={isSelected}
                         onClick={() => setSelectedId(quote.id)}
                       >
