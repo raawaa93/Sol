@@ -8,7 +8,7 @@ function clampPrecision(value: number): number {
   return Math.max(0, Math.min(8, Math.trunc(value)));
 }
 
-function getFormatter(precision: number, minimumFractionDigits = precision): Intl.NumberFormat {
+export function getFormatter(precision: number, minimumFractionDigits = precision): Intl.NumberFormat {
   const maximum = clampPrecision(precision);
   const minimum = Math.min(maximum, clampPrecision(minimumFractionDigits));
   const key = `${minimum}:${maximum}`;
@@ -23,9 +23,9 @@ function getFormatter(precision: number, minimumFractionDigits = precision): Int
   return formatter;
 }
 
-export function formatNumber(value: number, precision: number, minimumFractionDigits = precision): string {
+export function formatNumber(value: number, precision: number): string {
   if (!Number.isFinite(value)) return '—';
-  return getFormatter(precision, minimumFractionDigits).format(value);
+  return getFormatter(precision).format(value);
 }
 
 function formatCurrency(value: number, currency: string | null | undefined, precision: number): string {
