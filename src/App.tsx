@@ -508,7 +508,7 @@ function App() {
       if (requestId !== binanceRequestId.current) return;
       if (error instanceof BinanceMarketDataError && error.status === 451) {
         setBinanceAccessRestricted(true);
-        setBinanceError('أعادت Binance HTTP 451، ورسالة المصدر تشير إلى قيد Eligibility. هذا يعني أن طلب بيانات السوق الصادر من خادم الوسيط رُفض upstream؛ ولا يثبت وحده ما إذا كان المنتج متاحاً لحسابك، لأن الطلب لا يمر عبر جلسة حسابك الشخصي. هذه ليست مشكلة CORS أو إعداد واجهة، ولن نحاول الالتفاف على قيد المنطقة/المنتج. استخدم Demo أو CSV أو مصدراً مرخصاً ومتاحاً لك.');
+        setBinanceError('أعادت Binance HTTP 451 لطلب البيانات الصادر من وسيطنا في فرانكفورت (eu-central-1). هذا رفض لمسار الخادم فقط، ولا يختبر عنوان IP السوري أو جلسة حسابك، ولا يثبت منع المقيمين في سوريا. لم نغيّر بلد الإقامة أو نحاول تجاوز ضوابط المنصة.');
         return;
       }
       setBinanceAccessRestricted(false);
@@ -836,12 +836,12 @@ function App() {
             <div className={`source-error ${binanceAccessRestricted ? 'source-error-restricted' : ''}`} role="alert">
               <div className="source-error-icon"><ShieldAlert size={16} /></div>
               <div>
-                <strong>{binanceAccessRestricted ? 'رفض أهلية من Binance · HTTP 451' : dataMode === 'BINANCE' && binanceSnapshot ? 'تعذّر تحديث Binance' : 'تعذّر تحميل بيانات Binance'}</strong>
+                <strong>{binanceAccessRestricted ? 'رفض طلب الوسيط من Binance · HTTP 451' : dataMode === 'BINANCE' && binanceSnapshot ? 'تعذّر تحديث Binance' : 'تعذّر تحميل بيانات Binance'}</strong>
                 <span>{binanceError}{dataMode === 'BINANCE' && binanceSnapshot ? ' — المعروض آخر لقطة محمّلة، وليس تحديثاً ناجحاً.' : ''}</span>
               </div>
               <div className="source-error-actions">
                 {binanceAccessRestricted ? <>
-                  <a className="source-error-link" href="https://www.binance.com/en/terms" target="_blank" rel="noreferrer">شروط الأهلية <ExternalLink size={12} /></a>
+                  <a className="source-error-link" href="https://www.binance.com/ar/support/faq/detail/863795c36a224bd7aa7d677996328ff9" target="_blank" rel="noreferrer">إتاحة Binance للمقيمين في سوريا <ExternalLink size={12} /></a>
                   <button className="button button-ghost" onClick={resetDemo}><Zap size={13} /> استخدام Demo</button>
                 </> : <button className="button button-ghost" onClick={loadBinanceOptions} disabled={binanceLoading}><RefreshCw size={13} /> إعادة المحاولة</button>}
               </div>
