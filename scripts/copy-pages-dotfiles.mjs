@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const root = process.cwd();
@@ -17,7 +17,7 @@ if (!manifest || !Array.isArray(manifest.entries)) {
 }
 
 mkdirSync(outputWellKnownDirectory, { recursive: true });
-cpSync(sourceDirectory, outputWellKnownDirectory, { recursive: true, force: true });
+writeFileSync(resolve(outputWellKnownDirectory, 'ard.json'), readFileSync(manifestPath));
 writeFileSync(resolve(outputDirectory, '.nojekyll'), '');
 
 if (!existsSync(resolve(outputWellKnownDirectory, 'ard.json'))) {
