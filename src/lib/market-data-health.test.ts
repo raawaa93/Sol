@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { assessSnapshotFreshness, DEFAULT_SNAPSHOT_STALE_AFTER_MS, formatSourceEventAge } from './market-data-health.ts';
+import { assessSnapshotFreshness, DEFAULT_SNAPSHOT_STALE_AFTER_MS, formatSourceTimestampAge } from './market-data-health.ts';
 
 const NOW = Date.UTC(2026, 10, 23, 12);
 
@@ -19,11 +19,11 @@ test('market snapshot freshness rejects clock-skewed and invalid timestamps', ()
 });
 
 
-test('source event age is explicit and never labels event age as feed freshness', () => {
-  assert.equal(formatSourceEventAge(undefined, NOW), 'غير متاح');
-  assert.equal(formatSourceEventAge('invalid', NOW), 'وقت غير صالح');
-  assert.equal(formatSourceEventAge(new Date(NOW - 12_000).toISOString(), NOW), 'منذ 12 ث');
-  assert.equal(formatSourceEventAge(new Date(NOW - 5 * 60_000).toISOString(), NOW), 'منذ 5 د');
-  assert.equal(formatSourceEventAge(new Date(NOW - 2 * 3_600_000).toISOString(), NOW), 'منذ 2 س');
-  assert.equal(formatSourceEventAge(new Date(NOW + 10_000).toISOString(), NOW), 'وقت مستقبلي؛ تحقّق');
+test('source timestamp age is explicit and does not claim feed freshness', () => {
+  assert.equal(formatSourceTimestampAge(undefined, NOW), 'غير متاح');
+  assert.equal(formatSourceTimestampAge('invalid', NOW), 'وقت غير صالح');
+  assert.equal(formatSourceTimestampAge(new Date(NOW - 12_000).toISOString(), NOW), 'منذ 12 ث');
+  assert.equal(formatSourceTimestampAge(new Date(NOW - 5 * 60_000).toISOString(), NOW), 'منذ 5 د');
+  assert.equal(formatSourceTimestampAge(new Date(NOW - 2 * 3_600_000).toISOString(), NOW), 'منذ 2 س');
+  assert.equal(formatSourceTimestampAge(new Date(NOW + 10_000).toISOString(), NOW), 'وقت مستقبلي؛ تحقّق');
 });
