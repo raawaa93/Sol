@@ -454,8 +454,8 @@ test('local portfolio tracks holdings, updates net worth, persists and exports a
 
   const portfolio = finance.locator('.portfolio-panel');
   await expect(portfolio).toContainText('BTC');
-  await expect(portfolio).toContainText('30,000 USD');
-  await expect(finance.locator('.finance-metrics article').first()).toContainText('30,000 USD');
+  await expect(portfolio).toContainText('٣٠٬٠٠٠ USD');
+  await expect(finance.locator('.finance-metrics article').first()).toContainText('٣٠٬٠٠٠ USD');
 
   const downloadPromise = page.waitForEvent('download');
   await finance.getByRole('button', { name: 'تصدير نسخة احتياطية' }).click();
@@ -473,5 +473,5 @@ test('local portfolio tracks holdings, updates net worth, persists and exports a
   await expect(page.locator('#finance .portfolio-panel')).toContainText('BTC');
   await page.locator('#finance .portfolio-panel').getByRole('button', { name: 'حذف BTC' }).click();
   await expect(page.locator('#finance .portfolio-panel')).toContainText('لا توجد مراكز استثمارية مسجلة');
-  await expect(page.locator('#finance .finance-metrics article').first()).toContainText('0 USD');
+  await expect(page.locator('#finance .finance-metrics article').first()).toContainText('٠ USD');
 });
