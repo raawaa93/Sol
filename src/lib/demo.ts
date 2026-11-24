@@ -11,7 +11,9 @@ export const DEMO_MARKETS: Record<Underlying, AssetSnapshot> = {
     iv30: 0.572,
     rv30: 0.486,
     openInterestUsd: 2_840_000_000,
+    openInterestCurrency: 'USD',
     volume24hUsd: 684_000_000,
+    volume24hCurrency: 'USD',
     fundingRate: 0.00012,
   },
   ETH: {
@@ -21,7 +23,9 @@ export const DEMO_MARKETS: Record<Underlying, AssetSnapshot> = {
     iv30: 0.638,
     rv30: 0.591,
     openInterestUsd: 1_190_000_000,
+    openInterestCurrency: 'USD',
     volume24hUsd: 292_000_000,
+    volume24hCurrency: 'USD',
     fundingRate: -0.00004,
   },
   SOL: {
@@ -31,7 +35,9 @@ export const DEMO_MARKETS: Record<Underlying, AssetSnapshot> = {
     iv30: 0.82,
     rv30: 0.69,
     openInterestUsd: 490_000_000,
+    openInterestCurrency: 'USD',
     volume24hUsd: 110_000_000,
+    volume24hCurrency: 'USD',
     fundingRate: 0.00008,
   },
   XRP: {
@@ -41,7 +47,9 @@ export const DEMO_MARKETS: Record<Underlying, AssetSnapshot> = {
     iv30: 0.94,
     rv30: 0.77,
     openInterestUsd: 140_000_000,
+    openInterestCurrency: 'USD',
     volume24hUsd: 44_000_000,
+    volume24hCurrency: 'USD',
     fundingRate: -0.00003,
   },
   DOGE: {
@@ -51,7 +59,9 @@ export const DEMO_MARKETS: Record<Underlying, AssetSnapshot> = {
     iv30: 1.06,
     rv30: 0.91,
     openInterestUsd: 97_000_000,
+    openInterestCurrency: 'USD',
     volume24hUsd: 33_000_000,
+    volume24hCurrency: 'USD',
     fundingRate: 0.00015,
   },
   BNB: {
@@ -61,7 +71,9 @@ export const DEMO_MARKETS: Record<Underlying, AssetSnapshot> = {
     iv30: 0.69,
     rv30: 0.58,
     openInterestUsd: 220_000_000,
+    openInterestCurrency: 'USD',
     volume24hUsd: 73_000_000,
+    volume24hCurrency: 'USD',
     fundingRate: 0.00005,
   },
   XAU: {
@@ -71,7 +83,9 @@ export const DEMO_MARKETS: Record<Underlying, AssetSnapshot> = {
     iv30: 0.215,
     rv30: 0.18,
     openInterestUsd: 85_000_000,
+    openInterestCurrency: 'USD',
     volume24hUsd: 20_000_000,
+    volume24hCurrency: 'USD',
     fundingRate: 0,
   },
   XAG: {
@@ -81,7 +95,9 @@ export const DEMO_MARKETS: Record<Underlying, AssetSnapshot> = {
     iv30: 0.32,
     rv30: 0.29,
     openInterestUsd: 34_000_000,
+    openInterestCurrency: 'USD',
     volume24hUsd: 7_000_000,
+    volume24hCurrency: 'USD',
     fundingRate: 0,
   },
   CL: {
@@ -91,7 +107,9 @@ export const DEMO_MARKETS: Record<Underlying, AssetSnapshot> = {
     iv30: 0.38,
     rv30: 0.31,
     openInterestUsd: 48_000_000,
+    openInterestCurrency: 'USD',
     volume24hUsd: 11_000_000,
+    volume24hCurrency: 'USD',
     fundingRate: 0,
   },
   BZ: {
@@ -101,7 +119,9 @@ export const DEMO_MARKETS: Record<Underlying, AssetSnapshot> = {
     iv30: 0.36,
     rv30: 0.3,
     openInterestUsd: 51_000_000,
+    openInterestCurrency: 'USD',
     volume24hUsd: 13_000_000,
+    volume24hCurrency: 'USD',
     fundingRate: 0,
   },
 };
