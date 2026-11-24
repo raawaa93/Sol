@@ -72,7 +72,7 @@ function getUnderlyingName(underlying: string): string {
 }
 
 function formatMoney(value: number, digits = 2, currency: string | null = 'USDT'): string {
-  return formatNumber(value, digits) + (currency ? ' ' + currency : '');
+  return formatNumber(value, digits) + (Number.isFinite(value) && currency ? ' ' + currency : '');
 }
 
 function formatCompact(value: number, currency: string | null): string {
