@@ -508,7 +508,7 @@ function App() {
       if (requestId !== binanceRequestId.current) return;
       if (error instanceof BinanceMarketDataError && error.status === 451) {
         setBinanceAccessRestricted(true);
-        setBinanceError('أعادت Binance HTTP 451 لطلب البيانات الصادر من وسيطنا في زيورخ (eu-central-2). هذا رفض لمسار الخادم فقط، ولا يختبر عنوان IP السوري أو جلسة حسابك، ولا يثبت منع المقيمين في سوريا. لم نغيّر بلد الإقامة أو نحاول تجاوز ضوابط المنصة.');
+        setBinanceError('أعادت Binance HTTP 451 لطلب بيانات السوق الصادر من خادم الوسيط. هذا رفض لمسار الخادم فقط؛ لا يختبر عنوان IP أو جلسة حسابك، ولا يثبت منع المقيمين في سوريا. تذكر صفحة Binance للمقيمين في سوريا تداول الخيارات ضمن المنتجات المتاحة عموماً وفق KYC والامتثال، لكنها لا تضمن تفعيل كل منتج فرعي أو صلاحية حسابك. لن نغيّر منطقة تنفيذ الوسيط لتجاوز رفض المصدر. استخدم Demo أو CSV أو مصدراً مرخصاً ومتاحاً لك.');
         return;
       }
       setBinanceAccessRestricted(false);
@@ -841,7 +841,7 @@ function App() {
               </div>
               <div className="source-error-actions">
                 {binanceAccessRestricted ? <>
-                  <a className="source-error-link" href="https://www.binance.com/ar/support/faq/detail/863795c36a224bd7aa7d677996328ff9" target="_blank" rel="noreferrer">إتاحة Binance للمقيمين في سوريا <ExternalLink size={12} /></a>
+                  <a className="source-error-link" href="https://www.binance.com/ar/support/faq/detail/863795c36a224bd7aa7d677996328ff9" target="_blank" rel="noreferrer">سياسة Binance للمقيمين في سوريا <ExternalLink size={12} /></a>
                   <button className="button button-ghost" onClick={resetDemo}><Zap size={13} /> استخدام Demo</button>
                 </> : <button className="button button-ghost" onClick={loadBinanceOptions} disabled={binanceLoading}><RefreshCw size={13} /> إعادة المحاولة</button>}
               </div>

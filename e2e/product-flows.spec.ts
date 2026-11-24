@@ -212,7 +212,8 @@ test('Binance HTTP 451 is shown as a proxy egress denial, without inferring Syri
   await expect(restriction).toContainText('رفض طلب الوسيط من Binance');
   await expect(restriction).toContainText('هذا رفض لمسار الخادم فقط');
   await expect(restriction).toContainText('ولا يثبت منع المقيمين في سوريا');
-  await expect(restriction.getByRole('link', { name: /إتاحة Binance للمقيمين في سوريا/ }))
+  await expect(restriction).toContainText('تذكر صفحة Binance للمقيمين في سوريا تداول الخيارات ضمن المنتجات المتاحة عموماً');
+  await expect(restriction.getByRole('link', { name: /سياسة Binance للمقيمين في سوريا/ }))
     .toHaveAttribute('href', 'https://www.binance.com/ar/support/faq/detail/863795c36a224bd7aa7d677996328ff9');
   await expect(restriction.getByRole('button', { name: 'إعادة المحاولة' })).toHaveCount(0);
   await expect(page.locator('.source-card')).toContainText('بيانات تجريبية');

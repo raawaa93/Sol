@@ -86,7 +86,7 @@ test('Binance proxy enables browser CORS only for the published app origin', () 
   assert.equal(getCorsHeaders('http://localhost:4173').get('Access-Control-Allow-Origin'), null);
   assert.equal(getCorsHeaders('https://attacker.example').get('Access-Control-Allow-Origin'), null);
   assert.equal(getCorsHeaders(null).get('Access-Control-Allow-Origin'), null);
-  assert.match(getCorsHeaders(appOrigin).get('Access-Control-Allow-Headers') ?? '', /x-region/i);
+  assert.doesNotMatch(getCorsHeaders(appOrigin).get('Access-Control-Allow-Headers') ?? '', /x-region/i);
   assert.equal(getCacheSeconds('exchangeInfo'), 60);
   assert.equal(getCacheSeconds('openInterest'), 15);
   assert.equal(getCacheSeconds('depth'), 2);
