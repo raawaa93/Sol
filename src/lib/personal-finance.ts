@@ -300,11 +300,9 @@ export interface PortfolioSummary {
   costBasis: number | null;
   unrealizedPnl: number | null;
   holdings: PortfolioHoldingAnalysis[];
-  allocations: Array<{ assetClass: PortfolioAssetClass; marketValue: number | null; weightPct: number | null }>;
+  allocations: Array<{ assetClass: PortfolioAssetClass; weightPct: number | null }>;
   concentration: {
     largestHoldingPct: number | null;
-    topThreePct: number | null;
-    largestAssetClassPct: number | null;
     warnings: Array<'SINGLE_POSITION_OVER_25_PERCENT' | 'TOP_THREE_OVER_60_PERCENT' | 'ASSET_CLASS_OVER_70_PERCENT'>;
   };
 }
@@ -380,7 +378,6 @@ export function calculatePortfolio(
   const allocationRows = [...classTotals.entries()].sort(([a], [b]) => a.localeCompare(b));
   const allocations = allocationRows.map(([assetClass, value]) => ({
     assetClass,
-    marketValue: complete ? value : null,
     weightPct: complete && marketValue > 0 ? (value / marketValue) * 100 : null,
   }));
   const largestHoldingPct = complete && sortedWeights.length ? sortedWeights[0] : null;
@@ -401,6 +398,6 @@ export function calculatePortfolio(
     unrealizedPnl: complete ? marketValue - costBasis : null,
     holdings: withWeights,
     allocations,
-    concentration: { largestHoldingPct, topThreePct, largestAssetClassPct, warnings },
+    concentration: { largestHoldingPct, warnings },
   };
 }
