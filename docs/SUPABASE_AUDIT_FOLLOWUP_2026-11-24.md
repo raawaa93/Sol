@@ -105,6 +105,18 @@ This does not prove that no external scheduler exists. It does mean the availabl
 
 Supabase's current Password Security documentation says leaked-password protection is available on Pro and above. The organization is on the Free plan. Therefore this warning cannot be cleared as a no-cost setting in the current plan. No upgrade, billing change, or paid workaround was attempted.
 
+## Free-plan reliability and recovery limits
+
+The connected project is on Supabase Free. Current Supabase plan documentation lists these operational constraints:
+
+- Free projects may be paused after one week of inactivity.
+- API/database log retention is one day.
+- Automated daily database backups and downloadable database backups are not included on Free.
+- The Free database allowance is 500 MB and included egress is 5 GB.
+
+The Volterra proxy and rate-limit RPC have recent activity, but that does not replace a recoverable backup or guarantee the project will never be paused. Because the remote schema includes 19 migrations not tracked in Sol, a safe restore/export process is not yet established. Do not perform destructive cleanup until an owner-approved backup/export and restore test exist. No paid plan or add-on was enabled; the current budget constraint remains in force.
+
+
 ## Index findings: corrected interpretation
 
 The duplicate indexes on `rawaa_store.orders` have identical definitions:
