@@ -502,7 +502,7 @@ function App() {
       if (requestId !== binanceRequestId.current) return;
       if (error instanceof BinanceMarketDataError && error.status === 451) {
         setBinanceAccessRestricted(true);
-        setBinanceError('أعادت Binance HTTP 451، وتشير رسالة الرفض إلى بند الأهلية (Eligibility) في شروطها. هذا رفض من المصدر، وليس خللاً في CORS أو وسيط Supabase. لا يمكن إصلاحه بتغيير إعدادات التطبيق، ولن نلتف على قيد المنطقة/المنتج؛ استخدم Demo أو CSV أو مزود بيانات مرخصاً ومتاحاً لك.');
+        setBinanceError('أعادت Binance HTTP 451، ورسالة المصدر تشير إلى قيد Eligibility. هذا يعني أن طلب بيانات السوق الصادر من خادم الوسيط رُفض upstream؛ ولا يثبت وحده ما إذا كان المنتج متاحاً لحسابك، لأن الطلب لا يمر عبر جلسة حسابك الشخصي. هذه ليست مشكلة CORS أو إعداد واجهة، ولن نحاول الالتفاف على قيد المنطقة/المنتج. استخدم Demo أو CSV أو مصدراً مرخصاً ومتاحاً لك.');
         return;
       }
       setBinanceAccessRestricted(false);
