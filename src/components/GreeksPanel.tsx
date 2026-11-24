@@ -1,5 +1,6 @@
 import { Info } from 'lucide-react';
 import { estimateGreekPnl } from '../lib/options';
+import { getContractScaleIssue, getContractScaleIssueMessage } from '../lib/contract-scale';
 import { formatSmallAmount, formatSmallNumber, getQuoteCurrency } from '../lib/format';
 import type { OptionQuote } from '../lib/types';
 
@@ -22,7 +23,10 @@ function greekSource(key: GreekKey, quote: OptionQuote, dataMode: DataMode): str
 }
 
 export default function GreeksPanel({ quote, quantity, dataMode }: GreeksPanelProps) {
-  const positionUnits = Math.max(0, Number.isFinite(quantity) ? quantity : 0) * quote.unit;
+  const scaleIssue = getContractScaleIssue(quote);
+  const hasVerifiedContractScale = scaleIssue === undefined;
+  const scaleIssueMessage = scaleIssue ? getContractScaleIssueMessage(scaleIssue) : '';
+  const positionUnits = hasVerifiedContractScale ? Math.max(0, Number.isFinite(quantity) ? quantity : 0) * quote.unit : 0;
   const pricingStatus = quote.pricingStatus ?? (dataMode === 'DEMO' ? 'ASSUMED' : 'OBSERVED_ONLY');
   const modelAvailable = pricingStatus !== 'OBSERVED_ONLY';
   const underlyingMoveLabel = quote.underlyingKind === 'FUTURE' ? 'Forward' : 'السعر المرجعي';
@@ -84,7 +88,7 @@ export default function GreeksPanel({ quote, quantity, dataMode }: GreeksPanelPr
         <div>
           <span className="section-kicker">GREEK EXPOSURE · {quote.symbol}</span>
           <h2 id="greeks-heading">Greeks مفصّلة وحساسية الكمية</h2>
-          <p>الوحدات أدناه لكل عقد، ثم الحساسية التقريبية للمركز الحالي ({formatSmallNumber(quantity)} × {formatSmallNumber(quote.unit)} وحدة).</p>
+          <p>القيم أدناه لكل وحدة مرجعية؛ حساسية المركز لا تظهر إلا عندما يكون مقياس العقد متحققاً.</p>
         </div>
         <span className="greek-assumption"><Info size={13} /> تغيرات محلية لا توقعات</span>
       </div>
@@ -92,14 +96,15 @@ export default function GreeksPanel({ quote, quantity, dataMode }: GreeksPanelPr
       <article className="panel greeks-panel">
         {pricingStatus === 'OBSERVED_ONLY' && <div className="greeks-footnote"><Info size={14} /><span>تتوفر بيانات السوق وIV، لكن مواصفات هذا العقد لا تسمح حالياً بحساب Greeks موثوقة. لن نستخدم أصفاراً مصطنعة أو نموذج Spot بديل. {quote.pricingReason ?? 'أدخل مواصفات عقد كاملة أو بيانات Greeks موثقة.'}</span></div>}
         {pricingStatus === 'ASSUMED' && <div className="greeks-footnote"><Info size={14} /><span>القيم التالية محسوبة بنموذج {modelName} مع افتراضات غير مرصودة بالكامل. {quote.pricingReason ?? 'تحقق من معدل الفائدة والـcarry ومواصفات التسوية قبل الاعتماد عليها.'}</span></div>}
+        {scaleIssue && <div className="greeks-footnote"><Info size={14} /><span>{scaleIssueMessage} ستبقى Greeks لكل وحدة مرجعية ظاهرة عند توفر النموذج، لكننا نحجب حساسية المركز المجمعة.</span></div>}
         <div className="greeks-table-wrap">
           <table className="greeks-table">
-            <thead><tr><th>Greek</th><th>القيمة لكل عقد / وحدة</th><th>حساسية الكمية الحالية</th><th>المصدر</th></tr></thead>
+            <thead><tr><th>Greek</th><th>القيمة لكل وحدة مرجعية</th><th>حساسية الكمية الحالية</th><th>المصدر</th></tr></thead>
             <tbody>{rows.map((row) => (
               <tr key={row.key}>
                 <td><strong><span>{row.symbol}</span>{row.label}</strong><small>{row.meaning}</small></td>
                 <td className="greek-number" dir="ltr">{modelAvailable ? formatSmallNumber(row.value) : '—'}</td>
-                <td className="greek-position"><strong dir="ltr">{modelAvailable ? (row.amount ? formatSmallAmount(row.positionValue, quoteCurrency ?? null) : formatSmallNumber(row.positionValue)) : '—'}</strong><small>{row.positionUnit}</small></td>
+                <td className="greek-position"><strong dir="ltr">{modelAvailable && hasVerifiedContractScale ? (row.amount ? formatSmallAmount(row.positionValue, quoteCurrency ?? null) : formatSmallNumber(row.positionValue)) : '—'}</strong><small>{row.positionUnit}</small></td>
                 <td><span className={`greek-origin ${quote.estimatedFields?.includes(row.key) || pricingStatus === 'ASSUMED' || dataMode === 'DEMO' ? 'estimated' : ''}`}>{greekSource(row.key, quote, dataMode)}</span></td>
               </tr>
             ))}</tbody>
@@ -114,7 +119,7 @@ export default function GreeksPanel({ quote, quantity, dataMode }: GreeksPanelPr
               </div>
               <div className="greeks-mobile-values">
                 <div><small>القيمة لكل عقد</small><strong dir="ltr">{modelAvailable ? formatSmallNumber(row.value) : '—'}</strong></div>
-                <div><small>حساسية الكمية الحالية</small><strong dir="ltr">{modelAvailable ? (row.amount ? formatSmallAmount(row.positionValue, quoteCurrency ?? null) : formatSmallNumber(row.positionValue)) : '—'}</strong></div>
+                <div><small>حساسية الكمية الحالية</small><strong dir="ltr">{modelAvailable && hasVerifiedContractScale ? (row.amount ? formatSmallAmount(row.positionValue, quoteCurrency ?? null) : formatSmallNumber(row.positionValue)) : '—'}</strong></div>
               </div>
               <p>{row.meaning}</p>
               <small className="greeks-mobile-unit">{row.positionUnit}</small>
@@ -122,7 +127,7 @@ export default function GreeksPanel({ quote, quantity, dataMode }: GreeksPanelPr
           ))}
         </div>
 
-        {modelAvailable ? <>
+        {modelAvailable && hasVerifiedContractScale ? <>
           <div className="greek-shock-heading"><div><strong>اختبار صدمات صغيرة</strong><span>تقدير P&amp;L للمركز الحالي، قبل الرسوم والانزلاق</span></div><span>{currencyLabel}</span></div>
           <div className="greek-shock-grid">
             {scenarios.map((scenario) => (

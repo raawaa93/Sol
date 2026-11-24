@@ -43,6 +43,7 @@ import { getAtmTermStructure } from './lib/analysis';
 import { getLatestQuotePerContract, getMarketSnapshotFromQuotes } from './lib/market';
 import { assessSnapshotFreshness, DEFAULT_SNAPSHOT_STALE_AFTER_MS, formatSourceTimestampAge } from './lib/market-data-health';
 import { isQuoteFieldEstimated } from './lib/quote-quality';
+import { getContractScaleIssue, getContractScaleIssueMessage } from './lib/contract-scale';
 import { downloadCsv, downloadCsvTemplate, MAX_CSV_FILE_BYTES, parseOptionsCsv } from './lib/csv';
 import type { CsvTimestampRange } from './lib/csv';
 import { buildScenarioSeries, getBreakeven, getExpectedMove, getMaxLoss, getMidPrice, getSpreadPct, getUnderlyingReferencePrice } from './lib/options';
@@ -381,17 +382,24 @@ function App() {
   const safeQuantity = Number.isFinite(quantity) ? Math.max(0, quantity) : 0;
   const safeFees = Number.isFinite(fees) ? Math.max(0, fees) : 0;
   const safeRiskBudget = Number.isFinite(riskBudget) ? Math.max(0, riskBudget) : 0;
-  const totalCost = selectedPremium * safeQuantity * selectedQuote.unit + safeFees;
-  const breakEven = getBreakeven(selectedQuote, selectedPremium, safeFees, safeQuantity);
-  const maxLoss = getMaxLoss(selectedPremium, safeQuantity, selectedQuote.unit, safeFees);
-  const hasModelGreeks = (selectedQuote.pricingStatus ?? (dataMode === 'DEMO' ? 'ASSUMED' : 'OBSERVED_ONLY')) !== 'OBSERVED_ONLY';
+  const contractScaleIssue = getContractScaleIssue(selectedQuote);
+  const hasVerifiedContractScale = contractScaleIssue === undefined;
+  const contractScaleIssueMessage = contractScaleIssue ? getContractScaleIssueMessage(contractScaleIssue) : '';
+  const totalCost = hasVerifiedContractScale ? selectedPremium * safeQuantity * selectedQuote.unit + safeFees : Number.NaN;
+  const breakEven = hasVerifiedContractScale ? getBreakeven(selectedQuote, selectedPremium, safeFees, safeQuantity) : Number.NaN;
+  const maxLoss = hasVerifiedContractScale ? getMaxLoss(selectedPremium, safeQuantity, selectedQuote.unit, safeFees) : Number.NaN;
+  const hasModelGreeks = hasVerifiedContractScale && (selectedQuote.pricingStatus ?? (dataMode === 'DEMO' ? 'ASSUMED' : 'OBSERVED_ONLY')) !== 'OBSERVED_ONLY';
   const quoteAssetLabel = getQuoteCurrency(selectedQuote);
   const openInterestCurrencyLabel = market?.openInterestCurrency ?? null;
   const volumeCurrencyLabel = market?.volume24hCurrency ?? null;
   const underlyingReferencePrice = getUnderlyingReferencePrice(selectedQuote);
   const expectedMove = hasModelGreeks ? getExpectedMove(underlyingReferencePrice, selectedQuote.iv, selectedQuote.daysToExpiry) : undefined;
-  const scenarioSeries = useMemo(() => buildScenarioSeries(selectedQuote, selectedPremium, safeQuantity, safeFees), [safeFees, safeQuantity, selectedPremium, selectedQuote]);
-  const rawAffordableQty = selectedPremium > 0 ? Math.floor(Math.max(0, safeRiskBudget - safeFees) / (selectedPremium * selectedQuote.unit) / quantityStep + 1e-9) * quantityStep : 0;
+  const scenarioSeries = useMemo(() => hasVerifiedContractScale
+    ? buildScenarioSeries(selectedQuote, selectedPremium, safeQuantity, safeFees)
+    : [], [hasVerifiedContractScale, safeFees, safeQuantity, selectedPremium, selectedQuote]);
+  const rawAffordableQty = hasVerifiedContractScale && selectedPremium > 0
+    ? Math.floor(Math.max(0, safeRiskBudget - safeFees) / (selectedPremium * selectedQuote.unit) / quantityStep + 1e-9) * quantityStep
+    : 0;
   const affordableQty = selectedQuote.maxQty === undefined ? rawAffordableQty : Math.min(rawAffordableQty, selectedQuote.maxQty);
   const modelPriceLabel = selectedQuote.pricingModel === 'BLACK_76' ? 'Black–76' : 'Black–Scholes مع Carry';
   const spreadPct = getSpreadPct(selectedQuote);
@@ -670,6 +678,10 @@ function App() {
   };
 
   const savePaperTrade = () => {
+    if (!hasVerifiedContractScale) {
+      notify(contractScaleIssueMessage);
+      return;
+    }
     if (safeQuantity <= 0) {
       notify('أدخل كمية أكبر من صفر للمحاكاة.');
       return;
@@ -736,6 +748,10 @@ function App() {
   };
 
   const handleBudgetClick = () => {
+    if (!hasVerifiedContractScale) {
+      notify(contractScaleIssueMessage);
+      return;
+    }
     if (affordableQty + 1e-9 < minimumQuantity) {
       notify(`الميزانية لا تكفي للحد الأدنى لهذه السلسلة (${formatQuantity(minimumQuantity, selectedQuote)}).`);
       return;
@@ -1028,12 +1044,12 @@ function App() {
                 </div>
                 <div className="budget-row"><label htmlFor="risk-budget">حد الميزانية التجريبية</label><div><input id="risk-budget" type="number" min="0" step="10" value={riskBudget} onChange={(event) => setRiskBudget(Math.max(0, Number(event.target.value)))} /><span>{quoteAssetLabel ?? 'عملة غير محددة'}</span><button onClick={handleBudgetClick} title="احسب كمية لا تتجاوز الميزانية">احسب الكمية</button></div></div>
                 <div className="risk-summary">
-                  <div><span>تكلفة القسط + الرسوم</span><strong>{formatMoney(totalCost, 2, quoteAssetLabel ?? null)}</strong></div>
-                  <div><span>نقطة التعادل عند الانتهاء</span><strong>{formatMoney(breakEven, 0, quoteAssetLabel ?? null)}</strong></div>
-                  <div className="risk-row"><span>أقصى خسارة للمشتري</span><strong className="loss-value">{formatMoney(maxLoss, 2, quoteAssetLabel ?? null)}</strong></div>
+                  <div><span>تكلفة القسط + الرسوم</span><strong>{hasVerifiedContractScale ? formatMoney(totalCost, 2, quoteAssetLabel ?? null) : 'غير متاح'}</strong></div>
+                  <div><span>نقطة التعادل عند الانتهاء</span><strong>{hasVerifiedContractScale ? formatMoney(breakEven, 0, quoteAssetLabel ?? null) : 'غير متاح'}</strong></div>
+                  <div className="risk-row"><span>أقصى خسارة للمشتري</span><strong className="loss-value">{hasVerifiedContractScale ? formatMoney(maxLoss, 2, quoteAssetLabel ?? null) : 'غير متاح'}</strong></div>
                 </div>
-                <div className="analysis-footnote"><Info size={13} /><span>{dataMode !== 'DEMO' && selectedQuote.estimatedFields?.length ? `حقول مقدّرة أو افتراضية في هذا العقد: ${formatEstimatedFields(selectedQuote.estimatedFields)}. ` : ''}الحساب لا يضيف تلقائياً رسوم المنصة أو أثر التنفيذ؛ أدخل الرسوم الفعلية وراجع وحدة العقد.</span></div>
-                <button className="button button-paper" onClick={savePaperTrade}><Plus size={16} /> أضف إلى الدفتر التجريبي</button>
+                <div className="analysis-footnote"><Info size={13} /><span>{contractScaleIssue ? `${contractScaleIssueMessage} ` : ''}{dataMode !== 'DEMO' && selectedQuote.estimatedFields?.length ? `حقول مقدّرة أو افتراضية في هذا العقد: ${formatEstimatedFields(selectedQuote.estimatedFields)}. ` : ''}الحساب لا يضيف تلقائياً رسوم المنصة أو أثر التنفيذ؛ أدخل الرسوم الفعلية وراجع وحدة العقد.</span></div>
+                <button className="button button-paper" onClick={savePaperTrade} disabled={!hasVerifiedContractScale}><Plus size={16} /> أضف إلى الدفتر التجريبي</button>
                 <div className="no-signal"><ShieldAlert size={15} /><span>لا يصدر المختبر توصية شراء أو بيع.</span></div>
               </aside>
             </div>
@@ -1052,7 +1068,9 @@ function App() {
           <section className="section-anchor payoff-section" id="payoff">
             <div className="section-title-row"><div><span className="section-kicker">EXPIRY SCENARIOS</span><h2>ماذا لو انتهى العقد عند مستويات مختلفة؟</h2><p>ربح/خسارة الخيار المشترى عند الانتهاء · قبل إضافة أي رسوم غير مدخلة</p></div><div className="scenario-controls"><span className="scenario-key"><i className="profit-key" /> صافي P&amp;L</span><span className="scenario-key"><i className="zero-key" /> التعادل</span></div></div>
             <div className="panel payoff-panel">
-              <DeferredPayoffChart scenarioSeries={scenarioSeries} selectedQuote={selectedQuote} />
+              {hasVerifiedContractScale
+                ? <DeferredPayoffChart scenarioSeries={scenarioSeries} selectedQuote={selectedQuote} />
+                : <div className="empty-state"><strong>حساب P&amp;L لكل عقد غير متاح</strong><span>{contractScaleIssueMessage}</span></div>}
               <div className="scenario-side">
                 <div className="scenario-side-head"><span>نطاق الحركة الضمني التقريبي</span><CircleHelp size={14} /></div>
                 {expectedMove !== undefined ? <>

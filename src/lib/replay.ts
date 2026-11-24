@@ -1,5 +1,6 @@
 import { getSpreadPct } from './options.ts';
 import { isQuoteFieldEstimated } from './quote-quality.ts';
+import { getContractScaleIssue } from './contract-scale.ts';
 import type { OptionQuote } from './types.ts';
 
 export interface OptionReplayConfig {
@@ -43,6 +44,7 @@ export interface OptionReplayResult {
     missingTimestamp: number;
     invalidQuote: number;
     invalidUnit: number;
+    invalidContractScale: number;
     wideSpread: number;
     noExitSnapshot: number;
   };
@@ -64,6 +66,7 @@ export function replayLongOptionSnapshots(
     missingTimestamp: 0,
     invalidQuote: 0,
     invalidUnit: 0,
+    invalidContractScale: 0,
     wideSpread: 0,
     noExitSnapshot: 0,
   };
@@ -93,6 +96,10 @@ export function replayLongOptionSnapshots(
     }
     if (!Number.isFinite(quote.unit) || quote.unit <= 0 || isQuoteFieldEstimated(quote, 'unit')) {
       skipped.invalidUnit += 1;
+      continue;
+    }
+    if (getContractScaleIssue(quote) === 'MULTIPLIER_MISMATCH') {
+      skipped.invalidContractScale += 1;
       continue;
     }
     if (!Number.isFinite(quote.bid) || !Number.isFinite(quote.ask)

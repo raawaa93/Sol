@@ -280,6 +280,32 @@ test('Binance proxy HTTP 451 triggers a direct current-network public-data attem
   await expect(page.locator('.source-card')).toContainText('بيانات تجريبية');
 });
 
+test('mismatched contract multiplier keeps quotes visible but blocks per-contract P&L and replay', async ({ page }) => {
+  const expiry = new Date(Date.now() + 45 * 86_400_000).toISOString();
+  const firstTime = new Date(Date.now() - 2 * 60 * 60_000).toISOString();
+  const secondTime = new Date(Date.now() - 60 * 60_000).toISOString();
+  const header = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,spot,unit,timestamp,assetClass,venue,underlyingKind,forward,riskFreeRate,exerciseStyle,settlementStyle,quoteAsset,settlementAsset,contractMultiplier';
+  const rows = [
+    ['CL-UNVERIFIED-70-C', 'CL', expiry, '70', 'CALL', '2.0', '2.2', '2.1', '20%', '69', '1', firstTime, 'ENERGY', 'CME', 'FUTURE', '69', '3%', 'EUROPEAN', 'PHYSICAL', 'USD', 'USD', '1000'],
+    ['CL-UNVERIFIED-70-C', 'CL', expiry, '70', 'CALL', '2.1', '2.3', '2.2', '20%', '69', '1', secondTime, 'ENERGY', 'CME', 'FUTURE', '69', '3%', 'EUROPEAN', 'PHYSICAL', 'USD', 'USD', '1000'],
+  ].map((row) => row.join(','));
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'unverified-futures-scale.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from([header, ...rows].join('\n')),
+  });
+
+  await expect(page.locator('.source-card')).toContainText('ملف محلي مستورد');
+  await page.getByRole('combobox', { name: 'اختر فئة الأصل' }).selectOption('ENERGY');
+  await expect(page.locator('#scanner')).toContainText('CL-UNVERIFIED-70-C');
+  await expect(page.locator('#trade-lab')).toContainText('غير متاح');
+  await expect(page.locator('#trade-lab').getByRole('button', { name: 'أضف إلى الدفتر التجريبي' })).toBeDisabled();
+  await expect(page.locator('#payoff .empty-state')).toContainText('حساب P&L لكل عقد غير متاح');
+  await expect(page.locator('#payoff')).toContainText('يختلف contractMultiplier عن unit');
+  await expect(page.locator('#historical-replay')).toContainText('مقياس عقد غير متحقق 2');
+  await expect(page.locator('#greeks')).toContainText('نحجب حساسية المركز المجمعة');
+});
+
 test('mobile option chain renders compact cards and selects a contract without table overflow', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
