@@ -109,6 +109,7 @@ export function validateContractEconomics(economics: ContractEconomics): Contrac
   }
 
   const deliverables = Array.isArray(exercise?.deliverables) ? exercise.deliverables : [];
+  if (exercise && !Array.isArray(exercise.deliverables)) issues.push('INVALID_DELIVERABLE');
   if (exercise && Array.isArray(exercise.deliverables)
     && deliverables.some((item) => !isValidDeliverable(item))) {
     issues.push('INVALID_DELIVERABLE');
