@@ -23,7 +23,7 @@ function rawTrade(overrides: Record<string, unknown> = {}) {
 }
 
 test('optionTrade classifies buyer-initiated flow from m=false', () => {
-  const [event] = parseBinanceOptionTradeMessage(rawTrade(), { receivedAt: 1_800_000_000_200 });
+  const [event] = parseBinanceOptionTradeMessage(rawTrade({ S: 'SELL' }), { receivedAt: 1_800_000_000_200 });
   assert.ok(event);
   assert.equal(event.aggressorSide, 'BUY');
   assert.equal(event.signedQuantity, 2);
