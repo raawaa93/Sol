@@ -128,3 +128,68 @@ export function calculateAggregateExerciseCash(
   if (!Number.isFinite(amount) || amount < 0) return { ok: false, reason: 'INVALID_INPUT' };
   return { ok: true, value: { amount, currency: terms.currency, contracts, basis: terms.basis } };
 }
+
+
+export interface CashSettlementPayoffInput {
+  economics: ContractEconomics;
+  optionType: 'CALL' | 'PUT';
+  strike: number;
+  settlementReferencePrice: number;
+  premiumPrice: number;
+  contracts: number;
+  fees?: number;
+}
+export interface CashSettlementPayoffValue {
+  intrinsicPerReferenceUnit: number;
+  grossSettlement: number;
+  premiumAmount: number;
+  fees: number;
+  netPnl: number;
+  currency: string;
+  contracts: number;
+}
+
+/**
+ * Expiry P&L for explicitly documented intrinsic-value cash settlement.
+ * Uses the settlement formula multiplier for payout and the independent
+ * premium scale for entry cost. It does not support physical delivery,
+ * early exercise, fees beyond the supplied amount, or cross-currency FX.
+ */
+export function calculateCashSettlementPayoff(
+  input: CashSettlementPayoffInput,
+): EconomicsCalculationResult<CashSettlementPayoffValue> {
+  const { economics, optionType, strike, settlementReferencePrice, premiumPrice, contracts, fees = 0 } = input;
+  const blocked = readinessFailure(economics);
+  if (blocked) return blocked;
+  const formula = economics.exercise.cashSettlement;
+  if (economics.exercise.settlement !== 'CASH' || !formula
+    || formula.formula !== 'INTRINSIC_VALUE') {
+    return { ok: false, reason: 'INVALID_INPUT', details: ['EXPLICIT_INTRINSIC_CASH_SETTLEMENT_REQUIRED'] };
+  }
+  if ((optionType !== 'CALL' && optionType !== 'PUT')
+    || !finiteNonNegative(strike) || !finiteNonNegative(settlementReferencePrice)
+    || !finiteNonNegative(premiumPrice) || !finitePositive(contracts) || !finiteNonNegative(fees)) {
+    return { ok: false, reason: 'INVALID_INPUT' };
+  }
+  const intrinsicPerReferenceUnit = optionType === 'CALL'
+    ? Math.max(settlementReferencePrice - strike, 0)
+    : Math.max(strike - settlementReferencePrice, 0);
+  const grossSettlement = intrinsicPerReferenceUnit * formula.multiplier * contracts;
+  const premiumAmount = premiumPrice * economics.premium.multiplier * contracts;
+  const netPnl = grossSettlement - premiumAmount - fees;
+  if (![grossSettlement, premiumAmount, netPnl].every(Number.isFinite)) {
+    return { ok: false, reason: 'INVALID_INPUT' };
+  }
+  return {
+    ok: true,
+    value: {
+      intrinsicPerReferenceUnit,
+      grossSettlement,
+      premiumAmount,
+      fees,
+      netPnl,
+      currency: formula.currency,
+      contracts,
+    },
+  };
+}

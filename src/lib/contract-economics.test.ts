@@ -455,3 +455,68 @@ test('standard 100-share equity reference vector keeps premium and exercise scal
   assert.equal(exerciseCash.ok, true);
   if (exerciseCash.ok) assert.equal(exerciseCash.value.amount, 5000);
 });
+
+
+test('canonical cash-settlement payoff uses settlement and premium multipliers independently', async () => {
+  const { calculateCashSettlementPayoff } = await import('./contract-economics-calculations.ts');
+  const economics = standardEquity({
+    premium: { multiplier: 1, quoteCurrency: 'USDT', priceUnit: 'PER_CONTRACT' },
+    exercise: {
+      style: 'EUROPEAN',
+      settlement: 'CASH',
+      settlementCurrency: 'USDT',
+      deliverables: [],
+      cashSettlement: { formula: 'INTRINSIC_VALUE', reference: 'INDEX', currency: 'USDT', multiplier: 100 },
+    },
+  });
+  const result = calculateCashSettlementPayoff({
+    economics, optionType: 'CALL', strike: 100, settlementReferencePrice: 112,
+    premiumPrice: 5, contracts: 3, fees: 1,
+  });
+  assert.deepEqual(result, {
+    ok: true,
+    value: {
+      intrinsicPerReferenceUnit: 12,
+      grossSettlement: 3600,
+      premiumAmount: 15,
+      fees: 1,
+      netPnl: 3584,
+      currency: 'USDT',
+      contracts: 3,
+    },
+  });
+});
+
+test('canonical cash-settlement payoff handles puts and worthless expiry', async () => {
+  const { calculateCashSettlementPayoff } = await import('./contract-economics-calculations.ts');
+  const economics = standardEquity({
+    premium: { multiplier: 1, quoteCurrency: 'USDT', priceUnit: 'PER_CONTRACT' },
+    exercise: {
+      style: 'EUROPEAN', settlement: 'CASH', settlementCurrency: 'USDT', deliverables: [],
+      cashSettlement: { formula: 'INTRINSIC_VALUE', reference: 'INDEX', currency: 'USDT', multiplier: 100 },
+    },
+  });
+  const put = calculateCashSettlementPayoff({
+    economics, optionType: 'PUT', strike: 100, settlementReferencePrice: 90,
+    premiumPrice: 4, contracts: 2,
+  });
+  assert.equal(put.ok && put.value.netPnl, 1_992);
+  const worthless = calculateCashSettlementPayoff({
+    economics, optionType: 'CALL', strike: 100, settlementReferencePrice: 90,
+    premiumPrice: 4, contracts: 2,
+  });
+  assert.equal(worthless.ok && worthless.value.netPnl, -8);
+});
+
+test('cash-settlement payoff fails closed for unknown settlement and invalid inputs', async () => {
+  const { calculateCashSettlementPayoff } = await import('./contract-economics-calculations.ts');
+  const economics = standardEquity({
+    exercise: { style: 'UNKNOWN', settlement: 'UNKNOWN', deliverables: [] },
+  });
+  const blocked = calculateCashSettlementPayoff({
+    economics, optionType: 'CALL', strike: 100, settlementReferencePrice: 110,
+    premiumPrice: 2, contracts: 1,
+  });
+  assert.equal(blocked.ok, false);
+  if (!blocked.ok) assert.equal(blocked.reason, 'CONTRACT_NOT_ADAPTER_READY');
+});
