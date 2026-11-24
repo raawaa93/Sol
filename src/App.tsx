@@ -44,7 +44,7 @@ import { assessSnapshotFreshness, DEFAULT_SNAPSHOT_STALE_AFTER_MS } from './lib/
 import { isQuoteFieldEstimated } from './lib/quote-quality';
 import { downloadCsv, downloadCsvTemplate, MAX_CSV_FILE_BYTES, parseOptionsCsv } from './lib/csv';
 import type { CsvTimestampRange } from './lib/csv';
-import { buildScenarioSeries, getBreakeven, getExpectedMove, getMaxLoss, getMidPrice, getSpreadPct } from './lib/options';
+import { buildScenarioSeries, getBreakeven, getExpectedMove, getMaxLoss, getMidPrice, getSpreadPct, getUnderlyingReferencePrice } from './lib/options';
 import { formatAssetPrice, formatOptionPrice, formatQuantity, formatSmallNumber, getOptionPricePrecision, getQuantityPrecision } from './lib/format';
 import type { AssetClass, OptionQuote, OptionSide, PaperTrade, Underlying } from './lib/types';
 import { ASSET_CLASS_LABELS } from './lib/asset-class';
@@ -358,7 +358,7 @@ function App() {
   const breakEven = getBreakeven(selectedQuote, selectedPremium, safeFees, safeQuantity);
   const maxLoss = getMaxLoss(selectedPremium, safeQuantity, selectedQuote.unit, safeFees);
   const hasModelGreeks = (selectedQuote.pricingStatus ?? (dataMode === 'DEMO' ? 'ASSUMED' : 'OBSERVED_ONLY')) !== 'OBSERVED_ONLY';
-  const underlyingReferencePrice = selectedQuote.underlyingKind === 'FUTURE' ? selectedQuote.forward ?? selectedQuote.spot : selectedQuote.spot;
+  const underlyingReferencePrice = getUnderlyingReferencePrice(selectedQuote);
   const expectedMove = hasModelGreeks ? getExpectedMove(underlyingReferencePrice, selectedQuote.iv, selectedQuote.daysToExpiry) : undefined;
   const scenarioSeries = useMemo(() => buildScenarioSeries(selectedQuote, selectedPremium, safeQuantity, safeFees), [safeFees, safeQuantity, selectedPremium, selectedQuote]);
   const rawAffordableQty = selectedPremium > 0 ? Math.floor(Math.max(0, safeRiskBudget - safeFees) / (selectedPremium * selectedQuote.unit) / quantityStep + 1e-9) * quantityStep : 0;
@@ -459,7 +459,7 @@ function App() {
       const preferredCalls = calls.filter((quote) => quote.daysToExpiry >= 20 && quote.daysToExpiry <= 40);
       const defaultQuote = [...(preferredCalls.length ? preferredCalls : calls)].sort((a, b) =>
         Math.abs(a.daysToExpiry - 30) - Math.abs(b.daysToExpiry - 30)
-        || Math.abs(a.strike - a.spot) - Math.abs(b.strike - b.spot),
+        || Math.abs(a.strike - getUnderlyingReferencePrice(a)) - Math.abs(b.strike - getUnderlyingReferencePrice(b)),
       )[0] ?? assetQuotes[0];
 
       setClockNow(snapshot.fetchedAt);
@@ -640,7 +640,7 @@ function App() {
       entryPremium: selectedPremium,
       pricePrecision: getOptionPricePrecision(selectedPremium, selectedQuote),
       fees: safeFees,
-      spotAtEntry: selectedQuote.spot,
+      spotAtEntry: underlyingReferencePrice,
       status: 'PAPER',
     };
     setTrades((current) => [newTrade, ...current]);
@@ -876,10 +876,11 @@ function App() {
                       {filteredQuotes.map((quote) => {
                         const spread = getSpreadPct(quote);
                         const isSelected = quote.id === selectedQuote.id;
-                        const moneyness = ((quote.strike / quote.spot) - 1) * 100;
+                        const quoteReferencePrice = getUnderlyingReferencePrice(quote);
+                        const moneyness = ((quote.strike / quoteReferencePrice) - 1) * 100;
                         return <tr key={quote.id} onClick={() => setSelectedId(quote.id)} className={isSelected ? 'selected-row' : ''}>
-                          <td><div className="contract-cell"><strong>{formatAssetPrice(quote.strike, quote.spot)}</strong><span className={`moneyness ${Math.abs(moneyness) < 2.6 ? 'atm' : ''}`}>{Math.abs(moneyness) < 2.6 ? 'ATM' : `${moneyness > 0 ? '+' : ''}${moneyness.toFixed(1)}%`}</span></div><span className="contract-symbol">{quote.symbol}</span></td>
-                          <td>{formatQuotePrice(quote.bid, quote)}</td><td>{formatQuotePrice(quote.ask, quote)}</td><td className="iv-cell">{formatPercent(quote.iv)}</td><td className={quote.delta >= 0 ? 'positive-text' : 'negative-text'}>{quote.delta.toFixed(3)}</td><td>{quote.openInterest === null ? '—' : formatSmallNumber(quote.openInterest)}</td><td>{quote.volume === null ? '—' : formatSmallNumber(quote.volume)}</td><td><span className={`spread-pill ${!Number.isFinite(spread) ? 'unknown' : spread > 8 ? 'wide' : spread > 4 ? 'medium' : 'tight'}`}>{Number.isFinite(spread) ? `${spread.toFixed(1)}%` : '—'}</span></td>
+                          <td><div className="contract-cell"><strong>{formatAssetPrice(quote.strike, quoteReferencePrice)}</strong><span className={`moneyness ${Math.abs(moneyness) < 2.6 ? 'atm' : ''}`}>{Math.abs(moneyness) < 2.6 ? 'ATM' : `${moneyness > 0 ? '+' : ''}${moneyness.toFixed(1)}%`}</span></div><span className="contract-symbol">{quote.symbol}</span></td>
+                          <td>{formatQuotePrice(quote.bid, quote)}</td><td>{formatQuotePrice(quote.ask, quote)}</td><td className="iv-cell">{formatPercent(quote.iv)}</td><td className={quote.delta >= 0 ? 'positive-text' : 'negative-text'}>{quote.pricingStatus === 'OBSERVED_ONLY' ? '—' : `${quote.delta.toFixed(3)}${quote.pricingStatus === 'ASSUMED' ? '*' : ''}`}</td><td>{quote.openInterest === null ? '—' : formatSmallNumber(quote.openInterest)}</td><td>{quote.volume === null ? '—' : formatSmallNumber(quote.volume)}</td><td><span className={`spread-pill ${!Number.isFinite(spread) ? 'unknown' : spread > 8 ? 'wide' : spread > 4 ? 'medium' : 'tight'}`}>{Number.isFinite(spread) ? `${spread.toFixed(1)}%` : '—'}</span></td>
                         </tr>;
                       })}
                     </tbody>
@@ -891,7 +892,7 @@ function App() {
 
               <aside className="panel quick-analysis" id="trade-lab">
                 <div className="analysis-header"><div><span className="section-kicker">CONTRACT REVIEW</span><h3>ملخص العقد</h3></div><span className="analysis-state"><span /> فحص فقط</span></div>
-                <div className="selected-contract-title"><div className={`contract-type-icon ${selectedQuote.type.toLowerCase()}`}>{selectedQuote.type === 'CALL' ? <TrendingUp size={17} /> : <TrendingDown size={17} />}</div><div><strong>{selectedQuote.underlying} {selectedQuote.type}</strong><span>{formatAssetPrice(selectedQuote.strike, selectedQuote.spot)} · ينتهي بعد {selectedQuote.daysToExpiry.toFixed(0)} يوم</span></div><button className="copy-symbol" onClick={() => { navigator.clipboard?.writeText(selectedQuote.symbol); notify('تم نسخ رمز العقد.'); }} title="نسخ رمز العقد">⧉</button></div>
+                <div className="selected-contract-title"><div className={`contract-type-icon ${selectedQuote.type.toLowerCase()}`}>{selectedQuote.type === 'CALL' ? <TrendingUp size={17} /> : <TrendingDown size={17} />}</div><div><strong>{selectedQuote.underlying} {selectedQuote.type}</strong><span>{formatAssetPrice(selectedQuote.strike, underlyingReferencePrice)} · ينتهي بعد {selectedQuote.daysToExpiry.toFixed(0)} يوم</span></div><button className="copy-symbol" onClick={() => { navigator.clipboard?.writeText(selectedQuote.symbol); notify('تم نسخ رمز العقد.'); }} title="نسخ رمز العقد">⧉</button></div>
                 {dataMode === 'BINANCE' && <div className="contract-specs"><span><small>وحدة العقد</small><b>{formatSmallNumber(selectedQuote.unit)} {selectedQuote.underlying}</b></span><span><small>حد الكمية</small><b>{selectedQuote.minQty === undefined ? '—' : formatQuantity(selectedQuote.minQty, selectedQuote)} – {selectedQuote.maxQty === undefined ? '—' : formatQuantity(selectedQuote.maxQty, selectedQuote)}</b></span><span><small>رسوم taker</small><b>{selectedQuote.takerFeeRate === undefined ? '—' : formatPercent(selectedQuote.takerFeeRate, 2)}</b></span></div>}
                 <div className="price-highlight"><span>{dataMode === 'BINANCE' ? 'سعر العقد المرجعي' : 'السعر المرجعي التقديري'}</span><strong>{formatOptionPrice(selectedPremium, selectedQuote)}</strong><small>{priceBasis}</small></div>
                 <div className="quote-row"><span>Bid <b>{formatQuotePrice(selectedQuote.bid, selectedQuote)}</b></span><span>Ask <b>{formatQuotePrice(selectedQuote.ask, selectedQuote)}</b></span></div>
