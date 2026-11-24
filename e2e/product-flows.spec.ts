@@ -106,7 +106,7 @@ test('asset-class selector covers every canonical class and unknown imports with
     buffer: Buffer.from([header, ...rows].join('\n')),
   });
 
-  await expect(page.getByText('تم استيراد 10 عقود محلياً.')).toBeVisible();
+  await expect(page.locator('.source-card')).toContainText('ملف محلي مستورد');
   const selector = page.getByRole('combobox', { name: 'اختر فئة الأصل' });
   const expected = [
     ['CRYPTO', 'BTC-CALL'],
