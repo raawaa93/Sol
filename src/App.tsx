@@ -508,7 +508,7 @@ function App() {
       if (requestId !== binanceRequestId.current) return;
       if (error instanceof BinanceMarketDataError && error.status === 451) {
         setBinanceAccessRestricted(true);
-        setBinanceError('أعادت Binance HTTP 451 لطلب البيانات الصادر من وسيطنا في فرانكفورت (eu-central-1). هذا رفض لمسار الخادم فقط، ولا يختبر عنوان IP السوري أو جلسة حسابك، ولا يثبت منع المقيمين في سوريا. لم نغيّر بلد الإقامة أو نحاول تجاوز ضوابط المنصة.');
+        setBinanceError('أعادت Binance HTTP 451 لطلب البيانات الصادر من وسيطنا في زيورخ (eu-central-2). هذا رفض لمسار الخادم فقط، ولا يختبر عنوان IP السوري أو جلسة حسابك، ولا يثبت منع المقيمين في سوريا. لم نغيّر بلد الإقامة أو نحاول تجاوز ضوابط المنصة.');
         return;
       }
       setBinanceAccessRestricted(false);
