@@ -50,7 +50,7 @@ export function getMarketSnapshotFromQuotes(quotes: OptionQuote[], underlying: U
   const openInterestCurrency = oiAmounts.length > 0 && oiAmounts.every((amount) => amount !== null) && oiCurrencies.size === 1
     ? [...oiCurrencies][0]
     : undefined;
-  const openInterestUsd = openInterestCurrency
+  const openInterestValue = openInterestCurrency
     ? oiAmounts.reduce((sum, amount) => sum + (amount?.value ?? 0), 0)
     : null;
   const volumeAmounts = volumeRows.map((quote) => {
@@ -65,7 +65,7 @@ export function getMarketSnapshotFromQuotes(quotes: OptionQuote[], underlying: U
   const volume24hCurrency = volumeAmounts.length > 0 && volumeAmounts.every((amount) => amount !== null) && volumeCurrencies.size === 1
     ? [...volumeCurrencies][0]
     : undefined;
-  const volume24hUsd = volume24hCurrency
+  const volume24hValue = volume24hCurrency
     ? volumeAmounts.reduce((sum, amount) => sum + (amount?.value ?? 0), 0)
     : null;
 
@@ -75,12 +75,12 @@ export function getMarketSnapshotFromQuotes(quotes: OptionQuote[], underlying: U
     dayChangePct: 0,
     iv30: near30Iv.length ? near30Iv[Math.floor(near30Iv.length / 2)] : null,
     rv30: null,
-    openInterestUsd,
+    openInterestValue,
     openInterestCurrency,
-    openInterestUsdEstimated: openInterestCurrency ? oiAmounts.some((amount) => amount?.estimated) : false,
-    volume24hUsd,
+    openInterestValueEstimated: openInterestCurrency ? oiAmounts.some((amount) => amount?.estimated) : false,
+    volume24hValue,
     volume24hCurrency,
-    volume24hUsdEstimated: volume24hCurrency ? volumeAmounts.some((amount) => amount?.estimated) : false,
+    volume24hValueEstimated: volume24hCurrency ? volumeAmounts.some((amount) => amount?.estimated) : false,
     fundingRate: 0,
   };
 }
