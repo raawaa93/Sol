@@ -1,7 +1,7 @@
 import { isQuoteFieldEstimated } from './quote-quality.ts';
 import type { OptionQuote } from './types.ts';
 
-export type ContractScaleIssue = 'UNIT_UNVERIFIED' | 'MULTIPLIER_MISMATCH' | 'UNSUPPORTED_CONTRACT_SCALE';
+export type ContractScaleIssue = 'UNIT_UNVERIFIED' | 'MULTIPLIER_MISMATCH' | 'PREMIUM_SCALE_UNVERIFIED' | 'UNSUPPORTED_CONTRACT_SCALE';
 export type ContractScaleSourceMode = 'DEMO' | 'CSV' | 'BINANCE';
 
 type ScaleMetadata = Pick<OptionQuote,
@@ -24,9 +24,12 @@ function hasSupportedCryptoScaleProfile(quote: ScaleMetadata): boolean {
  * the row came from those sources.
  *
  * The current scalar P&L model is restricted to synthetic Demo fixtures and
- * explicitly documented European cash-settled crypto spot contracts. For CSV,
- * both unit and a matching contractMultiplier are required. Internal field
- * consistency is not independent verification of exchange deliverables.
+ * crypto contracts where unit === 1, so premium-per-contract and per-underlying
+ * scales are numerically identical. Binance defines unit as underlying quantity
+ * per contract; it is not a documented premium multiplier. For unit > 1, the
+ * canonical premium/deliverable adapter is required. For CSV, both unit and a
+ * matching contractMultiplier are required, but matching scalars do not resolve
+ * a non-unit premium/deliverable scale.
  */
 export function getContractScaleIssue(
   quote: ScaleMetadata,
@@ -50,6 +53,14 @@ export function getContractScaleIssue(
     return quote.venue === 'DEMO' ? undefined : 'UNSUPPORTED_CONTRACT_SCALE';
   }
 
+  // Binance market prices/trade quantities are contract-denominated, while
+  // exchangeInfo.unit is underlying quantity per contract. The legacy scalar
+  // P&L model multiplies both premium and payoff by unit, so it is only safe
+  // while the two scales coincide numerically (unit === 1).
+  if (quote.unit !== 1) {
+    return 'PREMIUM_SCALE_UNVERIFIED';
+  }
+
   if (!hasSupportedCryptoScaleProfile(quote)) {
     return 'UNSUPPORTED_CONTRACT_SCALE';
   }
@@ -70,5 +81,7 @@ export function getContractScaleIssueMessage(issue: ContractScaleIssue): string 
     ? 'وحدة العقد غير موثّقة أو افتراضية؛ أوقفنا حسابات الكمية والربح والخسارة لكل عقد.'
     : issue === 'MULTIPLIER_MISMATCH'
       ? 'يختلف contractMultiplier عن unit؛ مقياس التسعير والتسليم غير ممثل بعد، لذلك أوقفنا حسابات العقد والمحاكاة التاريخية.'
-      : 'لم يتم التحقق من نموذج مقياس هذا السوق والعقد؛ نعرض الأسعار المرصودة فقط ونوقف P&L لكل عقد والمحاكاة التاريخية إلى أن تتوفر بيانات المضاعف والتسليم المناسبة.';
+      : issue === 'PREMIUM_SCALE_UNVERIFIED'
+        ? 'unit في Binance تمثل كمية الأصل الأساسي لكل عقد، وليست مضاعف القسط. لم نفصل بعد سعر القسط لكل عقد عن كمية التسليم؛ نعرض السوق المرصود ونوقف P&L وGreeks المركز وEV والمحاكاة لهذا العقد.'
+        : 'لم يتم التحقق من نموذج مقياس هذا السوق والعقد؛ نعرض الأسعار المرصودة فقط ونوقف P&L لكل عقد والمحاكاة التاريخية إلى أن تتوفر بيانات المضاعف والتسليم المناسبة.';
 }
