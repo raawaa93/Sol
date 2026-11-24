@@ -303,7 +303,7 @@ export interface PortfolioSummary {
   allocations: Array<{ assetClass: PortfolioAssetClass; weightPct: number | null }>;
   concentration: {
     largestHoldingPct: number | null;
-    warnings: Array<'SINGLE_POSITION_OVER_25_PERCENT' | 'TOP_THREE_OVER_60_PERCENT' | 'ASSET_CLASS_OVER_70_PERCENT'>;
+    warnings: Array<'SINGLE_POSITION_OVER_25_PERCENT'>;
   };
 }
 
@@ -381,13 +381,8 @@ export function calculatePortfolio(
     weightPct: complete && marketValue > 0 ? (value / marketValue) * 100 : null,
   }));
   const largestHoldingPct = complete && sortedWeights.length ? sortedWeights[0] : null;
-  const topThreePct = complete && sortedWeights.length ? sortedWeights.slice(0, 3).reduce((sum, value) => sum + value, 0) : null;
-  const largestAssetClassPct = complete && allocations.length
-    ? Math.max(...allocations.map((item) => item.weightPct ?? 0)) : null;
   const warnings: PortfolioSummary['concentration']['warnings'] = [];
   if (largestHoldingPct !== null && largestHoldingPct > 25) warnings.push('SINGLE_POSITION_OVER_25_PERCENT');
-  if (topThreePct !== null && topThreePct > 60) warnings.push('TOP_THREE_OVER_60_PERCENT');
-  if (largestAssetClassPct !== null && largestAssetClassPct > 70) warnings.push('ASSET_CLASS_OVER_70_PERCENT');
 
   return {
     reportingCurrency: target,
