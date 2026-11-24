@@ -250,8 +250,8 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
     const riskFreeRate = observedRiskFreeRate ?? 0;
     const referencePrice = twoSidedMid ?? observedMark ?? lastPrice ?? oneSidedQuote;
     const contractInfo = fixture.exchangeInfo.optionContracts?.find((contract) => contract.underlying?.toUpperCase() === indexKey);
-    const contractType = (symbolInfo.contractType ?? contractInfo?.contractType ?? '').toUpperCase();
-    const underlyingType = (symbolInfo.underlyingType ?? contractInfo?.underlyingType ?? '').toUpperCase();
+    const contractType = (symbolInfo.contractType?.trim() || contractInfo?.contractType?.trim() || '').toUpperCase();
+    const underlyingType = (symbolInfo.underlyingType?.trim() || contractInfo?.underlyingType?.trim() || '').toUpperCase();
     const hasExplicitUnderlyingType = underlyingType.length > 0;
     const hasExplicitContractType = contractType.length > 0;
     const isCommodity = underlyingType === 'COMMODITY';
