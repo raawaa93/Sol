@@ -143,9 +143,9 @@ For commit `e8f12cba1c73e6af1d13c2a321b00461182502db`:
 - Local Lighthouse representative runs: Performance 98–99, Accessibility 100, Best Practices 100, SEO 100; LCP about 0.76 s, TBT 104–151 ms, CLS 0.
 - GitHub Pages build and deploy jobs: passed.
 - Published-site smoke test, including the live market-data proxy contract: passed.
-- Published-site Lighthouse collection was still running at the time of this follow-up.
+- Published-site Lighthouse collection: passed on all three representative runs. Performance 99–100, Accessibility 100, Best Practices 100, SEO 100; LCP 0.8 s, TBT 90–100 ms, CLS 0, total transfer about 104 KiB.
 
-The Lighthouse custom Agentic Browsing category scored 50 because the app does not publish an `llms.txt` or an ARD agent/resource catalog. The app currently exposes no public MCP/A2A agent or WebMCP tools, so inventing a callable resource merely to raise that experimental category would be misleading. Treat this as non-applicable until a real agent-facing interface is intentionally shipped.
+The experimental Agentic Browsing category differed by environment: local Lighthouse reported 50 and flagged missing `llms.txt` and ARD manifest, while the published-site run reported 100. In the published report, the `llms.txt` and `ard-schema` audits had no score (not evaluated); only the accessibility-tree audit contributed to the category score. The app currently exposes no public MCP/A2A agent or WebMCP tools, so 100 must not be interpreted as full agent-tool readiness. No fictitious agent resource was added to chase this metric.
 
 ## Actions taken
 
