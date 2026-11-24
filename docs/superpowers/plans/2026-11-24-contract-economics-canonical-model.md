@@ -108,3 +108,15 @@ PR #124 merged as `037d776cb1c30808bffa12b024e2e03ddb7b886e`.
 - Legacy CSV rows remain accepted and are not silently backfilled with canonical terms.
 
 Verification on PR head `0be47bc03b423d5d4f82894c86d3c7416f6ea2a6`: CI passed (unit/property tests, mocked backup encryption/orchestration, production build, bundle budgets, Playwright journeys); Project Context Guard passed; Lighthouse completed successfully. No production pricing or trading path was enabled by this change.
+
+
+### Analytics guard hardening — 24 November 2026
+
+PR #127 merged as `c5272332ba0afca2ad01098314f3d834d7d70784`.
+
+- `getRiskNeutralExpiryMetrics` now requires the active trusted data mode and applies `getContractScaleIssue` internally. This prevents a future direct caller from bypassing the UI's scale gate.
+- `OpportunityReview` passes the current data mode into the calculation.
+- Regression tests confirm Binance `unit=1` remains eligible under the narrow existing profile while `unit=100` remains blocked, including when a matching legacy `contractMultiplier=100` is supplied.
+- The corrected PR CI passed unit/property tests, mocked backup orchestration, production build, bundle budget and Playwright browser journeys. Project Context Guard and Lighthouse also passed on the PR head.
+
+**Scope clarification:** this is defense-in-depth for the risk-neutral EV/probability function only. It does not complete Phase 3 provider adapters or Phase 4 routing of premium cash, break-even, expiry payoff, max loss, Greeks, opportunity EV and replay through one canonical economics result. The legacy scalar path remains intentionally blocked for Binance `unit > 1`; no previously unsupported contract was enabled.
