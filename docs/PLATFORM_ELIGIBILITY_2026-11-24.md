@@ -212,3 +212,30 @@ NautilusTrader مرشح محرك أحداث واختبار تاريخي متعد
 
 - **Deriv:** صفحة Deriv الرسمية لقائمة البلدان المدعومة تسرد البلدان التي تقدم فيها منتجات Deriv ولا تتضمن سوريا في القائمة العامة؛ لذلك لا نعتبرها منصة متاحة للمقيم السوري. حتى لو كانت بعض منتجاتها تحمل اسم Vanilla Options، فهي عقود وسيط بأسعار/شروط الوسيط وليست بديلاً مكافئاً لعقود البورصات القياسية. المصادر: https://legacy-docs.deriv.com/docs/country-list ، https://deriv.com/terms-and-conditions/trading-terms ، https://deriv.com/terms-and-conditions/general-terms-of-use
 - **NinjaTrader:** وثائق الحساب الحي الرسمية تقول إن البلد إذا لم يكن ضمن خيارات طلب الحساب فلن يمكن فتح حساب حي ممول. تقرير مستقل عن الوصول من سوريا ينقل رد امتثال مباشر بأن فتح الحساب من سوريا غير مسموح حالياً؛ نحتفظ بهذا كدليل ثانوي إلى أن يظهر نص رسمي أو تحديث من الشركة. المصادر: https://vendor-support.ninjatrader.com/s/article/Applying-for-a-Live-NinjaTrader-Account?language=en_US ، https://unblocksyria.com/en/services/ninjatrader
+
+
+## ملحق — مزودو بيانات الخيارات وتكلفة الوصول (24 نوفمبر 2026)
+
+لا يوجد في المصادر التي تمت مراجعتها مزود مجاني واحد يعطي سلاسل خيارات لحظية وموثوقة لكل فئات الأصول العالمية. التغطية تتجزأ حسب البورصة وفئة الأصل والترخيص.
+
+| مزود البيانات | التغطية | المجاني | القيود / القرار |
+|---|---|---|---|
+| Binance Options API | العقود التي تسردها Binance من كريبتو وسلع محدودة | واجهات سوق عامة REST/WS بلا مفتاح تداول خاص | مصدر حي مفيد فقط لعقود Binance التي تظهر فعلياً؛ لا يمثل جميع أسواق الخيارات |
+| Alpaca Basic | خيارات أسهم/ETF أمريكية عبر OPRA universe | Feed مؤشري Indicative؛ ليس OPRA BBO الحقيقي، مع حدود API وبيانات تاريخية | جيد للتعلم/عرض مؤشرات غير تنفيذية إذا اجتاز فتح الحساب والامتثال؛ OPRA الحقيقي ضمن خطة مدفوعة تقارب 99$/شهر، خارج سقف 15$ |
+| MarketData.app Free Forever | خيارات أسهم أمريكية | 100 API credits يومياً، سنة تاريخية، تأخير 24 ساعة | مناسب لتجربة EOD/تحليل غير لحظي؛ لا يصلح للتنفيذ أو ملء backtest؛ مزود يقول إن تعريف المستخدم واتفاقيات البورصة مطلوبة للبيانات الأسرع، ويجب التحقق من أهلية سوريا |
+| Massive Options Basic | خيارات أمريكية | End-of-day؛ حد Basic محدود، لا Quotes flat files ضمن الخطة المجانية | خيار أرشفة/استكشاف محدود بعد فحص الترخيص؛ خطط 15-minute delayed تبدأ من 29$/شهر، أعلى من سقف المستخدم |
+| CME Group DataMine / MDP | خيارات العقود الآجلة عبر الفائدة والعملات والطاقة والمعادن والزراعة وغيرها | لا توجد تغطية مجانية عامة مثبتة؛ بعض مجموعات البيانات تتطلب التواصل/الشراء | المصدر المنطقي لبيانات CME القياسية، لكن الترخيص والتكلفة والوصول للوسيط/FCM منفصلة |
+| Cboe Market Data / DataShop | خيارات وأسهم ومؤشرات وFX وبيانات أسواق دولية | لا يوجد feed عالمي مجاني شامل مثبت | شراء بيانات حسب المنتج/السوق أو عبر موزع مرخص؛ لا تفترض أن اشتراكاً واحداً يغطي كل شيء |
+
+**القرار ضمن سقف 15$/شهر:** لا نشتري بيانات الآن. استخدم Binance public market data للعقود المتاحة، وCSV/مصادر مجانية مؤخرة فقط للدراسة، وابنِ أرشفة مستقبلية. يمكن لاحقاً تقييم MarketData.app Free أو Alpaca Indicative كمصدر أمريكي منفصل، لكن فقط بعد التحقق من قبول المقيم السوري وشروط البيانات. لا نستخدم أي بيانات متأخرة كأنها سعر تنفيذ أو كدليل على قابلية صفقة تاريخية للتنفيذ.
+
+المصادر الرسمية:
+- Binance Options API/streams: https://www.binance.com/en/support/faq/detail/fe0be251ac014a8082e702f83d089e54
+- Alpaca market data tiers: https://docs.alpaca.markets/us/docs/about-market-data-api
+- Alpaca indicative vs OPRA historical feed: https://docs.alpaca.markets/us/docs/historical-option-data
+- MarketData.app plan limits (updated 23 Oct 2026): https://www.marketdata.app/docs/account/plan-limits/
+- MarketData.app free-account data policy (3 Sep 2026): https://www.marketdata.app/docs/account/data-policies/free-accounts/
+- Massive options quotes plans: https://massive.com/docs/flat-files/options/quotes?assetClass=options&license=personal&name=options_advanced
+- Massive Basic data timing/recency: https://massive.com/knowledge-base/article/on-the-free-basic-plan-when-can-i-pull-the-previous-trading-days-data
+- CME data catalogue: https://www.cmegroup.com/market-data/browse-data.html.html
+- Cboe data services: https://www.cboe.com/data/market-data-services
