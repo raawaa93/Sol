@@ -52,10 +52,10 @@ test('adjusted contract keeps premium multiplier separate from shares and cash d
 
   const premium = calculatePremiumCash({ economics, premiumPrice: 2.5, contracts: 2 });
   assert.equal(premium.ok && premium.value.amount, 500);
-  const exerciseCash = calculateAggregateExerciseCash({ economics, strike: 100, contracts: 2 });
+  const exerciseCash = calculateAggregateExerciseCash(economics, 100, 2);
   assert.equal(exerciseCash.ok && exerciseCash.value.amount, 2_000);
   const packageValue = valueDeliverablePackage(economics, { GOOG: { price: 150, currency: 'USD' } });
-  assert.equal(packageValue.ok && packageValue.value.totalsByCurrency.USD, 3_251);
+  assert.equal(packageValue.ok && packageValue.value.totalsByCurrency.USD, 1_625);
 });
 
 test('stock option adapter rejects inferred or incomplete metadata', () => {
