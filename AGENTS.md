@@ -37,3 +37,5 @@
 
 ## Durable context
 Keep the multi-asset scope, Syrian residence, VPN connectivity distinction, platform findings and execution guardrails in repository documentation. Update this file and docs/PLATFORM_ELIGIBILITY_2026-11-24.md when verified facts change. Do not describe the project as a gold-only tool. Use “Volterra Multi-Asset Options Decision Lab” consistently.
+
+- Do not rank or switch an options venue on API features alone. Require current contract-level liquidity evidence (bid/ask depth, OI, volume, spread, fill quality) and verified user eligibility. In Q3 2026 secondary crypto-options data, Binance had measurable volume/share; Gate was not among the top venues listed, so Gate's API capability does not prove comparable liquidity.
