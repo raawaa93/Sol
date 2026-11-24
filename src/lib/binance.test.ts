@@ -435,7 +435,7 @@ test('Binance explicit underlyingType overrides legacy base-asset heuristics', (
       }],
       optionSymbols: [{
         symbol, underlying: 'BTCUSD', side: 'CALL', strikePrice: 100, expiryDate: expiry, unit: 1,
-        status: 'TRADING', contractType: 'TRADFI_OPTIONS', underlyingType: 'EQUITY',
+        status: 'TRADING', contractType: '', underlyingType: '',
       }],
     },
     marks: [{ symbol, markPrice: 7, markIV: 0.4 }],
