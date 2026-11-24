@@ -27,7 +27,7 @@
 - https://www.binance.com/en-UZ/support/faq/detail/dc9e52b4440b48bd900a767cc5024c84
 - https://www.binance.com/en/support/announcement/detail/e80dd709384244719e653c1e9d1541c2
 
-المسار التقليدي يحتاج وسيطاً/FCM يقبل المقيم السوري صراحةً. Optimus Futures وAMP Futures مرشحان للاستفسار فقط؛ لا يوجد قبول سوري مثبت حتى الآن. لا تعني قائمة CME أن الوسيط يقبل كل بلد أو أن CME تفتح حساباً مباشراً للأفراد.
+المسار التقليدي يحتاج وسيطاً/FCM يقبل المقيم السوري صراحةً. AMP Futures تستبعد سوريا في قائمتها الرسمية المصورة؛ أما Optimus Futures فهو مرشح للاستفسار فقط ولا يوجد قبول سوري مثبت حتى الآن. لا تعني قائمة CME أن الوسيط يقبل كل بلد أو أن CME تفتح حساباً مباشراً للأفراد.
 
 التفاصيل والمصادر ومخطط التوسع في [PLATFORM_ELIGIBILITY_2026-11-24.md](PLATFORM_ELIGIBILITY_2026-11-24.md) و[AGENTS.md](../AGENTS.md).
 
