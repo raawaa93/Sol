@@ -382,7 +382,7 @@ function App() {
   const safeQuantity = Number.isFinite(quantity) ? Math.max(0, quantity) : 0;
   const safeFees = Number.isFinite(fees) ? Math.max(0, fees) : 0;
   const safeRiskBudget = Number.isFinite(riskBudget) ? Math.max(0, riskBudget) : 0;
-  const contractScaleIssue = getContractScaleIssue(selectedQuote);
+  const contractScaleIssue = getContractScaleIssue(selectedQuote, dataMode);
   const hasExplicitConsistentContractScale = contractScaleIssue === undefined;
   const contractScaleIssueMessage = contractScaleIssue ? getContractScaleIssueMessage(contractScaleIssue) : '';
   const totalCost = hasExplicitConsistentContractScale ? selectedPremium * safeQuantity * selectedQuote.unit + safeFees : Number.NaN;
