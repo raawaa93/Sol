@@ -357,7 +357,9 @@ function App() {
   const totalCost = selectedPremium * safeQuantity * selectedQuote.unit + safeFees;
   const breakEven = getBreakeven(selectedQuote, selectedPremium, safeFees, safeQuantity);
   const maxLoss = getMaxLoss(selectedPremium, safeQuantity, selectedQuote.unit, safeFees);
-  const expectedMove = getExpectedMove(selectedQuote.spot, selectedQuote.iv, selectedQuote.daysToExpiry);
+  const hasModelGreeks = (selectedQuote.pricingStatus ?? (dataMode === 'DEMO' ? 'ASSUMED' : 'OBSERVED_ONLY')) !== 'OBSERVED_ONLY';
+  const underlyingReferencePrice = selectedQuote.underlyingKind === 'FUTURE' ? selectedQuote.forward ?? selectedQuote.spot : selectedQuote.spot;
+  const expectedMove = hasModelGreeks ? getExpectedMove(underlyingReferencePrice, selectedQuote.iv, selectedQuote.daysToExpiry) : undefined;
   const scenarioSeries = useMemo(() => buildScenarioSeries(selectedQuote, selectedPremium, safeQuantity, safeFees), [safeFees, safeQuantity, selectedPremium, selectedQuote]);
   const rawAffordableQty = selectedPremium > 0 ? Math.floor(Math.max(0, safeRiskBudget - safeFees) / (selectedPremium * selectedQuote.unit) / quantityStep + 1e-9) * quantityStep : 0;
   const affordableQty = selectedQuote.maxQty === undefined ? rawAffordableQty : Math.min(rawAffordableQty, selectedQuote.maxQty);
@@ -932,13 +934,15 @@ function App() {
               <DeferredPayoffChart scenarioSeries={scenarioSeries} selectedQuote={selectedQuote} />
               <div className="scenario-side">
                 <div className="scenario-side-head"><span>نطاق الحركة الضمني التقريبي</span><CircleHelp size={14} /></div>
-                <div className="expected-move-value">±{formatAssetPrice(expectedMove, selectedQuote.spot)}</div>
-                <div className="expected-range"><span>{formatAssetPrice(Math.max(0, selectedQuote.spot - expectedMove), selectedQuote.spot)}</span><i /><span>{formatAssetPrice(selectedQuote.spot + expectedMove, selectedQuote.spot)}</span></div>
-                <p>تقريب 1σ من IV حتى الانتهاء. ليس توقعاً ولا احتمالاً مؤكداً.</p>
+                {expectedMove !== undefined ? <>
+                  <div className="expected-move-value">±{formatAssetPrice(expectedMove, underlyingReferencePrice)}</div>
+                  <div className="expected-range"><span>{formatAssetPrice(Math.max(0, underlyingReferencePrice - expectedMove), underlyingReferencePrice)}</span><i /><span>{formatAssetPrice(underlyingReferencePrice + expectedMove, underlyingReferencePrice)}</span></div>
+                  <p>تقريب 1σ من IV حتى الانتهاء. ليس توقعاً ولا احتمالاً مؤكداً.</p>
+                </> : <p>نطاق الحركة غير متاح: لا يوجد نموذج تسعير موثّق لهذا العقد. {selectedQuote.pricingReason}</p>}
                 <div className="scenario-divider" />
-                <div className="scenario-stat"><span>Delta</span><strong className={selectedQuote.delta >= 0 ? 'positive-text' : 'negative-text'}>{selectedQuote.delta.toFixed(3)}</strong><small>حساسية تقريبية لكل حركة وحدة</small></div>
-                <div className="scenario-stat"><span>Theta / يوم</span><strong className="negative-text">{formatMoney(selectedQuote.theta * safeQuantity * selectedQuote.unit)}</strong><small>تقدير النموذج، يتغير مع السوق</small></div>
-                <div className="scenario-stat"><span>Vega / نقطة تقلب</span><strong>{formatMoney(selectedQuote.vega * safeQuantity * selectedQuote.unit)}</strong><small>حساسية تقريبية لـ +1 نقطة مئوية</small></div>
+                <div className="scenario-stat"><span>Delta</span><strong className={hasModelGreeks && selectedQuote.delta >= 0 ? 'positive-text' : 'negative-text'}>{hasModelGreeks ? selectedQuote.delta.toFixed(3) : '—'}</strong><small>حساسية تقريبية لكل حركة وحدة</small></div>
+                <div className="scenario-stat"><span>Theta / يوم</span><strong className="negative-text">{hasModelGreeks ? formatMoney(selectedQuote.theta * safeQuantity * selectedQuote.unit) : '—'}</strong><small>تقدير النموذج، يتغير مع السوق</small></div>
+                <div className="scenario-stat"><span>Vega / نقطة تقلب</span><strong>{hasModelGreeks ? formatMoney(selectedQuote.vega * safeQuantity * selectedQuote.unit) : '—'}</strong><small>حساسية تقريبية لـ +1 نقطة مئوية</small></div>
               </div>
             </div>
           </section>
