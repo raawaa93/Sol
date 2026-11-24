@@ -81,5 +81,5 @@ test('CSV scale values alone do not establish a supported American equity delive
     settlementStyle: 'PHYSICAL',
     unit: 100,
     contractMultiplier: 100,
-  }, 'CSV'), 'PREMIUM_SCALE_UNVERIFIED');
+  }, 'CSV'), 'UNSUPPORTED_CONTRACT_SCALE');
 });
