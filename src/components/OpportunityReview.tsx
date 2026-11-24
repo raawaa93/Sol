@@ -143,7 +143,7 @@ export default function OpportunityReview({ quotes, market, underlying, dataMode
                 <span className="review-contract-meta">{formatAssetPrice(quote.strike, quote.spot)} · {Math.round(quote.daysToExpiry)} يوم · Δ {quote.delta.toFixed(2)}</span>
                 <span className="review-market-meta">IV {formatPercent(quote.iv)} · OI {quote.openInterest === null ? '—' : formatSmallNumber(quote.openInterest)} · حجم {quote.volume === null ? '—' : formatSmallNumber(quote.volume)}</span>
                 {modelMetrics && <span className="review-model-meta">احتمال الربح عند الانتهاء: {formatPercent(modelMetrics.probabilityOfProfit)} · EV محايد/عقد: {modelMetrics.expectedExpiryPnlPerUnit * quote.unit >= 0 ? '+' : ''}{formatSmallNumber(modelMetrics.expectedExpiryPnlPerUnit * quote.unit)} USDT</span>}
-                {modelMetrics && <small className="review-model-note">قياس محايد للمخاطر عند IV المدخل وr=0%، قبل الرسوم والانزلاق؛ ليس احتمالاً واقعياً ولا توقعاً للسوق.</small>}
+                {modelMetrics && <small className="review-model-note">قياس محايد للمخاطر عند IV المدخل وr=0%، قبل الرسوم والانزلاق؛ ليس احتمالاً واقعياً ولا توقعاً للسوق. {quote.underlying === 'XAU' || quote.underlying === 'XAG' ? 'مرجع Black–Scholes على مؤشر TradFi؛ لا يدمج تمويل/أساس العقد أو ساعات السوق.' : ''}</small>}
                 {estimated && <small className="review-estimated">حقول تقديرية: {estimated}</small>}
                 <span className="review-open">افتح العقد في الماسح</span>
               </button>
