@@ -66,7 +66,7 @@ This is positive, first-party evidence for the general Options service. It does 
 
 The Binance public Options API uses the global host `https://eapi.binance.com`; there is no separate `Binance Syria`, `Binance.US` or UK-only Options API host for this product. The Syria FAQ explicitly lists Options trading. A 451 returned to the app's Supabase proxy is a denial of that server-side request, not an authenticated check of the user's Syrian Binance account.
 
-Supabase Edge Functions normally execute close to the caller. GitHub-hosted CI runners are in the United States, so a CI request can execute in a US edge region even though the Supabase database project is in `eu-west-1` (Ireland). For the Volterra public-data proxy, use Supabase's supported Frankfurt region (`eu-central-1`) as the closest listed region to Syria; this is infrastructure routing, not a claim that Supabase has a Syrian region and not a change to the user's declared residence. Production smoke tests must verify the returned `x-sb-edge-region` header. If Binance still returns 451 from Frankfurt, report it as an upstream egress denial and do not infer the user's account eligibility from it.
+Supabase Edge Functions normally execute close to the caller. GitHub-hosted CI runners are in the United States, so a CI request can execute in a US edge region even though the Supabase database project is in `eu-west-1` (Ireland). For the Volterra public-data proxy, use Supabase's supported Zurich region (`eu-central-2`) as the closest listed region to Syria; this is infrastructure routing, not a claim that Supabase has a Syrian region and not a change to the user's declared residence. Production smoke tests must verify the returned `x-sb-edge-region` header. If Binance still returns 451 from Frankfurt, report it as an upstream egress denial and do not infer the user's account eligibility from it.
 
 ### Other crypto venues
 
@@ -461,5 +461,5 @@ Sources:
 
 ### تصحيح أهلية Binance
 
-FAQ Binance المنشور في 12 يونيو 2025 يثبت أن المقيمين السوريين يمكنهم التسجيل والتحقق وفق KYC والامتثال، ويقول إنهم يستطيعون الوصول إلى مجموعة واسعة من المنتجات. لكن قائمة المنتجات المسماة في الصفحة (P2P، COIN-M، USDⓈ-M Futures، Convert/Block Trade، Margin، Spot، Copy Trading، Alpha، Wallet) **تسمي Options صراحةً**. لذلك تُعد الصفحة دليلاً على الإتاحة العامة للخيارات للمقيمين السوريين؛ يجب التحقق من تفعيل Crypto Options لكل حساب ومن Commodity/Stock Options كلٌ على حدة أو الحصول على جواب دعم مكتوب. المصدر: https://www.binance.com/en/support/faq/detail/863795c36a224bd7aa7d677996328ff9
+FAQ Binance المنشور في 12 يونيو 2025 يثبت أن المقيمين السوريين يمكنهم التسجيل والتحقق وفق KYC والامتثال، ويذكر صراحةً Options trading ضمن المنتجات المتاحة. هذا دليل على الإتاحة العامة للخيارات للمقيمين السوريين، وليس ضماناً لكل منتج فرعي أو صلاحية بيع/كتابة أو لكل عقد. المصدر: https://www.binance.com/en/support/faq/detail/863795c36a224bd7aa7d677996328ff9
 
