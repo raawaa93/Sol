@@ -404,6 +404,8 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
   if (crossedBidAsk > 0) warnings.push(`تعارض Bid/Ask في ${crossedBidAsk} عقد؛ استُبعد المنتصف من مرجع السعر.`);
   if (missingOpenInterest > 0) warnings.push(`الفائدة المفتوحة غير متاحة لـ${missingOpenInterest} عقد/استحقاق.`);
   if (missingUnit > 0) warnings.push(`وحدة العقد غير موجودة في ${missingUnit} عقد؛ استُبعدت هذه العقود بدلاً من افتراض مضاعف 1.`);
+  const unverifiedPremiumScale = quotes.filter((quote) => quote.assetClass === 'CRYPTO' && quote.unit > 1).length;
+  if (unverifiedPremiumScale > 0) warnings.push(`مقياس القسط غير مفصول عن وحدة التسليم في ${unverifiedPremiumScale} عقد Binance ذات unit أكبر من 1؛ أبقينا الأسعار وIV المرصودة فقط وحجبنا القيم النموذجية وحسابات P&L لكل عقد.`);
   if (missingRiskFreeRate > 0) warnings.push(`معدل الفائدة من Binance غير متاح لـ${missingRiskFreeRate} عقد؛ استُخدم 0% للنموذج.`);
   if (quotes.length) warnings.push('Gamma وTheta وVega وRho تقديرات Black–Scholes وليست Greeks مرصودة من Binance؛ تحقّق من الوحدات قبل استخدامها.');
   if (!quotes.length) {
