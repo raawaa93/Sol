@@ -86,12 +86,12 @@ test('market totals use direct quote turnover when present and option premium fo
   });
   const snapshot = getMarketSnapshotFromQuotes([estimated, direct], 'BTC');
 
-  assert.equal(snapshot?.openInterestUsd, 1500);
+  assert.equal(snapshot?.openInterestValue, 1500);
   assert.equal(snapshot?.openInterestCurrency, 'USD');
-  assert.equal(snapshot?.volume24hUsd, 60);
+  assert.equal(snapshot?.volume24hValue, 60);
   assert.equal(snapshot?.volume24hCurrency, 'USD');
-  assert.equal(snapshot?.openInterestUsdEstimated, true);
-  assert.equal(snapshot?.volume24hUsdEstimated, true);
+  assert.equal(snapshot?.openInterestValueEstimated, true);
+  assert.equal(snapshot?.volume24hValueEstimated, true);
 });
 
 test('market totals are withheld instead of adding values from different quote currencies', () => {
@@ -99,9 +99,9 @@ test('market totals are withheld instead of adding values from different quote c
   const eur = quote({ id: 'eur', symbol: 'eur', quoteAsset: 'EUR', openInterestUsd: null, openInterest: 20, volumeQuote: null, volume: 3 });
   const snapshot = getMarketSnapshotFromQuotes([usd, eur], 'BTC');
 
-  assert.equal(snapshot?.openInterestUsd, null);
+  assert.equal(snapshot?.openInterestValue, null);
   assert.equal(snapshot?.openInterestCurrency, undefined);
-  assert.equal(snapshot?.volume24hUsd, null);
+  assert.equal(snapshot?.volume24hValue, null);
   assert.equal(snapshot?.volume24hCurrency, undefined);
 });
 
@@ -110,9 +110,9 @@ test('direct USD open interest is not mixed with a quote-currency estimate', () 
   const estimatedEur = quote({ id: 'estimated', symbol: 'estimated', quoteAsset: 'EUR', openInterestUsd: null, openInterest: 2, volumeQuote: null, volume: 1 });
   const snapshot = getMarketSnapshotFromQuotes([directUsd, estimatedEur], 'BTC');
 
-  assert.equal(snapshot?.openInterestUsd, null);
+  assert.equal(snapshot?.openInterestValue, null);
   assert.equal(snapshot?.openInterestCurrency, undefined);
-  assert.equal(snapshot?.volume24hUsd, 15);
+  assert.equal(snapshot?.volume24hValue, 15);
   assert.equal(snapshot?.volume24hCurrency, 'EUR');
 });
 
@@ -120,6 +120,6 @@ test('fallback totals remain unavailable when the quote currency is unknown', ()
   const unknown = quote({ venue: 'CBOE', quoteAsset: undefined, openInterestUsd: null, openInterest: 10, volumeQuote: null, volume: 5 });
   const snapshot = getMarketSnapshotFromQuotes([unknown], 'BTC');
 
-  assert.equal(snapshot?.openInterestUsd, null);
-  assert.equal(snapshot?.volume24hUsd, null);
+  assert.equal(snapshot?.openInterestValue, null);
+  assert.equal(snapshot?.volume24hValue, null);
 });
