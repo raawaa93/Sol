@@ -11,6 +11,7 @@
 - [x] Prevent CSV venue labels from granting provider trust.
 - [x] Keep the legacy CSV IV-inference guard.
 - [x] Document the remaining distinction between internal consistency and exchange verification.
+- [x] Reject historical replay when contract scale or settlement metadata changes between entry and exit snapshots (PR #111).
 
 ## Phase 1 — Canonical types and validators
 
