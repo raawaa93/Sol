@@ -334,3 +334,61 @@ Sources:
 - Gate Options WebSocket: https://www.gate.com/docs/developers/options/ws/en/
 - Gate European cash-settlement Help: https://www.gate.com/help/other/optionsbasics/46255/european-options-settlement-methods-explained
 - Gate crypto-options trading guide (5 Nov 2026): https://www.gate.com/learn/articles/how-to-trade-crypto-options-on-gate
+
+## قرار تغطية المنتجات — مراجعة المصادر الرسمية في 24 نوفمبر 2026
+
+### النطاق الدائم
+هذا المشروع **Multi-Asset Options**: جميع أسواق الخيارات عبر Crypto, Equity, Index, Rates, FX, Energy, Metals, Agriculture وغيرها. الذهب سوق فرعي لا محور المنتج. لا يُستنتج وجود خيار قابل للتداول من وجود Spot/Perpetual/Futures أو Tokenized asset على المنصة.
+
+### خريطة منتجات Binance — لا تخلط بين خطوط المنتج
+
+| Product line | ما تدعمه المصادر | القيود التي يجب أن تظهر في التطبيق |
+|---|---|---|
+| Crypto Options (/eapi) | API مستقل للعقود والـorder book والصفقات والـmark/Greeks/IV وticker وindex وOI وWebSocket؛ مشترٍ يدفع القسط ولا يحتاج هامش مشتري وفق FAQ | رمز العقد/الأصل الفعلي يُكتشف ديناميكياً من exchangeInfo ولا نثبت قائمة أصول؛ أوامر Limit فقط؛ البيع/الكتابة ليس متاحاً لكل رمز/منطقة؛ لا نعتبر صلاحية بيع الخيارات مفعلة لحساب سوري دون فحص الحساب |
+| Commodity Options | XAUUSDT وXAGUSDT أول مجموعة منشورة؛ European، USDT cash-settled، expiry يومي/أسبوعي؛ retail long-only | لا نخلطها بعقود TradFi Perpetual أو CME futures options؛ لا short writing للعميل التجزئة وفق FAQ؛ عدد الأصول محدود |
+| U.S. Stock Options | خيارات على أسهم وETFs مدرجة في الولايات المتحدة؛ physical settlement؛ تنفيذ long-only Buy Call/Put؛ NTL introducing broker وAlpaca clearing broker | ليست سلسلة خيارات عالمية؛ التسوية قد تسلم أسهماً؛ أهلية Stock Options للسوريين غير مثبتة بصفحة Syria العامة وحدها لأن إعلان المنتج يقول إن التوفر الإقليمي قد يختلف؛ Stock Options API يعطي مرجع العقود فقط ولا يعطي option quotes/Greeks/IV في endpoints السوق الموثقة |
+
+**أثر ذلك:** Binance مناسبة كبوابة تنفيذ متعددة الفئات ضمن منتجاتها المتاحة، لكنها لا تحقق مطلب «كل الخيارات العالمية». Crypto Options API هو أكثر خطوط Binance اكتمالاً للبيانات الحية؛ Stock Options يحتاج مزود بيانات أمريكياً منفصلاً إذا أردنا سلسلة سعرية/Greeks موثوقة؛ والسلع الحالية تقتصر على XAU/XAG. لا نعدّ وجود أسهم/سلع/أصول في صفحة الأسواق دليلاً على وجود Options لها.
+
+### أهلية سوريا والمنصات البديلة
+
+- Binance نشرت FAQ تقول صراحةً إن السوريين المقيمين في سوريا يستطيعون التسجيل والتحقق، وتذكر Options ضمن المنتجات المتاحة. هذه موافقة عامة على المنتج وقت النشر، وليست ضماناً لكل منتج فرعي أُطلق لاحقاً؛ Stock Options خصوصاً يتطلب التحقق من ظهوره وصلاحيته داخل حساب KYC الحقيقي أو جواب دعم مكتوب.
+- Bybit وDeribit وGate وOKX تذكر سوريا في قوائم المناطق المستبعدة/المقيدة التي تمت مراجعتها؛ لا تستخدم VPN لتجاوزها.
+- قائمة IBKR الرسمية للبلدان المتاحة لا تتضمن سوريا وقت الفحص؛ لا نفترض إمكانية فتح حساب أو تداول Cboe/CME من خلالها.
+- Paradex يذكر سوريا صراحة في Restricted Persons؛ لا يستخدم كبديل.
+- Hyperliquid HIP-3 perpetuals وHIP-4 outcome markets ليست Vanilla Options مدرجة؛ لا نضعها في قائمة منصات الخيارات القياسية مهما كانت نتيجة الوصول الجغرافي.
+- لا يوجد حتى هذا التاريخ وسيط تقليدي ثانٍ ثبت رسمياً أنه يقبل المقيم السوري لحساب ممول وخيارات بورصات متعددة الأصول. أي FCM/وسيط آخر يبقى inquiry-only حتى رد امتثال مكتوب.
+
+### VPN — فصل الاتصال عن الهوية
+
+يجوز استخدام VPN كوسيلة اتصال/خصوصية فقط إذا لم تمنع شروط المنصة ذلك، مع إبقاء بلد الإقامة وKYC ومصدر الأموال صحيحاً. لا نوصي باختيار بلد خروج بهدف تمويه الإقامة أو فتح منتج محظور. لا نستخدم VPN لإخفاء سوريا عن Binance أو أي جهة امتثال. إذا كان الوصول من الشبكة السورية متقطعاً، نسجل هذا كـconnectivity failure مستقل عن account eligibility أو product permission. لا تخزن API secrets في المتصفح أو المستودع؛ استخدم صلاحيات أقل وقيود IP عند دعمها، ومفتاح بيانات عام بلا صلاحية سحب/تحويل.
+
+### Data API and pricing distinction
+
+- Binance Crypto Options API يقدم سلسلة بيانات حية للعقود المدعومة، ويجب اكتشافها من exchangeInfo؛ Binance Stock Options API منفصل ويصف endpoints الخاصة بالسوق بأنها contract reference data فقط دون option prices/quotes/Greeks/IV.
+- Massive Options Basic: مجاني، 5 طلبات/دقيقة وEOD ومرجع بيانات؛ Starter $29/month لتأخير 15 دقيقة، Advanced $199/month للحظي. غير مناسب لسقف 15$/month إلا المجاني EOD.
+- MarketData.app Free: 100 API credits/day، سنة تاريخية، وتأخير خيارات لا يقل عن 24 ساعة؛ Starter يتطلب التزاماً سنوياً ويعطي 15-minute delayed options؛ لا نشترك حالياً.
+- لا توجد تغطية مجانية موحدة للحظي عبر OPRA + CME + ICE + Eurex + OTC FX. لا نخلط data entitlement الشخصية مع حق إعادة توزيع البيانات داخل واجهة عامة؛ ترخيص إعادة التوزيع منفصل وقد يكون مكلفاً.
+
+### الاختيار الهندسي المعتمد
+
+1. **Live venue adapter الآن:** Binance Crypto Options (/eapi) كموصل حي أول، مع دعم Commodity وStock كـproduct adapters مستقلة فقط عندما تتوفر صلاحيات/بيانات فعلية.
+2. **Canonical instrument model:** يحتفظ بـasset class، venue، underlying kind، contract multiplier/size، quote/settlement currency، exercise/settlement style، timezone، expiry، deliverables، fee/margin model، data entitlement، provenance، event/receive timestamps.
+3. **Pricing:** لا تستخدم Black-Scholes تلقائياً لكل العقود. Crypto/commodity European vanilla يمكنه استخدام النموذج المناسب وفق convention/forward/rate/settlement؛ futures options تحتاج Black-76؛ American equity options تحتاج نموذجاً يأخذ early exercise/dividends/borrow بعين الاعتبار. إذا كانت المواصفات أو المدخلات ناقصة، اعرض Greeks/IV على أنها غير متاحة أو model-estimated بوضوح ولا تخلطها بقيم المصدر.
+4. **Independent model QA:** QuantLib مرجع تسعير/Greeks واختبارات cross-check، وليس مزود بيانات.
+5. **Backtest / replay candidate:** NautilusTrader مرشح أول لمحرك Python مع دعم OptionContract/CryptoOption/OptionSpread/OptionGreeks وParquet replay. يتطلب QuoteTick وOptionGreeks تاريخية؛ لا يجلبها تلقائياً. وثائقه تقول إن نموذج خياراته لا يحاكي L2 queue position، لذلك يجب عدم ادعاء محاكاة ترتيب الطابور أو تنفيذ واقعي كامل. يبقى خدمة بحث منفصلة ولا يُدمج في React frontend.
+6. **No live automation yet:** لا نرسل أوامر حقيقية حتى يكتمل contract normalization، permissions، risk checks، idempotency، reconciliation، paper tests، وkill switch. الواجهة الحالية research/decision-support فقط.
+
+### المراجع الرسمية الرئيسية
+- Binance Syria eligibility: https://www.binance.com/en/support/faq/detail/863795c36a224bd7aa7d677996328ff9
+- Binance Crypto Options overview: https://www.binance.com/en/support/faq/detail/374321c9317c473480243365298b8706
+- Binance Crypto Options API: https://www.binance.com/en-AE/support/faq/detail/fe0be251ac014a8082e702f83d089e54
+- Binance Stock Options FAQ: https://www.binance.com/en-IA/support/faq/detail/3dddc209bb564b448c0948fc4c5e6d80
+- Binance Stock Options API: https://developers.binance.me/en/docs/products/stock-options/introduction
+- Binance Commodity Options FAQ: https://www.binance.com/en-UZ/support/faq/detail/dc9e52b4440b48bd900a767cc5024c84
+- IBKR available countries: https://www.interactivebrokers.com/en/accounts/open-account-country-list.php
+- Massive options pricing: https://massive.com/options
+- MarketData.app free-account limits: https://www.marketdata.app/docs/account/free-accounts/
+- QuantLib: https://www.quantlib.org/
+- NautilusTrader options: https://nautechsystems.github.io/nautilus_docs/latest/concepts/options/
+- NautilusTrader backtesting: https://nautechsystems.github.io/nautilus_docs/latest/concepts/backtesting/
