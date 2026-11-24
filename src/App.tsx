@@ -1045,7 +1045,7 @@ function App() {
                         <span className="chain-mobile-quote-grid">
                           <span><small>Bid</small><b dir="ltr">{formatQuotePrice(quote.bid, quote)}</b></span>
                           <span><small>Ask</small><b dir="ltr">{formatQuotePrice(quote.ask, quote)}</b></span>
-                          <span><small>IV</small><b dir="ltr" className="iv-cell">{formatPercent(quote.iv)}</b></span>
+                          <span><small>IV</small><b dir="ltr" className="iv-cell">{quote.ivStatus === 'UNAVAILABLE' || quote.iv <= 0 ? '—' : formatPercent(quote.iv)}</b></span>
                           <span><small>Delta</small><b dir="ltr" className={quote.delta >= 0 ? 'positive-text' : 'negative-text'}>{quote.pricingStatus === 'OBSERVED_ONLY' ? '—' : `${quote.delta.toFixed(3)}${quote.pricingStatus === 'ASSUMED' ? '*' : ''}`}</b></span>
                         </span>
                         <span className="chain-mobile-meta">
