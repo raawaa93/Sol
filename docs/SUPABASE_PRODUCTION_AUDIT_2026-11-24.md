@@ -120,3 +120,9 @@ The post-merge workflow run for main commit `3ab1e642701d2ce13b24671cab3694ac3ae
 - The published smoke test also confirmed the Binance proxy reached the upstream but `exchangeInfo` returned HTTP 451 with a regional/product restriction message. The app deployment and proxy transport are healthy; live Binance market data remains unavailable from this runtime.
 
 This deployment contains the workflow-only changes from PR #35; no application runtime or Supabase database code changed in that commit. These results supersede the earlier 801 ms LCP / 113 ms TBT measurement for this deployed build.
+
+## Superseding production change — 24 November 2026, 05:23 UTC
+
+After this audit and its 05:19 deployment verification, migration `20261124052328_remove_non_sol_legacy_schemas_20261124` was applied to the live project. It dropped `commerce` and `rawaa_store` with CASCADE, including their data. No backup was created before that operation according to the operation record. The two Telegram rows observed earlier are no longer present. The Volterra table and RPC remain. Six legacy Edge Function deployment records remain ACTIVE with `verify_jwt=true`; their reported HTTP 410 behavior has not been independently verified because source retrieval failed. This note supersedes the earlier recommendation to preserve those schemas and the earlier statement that no production DDL had been applied.
+
+The recorded user instruction concerned removing the separate fallback project; it did not explicitly authorize deleting the live schemas or their data. The cleanup is recorded as an out-of-band destructive production change. External backups outside connected sources remain unknown; no matching dump was found in the connected file Library.
