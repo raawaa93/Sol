@@ -336,11 +336,8 @@ export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptio
       carryYield: quote.carryYield,
     })
     : undefined;
-  const supportedModelUpdate = modelUpdate?.status === 'SUPPORTED' ? modelUpdate : undefined;
-  const invalidatedModelReason = modelUpdate?.status === 'UNSUPPORTED' ? modelUpdate.reason : undefined;
-  const invalidatedModel = invalidatedModelReason !== undefined;
   const greekFields = ['delta', 'gamma', 'theta', 'vega', 'rho'];
-  return {
+  const updated: OptionQuote = {
     ...quote,
     ...(quote.estimatedFields ? {
       estimatedFields: quote.estimatedFields.filter((field) => !observedFields.includes(field)
@@ -355,30 +352,28 @@ export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptio
     ...(event.askIv !== undefined ? { askIv: event.askIv } : {}),
     ...(event.volume !== undefined ? { volume: event.volume } : {}),
     ...(event.volumeQuote !== undefined ? { volumeQuote: event.volumeQuote } : {}),
-    ...(supportedModelUpdate ? {
-      delta: supportedModelUpdate.greeks.delta,
-      gamma: supportedModelUpdate.greeks.gamma,
-      theta: supportedModelUpdate.greeks.thetaPerDay,
-      vega: supportedModelUpdate.greeks.vegaPerVolPoint,
-      rho: supportedModelUpdate.greeks.rhoPerRatePoint,
-      pricingModel: supportedModelUpdate.model,
-    } : {}),
-    ...(invalidatedModel ? {
-      delta: 0,
-      gamma: 0,
-      theta: 0,
-      vega: 0,
-      rho: 0,
-      pricingStatus: 'OBSERVED_ONLY' as const,
-      pricingModel: undefined,
-      pricingReason: invalidatedModelReason,
-    } : {}),
     ...(sourceHasGreeks ? { unverifiedSourceGreeks: { ...quote.unverifiedSourceGreeks, ...event.sourceGreeks } } : {}),
     sourceTimestamps: {
       ...quote.sourceTimestamps,
       optionTicker: new Date(eventTimestamp).toISOString(),
     },
   };
+  if (modelUpdate?.status === 'SUPPORTED') {
+    const { greeks } = modelUpdate;
+    Object.assign(updated, {
+      delta: greeks.delta, gamma: greeks.gamma, theta: greeks.thetaPerDay,
+      vega: greeks.vegaPerVolPoint, rho: greeks.rhoPerRatePoint,
+      pricingModel: modelUpdate.model,
+    });
+  } else if (modelUpdate?.status === 'UNSUPPORTED') {
+    Object.assign(updated, {
+      delta: 0, gamma: 0, theta: 0, vega: 0, rho: 0,
+      pricingStatus: 'OBSERVED_ONLY' as const,
+      pricingModel: undefined,
+      pricingReason: modelUpdate.reason,
+    });
+  }
+  return updated;
 }
 
 /** Apply only fields explicitly present in the venue event; keep source Greeks auditable and model Greeks model-derived. */
