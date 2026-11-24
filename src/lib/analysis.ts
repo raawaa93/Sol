@@ -134,7 +134,7 @@ export function getAtmTermStructure(quotes: OptionQuote[]): AtmTermPoint[] {
     });
     const strikePoints = [...byStrike.entries()].map(([strike, strikeRows]) => ({
       strike,
-      moneyness: Math.abs(strike / strikeRows[0].spot - 1),
+      moneyness: Math.abs(strike / (strikeRows[0].underlyingKind === 'FUTURE' ? strikeRows[0].forward ?? strikeRows[0].spot : strikeRows[0].spot) - 1),
       iv: median(strikeRows.map((quote) => quote.iv)) ?? Number.NaN,
     })).filter((point) => Number.isFinite(point.iv));
     const nearAtm = strikePoints.filter((point) => point.moneyness <= 0.05);
