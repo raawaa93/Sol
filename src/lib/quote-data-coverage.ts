@@ -47,7 +47,7 @@ export function getQuoteDataCoverage(quotes: OptionQuote[]): QuoteDataCoverage {
     if (quote.sourceTimestamps?.markPrice) coverage.liveMarkPriceAvailable += 1;
     if (Number.isFinite(quote.bidIv) && (quote.bidIv ?? 0) > 0) coverage.bidIvAvailable += 1;
     if (Number.isFinite(quote.askIv) && (quote.askIv ?? 0) > 0) coverage.askIvAvailable += 1;
-    if (quote.bidAskSource === 'OPTION_MARK_PRICE') coverage.optionTickerBookAvailable += 1;
+    if (quote.bidAskSource === 'OPTION_TICKER') coverage.optionTickerBookAvailable += 1;
     return coverage;
   }, {
     contracts: 0,
