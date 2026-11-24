@@ -1,6 +1,7 @@
-import type { ContractEconomics, ContractDeliverable } from './types.ts';
+import type { ContractDeliverable } from './types.ts';
 
 export type ContractEconomicsIssueCode =
+  | 'INVALID_CONTRACT_ECONOMICS'
   | 'INVALID_PREMIUM_MULTIPLIER'
   | 'INVALID_PREMIUM_CURRENCY'
   | 'INVALID_PREMIUM_PRICE_UNIT'
@@ -9,6 +10,7 @@ export type ContractEconomicsIssueCode =
   | 'INVALID_SETTLEMENT_STYLE'
   | 'INVALID_SETTLEMENT_CURRENCY'
   | 'MISSING_SETTLEMENT_CURRENCY'
+  | 'INVALID_DELIVERABLES_COLLECTION'
   | 'INVALID_DELIVERABLE'
   | 'MISSING_PHYSICAL_DELIVERABLES'
   | 'MISSING_AGGREGATE_EXERCISE_CASH'
@@ -22,6 +24,7 @@ export type ContractEconomicsUnsupportedReason =
   | 'UNKNOWN_EXERCISE_STYLE'
   | 'UNKNOWN_SETTLEMENT_STYLE'
   | 'USER_ASSERTED_PROVENANCE'
+  | 'SYNTHETIC_DEMO_ONLY'
   | 'UNKNOWN_PROVENANCE'
   | 'CROSS_CURRENCY_TOTALS_REQUIRE_FX'
   | 'DELIVERABLE_CURRENCY_UNKNOWN';
@@ -33,6 +36,15 @@ export interface ContractEconomicsValidation {
   unsupportedReasons: ContractEconomicsUnsupportedReason[];
 }
 
+type UnknownRecord = Record<string, unknown>;
+
+function isRecord(value: unknown): value is UnknownRecord {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+// These are denomination/settlement-asset identifiers, not ISO-4217-only
+// codes (for example, USDC is valid). Matching identifiers do not imply FX
+// equivalence with any different identifier.
 const currencyPattern = /^[A-Z][A-Z0-9]{1,11}$/;
 
 function isCurrency(value: unknown): value is string {
@@ -43,143 +55,162 @@ function isPositiveFinite(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0;
 }
 
-function isValidDeliverable(item: ContractDeliverable): boolean {
-  if (!item || typeof item !== 'object' || !isPositiveFinite(item.amount)) return false;
-  if (item.type === 'CASH') return isCurrency(item.currency);
-  if (item.type === 'EQUITY' || item.type === 'UNDERLYING') {
-    return typeof item.symbol === 'string' && item.symbol.trim().length > 0
-      && (item.currency === undefined || isCurrency(item.currency));
+function isValidDeliverable(value: unknown): value is ContractDeliverable {
+  if (!isRecord(value) || !isPositiveFinite(value.amount)) return false;
+  if (value.type === 'CASH') return isCurrency(value.currency);
+  if (value.type === 'EQUITY' || value.type === 'UNDERLYING') {
+    return typeof value.symbol === 'string' && value.symbol.trim().length > 0
+      && (value.currency === undefined || isCurrency(value.currency));
   }
-  if (item.type === 'FUTURE') {
-    return typeof item.symbol === 'string' && item.symbol.trim().length > 0
-      && (item.currency === undefined || isCurrency(item.currency))
-      && (item.pointValue === undefined || isPositiveFinite(item.pointValue));
+  if (value.type === 'FUTURE') {
+    return typeof value.symbol === 'string' && value.symbol.trim().length > 0
+      && (value.currency === undefined || isCurrency(value.currency))
+      && (value.pointValue === undefined || isPositiveFinite(value.pointValue));
   }
   return false;
 }
 
-function validAggregateExerciseCash(value: ContractEconomics['exercise']['aggregateExerciseCash']): boolean {
-  if (!value || !isCurrency(value.currency)) return false;
+function validAggregateExerciseCash(value: unknown): boolean {
+  if (!isRecord(value) || !isCurrency(value.currency)) return false;
   return value.basis === 'STRIKE_MULTIPLIER'
     ? isPositiveFinite(value.multiplier)
     : value.basis === 'FIXED' && typeof value.amount === 'number'
       && Number.isFinite(value.amount) && value.amount >= 0;
 }
 
+function isRfc3339Timestamp(value: unknown): value is string {
+  if (typeof value !== 'string'
+    || !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$/.test(value)) {
+    return false;
+  }
+  return Number.isFinite(Date.parse(value));
+}
+
 /**
- * Validates canonical contract terms without inferring missing values.
+ * Validates untrusted canonical contract terms without inferring missing values.
  * valid means the supplied structure is internally well-formed.
  * adapterReady means terms and provenance are complete enough to be handed
  * to a market-specific adapter. It does NOT mean any pricing/Greek adapter
  * supports this contract; that capability must be checked separately.
  */
-export function validateContractEconomics(economics: ContractEconomics): ContractEconomicsValidation {
+export function validateContractEconomics(economics: unknown): ContractEconomicsValidation {
   const issues: ContractEconomicsIssueCode[] = [];
   const unsupportedReasons: ContractEconomicsUnsupportedReason[] = [];
 
-  if (!isPositiveFinite(economics?.premium?.multiplier)) issues.push('INVALID_PREMIUM_MULTIPLIER');
-  if (!isCurrency(economics?.premium?.quoteCurrency)) issues.push('INVALID_PREMIUM_CURRENCY');
-  if (!['PER_UNDERLYING_UNIT', 'PER_CONTRACT'].includes(economics?.premium?.priceUnit)) {
+  if (!isRecord(economics)) {
+    issues.push('INVALID_CONTRACT_ECONOMICS');
+    return { valid: false, adapterReady: false, issues, unsupportedReasons };
+  }
+
+  const premium = isRecord(economics.premium) ? economics.premium : {};
+  const exercise = isRecord(economics.exercise) ? economics.exercise : undefined;
+  const provenance = isRecord(economics.provenance) ? economics.provenance : undefined;
+
+  if (!isPositiveFinite(premium.multiplier)) issues.push('INVALID_PREMIUM_MULTIPLIER');
+  if (!isCurrency(premium.quoteCurrency)) issues.push('INVALID_PREMIUM_CURRENCY');
+  if (!['PER_UNDERLYING_UNIT', 'PER_CONTRACT'].includes(String(premium.priceUnit))) {
     issues.push('INVALID_PREMIUM_PRICE_UNIT');
   }
-  if (economics?.premium?.priceUnit === 'PER_CONTRACT'
-    && economics.premium.multiplier !== 1) {
+  if (premium.priceUnit === 'PER_CONTRACT' && premium.multiplier !== 1) {
     issues.push('INVALID_PREMIUM_SCALE_COMBINATION');
   }
 
-  const exercise = economics?.exercise;
-  if (!exercise || !['EUROPEAN', 'AMERICAN', 'BERMUDAN', 'UNKNOWN'].includes(exercise.style)) {
+  const exerciseStyle = exercise?.style;
+  if (!['EUROPEAN', 'AMERICAN', 'BERMUDAN', 'UNKNOWN'].includes(String(exerciseStyle))) {
     issues.push('INVALID_EXERCISE_STYLE');
-  } else if (exercise.style === 'UNKNOWN') {
+  } else if (exerciseStyle === 'UNKNOWN') {
     unsupportedReasons.push('UNKNOWN_EXERCISE_STYLE');
   }
 
-  const settlements = ['CASH', 'PHYSICAL', 'FUTURE_DELIVERY', 'UNKNOWN'];
-  if (!exercise || !settlements.includes(exercise.settlement)) {
+  const settlement = exercise?.settlement;
+  if (!['CASH', 'PHYSICAL', 'FUTURE_DELIVERY', 'UNKNOWN'].includes(String(settlement))) {
     issues.push('INVALID_SETTLEMENT_STYLE');
-  } else if (exercise.settlement === 'UNKNOWN') {
+  } else if (settlement === 'UNKNOWN') {
     unsupportedReasons.push('UNKNOWN_SETTLEMENT_STYLE');
   }
 
-  if (exercise?.settlementCurrency !== undefined && !isCurrency(exercise.settlementCurrency)) {
+  const settlementCurrency = exercise?.settlementCurrency;
+  if (settlementCurrency !== undefined && !isCurrency(settlementCurrency)) {
     issues.push('INVALID_SETTLEMENT_CURRENCY');
   }
-  if (exercise && exercise.settlement !== 'UNKNOWN' && !exercise.settlementCurrency) {
+  if (exercise && settlement !== 'UNKNOWN' && !settlementCurrency) {
     issues.push('MISSING_SETTLEMENT_CURRENCY');
   }
 
-  const deliverables = Array.isArray(exercise?.deliverables) ? exercise.deliverables : [];
-  if (exercise && !Array.isArray(exercise.deliverables)) issues.push('INVALID_DELIVERABLE');
-  if (exercise && Array.isArray(exercise.deliverables)
-    && deliverables.some((item) => !isValidDeliverable(item))) {
+  const hasDeliverablesArray = Array.isArray(exercise?.deliverables);
+  if (!hasDeliverablesArray) issues.push('INVALID_DELIVERABLES_COLLECTION');
+  const deliverables: unknown[] = hasDeliverablesArray ? exercise!.deliverables as unknown[] : [];
+  if (deliverables.some((item) => !isValidDeliverable(item))) {
     issues.push('INVALID_DELIVERABLE');
   }
 
-  if (exercise?.settlement === 'PHYSICAL' || exercise?.settlement === 'FUTURE_DELIVERY') {
+  if (settlement === 'PHYSICAL' || settlement === 'FUTURE_DELIVERY') {
     if (deliverables.length === 0) issues.push('MISSING_PHYSICAL_DELIVERABLES');
-    if (!validAggregateExerciseCash(exercise.aggregateExerciseCash)) {
+    if (!validAggregateExerciseCash(exercise?.aggregateExerciseCash)) {
       issues.push('MISSING_AGGREGATE_EXERCISE_CASH');
     }
-    if (exercise.settlement === 'FUTURE_DELIVERY'
-      && !deliverables.some((item) => item.type === 'FUTURE' && isPositiveFinite(item.pointValue))) {
+    if (settlement === 'FUTURE_DELIVERY'
+      && !deliverables.some((item) => isRecord(item) && item.type === 'FUTURE' && isPositiveFinite(item.pointValue))) {
       issues.push('INVALID_DELIVERABLE');
     }
   }
 
-  if (exercise?.settlement === 'CASH') {
-    const formula = exercise.cashSettlement;
-    if (!formula) {
+  if (settlement === 'CASH') {
+    const formula = exercise?.cashSettlement;
+    if (!isRecord(formula)) {
       issues.push('MISSING_CASH_SETTLEMENT_FORMULA');
-    } else {
-      if (formula.formula !== 'INTRINSIC_VALUE'
-        || !['SPOT', 'FORWARD', 'INDEX'].includes(formula.reference)
-        || !isCurrency(formula.currency)
-        || !isPositiveFinite(formula.multiplier)) {
-        issues.push('INVALID_CASH_SETTLEMENT_FORMULA');
-      }
-      if (exercise.settlementCurrency && formula.currency !== exercise.settlementCurrency) {
-        unsupportedReasons.push('CROSS_CURRENCY_TOTALS_REQUIRE_FX');
-      }
+    } else if (formula.formula !== 'INTRINSIC_VALUE'
+      || !['SPOT', 'FORWARD', 'INDEX'].includes(String(formula.reference))
+      || !isCurrency(formula.currency)
+      || !isPositiveFinite(formula.multiplier)) {
+      issues.push('INVALID_CASH_SETTLEMENT_FORMULA');
+    } else if (isCurrency(settlementCurrency) && formula.currency !== settlementCurrency) {
+      unsupportedReasons.push('CROSS_CURRENCY_TOTALS_REQUIRE_FX');
     }
   }
 
-  if (exercise?.aggregateExerciseCash && !validAggregateExerciseCash(exercise.aggregateExerciseCash)) {
+  if (exercise?.aggregateExerciseCash !== undefined
+    && !validAggregateExerciseCash(exercise.aggregateExerciseCash)) {
     issues.push('INVALID_AGGREGATE_EXERCISE_CASH');
   }
 
-  const provenance = economics?.provenance;
-  if (!provenance || !['PROVIDER_VERIFIED', 'USER_ASSERTED', 'SYNTHETIC_DEMO', 'UNKNOWN'].includes(provenance.status)) {
+  if (!provenance || !['PROVIDER_VERIFIED', 'USER_ASSERTED', 'SYNTHETIC_DEMO', 'UNKNOWN'].includes(String(provenance.status))) {
     issues.push('MISSING_PROVIDER_PROVENANCE');
   } else if (provenance.status === 'PROVIDER_VERIFIED') {
-    if (!provenance.provider?.trim() || !provenance.sourceRef?.trim()) {
+    if (typeof provenance.provider !== 'string' || !provenance.provider.trim()
+      || typeof provenance.sourceRef !== 'string' || !provenance.sourceRef.trim()) {
       issues.push('MISSING_PROVIDER_PROVENANCE');
     }
-    if (!provenance.retrievedAt || !Number.isFinite(Date.parse(provenance.retrievedAt))) {
+    if (!isRfc3339Timestamp(provenance.retrievedAt)) {
       issues.push('INVALID_PROVIDER_TIMESTAMP');
     }
   } else if (provenance.status === 'USER_ASSERTED') {
     unsupportedReasons.push('USER_ASSERTED_PROVENANCE');
+  } else if (provenance.status === 'SYNTHETIC_DEMO') {
+    unsupportedReasons.push('SYNTHETIC_DEMO_ONLY');
   } else if (provenance.status === 'UNKNOWN') {
     unsupportedReasons.push('UNKNOWN_PROVENANCE');
   }
 
-  if (isCurrency(economics?.premium?.quoteCurrency)
-    && isCurrency(exercise?.settlementCurrency)
-    && economics.premium.quoteCurrency !== exercise.settlementCurrency) {
+  if (isCurrency(premium.quoteCurrency)
+    && isCurrency(settlementCurrency)
+    && premium.quoteCurrency !== settlementCurrency) {
     unsupportedReasons.push('CROSS_CURRENCY_TOTALS_REQUIRE_FX');
   }
-  if (exercise?.aggregateExerciseCash && isCurrency(exercise.settlementCurrency)
-    && exercise.aggregateExerciseCash.currency !== exercise.settlementCurrency) {
+  const exerciseCash = exercise?.aggregateExerciseCash;
+  if (isRecord(exerciseCash) && isCurrency(settlementCurrency)
+    && exerciseCash.currency !== settlementCurrency) {
     unsupportedReasons.push('CROSS_CURRENCY_TOTALS_REQUIRE_FX');
   }
   deliverables.forEach((item) => {
+    if (!isRecord(item)) return;
     if ((item.type === 'EQUITY' || item.type === 'UNDERLYING' || item.type === 'FUTURE') && !item.currency) {
       unsupportedReasons.push('DELIVERABLE_CURRENCY_UNKNOWN');
-    } else if (item.type !== 'CASH' && item.currency && isCurrency(exercise?.settlementCurrency)
-      && item.currency !== exercise.settlementCurrency) {
+    } else if (item.type !== 'CASH' && item.currency && isCurrency(settlementCurrency)
+      && item.currency !== settlementCurrency) {
       unsupportedReasons.push('CROSS_CURRENCY_TOTALS_REQUIRE_FX');
-    } else if (item.type === 'CASH' && isCurrency(exercise?.settlementCurrency)
-      && item.currency !== exercise.settlementCurrency) {
+    } else if (item.type === 'CASH' && isCurrency(settlementCurrency)
+      && item.currency !== settlementCurrency) {
       unsupportedReasons.push('CROSS_CURRENCY_TOTALS_REQUIRE_FX');
     }
   });
