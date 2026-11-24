@@ -278,3 +278,9 @@ Sources:
 - Deriv trading terms: https://deriv.com/terms-and-conditions/trading-terms
 - Deriv general terms: https://deriv.com/terms-and-conditions/general-terms-of-use
 - On-chain product taxonomy: https://research.castlelabs.io/p/mapping-onchain-options-exchanges
+
+
+### تحديث أهلية إضافي
+
+- Deriv: قائمة البلدان المدعومة الرسمية لا تتضمن سوريا، وشروطها تجعل إتاحة المنتجات مرتبطة ببلد الإقامة والكيان والمنتج؛ لا نعتبرها متاحة للمستخدم. المصدر: https://legacy-docs.deriv.com/docs/country-list
+- NinjaTrader: نموذج فتح الحساب الحي يمنع فتح حساب ممول إذا لم يظهر بلد الإقامة في القائمة؛ تقرير مستقل ينقل تأكيد امتثال بعدم قبول المقيمين في سوريا في سبتمبر 2026. القرار الحالي: مستبعد، ويعاد تقييمه فقط إذا تغيّر نص/رد الشركة. المصادر: https://vendor-support.ninjatrader.com/s/article/Applying-for-a-Live-NinjaTrader-Account?language=en_US ، https://unblocksyria.com/en/services/ninjatrader
