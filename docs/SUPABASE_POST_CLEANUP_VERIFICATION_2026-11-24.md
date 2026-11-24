@@ -74,3 +74,46 @@ The latest repository audit records Binance HTTP 451 responses from the current 
 - No production Supabase changes were made.
 - No paid service, subscription, or resource was created.
 - The branch-protection limitation is explicitly recorded rather than represented as fixed.
+
+
+## Runtime evidence addendum — 24 November 2026, 05:31–05:37 UTC
+
+A further read-only check correlated the published smoke-test output with the retained Supabase Edge logs.
+
+### Published smoke test
+
+The successful Pages workflow's production audit job reported:
+
+- Published app shell: HTTP 200 in 280 ms.
+- Binance `exchangeInfo`: HTTP 451. The upstream response text was: `Service unavailable from a restricted location according to 'b. Eligibility' in https://www.binance.com/en/terms.`
+- The smoke script records this as a warning and exits without failing the site deployment. Thus the workflow's green result means the site and audit pipeline completed; it does **not** mean live Binance market data passed.
+- Published Lighthouse median from three runs: Performance 97, Accessibility 100, Best Practices 100, SEO 100; FCP 755 ms, LCP 755 ms, TBT 182 ms, CLS 0.000; transfer size 104 KiB.
+
+### Supabase Edge log correlation
+
+In the retained 24-hour function-edge log window, the `exchangeInfo` endpoint showed:
+
+| Caller country | Supabase Edge region | Requests | HTTP status |
+|---|---|---:|---:|
+| US | us-east-1 | 13 | 451 |
+| US | us-east-2 | 10 | 451 |
+| US | us-west-1 | 10 | 451 |
+| US | us-west-2 | 3 | 451 |
+| GB | eu-west-2 | 5 | 200 |
+
+This is a strong observed correlation between the request's caller country / Supabase Edge execution region and the upstream result. It is **not proof** of Binance's observed outbound IP or the sole cause of the restriction: the available logs do not expose the upstream peer address or Binance's internal eligibility decision. Other endpoints also returned HTTP 200 during the same window.
+
+Do not change region routing, proxy egress, or account identity to bypass a regional/product restriction. The user's actual residence and product eligibility remain separate from a server-side HTTP 200. Do not infer that a successful request from a UK edge region makes the product legally or account-eligible for a Syrian resident.
+
+### Front-end behavior
+
+The current `src/App.tsx` handles `BinanceMarketDataError` status 451 explicitly in Arabic. It tells the user the upstream request was rejected, that this does not prove personal-account eligibility, and that the application will not attempt to circumvent regional/product restrictions; it directs users to Demo, CSV, or a properly licensed source. This is the correct safe fallback and was left unchanged.
+
+### Operational conclusion
+
+- Site availability: verified.
+- Production build/deployment pipeline: verified.
+- Binance proxy transport: reaches the upstream.
+- Binance `exchangeInfo` from the inspected US-based smoke runner: rejected with HTTP 451.
+- Some retained requests from the GB / `eu-west-2` path returned HTTP 200, but this does not establish lawful user eligibility or a reliable global data route.
+- Live market-data coverage for the user's own permitted use remains **unverified**. Keep PAPER-only and do not present stale/demo values as live.
