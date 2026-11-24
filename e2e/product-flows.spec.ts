@@ -442,7 +442,6 @@ test('local portfolio tracks holdings, updates net worth, persists and exports a
   const finance = page.locator('#finance');
   await expect(finance.getByRole('heading', { name: 'المركز المالي الشخصي' })).toBeVisible();
   await finance.getByLabel('الرمز').fill('BTC');
-  await finance.getByLabel('الاسم').fill('Bitcoin');
   await finance.getByLabel('فئة الأصل').selectOption('CRYPTO');
   await finance.getByLabel('الكمية / عدد العقود').fill('0.5');
   await finance.getByLabel('مضاعف العقد').fill('1');
