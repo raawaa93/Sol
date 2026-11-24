@@ -195,7 +195,7 @@ export function parseBinanceBookTickerMessage(payload: unknown): BinanceBookTick
   if (bidPrice === undefined || bidPrice < 0 || askPrice === undefined || askPrice < 0
     || bidQuantity === undefined || bidQuantity < 0 || askQuantity === undefined || askQuantity < 0) return null;
   const eventTime = finiteNumber(data.E as string | number | undefined);
-  const transactionTime = finiteNumber(data.T as string | number | undefined);
+  const transactionTime = positiveNumber(data.T as string | number | undefined);
   return {
     symbol: data.s,
     bidPrice,
