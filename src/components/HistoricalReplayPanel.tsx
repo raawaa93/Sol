@@ -35,6 +35,7 @@ export default function HistoricalReplayPanel({ quotes, dataMode, underlying }: 
       feeRatePerSide: Number(feePercent) / 100,
       quantity: 1,
       maxTrades: 1_000,
+      sourceMode: 'CSV',
     });
   }, [quotes, dataMode, holdingMinutes, exitGraceMinutes, maxSpreadPct, feePercent]);
 
