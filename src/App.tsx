@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
   ArrowUpLeft,
@@ -52,7 +52,7 @@ import { buildQuoteCashExpiryScenarioSeries } from './lib/quote-economics';
 import { formatAssetPrice, formatOptionPrice, formatQuantity, formatSmallNumber, getOptionPricePrecision, getQuantityPrecision, getQuoteCurrency } from './lib/format';
 import type { AssetClass, OptionQuote, OptionSide, PaperTrade, Underlying } from './lib/types';
 import { ASSET_CLASS_LABELS } from './lib/asset-class';
-import FinancialCockpit from './components/FinancialCockpit';
+const FinancialCockpit = lazy(() => import('./components/FinancialCockpit'));
 
 const integerFormat = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 const UNDERLYING_NAMES: Record<string, string> = {
@@ -1318,7 +1318,9 @@ function App() {
             {showAssumptions && <div className="model-details">{dataMode === 'BINANCE' ? <><p>تمر طلبات Binance عبر وسيط Supabase عام محدود بواجهات بيانات السوق للقراءة فقط لتوافق CORS؛ يطلب exchangeInfo لاكتشاف العقود النشطة وmark/ticker/index وopenInterest لبيانات السوق. لا يخزن الوسيط مفاتيح API ولا يقبل مسارات حساب أو تداول، ولا يتجاوز قيود Binance الجغرافية. ما يظهر لقطة REST عند آخر تحديث وليس بثاً لحظياً؛ وقد تتغير العقود أو تتأخر البيانات أو تُحجب حسب الشبكة والمنطقة.</p><p>تُعرض Mark/IV وBid/Ask والمؤشر والفائدة المفتوحة عند توفرها. خيارات الكريبتو المعروفة تُنمذج كخيارات أوروبية على مؤشر Spot باستخدام Black–Scholes مع Carry، مع افتراض carry=0 إذا لم يتوفر من المصدر؛ لذلك تظهر بحالة «افتراض معلن». تُحفظ Greeks الخام من Binance للتدقيق فقط ولا تُخلط مع Greeks المحسوبة. أما Commodity/TradFi Options المرتبطة بمؤشر Perpetual، وأي نوع أصل غير معروف، فتعرض بيانات السوق المرصودة فقط وتُحجب Greeks والحركة الضمنية إلى أن يتوفر نموذج مثبت. لا نستخدم Black–Scholes تلقائياً على الذهب أو العقود الدائمة. Rho لكل نقطة مئوية من معدل سنوي مركب باستمرار، ووحدة `riskFreeInterest` تحتاج تحققاً من المصدر.</p></> : <><p>{dataMode === 'DEMO' ? 'هذه نسخة محاكاة: بيانات الأسعار مولدة وليست متصلة بمنصة. تستخدم Black–76 لعقود CL/BZ الآجلة وBlack–Scholes مع Carry لبقية الأصول، مع افتراض معدل فائدة وCarry يساويان 0%. كل القيم اصطناعية.' : 'يستخدم CSV نموذج Black–76 للعقود الآجلة فقط عند توفر Forward ومعدل فائدة ومواصفات أوروبية وتسوية صريحة؛ ويستخدم Black–Scholes مع Carry لعقود Spot/Index/FX عند إدخال Spot والمعدل والـCarry. العقود الأمريكية أو الدائمة أو غير المكتملة تبقى بيانات مرصودة فقط. إذا غاب IV ولا تسمح مواصفات العقد بنموذج مدعوم، يُرفض الصف بدلاً من تخمين IV أو Greeks بنموذج عام. إذا توفر IV مرصود، تبقى الأسعار وIV قابلة للاستيراد مع حجب Greeks النموذجية. تحقّق من الوحدات والطوابع الزمنية.'}</p><p>لا يستخدم المختبر مصادر بديلة خفية ولا يخلط بيانات Demo ببيانات CSV أو Binance. لا تستخدم المحاكاة لاتخاذ قرار مالي مباشر.</p></>}</div>}
           </section>
 
-          <FinancialCockpit />
+          <Suspense fallback={<div className="panel" role="status">جارٍ تحميل المركز المالي...</div>}>
+            <FinancialCockpit />
+          </Suspense>
 
           <section className="section-anchor journal-section" id="journal">
             <div className="section-title-row"><div><span className="section-kicker">PAPER WORKSPACE</span><h2>الدفتر التجريبي</h2><p>سجل الفرضية والكمية والقسط قبل أن تقيم جودة القرار.</p></div><div className="journal-actions"><button className="button button-ghost" onClick={exportTrades}><Download size={14} /> تصدير CSV</button><button className="button button-ghost danger-ghost" onClick={() => { setTrades([]); notify('تم مسح الدفتر المحلي.'); }} disabled={!trades.length}><Trash2 size={14} /> مسح الدفتر</button></div></div>
