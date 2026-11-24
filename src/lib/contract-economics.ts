@@ -7,6 +7,7 @@ export type ContractEconomicsIssueCode =
   | 'INVALID_EXERCISE_STYLE'
   | 'INVALID_SETTLEMENT_STYLE'
   | 'INVALID_SETTLEMENT_CURRENCY'
+  | 'MISSING_SETTLEMENT_CURRENCY'
   | 'INVALID_DELIVERABLE'
   | 'MISSING_PHYSICAL_DELIVERABLES'
   | 'MISSING_AGGREGATE_EXERCISE_CASH'
@@ -21,7 +22,8 @@ export type ContractEconomicsUnsupportedReason =
   | 'UNKNOWN_SETTLEMENT_STYLE'
   | 'USER_ASSERTED_PROVENANCE'
   | 'UNKNOWN_PROVENANCE'
-  | 'CROSS_CURRENCY_TOTALS_REQUIRE_FX';
+  | 'CROSS_CURRENCY_TOTALS_REQUIRE_FX'
+  | 'DELIVERABLE_CURRENCY_UNKNOWN';
 
 export interface ContractEconomicsValidation {
   valid: boolean;
@@ -49,6 +51,7 @@ function isValidDeliverable(item: ContractDeliverable): boolean {
   }
   if (item.type === 'FUTURE') {
     return typeof item.symbol === 'string' && item.symbol.trim().length > 0
+      && (item.currency === undefined || isCurrency(item.currency))
       && (item.pointValue === undefined || isPositiveFinite(item.pointValue));
   }
   return false;
@@ -94,6 +97,9 @@ export function validateContractEconomics(economics: ContractEconomics): Contrac
 
   if (exercise?.settlementCurrency !== undefined && !isCurrency(exercise.settlementCurrency)) {
     issues.push('INVALID_SETTLEMENT_CURRENCY');
+  }
+  if (exercise && exercise.settlement !== 'UNKNOWN' && !exercise.settlementCurrency) {
+    issues.push('MISSING_SETTLEMENT_CURRENCY');
   }
 
   const deliverables = Array.isArray(exercise?.deliverables) ? exercise.deliverables : [];
@@ -155,6 +161,21 @@ export function validateContractEconomics(economics: ContractEconomics): Contrac
     && economics.premium.quoteCurrency !== exercise.settlementCurrency) {
     unsupportedReasons.push('CROSS_CURRENCY_TOTALS_REQUIRE_FX');
   }
+  if (exercise?.aggregateExerciseCash && isCurrency(exercise.settlementCurrency)
+    && exercise.aggregateExerciseCash.currency !== exercise.settlementCurrency) {
+    unsupportedReasons.push('CROSS_CURRENCY_TOTALS_REQUIRE_FX');
+  }
+  deliverables.forEach((item) => {
+    if ((item.type === 'EQUITY' || item.type === 'UNDERLYING' || item.type === 'FUTURE') && !item.currency) {
+      unsupportedReasons.push('DELIVERABLE_CURRENCY_UNKNOWN');
+    } else if (item.type !== 'CASH' && item.currency && isCurrency(exercise?.settlementCurrency)
+      && item.currency !== exercise.settlementCurrency) {
+      unsupportedReasons.push('CROSS_CURRENCY_TOTALS_REQUIRE_FX');
+    } else if (item.type === 'CASH' && isCurrency(exercise?.settlementCurrency)
+      && item.currency !== exercise.settlementCurrency) {
+      unsupportedReasons.push('CROSS_CURRENCY_TOTALS_REQUIRE_FX');
+    }
+  });
 
   const uniqueIssues = [...new Set(issues)];
   const uniqueUnsupported = [...new Set(unsupportedReasons)];
