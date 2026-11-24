@@ -261,6 +261,10 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
     const underlyingKind = isCommodity ? 'PERPETUAL' as const : isCrypto ? 'SPOT' as const : 'UNKNOWN' as const;
     const exerciseStyle = isCommodity || isCrypto ? 'EUROPEAN' as const : 'UNKNOWN' as const;
     const settlementStyle = isCommodity || isCrypto ? 'CASH' as const : 'UNKNOWN' as const;
+    const inferredAssetClass = inferAssetClass(baseAsset);
+    const assetClass = isCrypto ? 'CRYPTO' : underlyingType === 'EQUITY' ? 'EQUITY'
+      : isCommodity ? (inferredAssetClass === 'CRYPTO' ? 'UNKNOWN' : inferredAssetClass)
+        : hasExplicitUnderlyingType || hasExplicitContractType ? 'UNKNOWN' : inferredAssetClass;
     const carryYield = isCrypto ? 0 : undefined;
     const pricingInputs = {
       underlyingKind,
@@ -323,11 +327,7 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       id: symbol,
       symbol,
       underlying: baseAsset,
-      assetClass: underlyingType === 'CRYPTO' || (!hasExplicitUnderlyingType && contractType === 'CRYPTO_OPTIONS') || (!hasExplicitUnderlyingType && !hasExplicitContractType && isCrypto)
-        ? 'CRYPTO'
-        : underlyingType === 'EQUITY' ? 'EQUITY'
-          : isCommodity ? inferAssetClass(baseAsset)
-            : hasExplicitUnderlyingType || hasExplicitContractType ? 'UNKNOWN' : inferAssetClass(baseAsset),
+      assetClass,
       venue: 'BINANCE',
       underlyingKind,
       exerciseStyle: exerciseStyle === 'UNKNOWN' ? undefined : exerciseStyle,
