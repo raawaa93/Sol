@@ -164,3 +164,8 @@
 المراجع التقنية لـGate Global: https://www.gate.com/legal/user-agreement ، https://www.gate.com/docs/agreement.pdf ، https://www.gate.com/docs/developers/apiv4/en/options/ ، https://www.gate.com/help/other/optionsbasics/46255/european-options-settlement-methods-explained .
 
 مصدر Gate EU الرسمي: https://eu.gate.com/en-eu/legal/user-agreement (البند 4.2، محدث 1 مارس 2026).
+
+
+**سيولة خيارات الكريبتو:** تقرير Q3 2026 من Orbit Markets قدّر Binance بنحو 13.2% من متوسط حجم التداول اليومي عبر أكبر ثماني منصات خيارات كريبتو، بينما لم يدرج Gate ضمن قائمته. هذا لا يعني انعدام حجم Gate، لكنه لا يدعم افتراض أن دفتر خياراتها يضاهي Binance/Deribit/Bybit. لا تبديل قبل قياس عمق العقد والسبريد والحجم وOI والتنفيذ الفعلي.
+
+المصدر: https://www.orbitmarkets.io/post/current-state-of-the-crypto-options-market
