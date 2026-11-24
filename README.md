@@ -117,3 +117,10 @@ symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,delta,gamma,theta,vega
 - [HMRC — derivatives over cryptoassets](https://www.gov.uk/hmrc-internal-manuals/cryptoassets-manual/crypto10150)
 
 إشعار الترخيص لمعاملات التقريب العددية المستعارة من Cephes موجود في [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+
+
+## خريطة المنصة والنطاق — 24 نوفمبر 2026
+
+Volterra هو مختبر خيارات متعدد الأصول وليس منتجاً للذهب فقط. Binance هي موصل التنفيذ الأول المشروط: Crypto Options API يوفر بيانات سوقية/Greeks/IV/OI وWebSocket للعقود المدرجة؛ Commodity Options الحالية تشمل XAU/XAG فقط وتجزئة long-only؛ U.S. Stock Options تغطي أسهماً وETFs أمريكية بتسوية مادية وlong-only، لكن API السوق لا يعرض option quotes/Greeks/IV، كما أن أهلية المنتج للسوريين تحتاج تحققاً منفصلاً. Binance لا تغطي وحدها خيارات الفائدة والعملات والطاقة والزراعة والمؤشرات العالمية. Bybit/Deribit/Gate/OKX وParadex تستبعد سوريا في الشروط التي راجعناها، وIBKR لا يدرج سوريا في قائمة البلدان المتاحة. لا يُستخدم VPN لتغيير بلد الإقامة أو تجاوز القيود.
+
+للتسعير المرجعي نقيّم QuantLib؛ ولإعادة التشغيل والاختبار الحدثي نقيّم NautilusTrader في خدمة Python منفصلة بعد توفير بيانات QuoteTick وOptionGreeks. لا يوجد feed مجاني عالمي حي؛ ضمن سقف 15$/شهر نستخدم Binance API العام ومصادر EOD/CSV المؤخرة للبحث فقط، ولا نشتري اشتراكاً أو نعرض بيانات OPRA داخل منتج عام دون ترخيص.
