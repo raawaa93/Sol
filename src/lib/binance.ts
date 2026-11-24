@@ -337,7 +337,8 @@ export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptio
     })
     : undefined;
   const supportedModelUpdate = modelUpdate?.status === 'SUPPORTED' ? modelUpdate : undefined;
-  const invalidatedModel = modelUpdate?.status === 'UNSUPPORTED';
+  const invalidatedModelReason = modelUpdate?.status === 'UNSUPPORTED' ? modelUpdate.reason : undefined;
+  const invalidatedModel = invalidatedModelReason !== undefined;
   const greekFields = ['delta', 'gamma', 'theta', 'vega', 'rho'];
   return {
     ...quote,
@@ -370,7 +371,7 @@ export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptio
       rho: 0,
       pricingStatus: 'OBSERVED_ONLY' as const,
       pricingModel: undefined,
-      pricingReason: modelUpdate.reason,
+      pricingReason: invalidatedModelReason,
     } : {}),
     ...(sourceHasGreeks ? { unverifiedSourceGreeks: { ...quote.unverifiedSourceGreeks, ...event.sourceGreeks } } : {}),
     sourceTimestamps: {
