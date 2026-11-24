@@ -7,7 +7,8 @@
 # Repository-wide operating instructions
 
 ## Product scope
-- The product's research universe is **options across all asset classes and venues**, not gold-only and not crypto-only. Include listed equity/index options, options on futures (rates, FX, energy, metals, agriculture), crypto options, and other legally accessible option markets.
+- The product is **Sol Financial and Investment Intelligence Assistant**: personal finance, portfolio/wealth analysis, investment research, strategy comparison, risk management and evidence-backed decision support. It is not an autonomous trading system and must not place live orders or move funds.
+- The existing research universe of genuine vanilla options across asset classes and venues remains a specialist module. Include listed equity/index options, options on futures (rates, FX, energy, metals, agriculture), crypto options and other legally accessible option markets. Do not reduce the overall product to options, gold-only or crypto-only.
 - Gold (XAU) and silver (XAG) are individual underlyings, not the product scope.
 - Always distinguish intended coverage from implemented coverage. Current Demo includes BTC, ETH, SOL, XRP, DOGE, BNB, XAU, XAG, CL and BZ. Live data is Binance-specific and limited to instruments returned by its current catalogue. CSV is more generic. This is not universal live market coverage.
 - Never label a perpetual, CFD, binary contract, prediction market or synthetic payoff as an exchange-listed option. Describe rights, exercise style, expiry, settlement, multiplier, collateral and margin explicitly.
@@ -44,7 +45,7 @@
 - Keep financial calculations unit-aware and instrument-specific. Never compare OI, volume, prices or Greeks across venues without multiplier, currency and settlement normalization.
 
 ## Durable context
-Keep the multi-asset scope, Syrian residence, VPN connectivity distinction, platform findings and execution guardrails in repository documentation. Update this file and docs/PLATFORM_ELIGIBILITY_2026-11-24.md when verified facts change. Do not describe the project as a gold-only tool. Use “Volterra Multi-Asset Options Decision Lab” consistently.
+Keep the personal finance and investment intelligence scope, multi-asset options specialist module, Syrian residence, VPN connectivity distinction, platform findings, privacy boundaries and no-trading-execution guardrails in repository documentation. Update this file and docs/PLATFORM_ELIGIBILITY_2026-11-24.md when verified facts change. Do not describe the project as a gold-only tool. Use “Volterra Multi-Asset Options Decision Lab” consistently.
 
 ## قرار تغطية المنتجات — مراجعة المصادر الرسمية في 24 نوفمبر 2026
 
