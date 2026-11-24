@@ -223,11 +223,11 @@ export function calculateMonthlyCashFlow(
     assertNonNegativeFinite(transaction.amount, 'Transaction amount');
     validTimestamp(transaction.occurredAt, 'Transaction date');
     if (!['INCOME', 'EXPENSE', 'TRANSFER'].includes(transaction.kind)) throw new Error('Unsupported cash-flow kind');
+    if (transaction.occurredAt.slice(0, 7) !== period) continue;
     if (transaction.kind === 'TRANSFER') {
       excludedTransfers += 1;
       continue;
     }
-    if (transaction.occurredAt.slice(0, 7) !== period) continue;
 
     const currency = normalizeCurrency(transaction.currency);
     const converted = getConversion(transaction.amount, currency, target, fxRates);
