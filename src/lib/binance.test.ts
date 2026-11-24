@@ -124,6 +124,70 @@ test('Binance snapshot keeps every active crypto and commodity underlying return
   assert.ok(snapshot.availableAssets.includes('BZ'));
 });
 
+
+test('Binance preserves explicit crypto, commodity, and unknown contract metadata without unsafe model fallbacks', () => {
+  const now = Date.now();
+  const expiry = now + 30 * 86_400_000;
+  const code = compactDate(expiry);
+  const instruments = [
+    { baseAsset: 'BTC', underlying: 'BTCUSDT', underlyingType: 'CRYPTO', contractType: 'CRYPTO_OPTIONS', assetClass: 'CRYPTO', kind: 'SPOT', pricing: 'ASSUMED' },
+    { baseAsset: 'XAU', underlying: 'XAUUSDT', underlyingType: 'COMMODITY', contractType: 'TRADFI_OPTIONS', assetClass: 'METALS', kind: 'PERPETUAL', pricing: 'OBSERVED_ONLY' },
+    { baseAsset: 'RAT', underlying: 'RATUSDT', underlyingType: 'UNKNOWN', contractType: 'UNKNOWN_OPTIONS', assetClass: 'UNKNOWN', kind: 'UNKNOWN', pricing: 'OBSERVED_ONLY' },
+  ] as const;
+  const optionSymbols = instruments.map((item, index) => ({
+    symbol: item.baseAsset + '-' + code + '-' + (100 + index) + '-C',
+    underlying: item.underlying,
+    quoteAsset: 'USDT',
+    side: 'CALL',
+    strikePrice: 100 + index,
+    expiryDate: expiry,
+    unit: 10,
+    status: 'TRADING',
+    underlyingType: item.underlyingType,
+    contractType: item.contractType,
+  }));
+  const snapshot = normalizeBinanceSnapshot({
+    fetchedAt: now,
+    exchangeInfo: {
+      serverTime: now,
+      optionContracts: instruments.map(({ baseAsset, underlying, underlyingType, contractType }) => ({
+        baseAsset, underlying, underlyingType, contractType, quoteAsset: 'USDT', settleAsset: 'USDT',
+      })),
+      optionSymbols,
+    },
+    marks: optionSymbols.map(({ symbol }) => ({ symbol, markPrice: 10, markIV: 0.5 })),
+    indices: instruments.map(({ underlying }, index) => ({
+      requestedUnderlying: underlying,
+      item: { underlying, indexPrice: 100 + index, time: now },
+    })),
+  });
+
+  for (const expected of instruments) {
+    const quote = snapshot.quotes.find((item) => item.underlying === expected.baseAsset);
+    assert.ok(quote, 'missing ' + expected.baseAsset + ' quote');
+    assert.equal(quote.assetClass, expected.assetClass);
+    assert.equal(quote.underlyingKind, expected.kind);
+    assert.equal(quote.pricingStatus, expected.pricing);
+    assert.equal(quote.quoteAsset, 'USDT');
+    assert.equal(quote.settlementAsset, 'USDT');
+    assert.equal(quote.contractMultiplier, 10);
+  }
+
+  const crypto = snapshot.quotes.find((item) => item.underlying === 'BTC');
+  const commodity = snapshot.quotes.find((item) => item.underlying === 'XAU');
+  const unknown = snapshot.quotes.find((item) => item.underlying === 'RAT');
+  assert.equal(crypto?.exerciseStyle, 'EUROPEAN');
+  assert.equal(crypto?.settlementStyle, 'CASH');
+  assert.equal(crypto?.pricingModel, 'BLACK_SCHOLES_CARRY');
+  assert.equal(commodity?.exerciseStyle, 'EUROPEAN');
+  assert.equal(commodity?.settlementStyle, 'CASH');
+  assert.equal(commodity?.pricingModel, undefined);
+  assert.ok(commodity?.pricingReason?.includes('Perpetual Contract Index'));
+  assert.equal(unknown?.exerciseStyle, undefined);
+  assert.equal(unknown?.settlementStyle, undefined);
+  assert.equal(unknown?.pricingModel, undefined);
+});
+
 test('Binance normalizer avoids crossed bid/ask midpoints and preserves last-price provenance', () => {
   const now = Date.now();
   const expiry = now + 21 * 86_400_000;
