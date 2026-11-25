@@ -84,6 +84,7 @@ export async function runOptionsArchiveWorker({
       enabled: true,
       restTransport,
       refreshExchangeInfo: config.refreshExchangeInfo,
+      onFatal: (error) => controller.abort(error),
       now,
     });
     const verification = await activeArchive.verify();
