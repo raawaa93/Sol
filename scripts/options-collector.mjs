@@ -90,7 +90,7 @@ export async function requestPublicBinanceRest(endpoint, params, transport) {
   return response.json();
 }
 
-function makeRecord({ kind, endpoint, symbol, rawPayload, eventAt, receivedAt, availableAt = receivedAt, fields, id, quality = 'VALID', flags = [], historicalBackfill = false }) {
+function makeRecord({ kind, endpoint, symbol, rawPayload, eventAt, receivedAt, availableAt = receivedAt, fields, id, quality = 'VALID', flags = [], historicalBackfill = false, contractSpec = null, contractSpecObservedAt, contractSpecAvailableAt }) {
   const normalizedSymbol = typeof symbol === 'string' && symbol ? symbol.toUpperCase() : 'UNKNOWN';
   const key = id ?? sha256(typeof rawPayload === 'string' ? rawPayload : canonicalJson(rawPayload));
   return createOptionsArchiveRecord({
@@ -104,11 +104,111 @@ function makeRecord({ kind, endpoint, symbol, rawPayload, eventAt, receivedAt, a
       receivedAt,
       availableAt,
     },
-    contractSpec: null,
+    contractSpec,
+    ...(contractSpec ? { contractSpecObservedAt, contractSpecAvailableAt } : {}),
     fields: fields.filter(Boolean),
     quality: { status: quality, flags },
     historicalBackfill,
   });
+}
+
+export function mapVerifiedBinanceContractSpec(exchangeInfo, symbol, receivedAt) {
+  const payload = unwrap(exchangeInfo);
+  const serverTime = numeric(payload.serverTime);
+  if (!validSymbol(symbol) || serverTime === null || serverTime <= 0 || Date.parse(receivedAt) < serverTime) return null;
+  const symbolInfo = Array.isArray(payload.optionSymbols)
+    ? payload.optionSymbols.find((item) => item?.symbol?.toUpperCase() === symbol)
+    : undefined;
+  if (!symbolInfo) return null;
+  const underlying = typeof symbolInfo.underlying === 'string' ? symbolInfo.underlying.toUpperCase() : '';
+  const baseAsset = symbol.split('-')[0];
+  const contractInfo = Array.isArray(payload.optionContracts)
+    ? payload.optionContracts.find((item) => item?.underlying?.toUpperCase() === underlying
+      || item?.baseAsset?.toUpperCase() === baseAsset)
+    : undefined;
+  if (!contractInfo
+    || String(contractInfo.underlyingType ?? '').toUpperCase() !== 'CRYPTO'
+    || String(contractInfo.contractType ?? '').toUpperCase() !== 'CRYPTO_OPTIONS'
+    || (symbolInfo.underlyingType && String(symbolInfo.underlyingType).toUpperCase() !== 'CRYPTO')
+    || (symbolInfo.contractType && String(symbolInfo.contractType).toUpperCase() !== 'CRYPTO_OPTIONS')) return null;
+  const optionType = String(symbolInfo.side ?? '').toUpperCase();
+  const strike = numeric(symbolInfo.strikePrice);
+  const expiry = numeric(symbolInfo.expiryDate);
+  const unit = numeric(symbolInfo.unit);
+  const quoteAsset = String(symbolInfo.quoteAsset ?? contractInfo.quoteAsset ?? '').toUpperCase();
+  const settlementAsset = String(contractInfo.settleAsset ?? '').toUpperCase();
+  if (!['CALL', 'PUT'].includes(optionType) || strike === null || strike <= 0
+    || expiry === null || expiry <= 0 || unit === null || unit <= 0
+    || !/^[A-Z][A-Z0-9]{1,11}$/.test(quoteAsset)
+    || !/^[A-Z][A-Z0-9]{1,11}$/.test(settlementAsset)) return null;
+  const contractSpec = {
+    symbol,
+    underlying: underlying || baseAsset,
+    optionType,
+    strike,
+    expiryAt: new Date(expiry).toISOString(),
+    unit,
+    premiumUnit: 'PER_CONTRACT',
+    quoteAsset,
+    settlementAsset,
+    exerciseStyle: 'EUROPEAN',
+    settlementStyle: 'CASH',
+    cashSettlementMultiplier: unit,
+    sourceEndpoint: 'REST_EXCHANGE_INFO',
+    version: sha256(canonicalJson({ serverTime, symbolInfo, contractInfo })),
+  };
+  return {
+    contractSpec,
+    contractSpecObservedAt: new Date(serverTime).toISOString(),
+    contractSpecAvailableAt: new Date(Date.parse(receivedAt)).toISOString(),
+  };
+}
+
+function attachContractSpec(record, state) {
+  const spec = state.contractSpecs?.get(record.symbol);
+  if (!spec) return record;
+  return createOptionsArchiveRecord({
+    ...record,
+    contractSpec: spec.contractSpec,
+    contractSpecObservedAt: spec.contractSpecObservedAt,
+    contractSpecAvailableAt: spec.contractSpecAvailableAt,
+  });
+}
+
+function parseExchangeInfo(rawPayload, receivedAt, state) {
+  const payload = unwrap(rawPayload);
+  const serverTime = numeric(payload.serverTime);
+  const eventAt = iso(serverTime);
+  const symbols = Array.isArray(payload.optionSymbols) ? payload.optionSymbols : [];
+  const contracts = Array.isArray(payload.optionContracts) ? payload.optionContracts : [];
+  let mapped = 0;
+  for (const symbolInfo of symbols) {
+    const symbol = typeof symbolInfo?.symbol === 'string' ? symbolInfo.symbol.toUpperCase() : '';
+    const spec = mapVerifiedBinanceContractSpec(payload, symbol, receivedAt);
+    if (spec) {
+      state.contractSpecs.set(symbol, spec);
+      mapped += 1;
+    }
+  }
+  const quality = eventAt && Date.parse(receivedAt) >= Date.parse(eventAt) ? 'VALID' : 'DEGRADED';
+  const record = createOptionsArchiveRecord({
+    kind: 'EXCHANGE_INFO',
+    endpoint: 'REST_EXCHANGE_INFO',
+    symbol: 'BINANCE-OPTIONS',
+    idempotencyKey: `exchangeInfo:${serverTime ?? 'unknown'}:${sha256(canonicalJson(payload))}`,
+    rawPayload,
+    clocks: { exchangeEventAt: eventAt, receivedAt, availableAt: receivedAt },
+    contractSpec: null,
+    fields: [
+      observedField('serverTime', serverTime, 'UNIX_MILLISECONDS', 'serverTime', eventAt, receivedAt, receivedAt, null),
+      observedField('optionSymbolCount', symbols.length, 'COUNT', 'optionSymbols.length', eventAt, receivedAt, receivedAt, null),
+      observedField('optionContractCount', contracts.length, 'COUNT', 'optionContracts.length', eventAt, receivedAt, receivedAt, null),
+      observedField('mappedCryptoOptionSpecs', mapped, 'COUNT', 'optionSymbols+optionContracts', eventAt, receivedAt, receivedAt, null),
+    ],
+    quality: { status: quality, flags: quality === 'VALID' ? [] : ['EXCHANGE_INFO_TIME_INVALID'] },
+    historicalBackfill: false,
+  });
+  return [record];
 }
 
 function unwrap(rawPayload) {
@@ -281,15 +381,15 @@ function parseDepthSnapshot(item, receivedAt, state) {
 export function parseBinancePublicStreamEvent(rawPayload, receivedAt, state = {}) {
   const event = unwrap(rawPayload);
   const eventType = event.e;
-  if (eventType === 'bookTicker') return [parseBookTicker(event, rawPayload, receivedAt)];
-  if (eventType === 'trade') return [parseTrade(event, rawPayload, receivedAt)];
+  if (eventType === 'bookTicker') return [attachContractSpec(parseBookTicker(event, rawPayload, receivedAt), state)];
+  if (eventType === 'trade') return [attachContractSpec(parseTrade(event, rawPayload, receivedAt), state)];
   if (eventType === 'kline') {
     const record = parseKline(event, rawPayload, receivedAt);
-    return record ? [record] : [];
+    return record ? [attachContractSpec(record, state)] : [];
   }
-  if (eventType === '24hrTicker') return [parseTicker(event, rawPayload, receivedAt)];
+  if (eventType === '24hrTicker') return [attachContractSpec(parseTicker(event, rawPayload, receivedAt), state)];
   if (eventType === 'indexPrice') return [parseIndexOrMark(event, rawPayload, receivedAt, false)];
-  if (eventType === 'optionMarkPrice' || eventType === 'markPrice') return [parseIndexOrMark(event, rawPayload, receivedAt, true)];
+  if (eventType === 'optionMarkPrice' || eventType === 'markPrice') return [attachContractSpec(parseIndexOrMark(event, rawPayload, receivedAt, true), state)];
   if (eventType === 'depthUpdate') {
     const symbol = event.s;
     const prior = state.depth?.get(symbol);
@@ -322,13 +422,13 @@ export function parseBinancePublicStreamEvent(rawPayload, receivedAt, state = {}
     if (state.depth) state.depth.set(symbol, sequenceValid
       ? { lastUpdateId: current, synced: true }
       : { lastUpdateId: null, synced: false });
-    if (sequenceValid) return [diff];
+    if (sequenceValid) return [attachContractSpec(diff, state)];
     const gap = makeRecord({
       kind: 'GAP', endpoint: 'WS_DEPTH', symbol, rawPayload, eventAt, receivedAt,
       fields: [], quality: 'DEGRADED', flags,
       id: `depth-gap:${eventAt ?? receivedAt}:${event.U ?? 'unknown'}:${event.u ?? 'unknown'}`,
     });
-    return [diff, gap];
+    return [attachContractSpec(diff, state), gap];
   }
   return [];
 }
@@ -357,7 +457,7 @@ export async function collectForwardOptionsEvents({ archive, transport, streams,
     throw new OptionsCollectorError('INVALID_STREAMS', 'Explicit public stream names are required.');
   }
   const lease = await archive.acquireWriterLease();
-  const state = { depth: new Map() };
+  const state = { depth: new Map(), contractSpecs: new Map() };
   let processed = 0;
   let archived = 0;
   let gaps = 0;
@@ -367,8 +467,11 @@ export async function collectForwardOptionsEvents({ archive, transport, streams,
       const receivedAt = now();
       if (Date.now() >= lease.expiresAt - 10_000) await archive.renewWriterLease(lease);
       let records = [];
-      if (item?.type === 'depthSnapshot') {
-        records = [parseDepthSnapshot(item, receivedAt, state)];
+      if (item?.type === 'exchangeInfo') {
+        const raw = item.payload ?? item.data ?? item;
+        records = parseExchangeInfo(raw, receivedAt, state);
+      } else if (item?.type === 'depthSnapshot') {
+        records = [attachContractSpec(parseDepthSnapshot(item, receivedAt, state), state)];
       } else if (item?.type === 'disconnect' || item?.type === 'reconnect') {
         state.depth.clear();
         records = [gapRecord(item, receivedAt, item.type === 'disconnect' ? 'STREAM_DISCONNECTED' : 'STREAM_RECONNECTED')];
