@@ -102,6 +102,17 @@ test('canonical PAPER entry rejects user-asserted, model-priced and untimestampe
   assert.equal(canCreateCanonicalPaperTrade({ ...quote, sourceTimestamps: { ticker: '2026-11-25T03:00:00Z' } }, 'BINANCE'), false);
 });
 
+test('canonical PAPER entry accepts REST ticker timestamps when both bid and ask are from that snapshot', () => {
+  const restQuote = {
+    ...quote,
+    sourceTimestamps: {
+      index: '2026-11-25T03:00:00Z',
+      ticker: '2026-11-25T03:00:00Z',
+    },
+  };
+  assert.equal(canCreateCanonicalPaperTrade(restQuote, 'BINANCE'), true);
+});
+
 test('canonical PAPER entry rejects invalid quantity, premium, fees and reference price', () => {
   assert.equal(createCanonicalPaperTrade({ ...input, quantity: 0 }).ok, false);
   assert.equal(createCanonicalPaperTrade({ ...input, premiumPrice: 0 }).ok, false);
