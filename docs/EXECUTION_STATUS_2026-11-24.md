@@ -132,3 +132,20 @@ No production database connection/dump, migration, data deletion, credential rea
 
 - PR #158 merged on 25 Nov 2026 as the current main baseline `82312ae958f548375c395550bb2e96fb5dc13cfa`; its CI, Lighthouse and Project Context Guard runs all succeeded. It delivers the Binance observed-IV Greek recalculation guard and stale-model-Greek clearing. Issue #150 is now closed as completed, with the separate bundle-budget portion completed by PR #165.
 - Issue #161 was closed automatically by PR #165. The later main CI regression is independent of the chart/bundle change and remains assigned for investigation in the #91 continuation.
+
+
+## CSV IV regression resolved — 25 November 2026, 03:37–03:39 UTC
+
+- PR #166 merged by squash as `736063faa78fcbb8012147a7f4bf18be8e35df9a`: https://github.com/raawaa93/Sol/pull/166
+- Root cause was a non-deterministic test fixture, not the pricing engine. The test generated a 30-day Black-Scholes price from `Date.now()` but assigned a fixed historical CSV source timestamp (`2026-11-23T14:00:00Z`). The importer correctly valued historical time-to-expiry from the source timestamp, so the solver was given a different maturity than the price generator.
+- The test now uses one fixed `referenceTime` to generate expiry and passes that same timestamp as the CSV import reference time. No production code, assertion, tolerance, pricing model, fail-closed guard or CI budget was changed.
+- PR checks all passed: unit/property tests; mocked encrypted-backup orchestration; production build; compressed bundle budget; Playwright browser journeys; Project Context Guard; Lighthouse baseline. The published-site smoke check was skipped by workflow conditions.
+- The merge commit is now the `main` head. Post-merge checks (CI/build, Lighthouse and deploy) were still running at the time of this record; their final outcomes must be checked separately before claiming the published site was redeployed.
+
+### Remaining P0 integration audit
+
+A fresh mainline code-search audit confirmed that canonical quote-level functions in `src/lib/quote-economics.ts` are not yet called by application consumers outside their tests. The live app still uses legacy scalar `getBreakeven`, `getMaxLoss`, `getExpiryPnl` and `buildScenarioSeries` paths; the narrow `getContractScaleIssue` guard keeps non-unit/unverified profiles blocked. Binance canonical economics are attached to live `OptionQuote` objects, but the app has not yet routed its cost/risk/scenario calculations through the canonical capability functions. Issue #91 remains open and must not be marked complete until that integration and conformance coverage are delivered.
+
+### Archive worktree availability
+
+A remote branch search for `research/options-pit-archive-2026-11-24` returned no branch. The previously reported local Copilot workspace is not exposed through the current GitHub connector, so its unpushed local diff cannot be inspected or safely continued from this session. No replacement archive implementation was created; the issue remains blocked on recovering/publishing that existing local work or receiving an accessible patch. Mainline archive/PIT/collector delivery remains NOT VERIFIED.
