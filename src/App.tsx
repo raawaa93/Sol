@@ -52,7 +52,7 @@ import { formatAssetPrice, formatNumber, formatOptionPrice, formatQuantity, form
 import type { AssetClass, OptionQuote, OptionSide, PaperTrade, Underlying } from './lib/types';
 import { ASSET_CLASS_LABELS } from './lib/asset-class';
 import { PAPER_CAMPAIGN_CAPITAL, PAPER_CAMPAIGN_MAX_LOSS, PAPER_CAMPAIGN_PER_TRADE_CAP, canAllocatePaperCampaignTrade, summarizePaperCampaignBudget } from './lib/paper-campaign-budget';
-import { canCreateCanonicalPaperTrade, closeCanonicalPaperTrade, createCanonicalPaperTrade, estimateBinanceOptionsTradingFee } from './lib/paper-journal';
+import { canCreateCanonicalPaperTrade, closeCanonicalPaperTrade, createCanonicalPaperTrade, estimateBinanceOptionsTradingFee, normalizePaperTradeRecord } from './lib/paper-journal';
 const MarketDepthPanel = lazy(() => import('./components/MarketDepthPanel'));
 const OpportunityReview = lazy(() => import('./components/OpportunityReview'));
 const GreeksPanel = lazy(() => import('./components/GreeksPanel'));
@@ -140,32 +140,6 @@ function formatSourceTimestamp(timestamp: string | undefined): string {
   return Number.isFinite(date.getTime()) ? `${formatDateTime(date)} UTC` : 'وقت المصدر غير صالح';
 }
 
-function isPaperTradeClose(value: unknown, trade: Partial<PaperTrade>): boolean {
-  if (!value || typeof value !== 'object') return false;
-  const close = value as Partial<NonNullable<PaperTrade['close']>>;
-  const debit = trade.premiumDebitAtEntry;
-  const entryAt = Date.parse(trade.createdAt ?? '');
-  return typeof close.closedAt === 'string' && Number.isFinite(Date.parse(close.closedAt)) && Date.parse(close.closedAt) >= entryAt
-    && typeof close.exitPremium === 'number' && Number.isFinite(close.exitPremium) && close.exitPremium > 0
-    && typeof close.exitFees === 'number' && Number.isFinite(close.exitFees) && close.exitFees >= 0
-    && typeof close.exitExchangeFee === 'number' && Number.isFinite(close.exitExchangeFee) && close.exitExchangeFee >= 0
-    && typeof close.exitAdditionalFees === 'number' && Number.isFinite(close.exitAdditionalFees) && close.exitAdditionalFees >= 0
-    && typeof close.exitGrossProceeds === 'number' && Number.isFinite(close.exitGrossProceeds) && close.exitGrossProceeds >= 0
-    && typeof close.exitNetProceeds === 'number' && Number.isFinite(close.exitNetProceeds) && close.exitNetProceeds >= 0
-    && typeof close.realizedPnl === 'number' && Number.isFinite(close.realizedPnl)
-    && typeof debit === 'number' && Number.isFinite(debit) && Math.abs(close.realizedPnl - (close.exitNetProceeds - debit)) <= 1e-8
-    && Math.abs(close.exitGrossProceeds - close.exitNetProceeds - close.exitFees) <= 1e-8
-    && Math.abs(close.exitFees - close.exitExchangeFee - close.exitAdditionalFees) <= 1e-8
-    && typeof close.currency === 'string' && close.currency === trade.premiumCurrencyAtEntry
-    && typeof close.spotAtExit === 'number' && Number.isFinite(close.spotAtExit) && close.spotAtExit > 0
-    && close.bidAskSource === 'BOOK_TICKER'
-    && typeof close.sourceTimestamps?.bookTicker === 'string' && Number.isFinite(Date.parse(close.sourceTimestamps.bookTicker))
-    && typeof close.sourceTimestamps?.index === 'string' && Number.isFinite(Date.parse(close.sourceTimestamps.index))
-    && typeof close.sourceReceivedAt === 'string' && Number.isFinite(Date.parse(close.sourceReceivedAt))
-    && typeof close.bidQuantity === 'number' && Number.isFinite(close.bidQuantity) && close.bidQuantity > 0
-    && close.bidAskSizeUnit === 'CONTRACTS';
-}
-
 function isPaperTradeBase(value: unknown): value is PaperTrade {
   if (!value || typeof value !== 'object') return false;
   const trade = value as Partial<PaperTrade>;
@@ -216,20 +190,7 @@ function loadWatchlist(): string[] {
 
 function normalizePaperTrade(value: unknown): PaperTrade | undefined {
   if (!isPaperTradeBase(value)) return undefined;
-  const trade = value as PaperTrade;
-  const normalized: PaperTrade = { ...trade };
-  if (trade.close !== undefined && !isPaperTradeClose(trade.close, trade)) {
-    normalized.close = undefined;
-    normalized.integrityWarning = 'CLOSE_RECORD_INVALID';
-  }
-  const feeBreakdownValid = Number.isFinite(trade.exchangeFeeAtEntry) && trade.exchangeFeeAtEntry! >= 0
-    && Number.isFinite(trade.additionalFeesAtEntry) && trade.additionalFeesAtEntry! >= 0
-    && Math.abs(trade.fees - trade.exchangeFeeAtEntry! - trade.additionalFeesAtEntry!) <= 1e-8;
-  if (!feeBreakdownValid) {
-    delete normalized.exchangeFeeAtEntry;
-    delete normalized.additionalFeesAtEntry;
-  }
-  return normalized;
+  return normalizePaperTradeRecord(value as PaperTrade);
 }
 
 function loadPaperTrades(): PaperTrade[] {
