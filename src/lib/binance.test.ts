@@ -76,6 +76,11 @@ test('Binance snapshot normalizer merges the active option universe and public m
   assert.equal(snapshot.quotes[0].delta, blackScholes(snapshot.quotes[0].spot, snapshot.quotes[0].strike, snapshot.quotes[0].daysToExpiry, snapshot.quotes[0].iv, 'CALL', 0.02).delta);
   assert.equal(snapshot.quotes[0].bidIv, 0.52);
   assert.equal(snapshot.quotes[0].askIv, 0.58);
+  assert.equal(snapshot.quotes[0].markIvSource, 'REST_MARK');
+  assert.equal(snapshot.quotes[0].riskFreeRateSource, 'REST_MARK');
+  assert.equal(snapshot.quotes[0].sourceReceivedAt?.markIv, new Date(now).toISOString());
+  assert.equal(snapshot.quotes[0].sourceReceivedAt?.riskFreeRate, new Date(now).toISOString());
+  assert.equal(snapshot.quotes[0].sourceTimestamps?.markIv, undefined, 'REST mark endpoint has no exchange event timestamp; receive time is stored separately');
   assert.deepEqual(snapshot.quotes[0].unverifiedSourceGreeks, {
     delta: 0.61, gamma: 0.00003, theta: -25, vega: 49,
   });
