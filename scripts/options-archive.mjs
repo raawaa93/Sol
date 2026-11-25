@@ -357,6 +357,13 @@ export class ResumableOptionsArchive {
           if (Date.now() - recoveryStat.mtimeMs > this.leaseTtlMs) recoveryProcessAlive = false;
         }
         if (!recoveryProcessAlive) {
+          let latestRecovery;
+          try { latestRecovery = JSON.parse(await readFile(recoveryPath, 'utf8')); } catch {
+            throw new OptionsArchiveError('WRITER_LEASE_RECOVERY_BUSY', 'Recovery lock changed while attempting to reclaim it.');
+          }
+          if (latestRecovery.token !== existingRecovery.token) {
+            throw new OptionsArchiveError('WRITER_LEASE_RECOVERY_BUSY', 'A different process replaced the recovery lock.');
+          }
           await unlink(recoveryPath).catch((error) => { if (error.code !== 'ENOENT') throw error; });
           return this.acquireWriterLease();
         }
