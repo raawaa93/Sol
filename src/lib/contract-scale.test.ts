@@ -102,6 +102,7 @@ test('canonical terms disable legacy scalar analytics even when unit one is nume
         status: 'PROVIDER_VERIFIED',
         provider: 'BINANCE',
         legalTerms: BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS,
+        rawFields: { unit: 1, underlyingType: 'CRYPTO', contractType: 'CRYPTO_OPTIONS' },
         sourceRef: 'https://eapi.binance.com/eapi/v1/exchangeInfo',
         retrievedAt: '2026-11-25T03:00:00Z',
       },
