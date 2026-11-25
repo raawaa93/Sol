@@ -85,6 +85,7 @@ export function isCanonicalPaperCloseEvent(value: unknown): value is CanonicalPa
     && value.currency === premium.quoteCurrency
     && value.contractAtExit.quoteAsset === premium.quoteCurrency
     && value.contractAtExit.unit === cashSettlement.multiplier
+    && Date.parse(value.contractAtExit.expiry as string) > closedAt
     && Math.abs((value.grossProceeds as number) - grossExpected) <= tolerance
     && Math.abs((value.netPnl as number) - netExpected) <= Math.max(1e-8, Math.abs(netExpected) * 1e-8)
     && value.bidAtExit === value.exitPremium
