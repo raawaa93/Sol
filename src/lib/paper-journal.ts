@@ -318,7 +318,20 @@ export function closeCanonicalPaperTrade(input: CanonicalPaperCloseInput): Canon
 /** Validate a persisted close against its immutable entry and recorded execution inputs. */
 export function isValidPaperTradeCloseRecord(value: unknown, trade: PaperTrade): value is PaperTradeClose {
   if (!value || typeof value !== 'object' || !trade.contractEconomics
+    || !validateContractEconomics(trade.contractEconomics).adapterReady
+    || trade.contractEconomics.provenance.status !== 'PROVIDER_VERIFIED'
+    || trade.contractEconomics.provenance.provider !== 'BINANCE'
+    || trade.contractEconomics.provenance.sourceRef !== 'https://eapi.binance.com/eapi/v1/exchangeInfo'
+    || trade.contractEconomics.premium.multiplier !== 1
+    || trade.contractEconomics.exercise.style !== 'EUROPEAN'
+    || trade.contractEconomics.exercise.settlement !== 'CASH'
+    || trade.contractVenueAtEntry !== 'BINANCE'
+    || trade.contractAssetClassAtEntry !== 'CRYPTO'
+    || trade.contractUnderlyingKindAtEntry !== 'SPOT'
+    || trade.priceSourceAtEntry !== 'ASK'
+    || trade.bidAskSourceAtEntry !== 'BOOK_TICKER'
     || !Number.isFinite(trade.contractUnitAtEntry) || trade.contractUnitAtEntry! <= 0
+    || trade.contractEconomics.exercise.cashSettlement?.multiplier !== trade.contractUnitAtEntry
     || !Number.isFinite(trade.premiumDebitAtEntry) || trade.premiumDebitAtEntry! <= 0) return false;
   const close = value as Partial<PaperTradeClose>;
   const closedAt = Date.parse(close.closedAt ?? '');
