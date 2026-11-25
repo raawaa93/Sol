@@ -247,6 +247,7 @@ export function hasValidPaperEntryExecutionEvidence(trade: PaperTrade): boolean 
     || trade.contractUnderlyingKindAtEntry !== 'SPOT'
     || trade.priceSourceAtEntry !== 'ASK' || trade.bidAskSourceAtEntry !== 'BOOK_TICKER'
     || trade.bidAskSizeUnitAtEntry !== 'CONTRACTS'
+    || trade.status !== 'PAPER'
     || !Number.isFinite(trade.contractUnitAtEntry) || trade.contractUnitAtEntry! <= 0
     || !Number.isFinite(trade.quantity) || trade.quantity <= 0
     || !Number.isFinite(trade.askQuantityAtEntry) || trade.askQuantityAtEntry! + 1e-9 < trade.quantity
@@ -407,6 +408,7 @@ export function isValidPaperTradeCloseRecord(value: unknown, trade: PaperTrade):
     || trade.bidAskSourceAtEntry !== 'BOOK_TICKER'
     || !Number.isFinite(trade.contractUnitAtEntry) || trade.contractUnitAtEntry! <= 0
     || trade.contractEconomics.exercise.cashSettlement?.multiplier !== trade.contractUnitAtEntry
+    || trade.contractEconomics.provenance.rawFields?.unit !== trade.contractUnitAtEntry
     || !Number.isFinite(trade.premiumDebitAtEntry) || trade.premiumDebitAtEntry! <= 0) return false;
   const close = value as Partial<PaperTradeClose>;
   const closedAt = Date.parse(close.closedAt ?? '');
