@@ -3,7 +3,6 @@ import { resolve } from 'node:path';
 import { ResumableOptionsArchive } from './options-archive.mjs';
 import {
   collectForwardOptionsEvents,
-  createBinanceOptionsWebSocketTransport,
 } from './options-collector.mjs';
 
 const MAX_ARCHIVE_BYTES = 512 * 1024 * 1024;
@@ -39,7 +38,7 @@ export async function runOptionsArchiveWorker({
   config,
   archive,
   transport,
-  restTransport = { fetch: (...args) => fetch(...args) },
+  restTransport,
   signal,
   logger = (entry) => process.stdout.write(JSON.stringify(entry) + '\n'),
   now = () => new Date().toISOString(),
@@ -62,7 +61,10 @@ export async function runOptionsArchiveWorker({
   signal?.addEventListener('abort', onAbort, { once: true });
   if (signal?.aborted) onAbort();
   try {
-    const activeTransport = transport ?? createBinanceOptionsWebSocketTransport({ signal: controller.signal });
+    if (!transport || typeof transport.subscribe !== 'function') {
+      throw new Error('A separately verified Syria-origin transport must be injected; direct Binance transport is disabled.');
+    }
+    const activeTransport = transport;
     await activeArchive.initialize();
     const initialBytes = await activeArchive.getArchiveBytes();
     if (initialBytes > config.maxBytes) throw new Error('Existing archive already exceeds the configured quota.');
@@ -136,19 +138,7 @@ export async function runOptionsArchiveWorker({
 }
 
 async function main() {
-  const config = readOptionsWorkerConfig();
-  const controller = new AbortController();
-  const stop = (signalName) => controller.abort(new Error('Received ' + signalName));
-  const stopOnInterrupt = () => stop('SIGINT');
-  const stopOnTerminate = () => stop('SIGTERM');
-  process.once('SIGINT', stopOnInterrupt);
-  process.once('SIGTERM', stopOnTerminate);
-  try {
-    await runOptionsArchiveWorker({ config, signal: controller.signal });
-  } finally {
-    process.removeListener('SIGINT', stopOnInterrupt);
-    process.removeListener('SIGTERM', stopOnTerminate);
-  }
+  throw new Error('Direct Binance archive execution is disabled. Only a verified Syria-origin transport may be used.');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
