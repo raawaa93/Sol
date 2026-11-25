@@ -349,7 +349,7 @@ test('CSV maps OPTION_TICKER BBO event time to its dedicated provenance field', 
   const result = parseOptionsCsv(csv, Date.parse('2026-11-25T07:00:00Z'));
   assert.equal(result.quotes.length, 1);
   assert.equal(result.quotes[0].bidAskSource, 'OPTION_TICKER');
-  assert.equal(result.quotes[0].sourceTimestamps?.optionTicker, '2026-11-23T14:00:00.000Z');
-  assert.equal(result.quotes[0].sourceTimestamps?.ticker, undefined);
+  assert.equal(result.quotes[0].sourceTimestamps?.ticker, '2026-11-23T14:00:00.000Z');
+  assert.equal(result.quotes[0].sourceTimestamps?.optionTicker, undefined);
   assert.equal(result.quotes[0].sourceReceivedAt?.bidAsk, '2026-11-23T14:00:00.250Z');
 });
