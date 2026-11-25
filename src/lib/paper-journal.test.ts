@@ -409,7 +409,7 @@ test('runtime close-event validation rejects tampered PnL and stale source chron
     ...result.event,
     sourceTimestampsAtExit: {
       ...result.event.sourceTimestampsAtExit,
-      bookTicker: '2026-11-25T03:00:00Z',
+      bookTicker: '2026-11-25T03:01:32Z',
     },
   }), false);
 });
