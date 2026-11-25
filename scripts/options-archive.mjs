@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { cp, link, lstat, mkdir, open, readFile, readdir, rename, stat, unlink } from 'node:fs/promises';
+import { cp, link, lstat, mkdir, open, readFile, readdir, rename, rm, stat, unlink } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 
 export const OPTIONS_ARCHIVE_SCHEMA_VERSION = 1;
@@ -610,12 +610,26 @@ export class ResumableOptionsArchive {
       if (!report.ok) throw new OptionsArchiveError('ARCHIVE_CORRUPT', report.errors.join('; '));
       const target = resolve(destination);
       if (target === this.root || target.startsWith(`${this.root}/`)) throw new OptionsArchiveError('EXPORT_INTO_SOURCE', 'Export destination cannot be inside the source archive.');
-      await mkdir(target, { recursive: false });
-      await cp(join(this.root, 'segments'), join(target, 'segments'), { recursive: true, errorOnExist: true, force: false });
-      try { await cp(join(this.root, 'cursor.json'), join(target, 'cursor.json'), { errorOnExist: true, force: false }); }
+      try { await lstat(target); throw new OptionsArchiveError('EXPORT_DESTINATION_EXISTS', 'Export destination already exists; it will not be overwritten.'); }
       catch (error) { if (error.code !== 'ENOENT') throw error; }
-      const restored = new ResumableOptionsArchive(target, { maxBytes: this.maxBytes, leaseTtlMs: this.leaseTtlMs });
-      return await restored.initialize();
+      await mkdir(dirname(target), { recursive: true });
+      const staging = join(dirname(target), `.${target.split('/').pop()}.export-${randomUUID()}`);
+      await mkdir(staging, { recursive: false });
+      try {
+        await cp(join(this.root, 'segments'), join(staging, 'segments'), { recursive: true, errorOnExist: true, force: false });
+        try { await cp(join(this.root, 'cursor.json'), join(staging, 'cursor.json'), { errorOnExist: true, force: false }); }
+        catch (error) { if (error.code !== 'ENOENT') throw error; }
+        const restored = new ResumableOptionsArchive(staging, { maxBytes: this.maxBytes, leaseTtlMs: this.leaseTtlMs });
+        const verified = await restored.initialize();
+        try { await lstat(target); throw new OptionsArchiveError('EXPORT_DESTINATION_EXISTS', 'Export destination appeared during publication; it was not overwritten.'); }
+        catch (error) { if (error.code !== 'ENOENT') throw error; }
+        await rename(staging, target);
+        await fsyncDirectory(dirname(target));
+        return verified;
+      } catch (error) {
+        await rm(staging, { recursive: true, force: true });
+        throw error;
+      }
     } finally { await this.releaseWriterLease(lease); }
   }
 
@@ -629,12 +643,26 @@ export class ResumableOptionsArchive {
       if (!report.ok) throw new OptionsArchiveError('ARCHIVE_CORRUPT', report.errors.join('; '));
       const target = resolve(destination);
       if (target === sourceArchive.root || target.startsWith(`${sourceArchive.root}/`)) throw new OptionsArchiveError('RESTORE_INTO_SOURCE', 'Restore destination cannot be inside the source archive.');
-      await mkdir(target, { recursive: false });
-      await cp(join(sourceArchive.root, 'segments'), join(target, 'segments'), { recursive: true, errorOnExist: true, force: false });
-      try { await cp(join(sourceArchive.root, 'cursor.json'), join(target, 'cursor.json'), { errorOnExist: true, force: false }); }
+      try { await lstat(target); throw new OptionsArchiveError('RESTORE_DESTINATION_EXISTS', 'Restore destination already exists; it will not be overwritten.'); }
       catch (error) { if (error.code !== 'ENOENT') throw error; }
-      const restored = new ResumableOptionsArchive(target, options);
-      return await restored.initialize();
+      await mkdir(dirname(target), { recursive: true });
+      const staging = join(dirname(target), `.${target.split('/').pop()}.restore-${randomUUID()}`);
+      await mkdir(staging, { recursive: false });
+      try {
+        await cp(join(sourceArchive.root, 'segments'), join(staging, 'segments'), { recursive: true, errorOnExist: true, force: false });
+        try { await cp(join(sourceArchive.root, 'cursor.json'), join(staging, 'cursor.json'), { errorOnExist: true, force: false }); }
+        catch (error) { if (error.code !== 'ENOENT') throw error; }
+        const restored = new ResumableOptionsArchive(staging, options);
+        const verified = await restored.initialize();
+        try { await lstat(target); throw new OptionsArchiveError('RESTORE_DESTINATION_EXISTS', 'Restore destination appeared during publication; it was not overwritten.'); }
+        catch (error) { if (error.code !== 'ENOENT') throw error; }
+        await rename(staging, target);
+        await fsyncDirectory(dirname(target));
+        return verified;
+      } catch (error) {
+        await rm(staging, { recursive: true, force: true });
+        throw error;
+      }
     } finally { await sourceArchive.releaseWriterLease(lease); }
   }
 }
