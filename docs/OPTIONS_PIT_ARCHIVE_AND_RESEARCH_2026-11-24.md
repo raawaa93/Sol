@@ -221,3 +221,20 @@ This update supersedes the earlier 24 November statement that archive/PIT code w
 - The current execution record is maintained in docs/EXECUTION_STATUS_2026-11-24.md, and archive-specific limits are maintained in docs/OPTIONS_ARCHIVE_IMPLEMENTATION_STATUS_2026-11-25.md.
 
 No live capture, production database write, paid service, account credential, live order or funds movement was used in these changes.
+
+
+## Implementation update — BBO-aware replay contract (25 November 2026)
+
+PR #204 merged as 337e03fb26d44c906125318affc473030c165da4.
+
+- Replay timeline is based on local BBO receive/availability time, not generic `sourceTimestamp` or last-trade close time.
+- Eligible BBO sources are explicit `BOOK_TICKER` or `OPTION_TICKER`; the source-specific event/snapshot timestamp must be present, and local receive time must be at or after it and no more than five minutes later.
+- `OPTION_TICKER` BBO snapshot time is `sourceTimestamps.ticker`. The WebSocket `optionTicker` 24-hour statistics event time is not a BBO timestamp. `BOOK_TICKER` uses `sourceTimestamps.bookTicker`.
+- Every replay row must carry explicit `bidAskSizeUnit` (`CONTRACTS` or `UNDERLYING_UNITS`) and displayed bid/ask quantities. Entry checks Ask size; exit checks Bid size. The Binance bookTicker adapter labels its order-book quantities in contracts/lots and records local receive time.
+- Estimated or mark-only bid/ask values, missing/future clocks, stale receive delays, missing/unknown sizes and insufficient displayed size are rejected.
+- Slippage is applied adversely to each side in basis points; fee and slippage assumptions must be recorded. A zero setting is optimistic, not a realistic default.
+- CSV import now accepts `bidAskSource`, `bidAskTimestamp`, `bidAskReceivedAt`, `bidAskSizeUnit`, `bidQuantity` and `askQuantity`. CSV provenance is user-supplied and unauthenticated; generic `timestamp` is not accepted as a BBO clock.
+
+This improves the replay's execution baseline but does not create a point-in-time historical quote archive. It still does not model partial fills, queue priority, market impact beyond configured slippage, full latency distributions, expiry/settlement, or hedging. It is not a predictive strategy or proof of edge.
+
+Verification: CI 45572889900 passed 303/303 tests, production build, compressed bundle budget and 18/18 Playwright journeys; Lighthouse 45572889852 and Project Context Guard 45572889839 passed.
