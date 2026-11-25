@@ -812,7 +812,7 @@ test('new bookTicker BBO is not blocked by a later optionTicker last-price event
   assert.equal(updated.sourceTimestamps?.bookTicker, '2026-11-24T11:00:00.000Z');
 });
 
-test('Binance bookTicker does not stamp a receive clock earlier than the exchange event', () => {
+test('Binance bookTicker rejects updates when local receive time precedes the exchange event', () => {
   const quote = {
     id: 'BTC-261225-100000-C', symbol: 'BTC-261225-100000-C', underlying: 'BTC',
     expiry: '2026-12-25T08:00:00.000Z', daysToExpiry: 30, strike: 100000, type: 'CALL' as const,
@@ -824,7 +824,9 @@ test('Binance bookTicker does not stamp a receive clock earlier than the exchang
     transactionTime: 1_800_000_000_900,
   };
   const updated = applyBinanceBookTicker(quote, event, event.transactionTime - 1);
-  assert.equal(updated.bid, 10);
+  assert.equal(updated, quote);
+  assert.equal(updated.bid, 0);
+  assert.equal(updated.sourceTimestamps?.bookTicker, undefined);
   assert.equal(updated.sourceReceivedAt?.bidAsk, undefined);
 });
 
