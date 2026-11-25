@@ -112,3 +112,10 @@ The historical Syrian network result remains 50/50 HTTP 200 from a Cloudflare-cl
 - The Edge Function's response cache is in-memory and per-isolate, with endpoint TTLs of 2–60 seconds. It stores only successful upstream responses; HTTP 451 responses are not cached.
 - The active proxy's upstream host is fixed to \`https://eapi.binance.com\`. The active frontend direct fallback uses the same global Options host. No \`api.binance.us\` endpoint or Binance.US provider is present in the inspected active runtime files.
 - The Supabase Edge function's version 10 is active and its deployed source uses \`eapi.binance.com\`. No production secrets, database records, or user journal data were changed.
+
+
+## Superseding network policy — 25 November 2026
+
+The historical next-step note above mentioning a direct browser fallback is superseded. Direct Binance REST fallback has been removed from the application; if the approved proxy returns HTTP 451, the app stops and does not try a direct or alternate route. GitHub Actions market-data polling was removed, and CI smoke checks no longer call the Binance proxy. The direct archive-worker entrypoint was disabled pending a verified Syria-origin transport.
+
+The binding operating policy is [SYRIAN_NETWORK_ONLY_MARKET_DATA_POLICY.md](SYRIAN_NETWORK_ONLY_MARKET_DATA_POLICY.md). The 24 November Syria result remains 50/50 HTTP 200 from a Syriatel/Damascus-classified client path, while Supabase Edge executed in eu-west-2. It is not proof of a server physically hosted in Syria. The current project still lacks trusted server-side country enforcement; do not claim all non-Syrian invocations are technically blocked.
