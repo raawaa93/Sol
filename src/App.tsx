@@ -49,7 +49,7 @@ import { formatAssetPrice, formatNumber, formatOptionPrice, formatQuantity, form
 import type { AssetClass, OptionQuote, OptionSide, PaperTrade, Underlying } from './lib/types';
 import { ASSET_CLASS_LABELS } from './lib/asset-class';
 import { PAPER_CAMPAIGN_CAPITAL, PAPER_CAMPAIGN_MAX_LOSS, PAPER_CAMPAIGN_PER_TRADE_CAP, canAllocatePaperCampaignTrade, summarizePaperCampaignBudget } from './lib/paper-campaign-budget';
-import { clearPaperJournalRecovery, loadPaperJournal, readPaperJournalPrimary, readPaperJournalRecovery } from './lib/paper-journal-storage';
+import { PAPER_JOURNAL_STORAGE_KEY, clearPaperJournalRecovery, loadPaperJournal, readPaperJournalPrimary, readPaperJournalRecovery } from './lib/paper-journal-storage';
 const MarketDepthPanel = lazy(() => import('./components/MarketDepthPanel'));
 const OpportunityReview = lazy(() => import('./components/OpportunityReview'));
 const GreeksPanel = lazy(() => import('./components/GreeksPanel'));
@@ -1180,6 +1180,9 @@ function App() {
       ...(feeValue !== undefined ? { exitFees: feeValue } : {}),
     });
     if (!result.ok) {
+      if (result.persistenceBlocked) {
+        setPaperJournalLoad((current) => ({ ...current, persistenceBlocked: true }));
+      }
       notify(result.message);
       return;
     }
@@ -1250,7 +1253,7 @@ function App() {
       'تم تنزيل الملف الأصلي الحالي من دفتر PAPER',
     );
   };
-
+  
   const exportPaperJournalJson = async () => {
     const { downloadPaperJournalJsonBackup } = await import('./lib/paper-journal-backup-actions');
     const result = downloadPaperJournalJsonBackup(trades, isPaperTrade);
@@ -1265,7 +1268,7 @@ function App() {
       return;
     }
     const { importPaperJournalJsonBackup } = await import('./lib/paper-journal-backup-actions');
-    const result = importPaperJournalJsonBackup(raw, trades, isPaperTrade, localStorage);
+    const result = importPaperJournalJsonBackup(raw, trades, isPaperTrade, localStorage, PAPER_JOURNAL_STORAGE_KEY);
     if (!result.ok) {
       notify(result.message);
       return;
@@ -1275,7 +1278,7 @@ function App() {
       return;
     }
     setTrades(result.entries);
-    notify(`تم استيراد ${result.added} صفقة جديدة محلياً دون استبدال السجلات الموجودة.`);
+    notify(`تم استيراد ${result.added} صفقة جديدة دون استبدال السجلات الحالية.`);
   };
 
 
