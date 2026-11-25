@@ -193,3 +193,7 @@ Merged to main as `71a8a027659e880f22aa3b998b0c075c1a071bd3`.
 - CI, Project Context Guard and Lighthouse passed on PR head `d93a9a9bacae6edc1ecc98bbb00a82a43680a0c5`. Published-site smoke test was skipped by workflow conditions.
 
 Remaining: model-aware position Greek aggregation/shock P&L, canonical PAPER lifecycle valuation and replay. Entry-only PAPER snapshots are handled separately by PR #169 and remain unmerged pending checks.
+
+### Canonical PAPER entry snapshot — PR #169
+
+PR #169 adds a PAPER-only entry snapshot for verified Binance Crypto Options. It stores canonical economics, independent premium multiplier and unit, premium debit, exact observed price basis and its source timestamp. It rejects CSV provenance, model-generated prices and missing/mismatched timestamps. It does not implement mark-to-market, exits, P&L, Greeks, EV or replay. Await PR checks before calling it delivered.
