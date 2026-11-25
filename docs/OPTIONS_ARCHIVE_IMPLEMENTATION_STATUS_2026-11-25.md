@@ -96,7 +96,17 @@ Verification:
 - Project Context Guard 45572889839 passed.
 
 No live market capture, scheduled worker, cloud archive, PIT dataset, strategy edge or live order capability was added.
-\n\n## BBO-aware replay update — 25 November 2026\n\n- PR #204 merged as `337e03fb26d44c906125318affc473030c165da4`.\n- Replay requires explicit BBO source, source-event/snapshot time, local receive time, non-estimated bid/ask, displayed-size unit and sufficient Ask size at entry/Bid size at exit. It uses receive/availability time for execution chronology and rejects missing, future, stale, mark-only, estimated or undersized quotes.\n- Binance `bookTicker` is the executable BBO source and records quantities in contracts/lots. The 24-hour `optionTicker` stream is not BBO. REST `OPTION_TICKER` BBO uses the `ticker` source clock.\n- CSV imports preserve source/receive clocks and displayed size, but their provenance is user-asserted and not independently authenticated. Zero fees/slippage are unmodelled and potentially optimistic.\n- CI 45572889900: 303/303 tests, production build, bundle budget and 18/18 Playwright journeys passed. Lighthouse 45572889852: Performance 99, Accessibility/Best Practices/SEO 100. Project Context Guard 45572889839 passed.\n- The replay remains PAPER-only. No live capture, historical BBO corpus, full depth/queue/partial-fill/latency/expiry-settlement/hedging model or measured strategy edge is claimed.\n
+
+
+## BBO-aware replay update — 25 November 2026
+
+- PR #204 merged as `337e03fb26d44c906125318affc473030c165da4`.
+- Replay requires explicit BBO source, source-event/snapshot time, local receive time, non-estimated bid/ask, displayed-size unit and sufficient Ask size at entry/Bid size at exit. It uses receive/availability time for execution chronology and rejects missing, future, stale, mark-only, estimated or undersized quotes.
+- Binance `bookTicker` is the executable BBO source and records quantities in contracts/lots. The 24-hour `optionTicker` stream is not BBO. REST `OPTION_TICKER` BBO uses the `ticker` source clock.
+- CSV imports preserve source/receive clocks and displayed size, but their provenance is user-asserted and not independently authenticated. Zero fees/slippage are unmodelled and potentially optimistic.
+- CI 45572889900: 303/303 tests, production build, bundle budget and 18/18 Playwright journeys passed. Lighthouse 45572889852: Performance 99, Accessibility/Best Practices/SEO 100. Project Context Guard 45572889839 passed.
+- The replay remains PAPER-only. No live capture, historical BBO corpus, full depth/queue/partial-fill/latency/expiry-settlement/hedging model or measured strategy edge is claimed.
+
 
 ## PAPER campaign risk reconciliation — 25 November 2026, 08:26 UTC
 
