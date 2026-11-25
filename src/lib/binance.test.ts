@@ -130,7 +130,7 @@ test('Binance preserves explicit crypto, commodity, and unknown contract metadat
   const expiry = now + 30 * 86_400_000;
   const code = compactDate(expiry);
   const instruments = [
-    { baseAsset: 'BTC', underlying: 'BTCUSDT', underlyingType: 'CRYPTO', contractType: 'CRYPTO_OPTIONS', assetClass: 'CRYPTO', kind: 'SPOT', pricing: 'OBSERVED_ONLY' },
+    { baseAsset: 'BTC', underlying: 'BTCUSDT', underlyingType: 'CRYPTO', contractType: 'CRYPTO_OPTIONS', assetClass: 'CRYPTO', kind: 'SPOT', pricing: 'ASSUMED' },
     { baseAsset: 'XAU', underlying: 'XAUUSDT', underlyingType: 'COMMODITY', contractType: 'TRADFI_OPTIONS', assetClass: 'METALS', kind: 'PERPETUAL', pricing: 'OBSERVED_ONLY' },
     { baseAsset: 'RAT', underlying: 'RATUSDT', underlyingType: 'UNKNOWN', contractType: 'UNKNOWN_OPTIONS', assetClass: 'UNKNOWN', kind: 'UNKNOWN', pricing: 'OBSERVED_ONLY' },
   ] as const;
@@ -182,8 +182,10 @@ test('Binance preserves explicit crypto, commodity, and unknown contract metadat
   assert.equal(crypto?.contractEconomics?.premium.multiplier, 1);
   assert.equal(crypto?.contractEconomics?.exercise.cashSettlement?.multiplier, 10);
   assert.equal(crypto?.contractEconomics?.provenance.status, 'PROVIDER_VERIFIED');
-  assert.equal(crypto?.pricingModel, undefined);
-  assert.ok(crypto?.pricingReason?.includes('unit is underlying quantity per contract'));
+  assert.equal(crypto?.pricingModel, 'BLACK_SCHOLES_CARRY');
+  assert.ok(crypto?.pricingReason?.includes('carry yield is assumed to be 0%'));
+  assert.ok(Number.isFinite(crypto?.delta));
+  assert.equal(crypto?.ivStatus, 'OBSERVED');
   assert.equal(crypto?.iv, 0.5);
   assert.equal(commodity?.exerciseStyle, 'EUROPEAN');
   assert.equal(commodity?.settlementStyle, 'CASH');
