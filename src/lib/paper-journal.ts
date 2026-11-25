@@ -243,6 +243,8 @@ export function hasValidPaperEntryExecutionEvidence(trade: PaperTrade): boolean 
     || economics.exercise.cashSettlement.multiplier !== trade.contractUnitAtEntry
     || economics.provenance.rawFields?.unit !== trade.contractUnitAtEntry
     || economics.premium.quoteCurrency !== trade.premiumCurrencyAtEntry
+    || trade.quoteAsset !== trade.premiumCurrencyAtEntry
+    || trade.premiumMultiplierAtEntry !== economics.premium.multiplier
     || trade.contractVenueAtEntry !== 'BINANCE' || trade.contractAssetClassAtEntry !== 'CRYPTO'
     || trade.contractUnderlyingKindAtEntry !== 'SPOT'
     || trade.priceSourceAtEntry !== 'ASK' || trade.bidAskSourceAtEntry !== 'BOOK_TICKER'
