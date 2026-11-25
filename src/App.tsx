@@ -1195,18 +1195,33 @@ function App() {
   };
 
   const retryPaperCloseEventsPersistence = () => {
-    if (!paperCloseEventsLoad.persistenceBlocked) return;
-    if (!window.confirm('بعد تنزيل نسخ أحداث الإغلاق الخام وحفظها خارج المتصفح، هل تريد إزالة قفل الاستعادة وإعادة فحص سجل الإغلاق؟')) return;
+    if (!paperCloseEventsLoad.backupAvailable && !paperCloseEventsLoad.persistenceBlocked) return;
+    if (!window.confirm('بعد تنزيل نسخ أحداث الإغلاق الخام وحفظها خارج المتصفح، هل تريد اعتماد الأحداث الصالحة فقط وإزالة قفل الاستعادة؟')) return;
+    if (paperCloseEventsLoad.rejectedCount > 0 || paperCloseEventsLoad.parseError) {
+      const original = readPaperCloseEventsPrimary(localStorage);
+      if (original === null) {
+        notify('تعذر قراءة سجل الإغلاق الأصلي؛ لم نكتب فوقه ولم نزل قفل الاستعادة.');
+        return;
+      }
+      const sanitized = JSON.stringify(paperCloseEvents);
+      try {
+        localStorage.setItem(PAPER_CLOSE_EVENTS_KEY, sanitized);
+        if (localStorage.getItem(PAPER_CLOSE_EVENTS_KEY) !== sanitized) throw new Error('write verification failed');
+      } catch {
+        notify('تعذر اعتماد أحداث الإغلاق الصالحة؛ بقي السجل الأصلي دون تغيير قدر الإمكان.');
+        return;
+      }
+    }
     if (!clearPaperCloseEventsRecovery(localStorage)) {
-      notify('تعذر إزالة قفل استعادة أحداث الإغلاق؛ لم نغيّر السجل الأصلي.');
+      notify('تعذر إزالة قفل استعادة أحداث الإغلاق؛ لم نكمل إعادة التهيئة.');
       return;
     }
     const next = loadPaperCloseEvents(localStorage);
     setPaperCloseEventsLoad(next);
     setPaperCloseEvents(next.events);
-    notify(next.persistenceBlocked
-      ? 'ما زال سجل الإغلاق محجوباً؛ لم نغيّر الملف الأصلي.'
-      : 'اكتملت إعادة فحص سجل الإغلاق؛ يمكن استئناف الإغلاق إذا كانت البيانات سليمة.');
+    notify(next.persistenceBlocked || next.backupAvailable
+      ? 'ما زالت استعادة أحداث الإغلاق غير مكتملة؛ بقيت الإغلاقات محجوبة.'
+      : 'اكتملت استعادة سجل الإغلاق؛ يمكن استئناف الإغلاق إذا كانت البيانات سليمة.');
   };
 
   const exportIVHistoryBackup = async () => {
@@ -1276,18 +1291,33 @@ function App() {
   };
 
   const retryPaperJournalPersistence = () => {
-    if (!paperJournalLoad.persistenceBlocked) return;
-    if (!window.confirm('بعد تنزيل كل النسخ الخام الظاهرة وحفظها خارج المتصفح، هل تريد إزالة قفل الاستعادة وإعادة فحص الملف الأصلي؟')) return;
+    if (!paperJournalLoad.backupAvailable && !paperJournalLoad.persistenceBlocked) return;
+    if (!window.confirm('بعد تنزيل كل النسخ الخام وحفظها خارج المتصفح، هل تريد اعتماد السجلات الصالحة فقط وإزالة قفل الاستعادة؟')) return;
+    if (paperJournalLoad.rejectedCount > 0 || paperJournalLoad.parseError) {
+      const original = readPaperJournalPrimary(localStorage);
+      if (original === null) {
+        notify('تعذر قراءة الملف الأصلي؛ لم نكتب فوقه ولم نزل قفل الاستعادة.');
+        return;
+      }
+      const sanitized = JSON.stringify(paperJournalLoad.entries);
+      try {
+        localStorage.setItem(PAPER_JOURNAL_STORAGE_KEY, sanitized);
+        if (localStorage.getItem(PAPER_JOURNAL_STORAGE_KEY) !== sanitized) throw new Error('write verification failed');
+      } catch {
+        notify('تعذر اعتماد السجلات الصالحة؛ بقي الملف الأصلي دون تغيير قدر الإمكان.');
+        return;
+      }
+    }
     if (!clearPaperJournalRecovery(localStorage)) {
-      notify('تعذر إزالة قفل الاستعادة من التخزين المحلي؛ لم نغيّر الملف الأصلي.');
+      notify('تعذر إزالة قفل الاستعادة؛ لم نكمل إعادة التهيئة.');
       return;
     }
     const next = loadPaperJournal<PaperTrade>(localStorage, isPaperTrade);
     setPaperJournalLoad(next);
     setTrades(next.entries);
-    notify(next.persistenceBlocked
-      ? 'ما زالت الكتابة متوقفة؛ الملف الأصلي محفوظ دون تعديل. حرّر مساحة التخزين ثم أعد المحاولة.'
-      : 'اكتملت إعادة فحص دفتر PAPER؛ تم حفظ أي نسخة خام لازمة قبل استئناف الكتابة.');
+    notify(next.persistenceBlocked || next.backupAvailable
+      ? 'ما زالت الاستعادة غير مكتملة؛ بقيت الكتابة محجوبة لحماية النسخة الخام.'
+      : 'اكتملت الاستعادة بعد تأكيد حفظ النسخة خارج المتصفح؛ استؤنف دفتر PAPER.');
   };
 
   const exportTrades = () => {
