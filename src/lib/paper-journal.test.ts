@@ -23,6 +23,8 @@ const economics = {
   },
 };
 
+const paperNow = Date.parse('2026-11-25T03:00:05Z');
+
 const quote: OptionQuote = {
   id: 'BTC-20261225-100000-C',
   symbol: 'BTC-20261225-100000-C',
@@ -74,8 +76,8 @@ const input = {
 };
 
 test('canonical PAPER entry stores independent premium scale and full contract/source snapshot', () => {
-  assert.equal(canCreateCanonicalPaperTrade(quote, 'BINANCE'), true);
-  const result = createCanonicalPaperTrade(input);
+  assert.equal(canCreateCanonicalPaperTrade(quote, 'BINANCE', paperNow), true);
+  const result = createCanonicalPaperTrade(input, paperNow);
   assert.equal(result.ok, true);
   if (!result.ok) return;
   assert.equal(result.premiumDebit, 4.25);
@@ -92,15 +94,15 @@ test('canonical PAPER entry stores independent premium scale and full contract/s
 });
 
 test('canonical PAPER entry rejects CSV provenance even when economics claim Binance', () => {
-  assert.equal(canCreateCanonicalPaperTrade(quote, 'CSV'), false);
-  assert.equal(createCanonicalPaperTrade({ ...input, sourceMode: 'CSV' }).ok, false);
+  assert.equal(canCreateCanonicalPaperTrade(quote, 'CSV', paperNow), false);
+  assert.equal(createCanonicalPaperTrade({ ...input, sourceMode: 'CSV' }, paperNow).ok, false);
 });
 
 test('canonical PAPER entry rejects user-asserted, model-priced and untimestamped quotes', () => {
   assert.equal(canCreateCanonicalPaperTrade({
     ...quote,
     contractEconomics: { ...economics, provenance: { ...economics.provenance, status: 'USER_ASSERTED' } },
-  }, 'BINANCE'), false);
+  }, 'BINANCE', paperNow), false);
   assert.equal(canCreateCanonicalPaperTrade({ ...quote, bid: 0, ask: 0, priceSource: 'MODEL', estimatedFields: ['markPrice'] }, 'BINANCE'), false);
   assert.equal(canCreateCanonicalPaperTrade({ ...quote, sourceTimestamps: undefined }, 'BINANCE'), false);
   assert.equal(canCreateCanonicalPaperTrade({ ...quote, sourceTimestamps: { ticker: '2026-11-25T03:00:00Z' } }, 'BINANCE'), false);
@@ -115,7 +117,7 @@ test('canonical PAPER entry rejects a REST 24h ticker closeTime as a bid/ask eve
       ticker: '2026-11-25T03:00:00Z',
     },
   };
-  assert.equal(canCreateCanonicalPaperTrade(restQuote, 'BINANCE'), false);
+  assert.equal(canCreateCanonicalPaperTrade(restQuote, 'BINANCE', paperNow), false);
 });
 
 test('canonical PAPER entry requires the timestamp for the actual observed price source', () => {
@@ -149,17 +151,17 @@ test('canonical PAPER entry accepts a markPrice-stream midpoint only with its ow
     bidAskSource: 'MARK_PRICE' as const,
     sourceTimestamps: { ...quote.sourceTimestamps, markPrice: '2026-11-25T03:00:01Z' },
   };
-  assert.equal(canCreateCanonicalPaperTrade(markQuote, 'BINANCE'), true);
+  assert.equal(canCreateCanonicalPaperTrade(markQuote, 'BINANCE', paperNow), true);
 });
 
 test('canonical PAPER entry rejects a premium or spot value that does not match the timestamped source', () => {
-  assert.equal(createCanonicalPaperTrade({ ...input, premiumPrice: 1.31 }).ok, false);
-  assert.equal(createCanonicalPaperTrade({ ...input, spotAtEntry: 99001 }).ok, false);
+  assert.equal(createCanonicalPaperTrade({ ...input, premiumPrice: 1.31 }, paperNow).ok, false);
+  assert.equal(createCanonicalPaperTrade({ ...input, spotAtEntry: 99001 }, paperNow).ok, false);
 });
 
 test('canonical PAPER entry rejects invalid quantity, premium, fees and reference price', () => {
-  assert.equal(createCanonicalPaperTrade({ ...input, quantity: 0 }).ok, false);
-  assert.equal(createCanonicalPaperTrade({ ...input, premiumPrice: 0 }).ok, false);
-  assert.equal(createCanonicalPaperTrade({ ...input, fees: -1 }).ok, false);
-  assert.equal(createCanonicalPaperTrade({ ...input, spotAtEntry: Number.NaN }).ok, false);
+  assert.equal(createCanonicalPaperTrade({ ...input, quantity: 0 }, paperNow).ok, false);
+  assert.equal(createCanonicalPaperTrade({ ...input, premiumPrice: 0 }, paperNow).ok, false);
+  assert.equal(createCanonicalPaperTrade({ ...input, fees: -1 }, paperNow).ok, false);
+  assert.equal(createCanonicalPaperTrade({ ...input, spotAtEntry: Number.NaN }, paperNow).ok, false);
 });
