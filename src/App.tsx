@@ -53,7 +53,7 @@ import type { AssetClass, OptionQuote, OptionSide, PaperTrade, Underlying } from
 import { ASSET_CLASS_LABELS } from './lib/asset-class';
 import { PAPER_CAMPAIGN_CAPITAL, PAPER_CAMPAIGN_MAX_LOSS, PAPER_CAMPAIGN_PER_TRADE_CAP, canAllocatePaperCampaignTrade, summarizePaperCampaignBudget } from './lib/paper-campaign-budget';
 import { clearPaperJournalRecovery, loadPaperJournal, readPaperJournalPrimary, readPaperJournalRecovery } from './lib/paper-journal-storage';
-import { appendPaperCloseEvent, loadPaperCloseEvents, readPaperCloseEventsPrimary, readPaperCloseEventsRecovery } from './lib/paper-journal-events';
+import { appendPaperCloseEvent, clearPaperCloseEventsRecovery, loadPaperCloseEvents, readPaperCloseEventsPrimary, readPaperCloseEventsRecovery } from './lib/paper-journal-events';
 import { createCanonicalPaperCloseEvent } from './lib/paper-journal';
 const MarketDepthPanel = lazy(() => import('./components/MarketDepthPanel'));
 const OpportunityReview = lazy(() => import('./components/OpportunityReview'));
@@ -1177,6 +1177,21 @@ function App() {
     anchor.remove();
     window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
     notify('تم تنزيل نسخة أحداث PAPER؛ احتفظ بها خارج المتصفح.');
+  };
+
+  const retryPaperCloseEventsPersistence = () => {
+    if (!paperCloseEventsLoad.persistenceBlocked) return;
+    if (!window.confirm('بعد تنزيل نسخ أحداث الإغلاق الخام وحفظها خارج المتصفح، هل تريد إزالة قفل الاستعادة وإعادة فحص سجل الإغلاق؟')) return;
+    if (!clearPaperCloseEventsRecovery(localStorage)) {
+      notify('تعذر إزالة قفل استعادة أحداث الإغلاق؛ لم نغيّر السجل الأصلي.');
+      return;
+    }
+    const next = loadPaperCloseEvents(localStorage);
+    setPaperCloseEventsLoad(next);
+    setPaperCloseEvents(next.events);
+    notify(next.persistenceBlocked
+      ? 'ما زال سجل الإغلاق محجوباً؛ لم نغيّر الملف الأصلي.'
+      : 'اكتملت إعادة فحص سجل الإغلاق؛ يمكن استئناف الإغلاق إذا كانت البيانات سليمة.');
   };
 
   const exportIVHistoryBackup = async () => {
