@@ -279,7 +279,7 @@ export function closeCanonicalPaperTrade(input: CanonicalPaperExitInput): Canoni
     closedAt,
     exitPremium: quote.bid,
     exitQuantity: trade.quantity,
-    ...(exitFees !== undefined ? { exitFees, exitCreditAfterFees: credit.value.premiumAmount - exitFees } : {}),
+    ...(exitFees !== undefined ? { exitFees, exitFeesSource: 'USER_ENTERED' as const, exitCreditAfterFees: credit.value.premiumAmount - exitFees } : {}),
     exitPremiumAmount: credit.value.premiumAmount,
     realizedGrossPnl: grossPnl,
     ...(exitFees !== undefined ? { realizedNetPnl: credit.value.premiumAmount - exitFees - trade.premiumDebitAtEntry! } : {}),
