@@ -174,13 +174,15 @@ function isPaperTrade(value: unknown): value is PaperTrade {
       && trade.premiumCurrencyAtEntry === trade.contractEconomics.premium.quoteCurrency
       && (trade.entryFeesSource === undefined || trade.entryFeesSource === 'USER_ENTERED')
       && (trade.entryFeesSource !== 'USER_ENTERED' || trade.fees <= (trade.premiumAmountAtEntry ?? 0) * 0.1 + 1e-9)
-      && (typeof trade.sourceReceivedAtAtEntry?.bidAsk === 'string' && Number.isFinite(Date.parse(trade.sourceReceivedAtAtEntry.bidAsk)))
+      && (trade.sourceReceivedAtAtEntry === undefined || (
+        typeof trade.sourceReceivedAtAtEntry.bidAsk === 'string'
+        && Number.isFinite(Date.parse(trade.sourceReceivedAtAtEntry.bidAsk))
+        && Date.parse(trade.sourceReceivedAtAtEntry.bidAsk) <= Date.parse(trade.createdAt)
+        && Date.parse(trade.createdAt) - Date.parse(trade.sourceReceivedAtAtEntry.bidAsk) <= 300_000))
       && (typeof trade.sourceTimestampsAtEntry?.bookTicker === 'string' && Number.isFinite(Date.parse(trade.sourceTimestampsAtEntry.bookTicker)))
       && (typeof trade.sourceTimestampsAtEntry?.index === 'string' && Number.isFinite(Date.parse(trade.sourceTimestampsAtEntry.index)))
-      && Date.parse(trade.sourceReceivedAtAtEntry.bidAsk) <= Date.parse(trade.createdAt)
       && Date.parse(trade.sourceTimestampsAtEntry.bookTicker) <= Date.parse(trade.createdAt)
       && Date.parse(trade.sourceTimestampsAtEntry.index) <= Date.parse(trade.createdAt)
-      && Date.parse(trade.createdAt) - Date.parse(trade.sourceReceivedAtAtEntry.bidAsk) <= 300_000
       && Date.parse(trade.createdAt) - Date.parse(trade.sourceTimestampsAtEntry.bookTicker) <= 300_000
       && Date.parse(trade.createdAt) - Date.parse(trade.sourceTimestampsAtEntry.index) <= 300_000
       && (trade.priceSourceAtEntry !== 'MID' || trade.bidAskSourceAtEntry === 'BOOK_TICKER' || trade.bidAskSourceAtEntry === 'OPTION_TICKER' || trade.bidAskSourceAtEntry === 'MARK_PRICE')))
