@@ -57,7 +57,7 @@ const MarketDepthPanel = lazy(() => import('./components/MarketDepthPanel'));
 const OpportunityReview = lazy(() => import('./components/OpportunityReview'));
 const GreeksPanel = lazy(() => import('./components/GreeksPanel'));
 const FinancialCockpit = lazy(() => import('./components/FinancialCockpit'));
-const PaperJournalTrades = lazy(() => import('./components/PaperJournalTrades'));
+const PaperJournalSection = lazy(() => import('./components/PaperJournalSection'));
 const HistoricalReplayPanel = lazy(() => import('./components/HistoricalReplayPanel'));
 
 const UNDERLYING_NAMES: Record<string, string> = {
@@ -1705,23 +1705,23 @@ function App() {
             <FinancialCockpit />
           </Suspense>
 
-          <section className="section-anchor journal-section" id="journal">
-            <div className="section-title-row"><div><span className="section-kicker">PAPER WORKSPACE</span><h2>الدفتر التجريبي</h2><p>سجل الفرضية والكمية والقسط قبل أن تقيم جودة القرار.</p></div><div className="journal-actions"><button className="button button-ghost" onClick={exportTrades}><Download size={14} /> تصدير CSV</button><button className="button button-ghost" onClick={exportIVHistoryBackup}><Download size={14} /> نسخة IV JSON</button><button className="button button-ghost danger-ghost" onClick={clearPaperJournal} disabled={!trades.length || paperJournalLoad.persistenceBlocked}><Trash2 size={14} /> مسح الدفتر</button></div></div>
-            <article className="panel journal-panel">
-              <div className="journal-summary"><div className="journal-summary-icon"><WalletCards size={18} /></div><div><strong>{trades.length} <span>صفقة تجريبية</span></strong><small>محفوظة محلياً في هذا المتصفح فقط</small></div><div className="journal-metric"><span>وضع التنفيذ</span><strong><i /> PAPER ONLY</strong></div><div className="journal-metric"><span>مفاتيح تداول</span><strong className="safe-label"><LockKeyhole size={13} /> غير مطلوبة</strong></div></div>
-              {(paperJournalLoad.backupAvailable || paperJournalLoad.persistenceBlocked) && <div className="journal-recovery-warning" role="alert"><strong>تنبيه سلامة دفتر PAPER</strong><p>{paperJournalLoad.persistenceBlocked ? 'أوقفنا أي كتابة جديدة حتى لا نفقد بيانات قديمة لم نستطع حفظ نسخة استعادتها بأمان.' : paperJournalLoad.parseError ? 'تعذر تحليل ملف الدفتر الأصلي؛ احتفظنا بنسخته الخام قبل استبعادها من العرض.' : paperJournalLoad.rejectedCount > 0 ? `تم عزل ${paperJournalLoad.rejectedCount} سجل غير صالح من العرض، مع الاحتفاظ بالملف الأصلي الخام للاستعادة.` : 'توجد نسخة استعادة سابقة محفوظة من دفتر PAPER؛ احتفظ بها خارج المتصفح قبل مسح بياناته.'} لا تمسح بيانات المتصفح قبل تنزيل النسخة.</p>{paperJournalLoad.backupAvailable && <button className="button button-ghost" onClick={exportPaperJournalRecovery}><Download size={14} /> تنزيل نسخة الاستعادة JSON</button>}{paperJournalLoad.persistenceBlocked && <button className="button button-ghost" onClick={exportPaperJournalOriginal}><Download size={14} /> تنزيل الملف الأصلي الحالي</button>}{paperJournalLoad.persistenceBlocked && <button className="button button-ghost" onClick={retryPaperJournalPersistence}>إعادة المحاولة بعد حفظ النسخ</button>}</div>}
-              {trades.length ? <Suspense fallback={<div className="journal-empty" role="status">جارٍ تحميل دفتر الصفقات...</div>}>
-                <PaperJournalTrades
-                  trades={trades}
-                  selectedQuoteSymbol={selectedQuote.symbol}
-                  persistenceBlocked={paperJournalLoad.persistenceBlocked}
-                  paperExitFees={paperExitFees}
-                  onExitFeesChange={setPaperExitFees}
-                  onClose={closePaperTrade}
-                />
-              </Suspense> : <div className="journal-empty"><div className="journal-empty-icon"><BookOpen size={20} /></div><strong>لا توجد صفقات مسجلة بعد</strong><span>اختر عقداً من الماسح ثم أضفه إلى الدفتر. لن يتم إرسال أي أمر إلى أي منصة.</span><button className="text-button" onClick={() => navigate('scanner')}>ابدأ بتحليل عقد <ArrowUpLeft size={14} /></button></div>}
-            </article>
-          </section>
+          <Suspense fallback={<div className="panel" role="status">جارٍ تحميل دفتر PAPER...</div>}>
+            <PaperJournalSection
+              trades={trades}
+              paperJournalLoad={paperJournalLoad}
+              selectedQuoteSymbol={selectedQuote.symbol}
+              paperExitFees={paperExitFees}
+              onExitFeesChange={setPaperExitFees}
+              onClose={closePaperTrade}
+              onExportTrades={exportTrades}
+              onExportIVHistory={exportIVHistoryBackup}
+              onClearJournal={clearPaperJournal}
+              onExportRecovery={exportPaperJournalRecovery}
+              onExportOriginal={exportPaperJournalOriginal}
+              onRetryPersistence={retryPaperJournalPersistence}
+              onNavigateToScanner={() => navigate('scanner')}
+            />
+          </Suspense>>
 
           <footer className="app-footer"><div><span className="footer-brand-mark">V</span><span>VOLTERRA <small>DECISION LAB</small></span></div><p>أداة تحليل تعليمية ومحاكاة — ليست نصيحة مالية، ولا تنفّذ أوامر تداول.</p><div className="footer-links"><button onClick={downloadCsvTemplate}>قالب البيانات</button><a href="https://www.fca.org.uk/" target="_blank" rel="noreferrer">FCA <ExternalLink size={11} /></a></div></footer>
         </div>
