@@ -70,11 +70,11 @@ export function importPaperJournalJsonBackup<T extends { id: string }>(
     return { ok: false, message: 'النسخة المدمجة تتجاوز 5 MiB؛ لم تتغير بياناتك.' };
   }
   try {
-    if (storage.getItem(storageKey) !== original) {
+    if (storage.getItem(PAPER_JOURNAL_STORAGE_KEY) !== original) {
       return { ok: false, persistenceBlocked: true, message: 'تغير الدفتر أثناء الاستيراد؛ أوقفنا الكتابة ولم نكتب فوق التعديل الآخر. أعد تحميل الصفحة.' };
     }
     storage.setItem(PAPER_JOURNAL_STORAGE_KEY, serialized);
-    if (storage.getItem(storageKey) !== serialized) {
+    if (storage.getItem(PAPER_JOURNAL_STORAGE_KEY) !== serialized) {
       return { ok: false, persistenceBlocked: true, message: 'تعذر التحقق من حفظ النسخة المدمجة؛ أوقفنا الكتابة. نزّل الملف الأصلي ثم أعد تحميل الصفحة قبل المتابعة.' };
     }
   } catch {
