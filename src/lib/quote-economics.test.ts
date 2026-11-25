@@ -103,6 +103,7 @@ test('Binance crypto options use the verified Spot Price Index settlement refere
     quoteAsset: 'USDT',
     settlementAsset: 'USDT',
     unit: 100,
+    sourceTimestamps: { index: '2026-11-24T10:00:00Z' },
     contractEconomics: {
       premium: { multiplier: 1, quoteCurrency: 'USDT', priceUnit: 'PER_CONTRACT' },
       exercise: {
