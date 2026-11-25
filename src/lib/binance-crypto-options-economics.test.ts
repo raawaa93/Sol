@@ -31,7 +31,9 @@ test('Binance crypto adapter keeps premium and underlying delivery scales indepe
   assert.equal(validateContractEconomics(economics).adapterReady, true);
   const missingLegalTerms = structuredClone(economics);
   delete missingLegalTerms.provenance.legalTerms;
-  assert.ok(validateContractEconomics(missingLegalTerms).issues.includes('MISSING_LEGAL_TERMS_PROVENANCE'));
+  assert.equal(validateContractEconomics(missingLegalTerms).valid, true, 'the provider quote/premium fields remain valid');
+  assert.equal(validateContractEconomics(missingLegalTerms).adapterReady, false);
+  assert.ok(validateContractEconomics(missingLegalTerms).unsupportedReasons.includes('MISSING_LEGAL_TERMS_PROVENANCE'));
 
   const premium = calculatePremiumCash({ economics, premiumPrice: 12, contracts: 3 });
   assert.deepEqual(premium, {
