@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { getContractScaleIssue, getContractScaleIssueMessage } from './contract-scale.ts';
+import { getContractScaleIssue, getContractScaleIssueMessage, hasLegacyScalarAnalyticsCapability } from './contract-scale.ts';
 
 const demo = { venue: 'DEMO', unit: 1, contractMultiplier: 1 };
 const binanceCrypto = {
@@ -82,4 +82,30 @@ test('CSV scale values alone do not establish a supported American equity delive
     unit: 100,
     contractMultiplier: 100,
   }, 'CSV'), 'UNSUPPORTED_CONTRACT_SCALE');
+});
+
+test('canonical terms disable legacy scalar analytics even when unit one is numerically compatible', () => {
+  const canonicalBinanceQuote = {
+    ...binanceCrypto,
+    contractEconomics: {
+      premium: { multiplier: 1, quoteCurrency: 'USDT', priceUnit: 'PER_CONTRACT' },
+      exercise: {
+        style: 'EUROPEAN',
+        settlement: 'CASH',
+        settlementCurrency: 'USDT',
+        deliverables: [],
+        cashSettlement: { formula: 'INTRINSIC_VALUE', reference: 'INDEX', currency: 'USDT', multiplier: 1 },
+      },
+      provenance: {
+        status: 'PROVIDER_VERIFIED',
+        provider: 'BINANCE',
+        sourceRef: 'https://eapi.binance.com/eapi/v1/exchangeInfo',
+        retrievedAt: '2026-11-25T03:00:00Z',
+      },
+    },
+  } as const;
+  assert.equal(getContractScaleIssue(canonicalBinanceQuote, 'BINANCE'), undefined);
+  assert.equal(hasLegacyScalarAnalyticsCapability(binanceCrypto, 'BINANCE'), true);
+  assert.equal(hasLegacyScalarAnalyticsCapability(canonicalBinanceQuote, 'BINANCE'), false);
+  assert.equal(hasLegacyScalarAnalyticsCapability(demo, 'DEMO'), true);
 });
