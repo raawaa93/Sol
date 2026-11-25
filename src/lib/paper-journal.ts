@@ -258,7 +258,7 @@ export function createCanonicalPaperClose(input: CanonicalPaperCloseInput): Cano
     && entryIndexTimestamp <= entryAtMs
     && entryAtMs - entryBookTimestamp <= MAX_PAPER_ENTRY_SOURCE_AGE_MS
     && entryAtMs - entryIndexTimestamp <= MAX_PAPER_ENTRY_SOURCE_AGE_MS
-    && trade.expiry > trade.createdAt
+    && expiryMs > entryAtMs
     && trade.contractUnitAtEntry === economics.provenance.rawFields?.unit
     && trade.premiumMultiplierAtEntry === economics.premium.multiplier
     && trade.premiumCurrencyAtEntry === economics.premium.quoteCurrency
