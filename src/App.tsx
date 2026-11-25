@@ -176,6 +176,7 @@ function isPaperTrade(value: unknown): value is PaperTrade {
       && (trade.sourceReceivedAtAtEntry === undefined || (
         typeof trade.sourceReceivedAtAtEntry.bidAsk === 'string'
         && Number.isFinite(Date.parse(trade.sourceReceivedAtAtEntry.bidAsk))
+        && Date.parse(trade.sourceReceivedAtAtEntry.bidAsk) >= Date.parse(trade.sourceTimestampsAtEntry?.bookTicker ?? '')
         && Date.parse(trade.sourceReceivedAtAtEntry.bidAsk) <= Date.parse(trade.createdAt)
         && Date.parse(trade.createdAt) - Date.parse(trade.sourceReceivedAtAtEntry.bidAsk) <= 300_000))
       && (typeof trade.sourceTimestampsAtEntry?.bookTicker === 'string' && Number.isFinite(Date.parse(trade.sourceTimestampsAtEntry.bookTicker)))
