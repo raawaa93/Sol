@@ -593,7 +593,7 @@ function App() {
   const canCalculateMaxLoss = canonicalMaxLossAmount !== undefined || hasExplicitConsistentContractScale;
   const contractScaleIssueMessage = selectedQuote.contractEconomics
     ? canonicalPremiumPerContract !== undefined
-      ? 'تم احتساب تكلفة القسط وحجم المركز من مضاعف القسط الموثق، ويمكن تسجيل إدخال PAPER مع حفظ مواصفات العقد والمصدر. لا تزال Greeks المركز وEV وإعادة التشغيل محجوبة حتى ربطها بنموذج متوافق.'
+      ? 'تم احتساب تكلفة القسط وحجم المركز من مضاعف القسط الموثق، ويمكن تسجيل إدخال PAPER مع حفظ مواصفات العقد والمصدر. Greeks المركز وEV متاحان فقط عند استيفاء محوّلات Binance الموثقة ومدخلاتها؛ أما إعادة التشغيل فتبقى محجوبة حتى اكتمال مسارها.'
       : 'مواصفات العقد الاقتصادية غير كافية لحساب القسط أو المخاطر؛ لم نستخدم unit أو أي حساب قديم كبديل.'
     : contractScaleIssue ? getContractScaleIssueMessage(contractScaleIssue) : '';
   const totalCost = canonicalPremiumPerContract !== undefined
