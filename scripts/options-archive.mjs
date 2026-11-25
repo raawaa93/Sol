@@ -588,12 +588,18 @@ export class ResumableOptionsArchive {
     }
     const tempFiles = await walkFiles(join(this.root, '.tmp'));
     for (const file of tempFiles) errors.push(`ORPHAN_TEMP_FILE:${relative(this.root, file)}`);
+    const cursorPath = join(this.root, 'cursor.json');
     try {
-      const cursor = await readFile(join(this.root, 'cursor.json'), 'utf8');
-      const cursorValue = verifyCursor(JSON.parse(cursor));
-      if (Array.isArray(cursorValue?.committedSegmentHashes)) {
-        for (const hash of cursorValue.committedSegmentHashes) {
-          if (!segmentHashes.has(hash)) errors.push(`CURSOR_SEGMENT_MISSING:${hash}`);
+      const cursorInfo = await lstat(cursorPath);
+      if (cursorInfo.isSymbolicLink() || !cursorInfo.isFile()) {
+        errors.push('CURSOR_NOT_REGULAR_FILE');
+      } else {
+        const cursor = await readFile(cursorPath, 'utf8');
+        const cursorValue = verifyCursor(JSON.parse(cursor));
+        if (Array.isArray(cursorValue?.committedSegmentHashes)) {
+          for (const hash of cursorValue.committedSegmentHashes) {
+            if (!segmentHashes.has(hash)) errors.push(`CURSOR_SEGMENT_MISSING:${hash}`);
+          }
         }
       }
     } catch (error) {
