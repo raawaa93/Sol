@@ -192,7 +192,7 @@ Merged to main as `71a8a027659e880f22aa3b998b0c075c1a071bd3`.
 - Binance model Greeks/price normalization now uses canonical cash scale only when premium multiplier is 1 and the verified adapter maps the product. Unsupported products and unknown scales remain blocked.
 - CI, Project Context Guard and Lighthouse passed on PR head `d93a9a9bacae6edc1ecc98bbb00a82a43680a0c5`. Published-site smoke test was skipped by workflow conditions.
 
-Remaining: model-aware position Greek aggregation/shock P&L, canonical PAPER lifecycle valuation and replay. Entry-only PAPER snapshots are handled separately by PR #169 and remain unmerged pending checks.
+Remaining: model-aware position Greek aggregation/shock P&L, canonical PAPER lifecycle valuation and replay. Entry-only PAPER snapshots are handled separately by PR #171 and remain unmerged pending checks.
 
 ### Canonical PAPER entry snapshot — PR #169
 
