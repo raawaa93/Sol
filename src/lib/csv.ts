@@ -254,7 +254,7 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
 
     const timestampText = readField(row, ['timestamp', 'asof', 'quotetime', 'updatedat', 'updatetime', 'eventtime', 'datetime', 'time']);
     const sourceTimestamp = timestampText ? parseTimestamp(timestampText) : undefined;
-    const bidAskSourceText = readField(row, ['bidAskSource', 'bboSource', 'quoteSource']).toUpperCase();
+    const bidAskSourceText = (readField(row, ['bidAskSource', 'bboSource', 'quoteSource']) ?? '').toUpperCase();
     const bidAskSource = bidAskSourceText === 'BOOK_TICKER' || bidAskSourceText === 'OPTION_TICKER' || bidAskSourceText === 'MARK_PRICE'
       ? bidAskSourceText as 'BOOK_TICKER' | 'OPTION_TICKER' | 'MARK_PRICE'
       : undefined;
@@ -262,7 +262,7 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
     const bidAskTimestamp = bidAskTimestampText ? parseTimestamp(bidAskTimestampText) : undefined;
     const bidAskReceivedAtText = readField(row, ['bidAskReceivedAt', 'quoteReceivedAt', 'localReceiveTime']);
     const bidAskReceivedAt = bidAskReceivedAtText ? parseTimestamp(bidAskReceivedAtText) : undefined;
-    const bidAskSizeUnitText = readField(row, ['bidAskSizeUnit', 'bboSizeUnit', 'quantityUnit']).toUpperCase();
+    const bidAskSizeUnitText = (readField(row, ['bidAskSizeUnit', 'bboSizeUnit', 'quantityUnit']) ?? '').toUpperCase();
     const bidAskSizeUnit = bidAskSizeUnitText === 'CONTRACTS' || bidAskSizeUnitText === 'UNDERLYING_UNITS'
       ? bidAskSizeUnitText as 'CONTRACTS' | 'UNDERLYING_UNITS'
       : undefined;
