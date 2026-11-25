@@ -121,6 +121,9 @@ export interface OptionQuote {
   /** Zero is the unavailable sentinel; ivStatus distinguishes it from a valid observed or modelled value. */
   iv: number;
   ivStatus?: 'OBSERVED' | 'ESTIMATED' | 'UNAVAILABLE';
+  /** Binance vo is preserved as venue-reported volatility, not silently relabelled markIV. */
+  venueVolatility?: number;
+  markIvSource?: 'OPTION_TICKER' | 'MARK_PRICE';
   /** Exchange-provided IV at the best bid, in annual decimal units. */
   bidIv?: number;
   /** Exchange-provided IV at the best ask, in annual decimal units. */
@@ -156,6 +159,7 @@ export interface OptionQuote {
     ticker?: string;
     optionTicker?: string;
     markIv?: string;
+    venueVolatility?: string;
     index?: string;
     openInterest?: string;
     bookTicker?: string;

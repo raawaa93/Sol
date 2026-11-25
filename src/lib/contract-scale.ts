@@ -143,8 +143,9 @@ export function hasCanonicalBinanceModelGreekCapability(
     && Number.isFinite(quote.carryYield)
     && [quote.delta, quote.gamma, quote.theta, quote.vega, quote.rho].every(Number.isFinite)
     && validTimestamp(quote.sourceTimestamps?.index)
-    && validTimestamp(quote.sourceTimestamps?.optionTicker)
     && validTimestamp(quote.sourceTimestamps?.markIv)
+    && quote.markIvSource === 'OPTION_TICKER'
+    && validTimestamp(quote.sourceTimestamps?.optionTicker)
     && quote.sourceTimestamps?.markIv === quote.sourceTimestamps?.optionTicker;
 }
 
