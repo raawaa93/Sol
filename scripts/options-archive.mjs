@@ -14,6 +14,20 @@ const RECORD_KINDS = new Set([
   'BOOK_TICKER', 'DEPTH_SNAPSHOT', 'DEPTH_DIFF', 'MARK_PRICE',
   'INDEX_PRICE', 'OPEN_INTEREST', 'OPTION_TICKER', 'GAP',
 ]);
+const KIND_ENDPOINTS = {
+  EXCHANGE_INFO: ['REST_EXCHANGE_INFO'],
+  KLINE_CLOSED: ['REST_KLINES', 'WS_KLINE'],
+  TRADE_MARKET: ['REST_RECENT_TRADES', 'WS_OPTION_TRADE'],
+  TRADE_BLOCK: ['REST_RECENT_TRADES', 'WS_OPTION_TRADE'],
+  BOOK_TICKER: ['WS_BOOK_TICKER'],
+  DEPTH_SNAPSHOT: ['REST_DEPTH'],
+  DEPTH_DIFF: ['WS_DEPTH'],
+  MARK_PRICE: ['REST_MARK', 'WS_MARK_PRICE'],
+  INDEX_PRICE: ['REST_INDEX', 'WS_INDEX_PRICE'],
+  OPEN_INTEREST: ['REST_OPEN_INTEREST'],
+  OPTION_TICKER: ['REST_TICKER', 'WS_OPTION_TICKER'],
+  GAP: ['WS_CONNECTION', 'WS_DEPTH', 'WS_OPTION_TRADE'],
+};
 const PROVENANCE = new Set(['OBSERVED', 'MODELLED', 'UNAVAILABLE']);
 const QUALITY = new Set(['VALID', 'DEGRADED', 'INVALID']);
 
@@ -78,8 +92,9 @@ export function validateOptionsArchiveRecord(record) {
   if (record.schemaVersion !== OPTIONS_ARCHIVE_SCHEMA_VERSION) throw new OptionsArchiveError('SCHEMA_VERSION', 'Unsupported archive schema version.');
   if (record.provider !== 'BINANCE') throw new OptionsArchiveError('PROVIDER_NOT_ALLOWED', 'Only the approved public Binance provider is accepted.');
   if (!RECORD_KINDS.has(record.kind)) throw new OptionsArchiveError('KIND_NOT_ALLOWED', 'Unsupported archive event kind.');
+  if (!KIND_ENDPOINTS[record.kind]?.includes(record.endpoint)) throw new OptionsArchiveError('KIND_ENDPOINT_MISMATCH', 'Event kind does not match its approved public source endpoint.');
   if (!ALLOWED_ENDPOINTS.has(record.endpoint)) throw new OptionsArchiveError('ENDPOINT_NOT_ALLOWED', 'Only explicitly approved public Binance endpoints and streams may be archived.');
-  if (typeof record.symbol !== 'string' || !/^[A-Z0-9-]{2,64}$/.test(record.symbol)) throw new OptionsArchiveError('INVALID_SYMBOL', 'A normalized option or underlying symbol is required.');
+  if (typeof record.symbol !== 'string' || record.symbol !== record.symbol.toUpperCase() || !/^[A-Z0-9-]{2,64}$/.test(record.symbol)) throw new OptionsArchiveError('INVALID_SYMBOL', 'A normalized uppercase option or underlying symbol is required.');
   if (typeof record.idempotencyKey !== 'string' || !record.idempotencyKey.trim() || record.idempotencyKey.length > 256) {
     throw new OptionsArchiveError('INVALID_IDEMPOTENCY_KEY', 'A stable idempotency key is required.');
   }
@@ -133,6 +148,7 @@ export function validateOptionsArchiveRecord(record) {
   for (const field of record.fields) {
     assertObject(field, 'field');
     if (typeof field.name !== 'string' || !field.name.trim()) throw new OptionsArchiveError('FIELD_NAME_REQUIRED', 'Every field needs a name.');
+    if (!Object.hasOwn(field, 'value') || field.value === undefined || (field.provenance === 'OBSERVED' && field.value === null)) throw new OptionsArchiveError('FIELD_VALUE_REQUIRED', 'Observed fields must carry an explicit non-null source value.');
     if (!PROVENANCE.has(field.provenance)) throw new OptionsArchiveError('FIELD_PROVENANCE', 'Every field needs explicit provenance.');
     if (typeof field.unit !== 'string' || !field.unit.trim()) throw new OptionsArchiveError('FIELD_UNIT_REQUIRED', 'Every field needs an explicit unit.');
     if (typeof field.sourcePath !== 'string' || !field.sourcePath.trim()) throw new OptionsArchiveError('FIELD_SOURCE_REQUIRED', 'Every field needs a source path.');
@@ -149,6 +165,7 @@ export function validateOptionsArchiveRecord(record) {
   if (!QUALITY.has(record.quality.status) || !Array.isArray(record.quality.flags)) {
     throw new OptionsArchiveError('INVALID_QUALITY', 'Record quality must include a supported status and flags array.');
   }
+  if (record.quality.status === 'VALID' && !eventAt) throw new OptionsArchiveError('EVENT_TIME_REQUIRED_FOR_VALID_RECORD', 'A valid record must have an exchange event timestamp.');
   if (typeof record.historicalBackfill !== 'boolean') throw new OptionsArchiveError('BACKFILL_FLAG_REQUIRED', 'historicalBackfill must be explicit.');
   return record;
 }
