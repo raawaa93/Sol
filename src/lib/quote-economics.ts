@@ -140,6 +140,8 @@ export function calculateQuoteCashRiskNeutralMetrics(
     || economics.provenance.provider !== 'BINANCE'
     || economics.exercise.style !== 'EUROPEAN'
     || economics.exercise.settlement !== 'CASH'
+    || quote.exerciseStyle !== 'EUROPEAN'
+    || quote.settlementStyle !== 'CASH'
     || cashSettlement.formula !== 'INTRINSIC_VALUE'
     || cashSettlement.reference !== 'INDEX'
     || economics.premium.priceUnit !== 'PER_CONTRACT'
