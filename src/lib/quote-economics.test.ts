@@ -264,6 +264,7 @@ function canonicalBinanceRiskQuote(overrides: Partial<OptionQuote> = {}): Option
       provenance: {
         status: 'PROVIDER_VERIFIED',
         provider: 'BINANCE',
+        legalTerms: BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS,
         sourceRef: 'https://eapi.binance.com/eapi/v1/exchangeInfo',
         retrievedAt: '2026-11-25T03:00:00.000Z',
       },
