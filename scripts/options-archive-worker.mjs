@@ -45,12 +45,13 @@ export async function runOptionsArchiveWorker({
   now = () => new Date().toISOString(),
 } = {}) {
   if (!config || !Array.isArray(config.streams) || !config.archiveRoot
-    || !Number.isSafeInteger(config.maxBytes) || config.maxBytes <= 0
-    || !Number.isSafeInteger(config.maxRuntimeMs) || config.maxRuntimeMs <= 0
     || config.streams.length === 0 || config.streams.length > 200
+    || config.streams.some((stream) => typeof stream !== 'string' || !stream.trim())
+    || new Set(config.streams).size !== config.streams.length
     || !Number.isSafeInteger(config.maxBytes) || config.maxBytes <= 0 || config.maxBytes > MAX_ARCHIVE_BYTES
     || !Number.isSafeInteger(config.maxRuntimeMs) || config.maxRuntimeMs <= 0 || config.maxRuntimeMs > MAX_RUNTIME_MS
-    || !Number.isSafeInteger(config.heartbeatMs) || config.heartbeatMs <= 0 || config.heartbeatMs > 5 * 60 * 1000) {
+    || !Number.isSafeInteger(config.heartbeatMs) || config.heartbeatMs <= 0 || config.heartbeatMs > 5 * 60 * 1000
+    || typeof config.refreshExchangeInfo !== 'boolean') {
     throw new Error('A validated options archive worker configuration is required.');
   }
   const activeArchive = archive ?? new ResumableOptionsArchive(config.archiveRoot, { maxBytes: config.maxBytes });
@@ -67,14 +68,25 @@ export async function runOptionsArchiveWorker({
     if (initialBytes > config.maxBytes) throw new Error('Existing archive already exceeds the configured quota.');
     logger({ type: 'worker_started', at: now(), streams: config.streams, archiveRoot: config.archiveRoot, bytes: initialBytes });
 
-    heartbeat = setInterval(async () => {
-      try {
-        const bytes = await activeArchive.getArchiveBytes();
-        if (bytes > config.maxBytes) throw new Error('Archive quota exceeded.');
-        logger({ type: 'worker_heartbeat', at: now(), bytes, quotaBytes: config.maxBytes });
-      } catch (error) {
-        logger({ type: 'worker_health_error', at: now(), code: error?.code ?? 'HEALTH_CHECK_FAILED' });
-      }
+    let heartbeatFailure = null;
+    let heartbeatCheck = Promise.resolve();
+    let heartbeatInFlight = false;
+    heartbeat = setInterval(() => {
+      if (heartbeatInFlight || heartbeatFailure) return;
+      heartbeatInFlight = true;
+      heartbeatCheck = (async () => {
+        try {
+          const bytes = await activeArchive.getArchiveBytes();
+          if (bytes > config.maxBytes) throw new Error('Archive quota exceeded.');
+          logger({ type: 'worker_heartbeat', at: now(), bytes, quotaBytes: config.maxBytes });
+        } catch (error) {
+          heartbeatFailure = error;
+          controller.abort(error);
+          logger({ type: 'worker_health_error', at: now(), code: error?.code ?? 'HEALTH_CHECK_FAILED' });
+        } finally {
+          heartbeatInFlight = false;
+        }
+      })();
     }, config.heartbeatMs);
     heartbeat.unref?.();
     runtimeTimer = setTimeout(() => controller.abort(new Error('Configured worker runtime reached.')), config.maxRuntimeMs);
@@ -88,8 +100,15 @@ export async function runOptionsArchiveWorker({
       restTransport,
       refreshExchangeInfo: config.refreshExchangeInfo,
       onFatal: (error) => controller.abort(error),
+      signal: controller.signal,
       now,
     });
+    if (heartbeat) {
+      clearInterval(heartbeat);
+      heartbeat = undefined;
+    }
+    await heartbeatCheck;
+    if (heartbeatFailure) throw heartbeatFailure;
     const verification = await activeArchive.verify();
     if (!verification.ok) throw new Error('Archive verification failed after collection: ' + verification.errors.join('; '));
     const bytes = await activeArchive.getArchiveBytes();
