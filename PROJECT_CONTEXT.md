@@ -170,4 +170,4 @@ No second execution venue for a Syrian resident has been verified for global lis
 - The exact original primary journal JSON is preserved before filtering; previous recovery and current primary snapshots have separate export actions.
 - Writes and clear actions are blocked when preservation is unsafe. After exporting every visible raw snapshot, a confirmation-gated retry can remove the previous recovery key, re-read the unchanged primary, and attempt a new safe quarantine. If quota/access still fails, the journal stays read-only.
 - No journal data is uploaded; recovery data is never automatically re-imported as trusted trades.
-- PR-head CI 45582921361, Lighthouse 45582921191 and Project Context Guard passed. Main Project Context Guard and Pages deployment were started after merge.
+- PR-head CI 45582921361 and Lighthouse 45582921191 passed. A duplicate test import from concurrent merge was removed in PR #237; final main CI 45583736477, Lighthouse 45583736442, Project Context Guard 45583736354, and GitHub Pages deployment plus published-site smoke/Lighthouse 45583736335 all passed on main commit `194fdc1603bb9209d3b8c899f5cb53922560679e`.
