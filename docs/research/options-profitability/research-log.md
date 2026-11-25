@@ -109,3 +109,31 @@ P1: volatility surface integrity diagnostics and source/model provenance; do not
 P2: execution-cost/fill model and route/venue-sensitive spread metrics.
 P3: regime-aware VRP and disagreement research; report uncertainty and tail risk, not one static short-volatility signal.
 P4: dispersion only after component coverage, covariance/weight methodology and hedging costs are available.
+
+
+## Fourth research pass — crypto risk premia, arbitrage-free surfaces and Binance stream operations
+
+### Crypto volatility risk premia are regime- and definition-dependent
+- Almeida, Grith, Miftachov & Wang, *Risk Premia in the Bitcoin Market* (arXiv:2410.15195, revised 1 Aug 2025): compares Bitcoin option-implied and realized first/second-moment premia with U.S. equity index premia. The authors report a higher Bitcoin variance risk premium in their sample and different state-space contributions; this is a working paper, not a stable forecast or a direct Binance strategy. https://arxiv.org/abs/2410.15195
+- Grith, Almeida, Miftachov & Wang, *Option-Implied Risk Premia and Cryptocurrency Market Regimes* (SSRN, revised 26 Jun 2026): reports two volatility regimes and changes in the composition of Bitcoin variance premia across regimes. SSRN working paper; independently reproduce definitions, option surface construction and regime classification before use. https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5374295
+- Han, *The price of crypto-market volatility risk*, Research in International Business and Finance (2026), DOI 10.1016/j.ribaf.2026.103374: studies cross-sectional crypto returns using Bitcoin implied-volatility exposure, not direct option-selling P&L. Its reported premium concerns crypto-asset portfolios and must not be misread as evidence that shorting BTC options is profitable. https://doi.org/10.1016/j.ribaf.2026.103374
+- Karim et al., *Exploring asymmetries in cryptocurrency intraday returns and implied volatility* (International Review of Financial Analysis, 2024): analyzes 6.5 million BTC/ETH observations and reports frequency- and quantile-dependent asymmetries. Supports regime/frequency-conditioned diagnostics, not a standalone trade signal. https://doi.org/10.1016/j.irfa.2024.103617
+
+### Volatility surface construction: hard constraints, not cosmetic fit
+- Gatheral & Jacquier, *Arbitrage-free SVI volatility surfaces*, Quantitative Finance 14(1), 2014, DOI 10.1080/14697688.2013.819986: constructs SVI parameterizations that guarantee absence of static arbitrage under stated conditions. Use as the theoretical baseline for SVI diagnostics; a numerically good fit alone is insufficient. https://doi.org/10.1080/14697688.2013.819986
+- Engineering implication for Sol: validate calendar monotonicity and butterfly convexity on the total-variance/option-price representation, retain fit residuals and parameter constraints, and run checks again after interpolation/extrapolation. Reject or mark unavailable any surface that fails. Do not equate an SVI fit with a proof of dynamic/no-arbitrage profitability.
+
+### Official Binance WebSocket operational constraints
+- Current Binance Options WebSocket docs specify the public wss://fstream.binance.com/public/ws/ route and combined stream route; optionTrade updates are documented at 50 ms. Trade event fields include E event time, T trade-completion time, s option symbol, t trade ID, p, q, X, S, and m. https://developers.binance.info/en/docs/catalog/core-trading-derivatives-trading-options/api/ws-streams
+- Binance connection guidance says a connection is valid for 24 hours, server ping frames arrive every 5 minutes and require pong within 15 minutes, incoming client messages are limited to 10/second, and a connection can listen to at most 200 streams. These are operational constraints for reconnect scheduling and subscription batching; they are not guarantees of uninterrupted event delivery. https://developers.binance.info/en/docs/products/derivatives-trading-options/websocket-market-streams/Connect
+- Consequence: collector should schedule a controlled rotation before 24 hours, implement ping/pong at the WebSocket protocol layer, rate-limit subscription control messages, cap stream subscriptions, and explicitly mark reconnect intervals as coverage gaps. Do not infer event sequence continuity from trade IDs unless Binance documents a contiguous sequence guarantee for this stream.
+
+### Updated implementation priorities
+1. P0: archive integrity, raw payload retention, cross-process single-writer lease, deterministic restart/replay, explicit export/restore verification and bounded storage.
+2. P0: collector state machine with 24-hour planned rotation, protocol ping/pong, bounded backoff, subscription acknowledgements/rate limits, stale-feed and gap accounting; fake transport tests before any live public smoke test.
+3. P1: point-in-time quote/Greek joins and canonical contract economics; reject future/stale observations.
+4. P1: constrained SVI/SSVI surface diagnostics and explicit static-arbitrage rejection; no unconstrained spline fallback.
+5. P2: realistic execution/fill/adverse-selection model and venue-specific cost measurement.
+6. P3: regime-aware crypto variance-premium research with separate definitions for option P&L, underlying cross-sectional volatility exposure, and risk-neutral vs realized variance.
+
+Research classification: peer-reviewed theory/studies, working papers/preprints, and official venue documentation are explicitly distinguished. No profitability claim, paid service, account access, live collector, or production deployment is established by this research pass.
