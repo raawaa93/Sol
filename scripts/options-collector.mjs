@@ -340,7 +340,7 @@ export async function collectForwardOptionsEvents({ archive, transport, streams,
   if (!archive || typeof archive.acquireWriterLease !== 'function' || !transport || typeof transport.subscribe !== 'function') {
     throw new OptionsCollectorError('TRANSPORT_REQUIRED', 'An archive and injected async-iterable transport are required.');
   }
-  if (!Array.isArray(streams) || streams.length === 0 || streams.some((stream) => typeof stream !== 'string' || !/^[a-z0-9-]+@(bookTicker|optionTrade|optionTicker\\d{6}|index|markPrice|kline_(1m|3m|5m|15m|30m|1h|2h|4h|6h|12h|1d)|depth(10|20|50|100|1000)?(@100ms|@500ms|@1000ms)?)$/i.test(stream))) {
+  if (!Array.isArray(streams) || streams.length === 0 || streams.some((stream) => typeof stream !== 'string' || !/^[a-z0-9-]+@(bookTicker|optionTrade|optionTicker\d{6}|index|markPrice|kline_(1m|3m|5m|15m|30m|1h|2h|4h|6h|12h|1d)|depth(10|20|50|100|1000)?(@100ms|@500ms|@1000ms)?)$/i.test(stream))) {
     throw new OptionsCollectorError('INVALID_STREAMS', 'Explicit public stream names are required.');
   }
   const lease = await archive.acquireWriterLease();
