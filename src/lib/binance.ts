@@ -502,6 +502,27 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       : isCommodity ? (inferredAssetClass === 'CRYPTO' ? 'UNKNOWN' : inferredAssetClass)
         : hasExplicitUnderlyingType || hasExplicitContractType ? 'UNKNOWN' : inferredAssetClass;
     const carryYield = isCrypto ? 0 : undefined;
+    const contractEconomics = isCrypto && underlyingType === 'CRYPTO' && contractType === 'CRYPTO_OPTIONS'
+      ? mapBinanceCryptoOptionEconomics({
+        symbol,
+        underlyingType,
+        contractType,
+        unit,
+        quoteAsset: symbolInfo.quoteAsset ?? contractInfo?.quoteAsset ?? '',
+        settleAsset: contractInfo?.settleAsset ?? '',
+        serverTime,
+      }) ?? undefined
+      : undefined;
+    const canonicalCashMultiplier = contractEconomics?.exercise.cashSettlement?.formula === 'INTRINSIC_VALUE'
+      && contractEconomics.exercise.cashSettlement.reference === 'INDEX'
+      && contractEconomics.premium.priceUnit === 'PER_CONTRACT'
+      && contractEconomics.premium.multiplier === 1
+      ? contractEconomics.exercise.cashSettlement.multiplier
+      : undefined;
+    // Model price/Greeks are calculated per underlying unit. Binance's
+    // observed premium is per contract, so convert only through a verified
+    // canonical cash multiplier (or the narrow legacy unit=1 parity case).
+    const modelPriceScale = canonicalCashMultiplier ?? (hasUnitOnePremiumParity ? 1 : undefined);
     const pricingInputs = {
       underlyingKind,
       exerciseStyle,
@@ -513,25 +534,25 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       rate: riskFreeRate,
       carryYield,
     };
-    const calculatedIv = observedIv ?? (isCrypto && hasUnitOnePremiumParity && referencePrice !== undefined
-      ? impliedVolatilityForContract(referencePrice, pricingInputs)
+    const calculatedIv = observedIv ?? (isCrypto && modelPriceScale !== undefined && referencePrice !== undefined
+      ? impliedVolatilityForContract(referencePrice / modelPriceScale, pricingInputs)
       : undefined);
     const ivStatus = observedIv !== undefined ? 'OBSERVED' as const
       : calculatedIv !== undefined ? 'ESTIMATED' as const : 'UNAVAILABLE' as const;
     const iv = calculatedIv ?? 0;
 
-    const pricingResult = iv > 0 && isCrypto && hasUnitOnePremiumParity
+    const pricingResult = iv > 0 && isCrypto && modelPriceScale !== undefined
       ? priceOption({ ...pricingInputs, volatility: iv })
       : { status: 'UNSUPPORTED' as const, reason: ivStatus === 'UNAVAILABLE'
         ? 'Implied volatility is unavailable from the source and no supported model can derive it from this contract.'
-        : isCrypto && !hasUnitOnePremiumParity
-          ? 'Binance unit is underlying quantity per contract, not a documented premium multiplier. Premium price and deliverable scales are not separated yet.'
+        : isCrypto && modelPriceScale === undefined
+          ? 'Binance unit is underlying quantity per contract; verified canonical cash-settlement terms are required to normalize per-contract premium and model price.'
           : isCommodity
             ? 'Underlying is the Binance TradFi Perpetual Contract Index; no validated spot or futures pricing model is applied.'
             : 'Underlying type and contract mechanics are not validated for analytical pricing.' };
     const modelGreeks = pricingResult.status === 'SUPPORTED' ? pricingResult.greeks : undefined;
     const priceSource = observedMark ? 'MARK' : twoSidedMid ? 'MID' : lastPrice ? 'LAST' : bid > 0 && !crossedQuote ? 'BID' : ask > 0 && !crossedQuote ? 'ASK' : 'MODEL';
-    const markPrice = observedPrice ?? (hasUnitOnePremiumParity ? modelGreeks?.price : undefined);
+    const markPrice = observedPrice ?? (modelPriceScale !== undefined && modelGreeks ? modelGreeks.price * modelPriceScale : undefined);
     if (markPrice === undefined || markPrice <= 0) {
       skipped += 1;
       continue;
@@ -568,17 +589,6 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       ...(openInterestTimestamp !== undefined && openInterestTimestamp > 0 ? { openInterest: new Date(openInterestTimestamp).toISOString() } : {}),
     };
     const filters = Array.isArray(symbolInfo.filters) ? symbolInfo.filters : undefined;
-    const contractEconomics = isCrypto && underlyingType === 'CRYPTO' && contractType === 'CRYPTO_OPTIONS'
-      ? mapBinanceCryptoOptionEconomics({
-        symbol,
-        underlyingType,
-        contractType,
-        unit,
-        quoteAsset: symbolInfo.quoteAsset ?? contractInfo?.quoteAsset ?? '',
-        settleAsset: contractInfo?.settleAsset ?? '',
-        serverTime,
-      }) ?? undefined
-      : undefined;
     const lotSizeFilter = filters?.find((filter) => ['LOT_SIZE', 'MARKET_LOT_SIZE'].includes(filter.filterType.toUpperCase()));
     const minQty = positiveNumber(symbolInfo.minQty) ?? positiveNumber(lotSizeFilter?.minQty);
     const maxQty = positiveNumber(symbolInfo.maxQty) ?? positiveNumber(lotSizeFilter?.maxQty);
@@ -648,7 +658,16 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
   if (crossedBidAsk > 0) warnings.push(`تعارض Bid/Ask في ${crossedBidAsk} عقد؛ استُبعد المنتصف من مرجع السعر.`);
   if (missingOpenInterest > 0) warnings.push(`الفائدة المفتوحة غير متاحة لـ${missingOpenInterest} عقد/استحقاق.`);
   if (missingUnit > 0) warnings.push(`وحدة العقد غير موجودة في ${missingUnit} عقد؛ استُبعدت هذه العقود بدلاً من افتراض مضاعف 1.`);
-  const unverifiedPremiumScale = quotes.filter((quote) => quote.assetClass === 'CRYPTO' && quote.unit > 1).length;
+  const unverifiedPremiumScale = quotes.filter((quote) => {
+    const cash = quote.contractEconomics?.exercise.cashSettlement;
+    const verifiedCanonicalScale = quote.contractEconomics?.provenance.status === 'PROVIDER_VERIFIED'
+      && quote.contractEconomics.premium.priceUnit === 'PER_CONTRACT'
+      && quote.contractEconomics.premium.multiplier === 1
+      && cash?.formula === 'INTRINSIC_VALUE'
+      && cash.reference === 'INDEX'
+      && cash.multiplier === quote.unit;
+    return quote.assetClass === 'CRYPTO' && quote.unit > 1 && !verifiedCanonicalScale;
+  }).length;
   if (unverifiedPremiumScale > 0) warnings.push(`مقياس القسط غير مفصول عن وحدة التسليم في ${unverifiedPremiumScale} عقد Binance ذات unit أكبر من 1؛ أبقينا الأسعار وIV المرصودة فقط وحجبنا القيم النموذجية وحسابات P&L لكل عقد.`);
   if (missingRiskFreeRate > 0) warnings.push(`معدل الفائدة من Binance غير متاح لـ${missingRiskFreeRate} عقد؛ استُخدم 0% للنموذج.`);
   if (quotes.length) warnings.push('Gamma وTheta وVega وRho تقديرات Black–Scholes وليست Greeks مرصودة من Binance؛ تحقّق من الوحدات قبل استخدامها.');

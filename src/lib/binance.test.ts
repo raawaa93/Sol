@@ -130,7 +130,7 @@ test('Binance preserves explicit crypto, commodity, and unknown contract metadat
   const expiry = now + 30 * 86_400_000;
   const code = compactDate(expiry);
   const instruments = [
-    { baseAsset: 'BTC', underlying: 'BTCUSDT', underlyingType: 'CRYPTO', contractType: 'CRYPTO_OPTIONS', assetClass: 'CRYPTO', kind: 'SPOT', pricing: 'OBSERVED_ONLY' },
+    { baseAsset: 'BTC', underlying: 'BTCUSDT', underlyingType: 'CRYPTO', contractType: 'CRYPTO_OPTIONS', assetClass: 'CRYPTO', kind: 'SPOT', pricing: 'ASSUMED' },
     { baseAsset: 'XAU', underlying: 'XAUUSDT', underlyingType: 'COMMODITY', contractType: 'TRADFI_OPTIONS', assetClass: 'METALS', kind: 'PERPETUAL', pricing: 'OBSERVED_ONLY' },
     { baseAsset: 'RAT', underlying: 'RATUSDT', underlyingType: 'UNKNOWN', contractType: 'UNKNOWN_OPTIONS', assetClass: 'UNKNOWN', kind: 'UNKNOWN', pricing: 'OBSERVED_ONLY' },
   ] as const;
@@ -182,14 +182,17 @@ test('Binance preserves explicit crypto, commodity, and unknown contract metadat
   assert.equal(crypto?.contractEconomics?.premium.multiplier, 1);
   assert.equal(crypto?.contractEconomics?.exercise.cashSettlement?.multiplier, 10);
   assert.equal(crypto?.contractEconomics?.provenance.status, 'PROVIDER_VERIFIED');
-  assert.equal(crypto?.pricingModel, undefined);
-  assert.ok(crypto?.pricingReason?.includes('unit is underlying quantity per contract'));
+  assert.equal(crypto?.pricingModel, 'BLACK_SCHOLES_CARRY');
+  assert.ok(crypto?.pricingReason?.includes('carry yield is assumed to be 0%'));
+  assert.ok(Number.isFinite(crypto?.delta));
+  assert.equal(crypto?.delta, blackScholes(crypto!.spot, crypto!.strike, crypto!.daysToExpiry, crypto!.iv, 'CALL', 0).delta);
+  assert.equal(crypto?.ivStatus, 'OBSERVED');
   assert.equal(crypto?.iv, 0.5);
   assert.equal(commodity?.exerciseStyle, 'EUROPEAN');
   assert.equal(commodity?.settlementStyle, 'CASH');
   assert.equal(commodity?.pricingModel, undefined);
   assert.ok(commodity?.pricingReason?.includes('Perpetual Contract Index'));
-  assert.ok(snapshot.warnings.some((warning) => warning.includes('مقياس القسط غير مفصول')));
+  assert.ok(!snapshot.warnings.some((warning) => warning.includes('مقياس القسط غير مفصول')), 'verified canonical premium and settlement scales should not be reported as unverified');
   assert.equal(unknown?.exerciseStyle, undefined);
   assert.equal(unknown?.settlementStyle, undefined);
   assert.equal(unknown?.pricingModel, undefined);
@@ -682,16 +685,15 @@ test('Binance keeps contracts with a valid market price when implied volatility 
         underlyingType: 'CRYPTO', contractType: 'CRYPTO_OPTIONS',
       }],
     },
-    marks: [{ symbol, markPrice: 3 }],
-    tickers: [{ symbol, bidPrice: 2.8, askPrice: 3.2, volume: 0, amount: 0, closeTime: now }],
+    marks: [{ symbol, markPrice: 1_000_001 }],
     indices: [{ requestedUnderlying: 'BTCUSDT', item: { indexPrice: 100000, time: now } }],
   });
 
   assert.equal(snapshot.quotes.length, 1);
   const quote = snapshot.quotes[0];
-  assert.equal(quote.markPrice, 3);
-  assert.equal(quote.bid, 2.8);
-  assert.equal(quote.ask, 3.2);
+  assert.equal(quote.markPrice, 1_000_001);
+  assert.equal(quote.bid, 0);
+  assert.equal(quote.ask, 0);
   assert.equal(quote.iv, 0);
   assert.equal(quote.ivStatus, 'UNAVAILABLE');
   assert.equal(quote.pricingStatus, 'OBSERVED_ONLY');
