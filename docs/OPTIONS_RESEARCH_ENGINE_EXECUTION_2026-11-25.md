@@ -128,3 +128,11 @@ PR #204 merged to main as `337e03fb26d44c906125318affc473030c165da4` (PR merge c
 - Lighthouse medians: PR #204 Performance 99/100, Accessibility 100/100, Best Practices 100/100, SEO 100/100; PR #205 Performance 98/100, other three 100/100.
 
 These changes improve the PAPER execution baseline and default sizing guard only. No live data capture, scheduled worker, durable cloud archive, empirical profitability or live trading is claimed.
+
+## Follow-up — cumulative PAPER campaign risk cap, PR #209
+
+- Merged 25 November 2026 as `f413ba8a5453a730fe4649d90c648f27390499b1`.
+- Encoded the 200 USD capital assumption, 60 USD/USDT cumulative premium-and-fee allocation cap, and 20 per-attempt cap. The sizing calculator uses remaining campaign budget; the save handler enforces the same limits against canonical and legacy entries, including manually edited quantities.
+- New legacy entries store premium debit and currency. Unknown legacy costs and mixed currencies fail closed; USD and USDT are not implicitly converted.
+- The local PAPER journal is append-only and has no close/realized-P&L workflow. All recorded premium debit remains allocated until export and explicit confirmation-protected reset. This is conservative campaign allocation, not a live loss guarantee.
+- CI 45574730769 passed 309/309 tests, build, bundle budget and 18/18 Playwright journeys; Lighthouse 45574730886 and Project Context Guard 45574730851 passed.
