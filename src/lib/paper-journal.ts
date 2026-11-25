@@ -43,9 +43,9 @@ function hasObservedPriceTimestamp(
   if (source === 'MARK') value = timestamps.markPrice;
   else if (source === 'LAST') value = timestamps.ticker;
   else if (source === 'MID' || source === 'BID' || source === 'ASK') {
-    if (quote.bidAskSource === 'BOOK_TICKER') value = timestamps.bookTicker;
-    else if (quote.bidAskSource === 'OPTION_TICKER') value = timestamps.optionTicker;
-    else if (quote.bidAskSource === 'MARK_PRICE') value = timestamps.markPrice;
+    if (quote.bidAskSource === 'BOOK_TICKER' || quote.bidAskSource === 'OPTION_TICKER' || quote.bidAskSource === 'MARK_PRICE') {
+      value = timestamps.bidAsk;
+    }
   }
   const timestamp = Date.parse(value ?? '');
   return Number.isFinite(timestamp) && nowMs >= timestamp && nowMs - timestamp <= 15_000;
