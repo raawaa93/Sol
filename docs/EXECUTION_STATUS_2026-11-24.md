@@ -127,3 +127,8 @@ The post-merge main CI run 45540686865 on 4df6c5b9690f4cd2759b5fc10f1dbc48f98657
 ### Safety boundary retained
 
 No production database connection/dump, migration, data deletion, credential read/write, live order, paid service, new cloud resource, live market capture, or regional-policy bypass was performed. No backup/restore success is claimed. Current main SHA at record time: 33d7da6dca885b3aab0b5903acc998fda4c58c95.
+
+### Related issues reconciled
+
+- PR #158 merged on 25 Nov 2026 as the current main baseline `82312ae958f548375c395550bb2e96fb5dc13cfa`; its CI, Lighthouse and Project Context Guard runs all succeeded. It delivers the Binance observed-IV Greek recalculation guard and stale-model-Greek clearing. Issue #150 is now closed as completed, with the separate bundle-budget portion completed by PR #165.
+- Issue #161 was closed automatically by PR #165. The later main CI regression is independent of the chart/bundle change and remains assigned for investigation in the #91 continuation.
