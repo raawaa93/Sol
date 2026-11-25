@@ -103,9 +103,9 @@ test('canonical PAPER entry rejects user-asserted, model-priced and untimestampe
     ...quote,
     contractEconomics: { ...economics, provenance: { ...economics.provenance, status: 'USER_ASSERTED' } },
   }, 'BINANCE', paperNow), false);
-  assert.equal(canCreateCanonicalPaperTrade({ ...quote, bid: 0, ask: 0, priceSource: 'MODEL', estimatedFields: ['markPrice'] }, 'BINANCE'), false);
-  assert.equal(canCreateCanonicalPaperTrade({ ...quote, sourceTimestamps: undefined }, 'BINANCE'), false);
-  assert.equal(canCreateCanonicalPaperTrade({ ...quote, sourceTimestamps: { ticker: '2026-11-25T03:00:00Z' } }, 'BINANCE'), false);
+  assert.equal(canCreateCanonicalPaperTrade({ ...quote, bid: 0, ask: 0, priceSource: 'MODEL', estimatedFields: ['markPrice'] }, 'BINANCE', paperNow), false);
+  assert.equal(canCreateCanonicalPaperTrade({ ...quote, sourceTimestamps: undefined }, 'BINANCE', paperNow), false);
+  assert.equal(canCreateCanonicalPaperTrade({ ...quote, sourceTimestamps: { ticker: '2026-11-25T03:00:00Z' } }, 'BINANCE', paperNow), false);
 });
 
 test('canonical PAPER entry rejects a REST 24h ticker closeTime as a bid/ask event timestamp', () => {
