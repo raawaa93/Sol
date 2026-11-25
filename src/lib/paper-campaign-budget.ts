@@ -1,4 +1,5 @@
 import type { PaperTrade } from './types.ts';
+import type { CanonicalPaperCloseEvent } from './paper-journal.ts';
 
 export const PAPER_CAMPAIGN_CAPITAL = 200;
 export const PAPER_CAMPAIGN_MAX_LOSS = 60;
@@ -46,14 +47,15 @@ function getTradeDebit(trade: PaperTrade): number | undefined {
 }
 
 /**
- * A campaign reserves the full premium debit of every append-only PAPER entry.
- * The journal has no close/realized-P&L workflow yet, so entries remain allocated
- * until the user exports and explicitly resets the local campaign.
+ * Open positions reserve their full entry debit. Closed positions consume only
+ * their cumulative realized PAPER loss (net of explicitly entered exit fees).
+ * This is a simulated campaign-risk ledger, not an account balance.
  */
 export function summarizePaperCampaignBudget(
   trades: PaperTrade[],
   currency: string,
   cap = PAPER_CAMPAIGN_MAX_LOSS,
+  closeEvents: CanonicalPaperCloseEvent[] = [],
 ): PaperCampaignBudgetSummary {
   const normalizedCurrency = currency.trim().toUpperCase();
   const supportedCurrency = normalizedCurrency === 'USD' || normalizedCurrency === 'USDT';
@@ -61,8 +63,33 @@ export function summarizePaperCampaignBudget(
   let used = 0;
   let unknownEntries = 0;
   let currencyMismatchEntries = 0;
+  let realizedPnl = 0;
+  const tradesById = new Map(trades.map((trade) => [trade.id, trade]));
+  const closeByTradeId = new Map<string, CanonicalPaperCloseEvent>();
+
+  for (const event of closeEvents) {
+    if (!tradesById.has(event.tradeId) || closeByTradeId.has(event.tradeId)) {
+      unknownEntries += 1;
+      continue;
+    }
+    closeByTradeId.set(event.tradeId, event);
+  }
 
   for (const trade of trades) {
+    const closeEvent = closeByTradeId.get(trade.id);
+    if (closeEvent) {
+      if (getTradeCurrency(trade) !== normalizedCurrency || closeEvent.currency !== normalizedCurrency) {
+        currencyMismatchEntries += 1;
+        continue;
+      }
+      if (!Number.isFinite(closeEvent.netPnl) || !Number.isFinite(closeEvent.entryDebit)
+        || closeEvent.entryDebit <= 0 || closeEvent.entryDebit !== getTradeDebit(trade)) {
+        unknownEntries += 1;
+        continue;
+      }
+      realizedPnl += closeEvent.netPnl;
+      continue;
+    }
     if (getTradeCurrency(trade) !== normalizedCurrency) {
       currencyMismatchEntries += 1;
       continue;
@@ -75,6 +102,8 @@ export function summarizePaperCampaignBudget(
     used += debit;
   }
 
+  // Profits may offset prior campaign losses; never count them as negative risk.
+  used += Math.max(0, -realizedPnl);
   const remaining = Math.max(0, effectiveCap - used);
   return {
     currency: normalizedCurrency,
