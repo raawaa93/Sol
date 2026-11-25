@@ -91,13 +91,18 @@ export default function OpportunityReview({ quotes, market, underlying, dataMode
     && ['AVAILABLE', 'FLAT_RANGE'].includes(ivRank.status)
     ? `${ivRank.percentile.toFixed(1)}%`
     : 'غير متاح';
+  const ivPersistenceWarning = ivHistoryNotice === 'CORRUPT_STORAGE'
+    ? 'السجل المحلي تالف؛ لم نستبدله تلقائياً.'
+    : ivHistoryNotice === 'STORAGE_UNAVAILABLE'
+      ? 'تعذر حفظ السجل المحلي؛ صدّر نسخة احتياطية عند عودة التخزين.'
+      : '';
   const ivHistoryDetail = ivRank
-    ? `${ivRank.sampleCount} عينة يومية · تغطية ${ivRank.coverageDays} يوم · الأدنى ${formatPercent(ivRank.minimumIV)} · الأعلى ${formatPercent(ivRank.maximumIV)}`
+    ? `${ivRank.sampleCount} عينة يومية · تغطية ${ivRank.coverageDays} يوم · الأدنى ${formatPercent(ivRank.minimumIV)} · الأعلى ${formatPercent(ivRank.maximumIV)}${ivPersistenceWarning ? ' · ' + ivPersistenceWarning : ''}`
     : dataMode === 'BINANCE'
       ? (({ NO_VALID_MARK_IV_QUOTES: 'لا توجد لقطة REST Mark IV حديثة موثوقة.', NO_ATM_CALL_PUT_PAIRS: 'لا يوجد زوج CALL وPUT متزامن قرب سعر الأصل.', NO_30D_BRACKETING_EXPIRIES: 'لا تتوفر آجال تحيط بـ30 يوماً لحساب IV موحد.', AMBIGUOUS_UNDERLYING: 'لقطة السوق تحتوي أكثر من أصل أو منصة.', INVALID_AS_OF: 'وقت اللقطة غير صالح.' } as Record<string, string>)[ivHistoryNotice] ?? (ivHistoryNotice || 'بانتظار عينة Binance REST Mark IV صالحة.'))
       : 'يتطلب تاريخاً مرصوداً من Binance؛ لا نخلط بيانات Demo أو CSV معه.';
   const ivRankNote = ivRank?.status === 'AVAILABLE'
-    ? ivRank.isPartialHistory ? 'تاريخ جزئي؛ المؤشر يقارن العينة المتاحة فقط ولا يمثل سنة كاملة.' : 'مقارنة بآخر 365 يوماً من نفس مصدر وطريقة IV؛ ليس احتمال ربح أو توقع اتجاه.'
+    ? ivRank.isPartialHistory ? 'تاريخ جزئي؛ المؤشر يقارن العينة المتاحة فقط ولا يمثل سنة كاملة. السجل محلي وغير مشفر؛ احتفظ بنسخة JSON.' : 'مقارنة بآخر 365 يوماً من نفس مصدر وطريقة IV؛ ليس احتمال ربح أو توقع اتجاه. السجل محلي وغير مشفر؛ احتفظ بنسخة JSON.'
     : ivRank?.status === 'FLAT_RANGE'
       ? 'التاريخ متساوٍ تقريباً؛ IV Rank غير معرّف، والـPercentile يبقى وصفياً.'
       : ivRank?.status === 'INSUFFICIENT_HISTORY'
