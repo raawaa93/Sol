@@ -479,5 +479,9 @@ export function normalizePaperTradeRecord(trade: PaperTrade): PaperTrade {
     delete normalized.close;
     normalized.integrityWarning = 'CLOSE_RECORD_INVALID';
   }
+  if (normalized.integrityWarning !== 'CLOSE_RECORD_INVALID'
+    && normalized.integrityWarning !== 'ENTRY_EXECUTION_EVIDENCE_INVALID') {
+    delete normalized.integrityWarning;
+  }
   return normalized;
 }
