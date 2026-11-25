@@ -454,6 +454,44 @@ test('paper close event storage appends once and rejects duplicate trade closure
   assert.equal(loaded.persistenceBlocked, false);
 });
 
+test('paper close event storage quarantines duplicate close records for the same trade', () => {
+  const entry = createCanonicalPaperTrade(input);
+  assert.equal(entry.ok, true);
+  if (!entry.ok) return;
+  const closeQuote = {
+    ...quote,
+    sourceTimestamps: {
+      ...quote.sourceTimestamps,
+      bookTicker: '2026-11-25T03:01:30Z',
+      index: '2026-11-25T03:01:30Z',
+    },
+    sourceReceivedAt: { bidAsk: '2026-11-25T03:01:31Z' },
+  };
+  const result = createCanonicalPaperCloseEvent({
+    trade: entry.trade,
+    quote: closeQuote,
+    sourceMode: 'BINANCE',
+    id: 'close-duplicate-1',
+    closedAt: '2026-11-25T03:02:00Z',
+    exitFees: 0.25,
+    spotAtExit: closeQuote.spot,
+  });
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  const raw = JSON.stringify([result.event, { ...result.event, id: 'close-duplicate-2' }]);
+  const values = new Map<string, string>([[PAPER_CLOSE_EVENTS_KEY, raw]]);
+  const storage = {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => { values.set(key, value); },
+    removeItem: (key: string) => { values.delete(key); },
+  };
+  const loaded = loadPaperCloseEvents(storage);
+  assert.equal(loaded.events.length, 1);
+  assert.equal(loaded.rejectedCount, 1);
+  assert.equal(loaded.backupAvailable, true);
+  assert.equal(values.get(PAPER_CLOSE_EVENTS_RECOVERY_KEY), raw);
+});
+
 test('paper close event storage quarantines invalid rows before replacing the active event list', () => {
   const values = new Map<string, string>();
   const raw = JSON.stringify([{ eventType: 'CLOSE', id: 'corrupt' }]);
