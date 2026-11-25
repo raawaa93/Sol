@@ -3,7 +3,7 @@ import test from 'node:test';
 import type { PaperTrade } from './types.ts';
 import {
   PAPER_CAMPAIGN_CAPITAL,
-  PAPER_CAMPAIGN_MAX_LOSS,
+  PAPER_CAMPAIGN_ALLOCATION_CAP,
   PAPER_CAMPAIGN_PER_TRADE_CAP,
   canAllocatePaperCampaignTrade,
   summarizePaperCampaignBudget,
@@ -30,9 +30,9 @@ function trade(overrides: Partial<PaperTrade> = {}): PaperTrade {
   };
 }
 
-test('campaign defaults match the 200 capital / 60 total loss / 20 per attempt plan', () => {
+test('campaign defaults match the 200 virtual reference / 60 cumulative allocation / 20 per attempt plan', () => {
   assert.equal(PAPER_CAMPAIGN_CAPITAL, 200);
-  assert.equal(PAPER_CAMPAIGN_MAX_LOSS, 60);
+  assert.equal(PAPER_CAMPAIGN_ALLOCATION_CAP, 60);
   assert.equal(PAPER_CAMPAIGN_PER_TRADE_CAP, 20);
 });
 
