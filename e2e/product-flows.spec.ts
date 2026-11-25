@@ -286,8 +286,8 @@ test('mismatched contract multiplier keeps quotes visible but blocks per-contrac
   const secondTime = new Date(Date.now() - 60 * 60_000).toISOString();
   const header = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,spot,unit,timestamp,assetClass,venue,underlyingKind,forward,riskFreeRate,exerciseStyle,settlementStyle,quoteAsset,settlementAsset,contractMultiplier,bidAskSource,bidAskTimestamp,bidAskReceivedAt,bidAskSizeUnit,bidQuantity,askQuantity';
   const rows = [
-    ['CL-UNVERIFIED-70-C', 'CL', expiry, '70', 'CALL', '2.0', '2.2', '2.1', '20%', '69', '1', firstTime, 'ENERGY', 'CME', 'FUTURE', '69', '3%', 'EUROPEAN', 'PHYSICAL', 'USD', 'USD', '1000', 'BOOK_TICKER', firstTime, new Date(Date.parse(firstTime) + 100).toISOString(), 'CONTRACTS', '10', '10'],
-    ['CL-UNVERIFIED-70-C', 'CL', expiry, '70', 'CALL', '2.1', '2.3', '2.2', '20%', '69', '1', secondTime, 'ENERGY', 'CME', 'FUTURE', '69', '3%', 'EUROPEAN', 'PHYSICAL', 'USD', 'USD', '1000', 'BOOK_TICKER', secondTime, new Date(Date.parse(secondTime) + 100).toISOString(), 'CONTRACTS', '10', '10'],
+    ['CL-UNVERIFIED-70-C', 'CL', expiry, '70', 'CALL', '2.0', '2.1', '2.05', '20%', '69', '1', firstTime, 'ENERGY', 'CME', 'FUTURE', '69', '3%', 'EUROPEAN', 'PHYSICAL', 'USD', 'USD', '1000', 'BOOK_TICKER', firstTime, new Date(Date.parse(firstTime) + 100).toISOString(), 'CONTRACTS', '10', '10'],
+    ['CL-UNVERIFIED-70-C', 'CL', expiry, '70', 'CALL', '2.1', '2.2', '2.15', '20%', '69', '1', secondTime, 'ENERGY', 'CME', 'FUTURE', '69', '3%', 'EUROPEAN', 'PHYSICAL', 'USD', 'USD', '1000', 'BOOK_TICKER', secondTime, new Date(Date.parse(secondTime) + 100).toISOString(), 'CONTRACTS', '10', '10'],
   ].map((row) => row.join(','));
   await page.locator('section').filter({ hasText: 'MULTI-ASSET OPTIONS ·' }).locator('input[type="file"]').setInputFiles({
     name: 'unverified-futures-scale.csv',
