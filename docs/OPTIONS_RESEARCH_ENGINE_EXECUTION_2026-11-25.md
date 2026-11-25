@@ -98,3 +98,24 @@ PR #196 merged as `26b82d63bdd533c96fba8a881a8036fcf7c0b470`. It adds an end-to-
 - Project Context Guard 45570955274: passed.
 
 This test does not change the operational limitations: there is still no live capture, scheduled worker, durable cloud archive or measured strategy edge.
+
+
+## Follow-up — timestamped BBO replay integrity — 25 November 2026, 08:04 UTC
+
+PR #204 merged to main as `337e03fb26d44c906125318affc473030c165da4` (PR merge commit `d5764779a5070161a7d7c82201d1db12483f5ec6`). It closes the replay execution-evidence gap:
+
+- Replay now requires an explicit BBO source, source-event timestamp, local receive timestamp, non-estimated two-sided prices, explicit displayed-size unit, and enough Ask size to enter plus Bid size to exit.
+- Execution chronology uses local receive/availability time; source event time remains separately recorded. The REST `OPTION_TICKER` BBO timestamp remains distinct from the WebSocket `optionTicker` 24-hour statistics clock.
+- Binance `bookTicker` captures exchange event time, local receive time, bid/ask quantities and explicit contract-count units.
+- CSV import preserves source/receive clocks and size units, but these remain user-asserted and are not independently authenticated.
+- Replay applies configurable adverse per-side slippage and exposes source, clocks, displayed sizes, fills and slippage in the UI. The downloadable CSV template and E2E fixtures were updated.
+- Opportunity review was deferred/lazy-loaded to preserve the initial bundle budget.
+
+**Fresh verification evidence**
+- CI run 45572889900: 303/303 unit/property tests passed; production TypeScript/Vite build passed; compressed bundle budget passed; age-encryption/backup orchestration tests passed against a mocked database; 18/18 Playwright journeys passed.
+- Bundle measurements: initial JS 96.985 KiB / 100 KiB; all JS 127.871 KiB / 240 KiB; CSS 13.571 KiB / 14 KiB.
+- Lighthouse run 45572889852: Performance 99/100, Accessibility 100/100, Best Practices 100/100, SEO 100/100; FCP/LCP 757 ms, TBT 120 ms, CLS 0.000.
+- Project Context Guard run 45572889839: passed.
+- PR #201 was closed unmerged as a superseded duplicate; PR #204 is the merged implementation.
+
+**Remaining limits are unchanged:** no live Binance capture, no scheduled/supervised worker, no cloud archive, no historical executable BBO corpus, no walk-forward evidence or measured strategy edge, and no live trading. The replay is a PAPER execution baseline, not a signal strategy or proof of profitability.
