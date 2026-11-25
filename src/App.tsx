@@ -53,6 +53,8 @@ import type { AssetClass, OptionQuote, OptionSide, PaperTrade, Underlying } from
 import { ASSET_CLASS_LABELS } from './lib/asset-class';
 import { PAPER_CAMPAIGN_CAPITAL, PAPER_CAMPAIGN_MAX_LOSS, PAPER_CAMPAIGN_PER_TRADE_CAP, canAllocatePaperCampaignTrade, summarizePaperCampaignBudget } from './lib/paper-campaign-budget';
 import { canCreateCanonicalPaperTrade, closeCanonicalPaperTrade, createCanonicalPaperTrade, estimateBinanceOptionsTradingFee, normalizePaperTradeRecord } from './lib/paper-journal';
+import { hasValidPaperEntryExecutionEvidence, isValidPaperTradeCloseRecord } from './lib/paper-journal';
+import { clearPaperJournalRecovery, loadPaperJournal, readPaperJournalPrimary, readPaperJournalRecovery } from './lib/paper-journal-storage';
 const MarketDepthPanel = lazy(() => import('./components/MarketDepthPanel'));
 const OpportunityReview = lazy(() => import('./components/OpportunityReview'));
 const GreeksPanel = lazy(() => import('./components/GreeksPanel'));
@@ -188,20 +190,20 @@ function loadWatchlist(): string[] {
   }
 }
 
-function normalizePaperTrade(value: unknown): PaperTrade | undefined {
+function isPaperTradeForJournal(value: unknown): value is PaperTrade {
+  if (!isPaperTradeBase(value)) return false;
+  const trade = value as PaperTrade;
+  return (trade.priceSourceAtEntry !== 'ASK' || hasValidPaperEntryExecutionEvidence(trade))
+    && (trade.close === undefined || isValidPaperTradeCloseRecord(trade.close, trade));
+}
+
+function recoverPaperTrade(value: unknown): PaperTrade | undefined {
   if (!isPaperTradeBase(value)) return undefined;
   return normalizePaperTradeRecord(value as PaperTrade);
 }
 
-function loadPaperTrades(): PaperTrade[] {
-  try {
-    const value = localStorage.getItem('volterra-paper-trades-v1');
-    if (!value) return [];
-    const parsed: unknown = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed.map(normalizePaperTrade).filter((trade): trade is PaperTrade => Boolean(trade)) : [];
-  } catch {
-    return [];
-  }
+function loadPaperJournalState() {
+  return loadPaperJournal<PaperTrade>(localStorage, isPaperTradeForJournal, recoverPaperTrade);
 }
 
 function getQuantityStep(quote: OptionQuote): number {
@@ -276,7 +278,8 @@ function App() {
   const [quantity, setQuantity] = useState(0.01);
   const [riskBudget, setRiskBudget] = useState(PAPER_CAMPAIGN_PER_TRADE_CAP);
   const [fees, setFees] = useState(0);
-  const [trades, setTrades] = useState<PaperTrade[]>(loadPaperTrades);
+  const [paperJournalLoad, setPaperJournalLoad] = useState(loadPaperJournalState);
+  const [trades, setTrades] = useState<PaperTrade[]>(paperJournalLoad.entries);
   const [toast, setToast] = useState('');
   const [csvWarnings, setCsvWarnings] = useState<string[]>([]);
   const [showAllCsvWarnings, setShowAllCsvWarnings] = useState(false);
@@ -654,12 +657,16 @@ function App() {
   }, [filteredQuotes, selectedId]);
 
   useEffect(() => {
+    if (paperJournalLoad.persistenceBlocked) {
+      setToast('توقفت الكتابة إلى دفتر PAPER لحماية بيانات قديمة لم نستطع استعادتها بأمان. نزّل النسخة الخام قبل المتابعة.');
+      return;
+    }
     try {
       localStorage.setItem('volterra-paper-trades-v1', JSON.stringify(trades));
     } catch {
       setToast('تعذر حفظ الدفتر محلياً؛ قد يكون التخزين معطلاً أو ممتلئاً.');
     }
-  }, [trades]);
+  }, [trades, paperJournalLoad.persistenceBlocked]);
 
   useEffect(() => {
     if (!toast) return;
@@ -1028,6 +1035,10 @@ function App() {
   };
 
   const savePaperTrade = async () => {
+    if (paperJournalLoad.persistenceBlocked) {
+      notify('تم إيقاف تسجيل PAPER لحماية بيانات دفتر لم نستطع استعادتها بأمان. نزّل نسخة الاستعادة ولا تمسح بيانات المتصفح.');
+      return;
+    }
     if (campaignBudgetBlockMessage) {
       notify(campaignBudgetBlockMessage);
       return;
@@ -1196,10 +1207,62 @@ function App() {
   };
 
   const clearPaperJournal = () => {
+    if (paperJournalLoad.persistenceBlocked) {
+      notify('لا يمكن مسح الدفتر ما دامت سلامة نسخة الاستعادة غير مؤكدة. نزّل النسخة الخام أولاً.');
+      return;
+    }
     if (!trades.length) return;
     if (!window.confirm('سيتم حذف إدخالات PAPER المحلية وتحرير ميزانية الحملة. صدّر CSV أولاً إذا أردت الاحتفاظ بالسجل. لا يؤثر هذا على أي أموال أو أوامر حقيقية. هل تريد المتابعة؟')) return;
     setTrades([]);
     notify('تم تصفير حملة PAPER المحلية فقط؛ لم يتغير أي حساب أو أمر حقيقي.');
+  };
+
+  const downloadPaperJournalRaw = (raw: string | null, filename: string, label: string) => {
+    if (raw === null) {
+      notify('تعذر قراءة النسخة الخام من التخزين المحلي؛ لا تمسح بيانات المتصفح.');
+      return;
+    }
+    const blob = new Blob([raw], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+    notify(label + '؛ احتفظ بها خارج المتصفح.');
+  };
+
+  const exportPaperJournalRecovery = () => {
+    downloadPaperJournalRaw(
+      readPaperJournalRecovery(localStorage),
+      'sol-paper-journal-recovery.json',
+      'تم تنزيل نسخة الاستعادة السابقة من دفتر PAPER',
+    );
+  };
+
+  const exportPaperJournalOriginal = () => {
+    downloadPaperJournalRaw(
+      readPaperJournalPrimary(localStorage),
+      'sol-paper-journal-original.json',
+      'تم تنزيل الملف الأصلي الحالي من دفتر PAPER',
+    );
+  };
+
+  const retryPaperJournalPersistence = () => {
+    if (!paperJournalLoad.persistenceBlocked) return;
+    if (!window.confirm('بعد تنزيل النسخ الخام وحفظها خارج المتصفح، هل تريد إزالة قفل الاستعادة وإعادة فحص الملف الأصلي؟')) return;
+    if (!clearPaperJournalRecovery(localStorage)) {
+      notify('تعذر إزالة قفل الاستعادة من التخزين المحلي؛ لم نغيّر الملف الأصلي.');
+      return;
+    }
+    const next = loadPaperJournalState();
+    setPaperJournalLoad(next);
+    setTrades(next.entries);
+    notify(next.persistenceBlocked
+      ? 'ما زالت الكتابة متوقفة؛ الملف الأصلي محفوظ دون تعديل. حرّر مساحة التخزين أو أصلح الملف ثم أعد المحاولة.'
+      : 'اكتملت إعادة فحص دفتر PAPER؛ حُفظت النسخة الخام اللازمة قبل استئناف الكتابة.');
   };
 
   const exportTrades = () => {
@@ -1674,8 +1737,9 @@ function App() {
           </Suspense>
 
           <section className="section-anchor journal-section" id="journal">
-            <div className="section-title-row"><div><span className="section-kicker">PAPER WORKSPACE</span><h2>الدفتر التجريبي</h2><p>سجل الفرضية والكمية والقسط قبل أن تقيم جودة القرار.</p></div><div className="journal-actions"><button className="button button-ghost" onClick={exportTrades}><Download size={14} /> تصدير CSV</button><button className="button button-ghost" onClick={exportIVHistoryBackup}><Download size={14} /> نسخة IV JSON</button><button className="button button-ghost danger-ghost" onClick={clearPaperJournal} disabled={!trades.length}><Trash2 size={14} /> مسح الدفتر</button></div></div>
+            <div className="section-title-row"><div><span className="section-kicker">PAPER WORKSPACE</span><h2>الدفتر التجريبي</h2><p>سجل الفرضية والكمية والقسط قبل أن تقيم جودة القرار.</p></div><div className="journal-actions"><button className="button button-ghost" onClick={exportTrades}><Download size={14} /> تصدير CSV</button><button className="button button-ghost" onClick={exportIVHistoryBackup}><Download size={14} /> نسخة IV JSON</button><button className="button button-ghost danger-ghost" onClick={clearPaperJournal} disabled={!trades.length || paperJournalLoad.persistenceBlocked}><Trash2 size={14} /> مسح الدفتر</button></div></div>
             <article className="panel journal-panel">
+              {(paperJournalLoad.backupAvailable || paperJournalLoad.persistenceBlocked || paperJournalLoad.rejectedCount > 0 || paperJournalLoad.parseError) && <div className="journal-recovery-warning" role="alert"><strong>تنبيه سلامة دفتر PAPER</strong><p>{paperJournalLoad.persistenceBlocked ? 'أوقفنا أي كتابة جديدة حتى لا نفقد بيانات لم نستطع استعادتها بأمان.' : paperJournalLoad.parseError ? 'تعذر تحليل الملف الأصلي؛ احتفظنا بنسخته الخام قبل استبعاده.' : paperJournalLoad.rejectedCount > 0 ? `تم استرداد ${paperJournalLoad.rejectedCount} سجل إلى حالة مفتوحة تحفظ كامل قسطه؛ النسخة الأصلية محفوظة للاستعادة.` : 'توجد نسخة استعادة سابقة محفوظة؛ احتفظ بها خارج المتصفح قبل مسح بياناته.'} لا تمسح بيانات المتصفح قبل تنزيل النسخة.</p>{paperJournalLoad.backupAvailable && <button className="button button-ghost" onClick={exportPaperJournalRecovery}><Download size={14} /> تنزيل نسخة الاستعادة JSON</button>}{paperJournalLoad.persistenceBlocked && <button className="button button-ghost" onClick={exportPaperJournalOriginal}><Download size={14} /> تنزيل الملف الأصلي</button>}{paperJournalLoad.persistenceBlocked && <button className="button button-ghost" onClick={retryPaperJournalPersistence}>إعادة المحاولة بعد حفظ النسخ</button>}</div>}
               <div className="journal-summary"><div className="journal-summary-icon"><WalletCards size={18} /></div><div><strong>{trades.length} <span>صفقة تجريبية</span></strong><small>محفوظة محلياً في هذا المتصفح فقط</small></div><div className="journal-metric"><span>وضع التنفيذ</span><strong><i /> PAPER ONLY</strong></div><div className="journal-metric"><span>مفاتيح تداول</span><strong className="safe-label"><LockKeyhole size={13} /> غير مطلوبة</strong></div></div>
               {trades.length ? <>
                 <div className="journal-table-wrap"><table className="journal-table"><thead><tr><th>وقت التسجيل</th><th>العقد</th><th>Strike</th><th>كمية</th><th>قسط الدخول</th><th>المؤشر وقت الدخول</th><th>الحالة / النتيجة</th></tr></thead><tbody>{trades.map((trade) => <tr key={trade.id}><td>{formatDateTime(new Date(trade.createdAt))}</td><td><span className={`mini-type ${trade.type.toLowerCase()}`}>{trade.type}</span><strong>{trade.symbol}</strong>{trade.contractEconomics && <small>لقطة العقد: قسط ×{trade.premiumMultiplierAtEntry} · وحدة التسليم {trade.contractUnitAtEntry}</small>}</td><td>{formatAssetPrice(trade.strike, trade.spotAtEntry, trade.quoteAsset ?? null)}</td><td>{formatQuantity(trade.quantity, { quantityScale: trade.quantityPrecision })}</td><td>{formatOptionPrice(trade.entryPremium, { priceScale: trade.pricePrecision }, trade.quoteAsset ?? null)}<small>{trade.priceSourceAtEntry === 'ASK' ? 'Ask · دخول قابل للمحاكاة' : 'سعر مرجعي قديم · ليس ملء تنفيذ'}</small>{trade.premiumDebitAtEntry !== undefined && <small>القسط والرسوم: {formatMoney(trade.premiumDebitAtEntry, 2, trade.premiumCurrencyAtEntry ?? null)}</small>}</td><td>{formatAssetPrice(trade.spotAtEntry, trade.spotAtEntry, trade.quoteAsset ?? null)}</td><td>{trade.integrityWarning === 'ENTRY_EXECUTION_EVIDENCE_INVALID' ? <small>بيانات دخول التنفيذ غير مكتملة؛ حُفظ المركز مفتوحاً واحتُسب كامل قسطه ضمن المخاطر.</small> : trade.integrityWarning === 'CLOSE_RECORD_INVALID' ? <small>سجل إغلاق سابق غير صالح؛ حُفظ المركز مفتوحاً واحتُسب كامل قسطه ضمن المخاطر.</small> : null}{trade.integrityWarning === 'ENTRY_EXECUTION_EVIDENCE_INVALID' ? <small>بيانات دخول التنفيذ غير مكتملة؛ احتُفظ بالمركز مفتوحاً.</small> : trade.integrityWarning === 'CLOSE_RECORD_INVALID' ? <small>سجل إغلاق سابق غير صالح؛ احتُفظ بالمركز مفتوحاً.</small> : null}{trade.close ? <span className="paper-status"><i /> مغلقة · {formatMoney(trade.close.realizedPnl, 2, trade.close.currency)}</span> : trade.priceSourceAtEntry === 'ASK' && trade.contractEconomics && trade.integrityWarning !== 'ENTRY_EXECUTION_EVIDENCE_INVALID' ? dataMode === 'BINANCE' ? <button className="button button-ghost" onClick={() => void closePaperTrade(trade)}>إغلاق على Bid الحالي</button> : <span className="paper-status">اختر Binance لتحديث Bid</span> : <span className="paper-status"><i /> سجل قديم · غير قابل للإغلاق</span>}</td></tr>)}</tbody></table></div>
