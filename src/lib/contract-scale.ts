@@ -144,6 +144,7 @@ export function hasCanonicalBinanceModelGreekCapability(
     && (quote.pricingStatus === 'ASSUMED' || quote.pricingStatus === 'SUPPORTED')
     && quote.ivStatus === 'OBSERVED'
     && quote.markIvSource === 'REST_MARK'
+    && (quote.riskFreeRateSource === 'REST_MARK' || quote.riskFreeRateSource === 'MARK_PRICE')
     && markIvFresh && riskFreeFresh && indexFresh
     && !estimated.some((field) => ['iv', 'spot', 'daysToExpiry', 'riskFreeRate', 'delta', 'gamma', 'theta', 'vega', 'rho'].includes(field))
     && Number.isFinite(quote.spot) && quote.spot > 0
