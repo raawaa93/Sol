@@ -62,6 +62,10 @@ function canonicalTradeForBudget(): PaperTrade {
     premiumAmountAtEntry: 20,
     premiumDebitAtEntry: 20,
     premiumCurrencyAtEntry: 'USDT',
+    priceSourceAtEntry: 'ASK',
+    bidAskSourceAtEntry: 'BOOK_TICKER',
+    askQuantityAtEntry: 1,
+    askSizeUnitAtEntry: 'CONTRACTS',
     sourceTimestampsAtEntry: {
       bookTicker: '2026-11-25T06:59:59Z',
       index: '2026-11-25T06:59:59Z',
