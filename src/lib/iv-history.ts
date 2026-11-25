@@ -9,7 +9,6 @@ export const DEFAULT_IV_FRESHNESS_MS = 5 * 60_000;
 export type IVHistorySource = 'BINANCE_REST_MARK' | 'USER_IMPORT' | 'SYNTHETIC';
 export type IVHistoryConvention =
   | 'ATM_30D_VARIANCE_INTERPOLATED'
-  | 'ATM_30D_EXACT'
   | 'BID_IV_30D'
   | 'ASK_IV_30D';
 
@@ -224,6 +223,7 @@ export function extractObservedAtm30DayIV(
     const callIndex = parseTime(call.sourceTimestamps?.index)!;
     const putIndex = parseTime(put.sourceTimestamps?.index)!;
     if (Math.abs(callReceived - putReceived) > 60_000 || Math.abs(callIndex - putIndex) > 60_000
+      || Math.abs(callReceived - callIndex) > 60_000 || Math.abs(putReceived - putIndex) > 60_000
       || Math.abs(call.daysToExpiry - put.daysToExpiry) > 0.1
       || Math.abs(call.spot - put.spot) / Math.max(call.spot, put.spot) > 0.01) continue;
     const spot = (call.spot + put.spot) / 2;
@@ -255,7 +255,7 @@ export function extractObservedAtm30DayIV(
   if (exact) {
     iv = exact.iv;
     selected = [exact];
-    convention = 'ATM_30D_EXACT';
+    convention = 'ATM_30D_VARIANCE_INTERPOLATED';
   } else {
     const before = [...points].reverse().find((point) => point.daysToExpiry < 30);
     const after = points.find((point) => point.daysToExpiry > 30);
