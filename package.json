@@ -9,14 +9,15 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build && node scripts/copy-pages-dotfiles.mjs",
-    "test": "node --experimental-strip-types --test src/lib/*.test.ts",
+    "test": "node --experimental-strip-types --test src/lib/*.test.ts scripts/*.test.mjs",
     "test:e2e": "playwright test",
     "smoke:production": "node scripts/smoke-production.mjs",
     "perf:bundle": "node scripts/check-bundle-budget.mjs",
     "perf:lighthouse": "lhci autorun",
     "perf:lighthouse:production": "lhci autorun --config=lighthouserc.production.json",
     "preview": "vite preview --host 0.0.0.0",
-    "build:pages": "tsc -b && vite build --mode pages && node scripts/copy-pages-dotfiles.mjs"
+    "build:pages": "tsc -b && vite build --mode pages && node scripts/copy-pages-dotfiles.mjs",
+    "test:archive": "node --test scripts/options-archive.test.mjs scripts/options-collector.test.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
