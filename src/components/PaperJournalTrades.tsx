@@ -75,8 +75,8 @@ export default function PaperJournalTrades({
               <div><small>السعر المرجعي</small><strong>{formatAssetPrice(trade.spotAtEntry, trade.spotAtEntry, trade.quoteAsset ?? null)}</strong></div>
             </div>
             {trade.exit
-              ? <span className="paper-status"><i /> مغلقة · إجمالي {formatMoney(trade.exit.realizedGrossPnl, trade.premiumCurrencyAtEntry ?? null)}{trade.exit.realizedNetPnl !== undefined ? ` · صافي ${formatMoney(trade.exit.realizedNetPnl, trade.premiumCurrencyAtEntry ?? null)}` : ' · الصافي غير معروف'}</span>
-              : <button className="button button-ghost journal-close-button" disabled={!trade.contractEconomics || selectedQuoteSymbol !== trade.symbol || persistenceBlocked} onClick={() => onClose(trade)}>إغلاق عند Bid</button>}
+              ? <span className="paper-status"><i /> PAPER ONLY · مغلقة · إجمالي {formatMoney(trade.exit.realizedGrossPnl, trade.premiumCurrencyAtEntry ?? null)}{trade.exit.realizedNetPnl !== undefined ? ` · صافي ${formatMoney(trade.exit.realizedNetPnl, trade.premiumCurrencyAtEntry ?? null)}` : ' · الصافي غير معروف'}</span>
+              : <><span className="paper-status"><i /> تجريبية · PAPER ONLY · مفتوحة</span><button className="button button-ghost journal-close-button" disabled={!trade.contractEconomics || selectedQuoteSymbol !== trade.symbol || persistenceBlocked} onClick={() => onClose(trade)}>إغلاق عند Bid</button></>}
           </article>
         ))}
       </div>
