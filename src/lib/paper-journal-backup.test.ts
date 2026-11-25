@@ -89,7 +89,7 @@ test('local import persists merged records before the caller updates UI state', 
   if (!backup.ok || !backup.json) return;
   const storage = new MemoryStorage();
   storage.value = JSON.stringify([first]);
-  const result = importPaperJournalJsonBackup(backup.json, [first], valid, storage, 'journal');
+  const result = importPaperJournalJsonBackup(backup.json, [first], valid, storage);
   assert.deepEqual(result, { ok: true, entries: [first, second], added: 1 });
   assert.deepEqual(JSON.parse(storage.value!), [first, second]);
 });
@@ -102,7 +102,7 @@ test('local import leaves existing storage unchanged when persistence fails', ()
   const original = JSON.stringify([first]);
   storage.value = original;
   storage.failSet = true;
-  const result = importPaperJournalJsonBackup(backup.json, [first], valid, storage, 'journal');
+  const result = importPaperJournalJsonBackup(backup.json, [first], valid, storage);
   assert.deepEqual(result, { ok: false, message: 'تعذر حفظ النسخة المدمجة بسبب مساحة التخزين؛ بقي الدفتر الحالي كما هو.' });
   assert.equal(storage.value, original);
 });
@@ -114,7 +114,7 @@ test('local import rejects ID conflicts before writing storage', () => {
   if (!backup.ok || !backup.json) return;
   const storage = new MemoryStorage();
   storage.value = JSON.stringify([first]);
-  const result = importPaperJournalJsonBackup(backup.json, [first], valid, storage, 'journal');
+  const result = importPaperJournalJsonBackup(backup.json, [first], valid, storage);
   assert.equal(result.ok, false);
   assert.equal(storage.value, JSON.stringify([first]));
 });
@@ -151,7 +151,7 @@ test('local import rejects stale in-memory state instead of overwriting a concur
   const storage = new MemoryStorage();
   const changedByOtherTab = JSON.stringify([{ ...first, amount: 18 }]);
   storage.value = changedByOtherTab;
-  const result = importPaperJournalJsonBackup(backup.json, [first], valid, storage, 'journal');
+  const result = importPaperJournalJsonBackup(backup.json, [first], valid, storage);
   assert.equal(result.ok, false);
   assert.match(result.message, /تغير الدفتر/);
   assert.equal(storage.value, changedByOtherTab);
@@ -164,7 +164,7 @@ test('local import verifies the final persisted bytes before reporting success',
   const storage = new MemoryStorage();
   storage.value = JSON.stringify([first]);
   storage.failReadBack = true;
-  const result = importPaperJournalJsonBackup(backup.json, [first], valid, storage, 'journal');
+  const result = importPaperJournalJsonBackup(backup.json, [first], valid, storage);
   assert.equal(result.ok, false);
   assert.match(result.message, /التحقق من حفظ/);
 });
