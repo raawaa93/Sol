@@ -78,7 +78,7 @@ test('trade MARKET and BLOCK are separate; taker side is derived only from maker
   assert.equal(blockRecord.kind, 'TRADE_BLOCK');
   assert.equal(marketRecord.fields.find((field) => field.name === 'aggressorSide').value, 'SELL');
   assert.equal(blockRecord.fields.find((field) => field.name === 'aggressorSide').value, 'BUY');
-  assert.equal(marketRecord.fields.find((field) => field.name === 'tradeTime').value, new Date(EVENT_MS - 10).toISOString());
+  assert.equal(marketRecord.fields.find((field) => field.name === 'tradeTime').value, EVENT_MS - 10);
   assert.equal(marketRecord.rawPayload.T, EVENT_MS - 10);
   const { T: _ignored, ...withoutT } = market;
   const [withoutTransactionTime] = parseBinancePublicStreamEvent({ ...withoutT, t: 104 }, RECEIVED);
