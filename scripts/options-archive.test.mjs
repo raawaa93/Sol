@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile, unlink, symlink, stat } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile, unlink, symlink, stat, utimes } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -188,6 +188,28 @@ test('recent partial recovery lock is treated as busy during concurrent stale-le
   await assert.rejects(
     archive.acquireWriterLease(),
     (error) => error instanceof OptionsArchiveError && error.code === 'WRITER_LEASE_RECOVERY_BUSY',
+  );
+  assert.deepEqual(JSON.parse(await readFile(writerPath, 'utf8')), writer);
+  assert.equal(await readFile(recoveryPath, 'utf8'), '');
+});
+
+test('stale malformed recovery lock is never deleted without verifiable owner metadata', async (t) => {
+  const { root, archive } = await makeArchive(t);
+  const writerPath = join(root, '.writer.lock');
+  const recoveryPath = join(root, '.writer.recovery.lock');
+  const writer = {
+    token: 'expired-owner',
+    pid: 2_147_483_647,
+    host: process.env.HOSTNAME ?? 'local',
+    expiresAt: Date.now() - 10_000,
+  };
+  await writeFile(writerPath, JSON.stringify(writer), { mode: 0o600 });
+  await writeFile(recoveryPath, '', { mode: 0o600 });
+  const stale = new Date(Date.now() - 60_000);
+  await utimes(recoveryPath, stale, stale);
+  await assert.rejects(
+    archive.acquireWriterLease(),
+    (error) => error instanceof OptionsArchiveError && error.code === 'WRITER_LEASE_RECOVERY_CORRUPT',
   );
   assert.deepEqual(JSON.parse(await readFile(writerPath, 'utf8')), writer);
   assert.equal(await readFile(recoveryPath, 'utf8'), '');
