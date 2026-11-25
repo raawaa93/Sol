@@ -135,12 +135,13 @@ export function calculateQuoteCashRiskNeutralMetrics(
   feesPerContract = 0,
 ): QuoteCashRiskNeutralMetrics | null {
   const economics = supportedCashEconomics(quote);
-  if (!economics || economics.provenance.status !== 'PROVIDER_VERIFIED'
+  const cashSettlement = economics?.exercise.cashSettlement;
+  if (!economics || !cashSettlement || economics.provenance.status !== 'PROVIDER_VERIFIED'
     || economics.provenance.provider !== 'BINANCE'
     || economics.exercise.style !== 'EUROPEAN'
     || economics.exercise.settlement !== 'CASH'
-    || economics.exercise.cashSettlement?.formula !== 'INTRINSIC_VALUE'
-    || economics.exercise.cashSettlement.reference !== 'INDEX'
+    || cashSettlement.formula !== 'INTRINSIC_VALUE'
+    || cashSettlement.reference !== 'INDEX'
     || economics.premium.priceUnit !== 'PER_CONTRACT'
     || economics.premium.quoteCurrency !== economics.exercise.cashSettlement.currency
     || quote.underlyingKind !== 'SPOT'
@@ -160,7 +161,7 @@ export function calculateQuoteCashRiskNeutralMetrics(
     || !Number.isFinite(feesPerContract) || feesPerContract < 0
     || (quote.type !== 'CALL' && quote.type !== 'PUT')) return null;
 
-  const cashMultiplier = economics.exercise.cashSettlement.multiplier;
+  const cashMultiplier = cashSettlement.multiplier;
   const premiumMultiplier = economics.premium.multiplier;
   if (!Number.isFinite(cashMultiplier) || cashMultiplier <= 0
     || !Number.isFinite(premiumMultiplier) || premiumMultiplier <= 0) return null;
@@ -192,7 +193,7 @@ export function calculateQuoteCashRiskNeutralMetrics(
       breakevenPrice,
       riskFreeRate: rate,
       carryYield: carry,
-      currency: economics.exercise.cashSettlement.currency,
+      currency: cashSettlement.currency,
     };
   }
 
@@ -229,7 +230,7 @@ export function calculateQuoteCashRiskNeutralMetrics(
     breakevenPrice,
     riskFreeRate: rate,
     carryYield: carry,
-    currency: economics.exercise.cashSettlement.currency,
+    currency: cashSettlement.currency,
   };
 }
 
