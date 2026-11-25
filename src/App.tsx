@@ -51,9 +51,55 @@ import { calculatePremiumCash } from './lib/contract-economics-calculations';
 import { formatAssetPrice, formatNumber, formatOptionPrice, formatQuantity, formatSmallNumber, getOptionPricePrecision, getQuantityPrecision, getQuoteCurrency } from './lib/format';
 import type { AssetClass, OptionQuote, OptionSide, PaperTrade, Underlying } from './lib/types';
 import { ASSET_CLASS_LABELS } from './lib/asset-class';
-import { PAPER_CAMPAIGN_CAPITAL, PAPER_CAMPAIGN_MAX_LOSS, PAPER_CAMPAIGN_PER_TRADE_CAP, canAllocatePaperCampaignTrade, isCanonicalPaperCloseEventForTrade, summarizePaperCampaignBudget } from './lib/paper-campaign-budget';
-import { clearPaperJournalRecovery, loadPaperJournal, PAPER_JOURNAL_STORAGE_KEY, readPaperJournalPrimary, readPaperJournalRecovery } from './lib/paper-journal-storage';
+import type { PaperCampaignBudgetSummary } from './lib/paper-campaign-budget';
 import type { PaperCloseEventsLoadResult } from './lib/paper-journal-events';
+import type { PaperJournalLoadResult } from './lib/paper-journal-storage';
+const PAPER_CAMPAIGN_CAPITAL = 200;
+const PAPER_CAMPAIGN_MAX_LOSS = 60;
+const PAPER_CAMPAIGN_PER_TRADE_CAP = 20;
+
+function stablePaperJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stablePaperJson).join(',')}]`;
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${stablePaperJson(record[key])}`).join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'null';
+}
+
+function isVisiblePaperCloseEventForTrade(event: PaperCloseEventsLoadResult['events'][number], trade: PaperTrade): boolean {
+  const sourceAtEntry = Date.parse(trade.sourceTimestampsAtEntry?.bookTicker ?? '');
+  const receiveAtEntry = Date.parse(trade.sourceReceivedAtAtEntry?.bidAsk ?? '');
+  const indexAtEntry = Date.parse(trade.sourceTimestampsAtEntry?.index ?? '');
+  const createdAt = Date.parse(trade.createdAt);
+  const closedAt = Date.parse(event.closedAt);
+  return trade.status === 'PAPER'
+    && trade.priceSourceAtEntry === 'ASK'
+    && trade.bidAskSourceAtEntry === 'BOOK_TICKER'
+    && trade.askSizeUnitAtEntry === 'CONTRACTS'
+    && Number.isFinite(trade.askQuantityAtEntry) && trade.askQuantityAtEntry! + 1e-9 >= trade.quantity
+    && Number.isFinite(sourceAtEntry) && Number.isFinite(receiveAtEntry) && Number.isFinite(indexAtEntry)
+    && sourceAtEntry <= receiveAtEntry && receiveAtEntry <= createdAt && indexAtEntry <= createdAt
+    && createdAt - sourceAtEntry <= 5 * 60_000 && createdAt - receiveAtEntry <= 5 * 60_000
+    && createdAt - indexAtEntry <= 5 * 60_000
+    && closedAt > createdAt && closedAt < Date.parse(trade.expiry)
+    && event.tradeId === trade.id && event.quantity === trade.quantity
+    && event.entryDebit === trade.premiumDebitAtEntry
+    && event.currency === (trade.premiumCurrencyAtEntry ?? trade.quoteAsset)
+    && event.contractAtExit.symbol === trade.symbol
+    && event.contractAtExit.underlying === trade.underlying
+    && event.contractAtExit.type === trade.type
+    && event.contractAtExit.expiry === trade.expiry
+    && event.contractAtExit.strike === trade.strike
+    && event.contractAtExit.venue === trade.contractVenueAtEntry
+    && event.contractAtExit.assetClass === trade.contractAssetClassAtEntry
+    && event.contractAtExit.underlyingKind === trade.contractUnderlyingKindAtEntry
+    && event.contractAtExit.unit === trade.contractUnitAtEntry
+    && event.contractAtExit.quoteAsset === trade.quoteAsset
+    && Boolean(trade.contractEconomics)
+    && stablePaperJson(event.contractEconomicsAtExit) === stablePaperJson(trade.contractEconomics);
+}
+
 const MarketDepthPanel = lazy(() => import('./components/MarketDepthPanel'));
 const OpportunityReview = lazy(() => import('./components/OpportunityReview'));
 const GreeksPanel = lazy(() => import('./components/GreeksPanel'));
