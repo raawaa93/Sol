@@ -19,7 +19,7 @@ const economics = {
     legalTerms: BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS,
     sourceRef: 'https://eapi.binance.com/eapi/v1/exchangeInfo',
     retrievedAt: '2026-11-25T03:00:00Z',
-    rawFields: { unit: 100, quoteAsset: 'USDT', settleAsset: 'USDT' },
+    rawFields: { unit: 100, quoteAsset: 'USDT', settleAsset: 'USDT', underlyingType: 'CRYPTO', contractType: 'CRYPTO_OPTIONS' },
   },
 };
 
