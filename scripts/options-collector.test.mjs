@@ -175,14 +175,17 @@ test('collector attaches the exchangeInfo snapshot to subsequent market records 
     for (const line of (await readFile(path, 'utf8')).trim().split('\n')) records.push(JSON.parse(line));
   }
   const quotes = records.filter((record) => record.kind === 'BOOK_TICKER');
-  const quote = quotes[0];
+  const quote = quotes.find((record) => record.contractSpec);
+  const haltedQuote = quotes.find((record) => !record.contractSpec);
   assert.equal(quotes.length, 2);
   assert.ok(quote?.contractSpec);
   assert.equal(quote.contractSpec.unit, 100);
+  assert.equal(quote.contractSpec.settlementPriceMethod, 'INDEX_ARITHMETIC_MEAN');
+  assert.equal(quote.contractSpec.settlementWindowMs, 30 * 60 * 1000);
   assert.equal(quote.contractSpecAvailableAt, RECEIVED);
   assert.equal(evaluateOptionsPointInTime(quote, '2026-11-25T03:00:02.000Z', ['bid', 'ask']).eligible, true);
-  assert.ok(evaluateOptionsPointInTime(quote, '2026-11-25T03:00:00.500Z', ['bid', 'ask']).reasons.includes('CONTRACT_SPEC_LOOKAHEAD'));
-  assert.equal(quotes[1].contractSpec, null, 'a halted contract must not retain terms from an earlier exchangeInfo snapshot');
+  assert.ok(evaluateOptionsPointInTime(quote, '2026-11-25T00:00:00.500Z', ['bid', 'ask']).reasons.includes('CONTRACT_SPEC_LOOKAHEAD'));
+  assert.equal(haltedQuote?.contractSpec, null, 'a halted contract must not retain terms from an earlier exchangeInfo snapshot');
 });
 
 test('collector refuses to attach an expired exchangeInfo snapshot to later market events', async (t) => {
