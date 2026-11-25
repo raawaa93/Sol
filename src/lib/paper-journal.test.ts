@@ -131,19 +131,19 @@ test('canonical PAPER entry requires the timestamp for the actual observed price
     ...quote,
     bidAskSource: 'OPTION_TICKER',
     sourceTimestamps: { ...quote.sourceTimestamps, optionTicker: undefined },
-  }, 'BINANCE'), false);
+  }, 'BINANCE', paperNow), false);
   assert.equal(canCreateCanonicalPaperTrade({
     ...quote,
     priceSource: 'MODEL',
     bid: 0,
     ask: 0,
     bidAskSource: undefined,
-  }, 'BINANCE'), false);
+  }, 'BINANCE', paperNow), false);
   assert.equal(canCreateCanonicalPaperTrade({
     ...quote,
     bidAskSource: 'BOOK_TICKER',
     sourceTimestamps: { ...quote.sourceTimestamps, index: 'not-a-date' },
-  }, 'BINANCE'), false);
+  }, 'BINANCE', paperNow), false);
 });
 
 test('canonical PAPER entry rejects stale or future BBO pair timestamps', () => {
