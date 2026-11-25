@@ -21,7 +21,13 @@ function getTradeCurrency(trade: PaperTrade): string {
 
 function getTradeDebit(trade: PaperTrade): number | undefined {
   const debit = trade.premiumDebitAtEntry;
-  if (Number.isFinite(debit) && debit! > 0) return debit;
+  if (Number.isFinite(debit) && debit! > 0) {
+    if (!trade.close) return debit;
+    if (!Number.isFinite(trade.close.exitFees) || trade.close.exitFees < 0
+      || trade.close.exitFeeCurrency !== getTradeCurrency(trade)) return undefined;
+    const totalAllocated = debit! + trade.close.exitFees;
+    return Number.isFinite(totalAllocated) && totalAllocated > 0 ? totalAllocated : undefined;
+  }
 
   const fees = Number.isFinite(trade.fees) && trade.fees >= 0 ? trade.fees : undefined;
   if (fees === undefined) return undefined;
@@ -46,9 +52,9 @@ function getTradeDebit(trade: PaperTrade): number | undefined {
 }
 
 /**
- * A campaign reserves the full premium debit of every append-only PAPER entry.
- * The journal has no close/realized-P&L workflow yet, so entries remain allocated
- * until the user exports and explicitly resets the local campaign.
+ * A campaign reserves entry premium plus entry fees, and adds any explicit exit
+ * fee when a PAPER close is recorded. Sale proceeds never release campaign
+ * allocation; the cap is cumulative deployed premium/fees, not realized loss.
  */
 export function summarizePaperCampaignBudget(
   trades: PaperTrade[],
