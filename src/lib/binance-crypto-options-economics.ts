@@ -61,6 +61,13 @@ export function mapBinanceCryptoOptionEconomics(
         quoteAsset: terms.quoteAsset,
         settleAsset: terms.settleAsset,
       },
+      legalTerms: {
+        contractSpecificationRef: 'https://bin.bnbstatic.com/static/cms/cg08ou2ak0tn7mcplvfg/file/443bcc67fde7274898ff8e3f7af23c7d89e654c5e609d250772e0ddaa96409be.pdf',
+        clearingProceduresRef: 'https://bin.bnbstatic.com/static/cms/cg08ou2ak0tn7mcplvfg/file/a86691f40d8155992c622715ce727d608d7f972ebb93ce90fa0106830e8a0a36.pdf',
+        scope: 'BINANCE_RIE_RCH',
+        effectiveDate: '2026-01-05',
+        accountApplicability: 'UNVERIFIED',
+      },
     },
   };
   const validation = validateContractEconomics(economics);
