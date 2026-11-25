@@ -70,3 +70,15 @@
 - Lighthouse baseline run 45570955246 passed.
 - Project Context Guard run 45570955274 passed.
 - This is test coverage only; it does not create a live Binance connection, background sampler, cloud archive, or empirical strategy result.
+
+
+## Follow-up — BBO-backed PAPER replay (25 November 2026, 08:14 UTC)
+
+- PR #204 merged as `337e03fb26d44c906125318affc473030c165da4`.
+- Replay now requires BBO source-event time, local receive time, explicit size unit and sufficient displayed Ask size at entry/Bid size at exit. Mark-only, estimated, stale/future, missing-size and unknown-unit rows fail closed.
+- Binance `bookTicker` is tagged as contract-count size; the 24-hour `optionTicker` feed is explicitly not treated as BBO.
+- CSV template includes source/time/size fields; CSV provenance remains user-asserted, not independently authenticated.
+- Replay UI exposes source labels, source times, displayed size, fills, fees and slippage. Zero fee/slippage is disclosed as unmodeled, potentially optimistic.
+- OpportunityReview was deferred from the initial JS bundle to satisfy the existing budget without raising it.
+- CI 45572889900 passed 303/303 unit/property tests, production build, compressed bundle budget (initial JS 96.985 KiB gzip-equivalent), and 18/18 Playwright journeys. Lighthouse 45572889852 passed (Performance 99, Accessibility 100, Best Practices 100, SEO 100; LCP 757 ms, TBT 120 ms, CLS 0). Project Context Guard 45572889839 passed.
+- Remaining replay gap: no full depth/queue/partial-fill/latency/expiry-settlement/hedging model and no point-in-time historical BBO corpus. No strategy edge or profitability ranking is claimed.
