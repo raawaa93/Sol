@@ -1,16 +1,11 @@
 import fs from 'node:fs';
 
 const pageUrl = requireUrl('PUBLISHED_URL');
-const proxyUrl = requireUrl('BINANCE_PROXY_URL');
 const pageOrigin = pageUrl.origin;
 const timeoutSignal = () => AbortSignal.timeout(15_000);
 
 if (pageOrigin !== 'https://raawaa93.github.io' || pageUrl.pathname.replace(/\/$/, '') !== '/Sol') {
   throw new Error(`Unexpected published site URL: ${pageUrl.origin}${pageUrl.pathname}`);
-}
-if (proxyUrl.origin !== 'https://oyoyozdugicmnkfhjovo.supabase.co'
-  || proxyUrl.pathname !== '/functions/v1/volterra-binance-market-data') {
-  throw new Error('Unexpected market-data proxy URL; refusing to probe an unapproved endpoint.');
 }
 
 function requireUrl(name) {
