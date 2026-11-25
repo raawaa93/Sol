@@ -202,6 +202,8 @@ function parseExchangeInfo(rawPayload, receivedAt, state) {
   const eventAt = iso(serverTime);
   const symbols = Array.isArray(payload.optionSymbols) ? payload.optionSymbols : [];
   const contracts = Array.isArray(payload.optionContracts) ? payload.optionContracts : [];
+  // exchangeInfo is a full snapshot: remove terms for symbols no longer eligible before applying it.
+  state.contractSpecs.clear();
   let mapped = 0;
   for (const symbolInfo of symbols) {
     const symbol = typeof symbolInfo?.symbol === 'string' ? symbolInfo.symbol.toUpperCase() : '';
