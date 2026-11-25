@@ -7,6 +7,7 @@ import {
   calculateQuoteCashRiskNeutralMetrics,
 } from './quote-economics.ts';
 import type { OptionQuote } from './types.ts';
+import { BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS } from './contract-economics.ts';
 
 const baseQuote: OptionQuote = {
   id: 'CANONICAL-CALL',
@@ -117,6 +118,7 @@ test('Binance crypto options use the verified Spot Price Index settlement refere
       provenance: {
         status: 'PROVIDER_VERIFIED',
         provider: 'BINANCE',
+        legalTerms: BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS,
         sourceRef: 'https://eapi.binance.com/eapi/v1/exchangeInfo',
         retrievedAt: '2026-11-24T10:00:00Z',
       },
