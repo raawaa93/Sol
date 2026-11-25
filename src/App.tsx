@@ -162,6 +162,8 @@ function isPaperTrade(value: unknown): value is PaperTrade {
     && typeof trade.spotAtEntry === 'number' && Number.isFinite(trade.spotAtEntry) && trade.spotAtEntry > 0
     && (trade.quoteAsset === undefined || (typeof trade.quoteAsset === 'string' && /^[A-Z0-9]{2,12}$/.test(trade.quoteAsset)))
     && (trade.sourceReceivedAtAtEntry === undefined || (trade.sourceReceivedAtAtEntry !== null && typeof trade.sourceReceivedAtAtEntry === 'object' && typeof trade.sourceReceivedAtAtEntry.bidAsk === 'string' && Number.isFinite(Date.parse(trade.sourceReceivedAtAtEntry.bidAsk))))
+    && (trade.askQuantityAtEntry === undefined || (typeof trade.askQuantityAtEntry === 'number' && Number.isFinite(trade.askQuantityAtEntry) && trade.askQuantityAtEntry > 0))
+    && (trade.askSizeUnitAtEntry === undefined || trade.askSizeUnitAtEntry === 'CONTRACTS')
     && (trade.contractEconomics === undefined || (
       trade.contractEconomics !== null && typeof trade.contractEconomics === 'object'
       && trade.contractEconomics.provenance?.status === 'PROVIDER_VERIFIED'
