@@ -311,6 +311,15 @@ export function createCanonicalPaperCloseEvent(input: {
     return { ok: false, reason: 'PAPER_CLOSE_SPOT_DOES_NOT_MATCH_INDEX' };
   }
 
+  const entrySourceTimestamp = Date.parse(trade.sourceTimestampsAtEntry?.bookTicker ?? '');
+  const entryReceivedTimestamp = Date.parse(trade.sourceReceivedAtAtEntry?.bidAsk ?? '');
+  const entryCreatedTimestamp = Date.parse(trade.createdAt);
+  if (!Number.isFinite(entrySourceTimestamp) || !Number.isFinite(entryReceivedTimestamp)
+    || !Number.isFinite(entryCreatedTimestamp) || entrySourceTimestamp > entryReceivedTimestamp
+    || entryReceivedTimestamp > entryCreatedTimestamp
+    || entryReceivedTimestamp - entrySourceTimestamp > MAX_PAPER_CLOSE_SOURCE_AGE_MS) {
+    return { ok: false, reason: 'PAPER_ENTRY_RECEIVE_TIMESTAMP_MISSING_OR_INVALID' };
+  }
   const economics = trade.contractEconomics!;
   if (!validateContractEconomics(economics).adapterReady
     || economics.provenance.status !== 'PROVIDER_VERIFIED'
