@@ -4,6 +4,7 @@ import {
   calculateQuoteCashBreakeven,
   calculateQuoteCashExpiryPnl,
   calculateQuoteCashMaxLoss,
+  calculateQuoteCashRiskNeutralMetrics,
 } from './quote-economics.ts';
 import type { OptionQuote } from './types.ts';
 
@@ -218,4 +219,83 @@ test('canonical cash expiry scenarios fail closed for unverified or mismatched t
     underlyingKind: 'FUTURE',
     forward: 100,
   }, 1.25, 1), null);
+});
+
+
+function canonicalBinanceRiskQuote(overrides: Partial<OptionQuote> = {}): OptionQuote {
+  return {
+    ...baseQuote,
+    id: 'BTC-INDEX-CALL',
+    symbol: 'BTC-INDEX-CALL',
+    underlying: 'BTC',
+    venue: 'BINANCE',
+    assetClass: 'CRYPTO',
+    underlyingKind: 'SPOT',
+    exerciseStyle: 'EUROPEAN',
+    settlementStyle: 'CASH',
+    quoteAsset: 'USDT',
+    settlementAsset: 'USDT',
+    spot: 100,
+    strike: 100,
+    daysToExpiry: 365,
+    iv: 0.2,
+    ivStatus: 'OBSERVED',
+    riskFreeRate: 0.05,
+    carryYield: 0,
+    pricingStatus: 'ASSUMED',
+    pricingModel: 'BLACK_SCHOLES_CARRY',
+    sourceTimestamps: { index: '2026-11-25T03:00:00.000Z' },
+    contractEconomics: {
+      premium: { multiplier: 1, quoteCurrency: 'USDT', priceUnit: 'PER_CONTRACT' },
+      exercise: {
+        style: 'EUROPEAN',
+        settlement: 'CASH',
+        settlementCurrency: 'USDT',
+        deliverables: [],
+        cashSettlement: { formula: 'INTRINSIC_VALUE', reference: 'INDEX', currency: 'USDT', multiplier: 100 },
+      },
+      provenance: {
+        status: 'PROVIDER_VERIFIED',
+        provider: 'BINANCE',
+        sourceRef: 'https://eapi.binance.com/eapi/v1/exchangeInfo',
+        retrievedAt: '2026-11-25T03:00:00.000Z',
+      },
+    },
+    ...overrides,
+  };
+}
+
+test('canonical Binance risk-neutral EV scales intrinsic value by settlement multiplier, not premium multiplier', () => {
+  const quote = canonicalBinanceRiskQuote();
+  const metrics = calculateQuoteCashRiskNeutralMetrics(quote, 900, 2);
+  assert.ok(metrics);
+  assert.equal(metrics?.currency, 'USDT');
+  assert.ok((metrics?.probabilityInTheMoney ?? 0) > 0.5);
+  assert.ok((metrics?.breakevenPrice ?? 0) > quote.strike);
+  assert.ok((metrics?.modelPricePerContract ?? 0) > 0);
+  assert.ok(Math.abs((metrics?.expectedExpiryPnlPerContract ?? 0)
+    - ((metrics?.modelPricePerContract ?? 0) * Math.exp(quote.riskFreeRate! * (quote.daysToExpiry / 365)) - 900 - 2)) < 1e-8);
+});
+
+test('canonical put risk-neutral probability uses cash-settlement multiplier and fees in break-even', () => {
+  const quote = canonicalBinanceRiskQuote({ type: 'PUT', strike: 110 });
+  const metrics = calculateQuoteCashRiskNeutralMetrics(quote, 900, 3);
+  assert.ok(metrics);
+  assert.ok((metrics?.breakevenPrice ?? quote.strike) < quote.strike);
+  assert.ok((metrics?.probabilityOfProfit ?? 0) < (metrics?.probabilityInTheMoney ?? 1));
+  assert.equal(metrics?.expectedExpiryPnlPerContract,
+    (metrics?.modelPricePerContract ?? 0) * Math.exp(quote.riskFreeRate! * (quote.daysToExpiry / 365)) - 900 - 3);
+});
+
+test('canonical risk-neutral metrics fail closed without observed inputs or provider provenance', () => {
+  const quote = canonicalBinanceRiskQuote();
+  assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, sourceTimestamps: undefined }, 900), null);
+  assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, ivStatus: 'ESTIMATED' }, 900), null);
+  assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, estimatedFields: ['riskFreeRate'] }, 900), null);
+  assert.equal(calculateQuoteCashRiskNeutralMetrics({
+    ...quote,
+    contractEconomics: { ...quote.contractEconomics!, provenance: { status: 'USER_ASSERTED' } },
+  }, 900), null);
+  assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, exerciseStyle: 'AMERICAN' }, 900), null);
+  assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, pricingModel: undefined }, 900), null);
 });
