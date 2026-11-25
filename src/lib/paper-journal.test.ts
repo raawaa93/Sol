@@ -73,7 +73,7 @@ const input = {
   createdAt: '2026-11-25T03:01:00Z',
   quantity: 3,
   premiumPrice: 1.3,
-  fees: 0.5,
+  fees: 0.3,
   entryFeesSource: 'USER_ENTERED' as const,
   spotAtEntry: 99000,
 };
@@ -83,7 +83,7 @@ test('canonical PAPER entry stores independent premium scale and full contract/s
   const result = createCanonicalPaperTrade(input);
   assert.equal(result.ok, true);
   if (!result.ok) return;
-  assert.equal(result.premiumDebit, 4.4);
+  assert.equal(result.premiumDebit, 4.2);
   assert.equal(result.premiumCurrency, 'USDT');
   assert.equal(result.trade.entryPremium, 1.3);
   assert.ok(Math.abs(result.trade.premiumAmountAtEntry! - 3.9) < 1e-9);
@@ -298,7 +298,7 @@ test('canonical PAPER close uses observed Bid, checks displayed bid size and com
   assert.equal(result.trade.exit?.bidQuantityAtExit, 10);
   assert.ok(Math.abs(result.grossCredit - 4.5) < 1e-9);
   assert.ok(Math.abs(result.grossPnl - 0.6) < 1e-9);
-  assert.ok(Math.abs(result.netPnl! - (-0.1)) < 1e-9);
+  assert.ok(Math.abs(result.netPnl! - 0.1) < 1e-9);
 });
 
 test('canonical PAPER close omits net P&L when exit fees are unknown', () => {
@@ -467,10 +467,13 @@ test('canonical PAPER close rejects entry snapshots without a persisted receive 
 
 test('canonical PAPER entry and exit fees cannot exceed Binance published premium cap', () => {
   const entryFeeTooHigh = createCanonicalPaperTrade({ ...input, fees: 0.5, entryFeesSource: 'USER_ENTERED' });
-  assert.equal(entryFeeTooHigh.ok, true);
-  if (!entryFeeTooHigh.ok) return;
+  assert.equal(entryFeeTooHigh.ok, false);
+  if (!entryFeeTooHigh.ok) assert.equal(entryFeeTooHigh.reason, 'PAPER_ENTRY_FEE_EXCEEDS_EXCHANGE_CAP');
+  const validEntry = createCanonicalPaperTrade({ ...input, fees: 0.3, entryFeesSource: 'USER_ENTERED' });
+  assert.equal(validEntry.ok, true);
+  if (!validEntry.ok) return;
   const exitFeeTooHigh = closeCanonicalPaperTrade({
-    trade: entryFeeTooHigh.trade,
+    trade: validEntry.trade,
     quote: exitQuote,
     closedAt: '2026-11-25T03:02:01Z',
     exitFees: 0.6,
