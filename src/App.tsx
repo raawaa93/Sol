@@ -43,7 +43,7 @@ import { getLatestQuotePerContract, getMarketSnapshotFromQuotes } from './lib/ma
 import { getQuoteDataCoverage } from './lib/quote-data-coverage';
 import { assessSnapshotFreshness, DEFAULT_SNAPSHOT_STALE_AFTER_MS, formatSourceTimestampAge } from './lib/market-data-health';
 import { isQuoteFieldEstimated } from './lib/quote-quality';
-import { getContractScaleIssue, getContractScaleIssueMessage } from './lib/contract-scale';
+import { getContractScaleIssue, getContractScaleIssueMessage, hasLegacyScalarAnalyticsCapability } from './lib/contract-scale';
 import { downloadCsv, downloadCsvTemplate, MAX_CSV_FILE_BYTES, parseOptionsCsv } from './lib/csv';
 import type { CsvTimestampRange } from './lib/csv';
 import { buildScenarioSeries, getBreakeven, getExpectedMove, getMaxLoss, getMidPrice, getSpreadPct, getUnderlyingReferencePrice } from './lib/options';
@@ -558,7 +558,7 @@ function App() {
   const contractScaleIssue = getContractScaleIssue(selectedQuote, dataMode);
   // Canonical terms must never fall back to legacy scalar calculations, even when unit=1.
   // Legacy calculations remain limited to quotes that have no canonical terms at all.
-  const hasLegacyScalarCapability = !selectedQuote.contractEconomics && contractScaleIssue === undefined;
+  const hasLegacyScalarCapability = hasLegacyScalarAnalyticsCapability(selectedQuote, dataMode);
   const hasExplicitConsistentContractScale = hasLegacyScalarCapability;
   const canonicalUnitPremium = selectedQuote.contractEconomics
     ? calculatePremiumCash({ economics: selectedQuote.contractEconomics, premiumPrice: selectedPremium, contracts: 1 })
