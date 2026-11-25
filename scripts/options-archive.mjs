@@ -286,13 +286,45 @@ export class ResumableOptionsArchive {
       try { current = JSON.parse(await readFile(path, 'utf8')); } catch {
         throw new OptionsArchiveError('WRITER_LEASE_CORRUPT', 'Existing writer lease cannot be safely inspected.');
       }
-      const expired = Number.isFinite(current.expiresAt) && current.expiresAt <= Date.now();
-      let processAlive = true;
-      if (current.host === (process.env.HOSTNAME ?? 'local') && Number.isSafeInteger(current.pid)) {
-        try { process.kill(current.pid, 0); } catch (probe) { processAlive = probe.code === 'EPERM'; }
+      const recoveryPath = join(this.root, '.writer.recovery.lock');
+      const recoveryToken = randomUUID();
+      let recoveryHandle;
+      try {
+        recoveryHandle = await open(recoveryPath, 'wx', 0o600);
+        await recoveryHandle.writeFile(canonicalJson({ token: recoveryToken, pid: process.pid }), 'utf8');
+        await recoveryHandle.sync();
+      } catch (recoveryError) {
+        if (recoveryError.code === 'EEXIST') {
+          throw new OptionsArchiveError('WRITER_LEASE_RECOVERY_BUSY', 'Another process is checking the expired writer lease.');
+        }
+        throw recoveryError;
+      } finally {
+        await recoveryHandle?.close();
       }
-      if (!expired || processAlive) throw new OptionsArchiveError('WRITER_LEASE_HELD', 'Another archive writer currently holds the lease.');
-      await unlink(path);
+      try {
+        // Serialize stale-lock reclamation. Re-read under the recovery lock so
+        // competing contenders cannot unlink a lease created by another one.
+        let latest;
+        try { latest = JSON.parse(await readFile(path, 'utf8')); } catch {
+          throw new OptionsArchiveError('WRITER_LEASE_CORRUPT', 'Writer lease changed or cannot be safely inspected during recovery.');
+        }
+        const expired = Number.isFinite(latest.expiresAt) && latest.expiresAt <= Date.now();
+        let processAlive = true;
+        if (latest.host === (process.env.HOSTNAME ?? 'local') && Number.isSafeInteger(latest.pid)) {
+          try { process.kill(latest.pid, 0); } catch (probe) { processAlive = probe.code === 'EPERM'; }
+        }
+        if (latest.token !== current.token || !expired || processAlive) {
+          throw new OptionsArchiveError('WRITER_LEASE_HELD', 'Another archive writer currently holds the lease.');
+        }
+        await unlink(path);
+      } finally {
+        try {
+          const recovery = JSON.parse(await readFile(recoveryPath, 'utf8'));
+          if (recovery.token === recoveryToken) await unlink(recoveryPath);
+        } catch (cleanupError) {
+          if (cleanupError.code !== 'ENOENT') throw cleanupError;
+        }
+      }
       return this.acquireWriterLease();
     }
   }
