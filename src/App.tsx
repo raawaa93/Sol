@@ -1149,22 +1149,16 @@ function App() {
       notify('اختر العقد نفسه من ماسح العقود أولاً؛ لا يمكن إغلاق صفقة بعقد مختلف.');
       return;
     }
-    const { closeCanonicalPaperTrade } = await import('./lib/paper-journal');
+    const { closePaperTradeFromQuote } = await import('./lib/paper-journal-actions');
     const feeValue = paperExitFees.trim() === '' ? undefined : Number(paperExitFees);
-    const result = closeCanonicalPaperTrade({
+    const result = closePaperTradeFromQuote({
       trade,
       quote: selectedQuote,
       closedAt: new Date().toISOString(),
       ...(feeValue !== undefined ? { exitFees: feeValue } : {}),
     });
     if (!result.ok) {
-      notify(result.reason === 'INSUFFICIENT_OBSERVED_BID_SIZE_OR_PRICE'
-        ? 'تعذر الإغلاق: لا يوجد سعر Bid مرصود أو أن حجم العرض أقل من كمية الصفقة.'
-        : result.reason === 'PAPER_EXIT_MARKET_SNAPSHOT_STALE_OR_FUTURE'
-          ? 'تعذر الإغلاق: بيانات السعر أو المؤشر قديمة أو مستقبلية التوقيت. حدّث السوق.'
-          : result.reason === 'PAPER_EXIT_AT_OR_AFTER_EXPIRY'
-            ? 'انتهى العقد أو وصل إلى وقت الانتهاء؛ لا نسجل إغلاقاً سوقياً بعد الانتهاء.'
-            : 'تعذر الإغلاق التجريبي: تحقق من تطابق العقد وشروطه وسعر السوق.');
+      notify(result.message);
       return;
     }
     setTrades((current) => current.map((item) => item.id === trade.id ? result.trade : item));
