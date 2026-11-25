@@ -69,7 +69,8 @@ Inspect structured stdout/stderr records:
 - `worker_completed`: collector ended without an abort signal and archive verification passed.
 - `worker_failed` / `fatal`: startup, collection, quota, or integrity failure.
 
-Treat any `worker_failed`, `fatal`, `worker_health_error`, disconnect gap, or eligibility rejection as a condition to inspect before relying on the dataset. Never fill missing intervals with interpolated or synthetic observations and label them as observed market data.
+Treat any `worker_failed`, `fatal`, `worker_health_error`, disconnect gap, or eligibility rejection as a condition to inspect before relying on the dataset.
+- `WRITER_LEASE_RECOVERY_BUSY` means another process may be creating/recovering the lease; do not start a second writer. `WRITER_LEASE_RECOVERY_CORRUPT` means recovery metadata is malformed and cannot be safely reclaimed automatically; inspect the host and lock state manually, preserve the archive, and do not delete the lock blindly. Never fill missing intervals with interpolated or synthetic observations and label them as observed market data.
 
 ## What is not provided
 
