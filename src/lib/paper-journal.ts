@@ -46,6 +46,21 @@ function hasObservedPriceTimestamp(quote: OptionQuote, source: NonNullable<Optio
   return false;
 }
 
+const MAX_PAPER_ENTRY_SOURCE_AGE_MS = 5 * 60_000;
+
+function getObservedPriceTimestamp(quote: OptionQuote, source: NonNullable<OptionQuote['priceSource']>): number {
+  const timestamps = quote.sourceTimestamps;
+  if (!timestamps) return Number.NaN;
+  if (source === 'MARK') return Date.parse(timestamps.markPrice ?? '');
+  if (source === 'LAST') return Date.parse(timestamps.ticker ?? '');
+  if (source === 'MID' || source === 'BID' || source === 'ASK') {
+    if (quote.bidAskSource === 'BOOK_TICKER') return Date.parse(timestamps.bookTicker ?? '');
+    if (quote.bidAskSource === 'OPTION_TICKER') return Date.parse(timestamps.ticker ?? '');
+    if (quote.bidAskSource === 'MARK_PRICE') return Date.parse(timestamps.markPrice ?? '');
+  }
+  return Number.NaN;
+}
+
 /**
  * Canonical PAPER entries are audit snapshots, not valuation positions.
  * Only the trusted Binance adapter may create them; CSV provenance is never
@@ -101,6 +116,20 @@ export function createCanonicalPaperTrade(
     || !Number.isFinite(fees) || fees < 0
     || !Number.isFinite(spotAtEntry) || spotAtEntry <= 0) {
     return { ok: false, reason: 'INVALID_PAPER_ENTRY_INPUT' };
+  }
+  const createdAtMs = Date.parse(createdAt);
+  const expiryMs = Date.parse(quote.expiry);
+  const priceSource = getPaperEntryPriceSource(quote);
+  const priceTimestamp = priceSource ? getObservedPriceTimestamp(quote, priceSource) : Number.NaN;
+  const indexTimestamp = Date.parse(quote.sourceTimestamps?.index ?? '');
+  if (!Number.isFinite(createdAtMs) || !Number.isFinite(expiryMs) || expiryMs <= createdAtMs) {
+    return { ok: false, reason: 'OPTION_EXPIRED_AT_PAPER_ENTRY' };
+  }
+  if (!Number.isFinite(priceTimestamp) || !Number.isFinite(indexTimestamp)
+    || priceTimestamp > createdAtMs || indexTimestamp > createdAtMs
+    || createdAtMs - priceTimestamp > MAX_PAPER_ENTRY_SOURCE_AGE_MS
+    || createdAtMs - indexTimestamp > MAX_PAPER_ENTRY_SOURCE_AGE_MS) {
+    return { ok: false, reason: 'PAPER_ENTRY_MARKET_SNAPSHOT_STALE_OR_FUTURE' };
   }
   const economics = quote.contractEconomics!;
   const observedEntryPrice = getPaperEntryPriceSource(quote) === 'MID'
