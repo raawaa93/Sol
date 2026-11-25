@@ -134,10 +134,21 @@ test('rejects a stale or future current IV observation', () => {
   assert.equal(computeIVRankPercentile([], future, AS_OF).status, 'INVALID_CURRENT');
 });
 
+test('invalid lookback configuration fails closed without throwing or creating invalid dates', () => {
+  const result = computeIVRankPercentile([], observation(0, 0.4), AS_OF, { lookbackDays: Number.NaN });
+  assert.equal(result.status, 'INVALID_CURRENT');
+  assert.equal(result.lookbackDays, 365);
+  assert.ok(Number.isFinite(Date.parse(result.lookbackStart)));
+});
+
 test('extracts a source-verified 30-day ATM IV by interpolating total variance', () => {
   const quotes = [
+    quote('CALL', '2026-12-15T08:00:00.000Z', 20, 0.9, { strike: 105 }),
+    quote('PUT', '2026-12-15T08:00:00.000Z', 20, 0.9, { strike: 105 }),
     quote('CALL', '2026-12-15T08:00:00.000Z', 20, 0.5),
     quote('PUT', '2026-12-15T08:00:00.000Z', 20, 0.5),
+    quote('CALL', '2027-01-04T08:00:00.000Z', 40, 0.9, { strike: 105 }),
+    quote('PUT', '2027-01-04T08:00:00.000Z', 40, 0.9, { strike: 105 }),
     quote('CALL', '2027-01-04T08:00:00.000Z', 40, 0.6),
     quote('PUT', '2027-01-04T08:00:00.000Z', 40, 0.6),
   ];
