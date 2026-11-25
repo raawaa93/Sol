@@ -388,10 +388,12 @@ export function normalizePaperTradeRecord(trade: PaperTrade): PaperTrade {
   } else if (normalized.integrityWarning !== 'CLOSE_RECORD_INVALID') {
     delete normalized.integrityWarning;
   }
-  const feeBreakdownValid = Number.isFinite(trade.exchangeFeeAtEntry) && trade.exchangeFeeAtEntry! >= 0
+  const feeBreakdownValid = Number.isFinite(trade.takerFeeRateAtEntry) && trade.takerFeeRateAtEntry! >= 0
+    && Number.isFinite(trade.exchangeFeeAtEntry) && trade.exchangeFeeAtEntry! >= 0
     && Number.isFinite(trade.additionalFeesAtEntry) && trade.additionalFeesAtEntry! >= 0
     && Math.abs(trade.fees - trade.exchangeFeeAtEntry! - trade.additionalFeesAtEntry!) <= 1e-8;
   if (!feeBreakdownValid) {
+    delete normalized.takerFeeRateAtEntry;
     delete normalized.exchangeFeeAtEntry;
     delete normalized.additionalFeesAtEntry;
   }
