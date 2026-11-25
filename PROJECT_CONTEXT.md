@@ -129,3 +129,13 @@ No second execution venue for a Syrian resident has been verified for global lis
 - PR #205 merged as `b4c014131be9de4d610740ef30c4ad48308c5c6b`. The PAPER sizing field defaults to a per-trade premium-plus-fees cap of 60 quote units. This is not a portfolio-equity tracker and does not model the user's total bankroll as a separate input.
 - PR #205 CI 45573552188 passed 303/303 unit/property tests, production build, bundle budget and 18/18 Playwright journeys; Lighthouse 45573547735 and Project Context Guard 45573547738 passed. Lighthouse median: Performance 98, Accessibility 100, Best Practices 100, SEO 100.
 - No live capture, scheduled worker, durable cloud archive, point-in-time BBO corpus, measured edge or live trading. Continue research/PAPER only.
+
+## 12. سقف ميزانية PAPER — PR #209
+
+- دُمج في f413ba8a5453a730fe4649d90c648f27390499b1.
+- افتراض الحملة: رأس مال 200 USD، وسقف تراكمي 60 USD/USDT للأقساط والرسوم، وحد أقصى 20 لكل محاولة؛ 140 خارج ميزانية المخاطر.
+- الحاسبة تستخدم المتبقي من ميزانية الحملة، ومسار الحفظ يعيد التحقق من الحدين حتى عند تعديل الكمية يدوياً.
+- كل إدخالات دفتر PAPER تبقى محجوزة حتى التصدير وإعادة الضبط الصريحة؛ لا توجد حالياً آلية إغلاق أو P&L محقق. إعادة الضبط تتطلب تأكيداً.
+- التكلفة القديمة غير المعروفة أو العملات المختلطة توقف الإضافة؛ لا يوجد تحويل ضمني بين USD وUSDT.
+- التحقق: CI 45574730769 نجح مع 309/309 اختباراً و18/18 Playwright، ونجح Lighthouse 45574730886 وProject Context Guard 45574730851.
+- هذا حد تخصيص محلي لـPAPER فقط، وليس حد خسارة على أوامر Binance الحقيقية.
