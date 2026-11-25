@@ -146,7 +146,15 @@ export function calculateQuoteCashRiskNeutralMetrics(
     || cashSettlement.reference !== 'INDEX'
     || economics.premium.priceUnit !== 'PER_CONTRACT'
     || economics.premium.quoteCurrency !== cashSettlement.currency
+    || quote.venue !== 'BINANCE' || quote.assetClass !== 'CRYPTO'
     || quote.underlyingKind !== 'SPOT'
+    || quote.quoteAsset !== economics.premium.quoteCurrency
+    || quote.settlementAsset !== cashSettlement.currency
+    || quote.unit !== cashSettlement.multiplier
+    || !Number.isFinite(quote.bid) || quote.bid <= 0
+    || !Number.isFinite(quote.ask) || quote.ask <= 0 || quote.ask < quote.bid
+    || quote.estimatedFields?.some((field) => ['bid', 'ask'].includes(field))
+    || !(quote.sourceTimestamps?.ticker || quote.sourceTimestamps?.optionTicker || quote.sourceTimestamps?.bookTicker)
     || !quote.sourceTimestamps?.index
     || !Number.isFinite(Date.parse(quote.sourceTimestamps.index))
     || quote.pricingModel !== 'BLACK_SCHOLES_CARRY'
