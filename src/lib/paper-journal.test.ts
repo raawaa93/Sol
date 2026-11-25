@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { canCreateCanonicalPaperTrade, createCanonicalPaperTrade } from './paper-journal.ts';
-import { BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS } from './contract-economics.ts';
 import type { OptionQuote } from './types.ts';
+import { BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS } from './contract-economics.ts';
 
 const economics = {
   premium: { multiplier: 1, quoteCurrency: 'USDT', priceUnit: 'PER_CONTRACT' as const },
@@ -127,7 +127,7 @@ test('canonical PAPER entry requires the timestamp for the actual observed price
   assert.equal(canCreateCanonicalPaperTrade({
     ...quote,
     bidAskSource: 'OPTION_TICKER',
-    sourceTimestamps: { ...quote.sourceTimestamps, optionTicker: undefined },
+    sourceTimestamps: { ...quote.sourceTimestamps, ticker: undefined },
   }, 'BINANCE'), false);
   assert.equal(canCreateCanonicalPaperTrade({
     ...quote,
@@ -141,6 +141,15 @@ test('canonical PAPER entry requires the timestamp for the actual observed price
     bidAskSource: 'BOOK_TICKER',
     sourceTimestamps: { ...quote.sourceTimestamps, index: 'not-a-date' },
   }, 'BINANCE'), false);
+});
+
+test('canonical PAPER entry accepts a markPrice-stream midpoint only with its own timestamp', () => {
+  const markQuote = {
+    ...quote,
+    bidAskSource: 'MARK_PRICE' as const,
+    sourceTimestamps: { ...quote.sourceTimestamps, markPrice: '2026-11-25T03:00:01Z' },
+  };
+  assert.equal(canCreateCanonicalPaperTrade(markQuote, 'BINANCE'), true);
 });
 
 test('canonical PAPER entry rejects a premium or spot value that does not match the timestamped source', () => {
