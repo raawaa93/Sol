@@ -91,6 +91,17 @@ test('canonical PAPER entry stores independent premium scale and full contract/s
   assert.equal(result.trade.status, 'PAPER');
 });
 
+test('canonical PAPER entry rejects missing legal contract provenance', () => {
+  const missingLegal = {
+    ...quote,
+    contractEconomics: {
+      ...economics,
+      provenance: { ...economics.provenance, legalTerms: undefined },
+    },
+  } as OptionQuote;
+  assert.equal(canCreateCanonicalPaperTrade(missingLegal, 'BINANCE'), false);
+});
+
 test('canonical PAPER entry rejects CSV provenance even when economics claim Binance', () => {
   assert.equal(canCreateCanonicalPaperTrade(quote, 'CSV'), false);
   assert.equal(createCanonicalPaperTrade({ ...input, sourceMode: 'CSV' }).ok, false);
