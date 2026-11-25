@@ -47,8 +47,10 @@ test('PAPER-only journal records and exports a local single-option scenario', as
   await expect(page.locator('#risk-budget')).toHaveValue('20');
   await expect(page.locator('#risk-budget')).toHaveAttribute('max', '20');
   await expect(page.locator('.budget-row')).toContainText('ميزانية المحاولة');
+  await expect(page.locator('.campaign-risk-summary')).toContainText('رأس المال المفترض');
   await expect(page.locator('.campaign-risk-summary')).toContainText('60');
   await expect(page.locator('.campaign-risk-summary')).toContainText('140');
+  await expect(page.locator('#trade-lab')).toContainText('لا تمثل رصيداً مقروءاً من حسابك');
   const quantity = page.locator('#trade-lab label').filter({ hasText: 'الكمية' }).locator('input');
   await quantity.fill('100000');
   await page.getByRole('button', { name: 'أضف إلى الدفتر التجريبي' }).click();
