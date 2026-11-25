@@ -589,6 +589,15 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       ...(indexTimestamp !== undefined && indexTimestamp > 0 ? { index: new Date(indexTimestamp).toISOString() } : {}),
       ...(openInterestTimestamp !== undefined && openInterestTimestamp > 0 ? { openInterest: new Date(openInterestTimestamp).toISOString() } : {}),
     };
+    // /eapi/v1/mark publishes markIV and riskFreeInterest without event timestamps.
+    // Record the local receive/availability time separately; never fabricate an exchange event time.
+    const markSnapshotReceivedAt = Number.isFinite(fixture.fetchedAt) && fixture.fetchedAt > 0
+      ? new Date(fixture.fetchedAt).toISOString()
+      : undefined;
+    const sourceReceivedAt = {
+      ...(observedIv !== undefined && markSnapshotReceivedAt ? { markIv: markSnapshotReceivedAt } : {}),
+      ...(observedRiskFreeRate !== undefined && markSnapshotReceivedAt ? { riskFreeRate: markSnapshotReceivedAt } : {}),
+    };
     const filters = Array.isArray(symbolInfo.filters) ? symbolInfo.filters : undefined;
     const lotSizeFilter = filters?.find((filter) => ['LOT_SIZE', 'MARKET_LOT_SIZE'].includes(filter.filterType.toUpperCase()));
     const minQty = positiveNumber(symbolInfo.minQty) ?? positiveNumber(lotSizeFilter?.minQty);
@@ -608,6 +617,9 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       // Binance publishes `unit` (underlying quantity per contract), not a separate contractMultiplier.
       carryYield,
       riskFreeRate,
+      ...(observedRiskFreeRate !== undefined ? { riskFreeRateSource: 'REST_MARK' as const } : {}),
+      ...(observedIv !== undefined ? { markIvSource: 'REST_MARK' as const } : {}),
+      sourceReceivedAt,
       pricingStatus: modelGreeks ? 'ASSUMED' : 'OBSERVED_ONLY',
       pricingModel: pricingResult.status === 'SUPPORTED' ? pricingResult.model : undefined,
       pricingReason: pricingResult.status === 'SUPPORTED' ? 'Crypto carry yield is assumed to be 0%; confirm this approximation against the venue index and funding/carry mechanics.' : pricingResult.reason,
