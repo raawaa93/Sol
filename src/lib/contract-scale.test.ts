@@ -17,11 +17,11 @@ const binanceCrypto = {
 
 test('synthetic Demo scale is trusted only in Demo mode', () => {
   assert.equal(getContractScaleIssue(demo, 'DEMO'), undefined);
-  assert.equal(getContractScaleIssue(demo, 'CSV'), 'UNSUPPORTED_CONTRACT_SCALE');
+  assert.equal(getContractScaleIssue(demo, 'CSV', canonicalGreekNow), 'UNSUPPORTED_CONTRACT_SCALE');
 });
 
 test('documented Binance European cash-settled crypto uses exchange unit in Binance mode', () => {
-  assert.equal(getContractScaleIssue(binanceCrypto, 'BINANCE'), undefined);
+  assert.equal(getContractScaleIssue(binanceCrypto, 'BINANCE', canonicalGreekNow), undefined);
   assert.equal(getContractScaleIssue({ ...binanceCrypto, venue: 'OTHER' }, 'BINANCE'), 'UNSUPPORTED_CONTRACT_SCALE');
   assert.equal(getContractScaleIssue({ ...binanceCrypto, settlementAsset: 'BTC' }, 'BINANCE'), 'UNSUPPORTED_CONTRACT_SCALE');
 });
@@ -164,12 +164,16 @@ const canonicalGreekQuote: OptionQuote = {
   volume: 20,
   spot: 99000,
   unit: 100,
-  sourceTimestamps: {
-    index: '2026-11-25T04:00:00Z',
-    optionTicker: '2026-11-25T04:00:01Z',
-    markIv: '2026-11-25T04:00:01Z',
+  markIvSource: 'REST_MARK',
+  riskFreeRateSource: 'REST_MARK',
+  sourceReceivedAt: {
+    markIv: '2026-11-25T04:00:00Z',
+    riskFreeRate: '2026-11-25T04:00:00Z',
   },
+  sourceTimestamps: { index: '2026-11-25T04:00:00Z' },
 };
+
+const canonicalGreekNow = Date.parse('2026-11-25T04:00:05Z');
 
 test('canonical Binance model Greek capability scales per-underlying values by verified contract unit', () => {
   assert.equal(hasCanonicalBinanceModelGreekCapability(canonicalGreekQuote, 'BINANCE'), true);
@@ -196,7 +200,7 @@ test('canonical Binance model Greek capability rejects missing provenance, times
   }, 'BINANCE'), false);
   assert.equal(hasCanonicalBinanceModelGreekCapability({
     ...canonicalGreekQuote,
-    sourceTimestamps: { ...canonicalGreekQuote.sourceTimestamps, markIv: '2026-11-25T04:00:02Z' },
+    sourceReceivedAt: { ...canonicalGreekQuote.sourceReceivedAt, markIv: '2026-11-25T03:00:00Z' },
   }, 'BINANCE'), false);
   assert.equal(hasCanonicalBinanceModelGreekCapability({
     ...canonicalGreekQuote,
