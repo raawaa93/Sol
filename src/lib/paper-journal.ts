@@ -182,6 +182,8 @@ export function createCanonicalPaperTrade(
     premiumCurrencyAtEntry: debit.value.currency,
     priceSourceAtEntry: getPaperEntryPriceSource(quote),
     bidAskSourceAtEntry: quote.bidAskSource,
+    askQuantityAtEntry: quote.askQuantity,
+    askSizeUnitAtEntry: 'CONTRACTS',
     sourceTimestampsAtEntry: quote.sourceTimestamps ? { ...quote.sourceTimestamps } : undefined,
     sourceReceivedAtAtEntry: quote.sourceReceivedAt ? { ...quote.sourceReceivedAt } : undefined,
     status: 'PAPER',
@@ -250,6 +252,25 @@ function stableJson(value: unknown): string {
   return JSON.stringify(value) ?? 'null';
 }
 
+function comparableContractEconomics(economics: ContractEconomics): unknown {
+  return {
+    premium: economics.premium,
+    exercise: economics.exercise,
+    provenance: {
+      status: economics.provenance.status,
+      provider: economics.provenance.provider,
+      sourceRef: economics.provenance.sourceRef,
+      rawFields: {
+        unit: economics.provenance.rawFields?.unit,
+        underlyingType: economics.provenance.rawFields?.underlyingType,
+        contractType: economics.provenance.rawFields?.contractType,
+        quoteAsset: economics.provenance.rawFields?.quoteAsset,
+        settleAsset: economics.provenance.rawFields?.settleAsset,
+      },
+    },
+  };
+}
+
 function sameContractAtExit(trade: PaperTrade, quote: OptionQuote): boolean {
   return trade.symbol === quote.symbol
     && trade.underlying === quote.underlying
@@ -263,7 +284,8 @@ function sameContractAtExit(trade: PaperTrade, quote: OptionQuote): boolean {
     && trade.quoteAsset === quote.quoteAsset
     && trade.contractEconomics !== undefined
     && quote.contractEconomics !== undefined
-    && stableJson(trade.contractEconomics) === stableJson(quote.contractEconomics);
+    && stableJson(comparableContractEconomics(trade.contractEconomics))
+      === stableJson(comparableContractEconomics(quote.contractEconomics));
 }
 
 /**
@@ -295,6 +317,11 @@ export function createCanonicalPaperCloseEvent(input: {
   }
   if (!sameContractAtExit(trade, quote)) {
     return { ok: false, reason: 'PAPER_CLOSE_CONTRACT_IDENTITY_MISMATCH' };
+  }
+  if (trade.priceSourceAtEntry !== 'ASK' || trade.bidAskSourceAtEntry !== 'BOOK_TICKER'
+    || trade.askSizeUnitAtEntry !== 'CONTRACTS'
+    || !Number.isFinite(trade.askQuantityAtEntry) || trade.askQuantityAtEntry! + 1e-9 < trade.quantity) {
+    return { ok: false, reason: 'PAPER_ENTRY_ASK_DEPTH_SNAPSHOT_INVALID' };
   }
   if (!id.trim() || !Number.isFinite(Date.parse(closedAt))
     || !Number.isFinite(exitFees) || exitFees < 0
@@ -331,16 +358,21 @@ export function createCanonicalPaperCloseEvent(input: {
   const entryCreatedTimestamp = Date.parse(trade.createdAt);
   if (!Number.isFinite(entrySourceTimestamp) || !Number.isFinite(entryReceivedTimestamp)
     || !Number.isFinite(entryCreatedTimestamp) || entrySourceTimestamp > entryReceivedTimestamp
-    || entryReceivedTimestamp > entryCreatedTimestamp
+    || entryReceivedTimestamp > entryCreatedTimestamp || entryCreatedTimestamp >= closedAtMs
     || entryReceivedTimestamp - entrySourceTimestamp > MAX_PAPER_CLOSE_SOURCE_AGE_MS) {
     return { ok: false, reason: 'PAPER_ENTRY_RECEIVE_TIMESTAMP_MISSING_OR_INVALID' };
   }
   const economics = trade.contractEconomics!;
+  const exitEconomics = quote.contractEconomics!;
   const settlement = economics.exercise.cashSettlement;
   if (!validateContractEconomics(economics).adapterReady
+    || !validateContractEconomics(exitEconomics).adapterReady
     || economics.provenance.status !== 'PROVIDER_VERIFIED'
     || economics.provenance.provider !== 'BINANCE'
     || economics.provenance.sourceRef !== 'https://eapi.binance.com/eapi/v1/exchangeInfo'
+    || exitEconomics.provenance.status !== 'PROVIDER_VERIFIED'
+    || exitEconomics.provenance.provider !== 'BINANCE'
+    || exitEconomics.provenance.sourceRef !== economics.provenance.sourceRef
     || economics.premium.priceUnit !== 'PER_CONTRACT'
     || economics.exercise.style !== 'EUROPEAN'
     || economics.exercise.settlement !== 'CASH'
@@ -372,6 +404,7 @@ export function createCanonicalPaperCloseEvent(input: {
     fees: 0,
   });
   if (!proceeds.ok) return { ok: false, reason: proceeds.reason };
+  if (exitFees > proceeds.value.premiumAmount) return { ok: false, reason: 'EXIT_FEES_EXCEED_GROSS_PROCEEDS' };
   const netPnl = proceeds.value.premiumAmount - exitFees - entry.value.amount;
   if (!Number.isFinite(netPnl)) return { ok: false, reason: 'INVALID_PAPER_CLOSE_PNL' };
 
@@ -414,7 +447,7 @@ export function createCanonicalPaperCloseEvent(input: {
         unit: quote.unit,
         quoteAsset: quote.quoteAsset!,
       },
-      contractEconomicsAtExit: economics,
+      contractEconomicsAtExit: exitEconomics,
     },
   };
 }
