@@ -141,6 +141,11 @@ test('canonical PAPER entry requires the timestamp for the actual observed price
   }, 'BINANCE'), false);
 });
 
+test('canonical PAPER entry rejects a premium or spot value that does not match the timestamped source', () => {
+  assert.equal(createCanonicalPaperTrade({ ...input, premiumPrice: 1.31 }).ok, false);
+  assert.equal(createCanonicalPaperTrade({ ...input, spotAtEntry: 99001 }).ok, false);
+});
+
 test('canonical PAPER entry rejects invalid quantity, premium, fees and reference price', () => {
   assert.equal(createCanonicalPaperTrade({ ...input, quantity: 0 }).ok, false);
   assert.equal(createCanonicalPaperTrade({ ...input, premiumPrice: 0 }).ok, false);
