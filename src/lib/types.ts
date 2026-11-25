@@ -155,6 +155,7 @@ export interface OptionQuote {
   sourceTimestamps?: {
     ticker?: string;
     optionTicker?: string;
+    markIv?: string;
     index?: string;
     openInterest?: string;
     bookTicker?: string;
