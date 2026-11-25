@@ -450,7 +450,7 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
       sourceTimestamps: bidAskTimestamp && bidAskSource === 'BOOK_TICKER'
         ? { bookTicker: bidAskTimestamp.toISOString() }
         : bidAskTimestamp && bidAskSource === 'OPTION_TICKER'
-          ? { optionTicker: bidAskTimestamp.toISOString() }
+          ? { ticker: bidAskTimestamp.toISOString() }
           : undefined,
       sourceReceivedAt: bidAskReceivedAt ? { bidAsk: bidAskReceivedAt.toISOString() } : undefined,
       estimatedFields,
