@@ -28,7 +28,7 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts
           node <<'NODE'
-          const fs = require('node:fs');
+          import fs from 'node:fs';
           const base = 'https://eapi.binance.com';
           const sleep = ms => new Promise(r => setTimeout(r, ms));
           async function get(path, params={}) {
