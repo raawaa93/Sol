@@ -235,6 +235,8 @@ export interface PaperTrade {
   premiumCurrencyAtEntry?: string;
   priceSourceAtEntry?: QuotePriceSource;
   bidAskSourceAtEntry?: OptionQuote['bidAskSource'];
+  askQuantityAtEntry?: number;
+  askSizeUnitAtEntry?: 'CONTRACTS';
   sourceTimestampsAtEntry?: OptionQuote['sourceTimestamps'];
   sourceReceivedAtAtEntry?: OptionQuote['sourceReceivedAt'];
   status: 'PAPER';
