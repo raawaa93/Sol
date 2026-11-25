@@ -176,15 +176,8 @@ export function replayLongOptionSnapshots(
       continue;
     }
     if (!Number.isFinite(quote.bidQuantity) || !Number.isFinite(quote.askQuantity)
-      || quote.bidQuantity! <= 0 || quote.askQuantity! <= 0) {
+      || quote.bidQuantity! < 0 || quote.askQuantity! < 0) {
       skipped.missingDisplayedSize += 1;
-      continue;
-    }
-    const requiredSize = quote.bidAskSizeUnit === 'CONTRACTS'
-      ? config.quantity
-      : config.quantity * quote.unit;
-    if (quote.bidQuantity! < requiredSize || quote.askQuantity! < requiredSize) {
-      skipped.insufficientDisplayedSize += 1;
       continue;
     }
     // Canonical terms are never replayed through the legacy unit scalar path.
@@ -241,6 +234,17 @@ export function replayLongOptionSnapshots(
 
       if (!hasSameContractScale(entry.quote, exit.quote)) {
         skipped.invalidContractScale += 1;
+        index = exitIndex + 1;
+        continue;
+      }
+      const requiredEntrySize = entry.quote.bidAskSizeUnit === 'CONTRACTS'
+        ? config.quantity
+        : config.quantity * entry.quote.unit;
+      const requiredExitSize = exit.quote.bidAskSizeUnit === 'CONTRACTS'
+        ? config.quantity
+        : config.quantity * exit.quote.unit;
+      if (entry.quote.askQuantity! < requiredEntrySize || exit.quote.bidQuantity! < requiredExitSize) {
+        skipped.insufficientDisplayedSize += 1;
         index = exitIndex + 1;
         continue;
       }
