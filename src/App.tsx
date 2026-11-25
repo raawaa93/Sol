@@ -51,6 +51,7 @@ import { calculatePremiumCash } from './lib/contract-economics-calculations';
 import { formatAssetPrice, formatNumber, formatOptionPrice, formatQuantity, formatSmallNumber, getOptionPricePrecision, getQuantityPrecision, getQuoteCurrency } from './lib/format';
 import type { AssetClass, OptionQuote, OptionSide, PaperTrade, Underlying } from './lib/types';
 import { ASSET_CLASS_LABELS } from './lib/asset-class';
+import { PAPER_CAMPAIGN_CAPITAL, PAPER_CAMPAIGN_MAX_LOSS, PAPER_CAMPAIGN_PER_TRADE_CAP, canAllocatePaperCampaignTrade, summarizePaperCampaignBudget } from './lib/paper-campaign-budget';
 const MarketDepthPanel = lazy(() => import('./components/MarketDepthPanel'));
 const OpportunityReview = lazy(() => import('./components/OpportunityReview'));
 const GreeksPanel = lazy(() => import('./components/GreeksPanel'));
@@ -267,7 +268,7 @@ function App() {
   const [instrumentSearch, setInstrumentSearch] = useState('');
   const [watchlist, setWatchlist] = useState<string[]>(loadWatchlist);
   const [quantity, setQuantity] = useState(0.01);
-  const [riskBudget, setRiskBudget] = useState(60);
+  const [riskBudget, setRiskBudget] = useState(PAPER_CAMPAIGN_PER_TRADE_CAP);
   const [fees, setFees] = useState(0);
   const [trades, setTrades] = useState<PaperTrade[]>(loadPaperTrades);
   const [toast, setToast] = useState('');
@@ -655,7 +656,7 @@ function App() {
   const minimumQuantity = selectedQuote.minQty ?? quantityStep;
   const safeQuantity = Number.isFinite(quantity) ? Math.max(0, quantity) : 0;
   const safeFees = Number.isFinite(fees) ? Math.max(0, fees) : 0;
-  const safeRiskBudget = Number.isFinite(riskBudget) ? Math.max(0, riskBudget) : 0;
+  const safeRiskBudget = Number.isFinite(riskBudget) ? Math.min(PAPER_CAMPAIGN_PER_TRADE_CAP, Math.max(0, riskBudget)) : 0;
   const contractScaleIssue = getContractScaleIssue(selectedQuote, dataMode);
   // Canonical terms must never fall back to legacy scalar calculations, even when unit=1.
   // Legacy calculations remain limited to quotes that have no canonical terms at all.
@@ -695,6 +696,19 @@ function App() {
   const hasPremiumSizingCapability = premiumCostPerContract !== undefined;
   const hasModelGreeks = hasExplicitConsistentContractScale && (selectedQuote.pricingStatus ?? (dataMode === 'DEMO' ? 'ASSUMED' : 'OBSERVED_ONLY')) !== 'OBSERVED_ONLY';
   const quoteAssetLabel = getQuoteCurrency(selectedQuote);
+  const campaignBudget = useMemo(
+    () => summarizePaperCampaignBudget(trades, quoteAssetLabel ?? ''),
+    [trades, quoteAssetLabel],
+  );
+  const campaignBudgetBlockMessage = !campaignBudget.supportedCurrency
+    ? 'سقف الحملة يدعم USD أو USDT فقط حالياً؛ لا نفترض تحويل عملات.'
+    : campaignBudget.unknownEntries > 0
+      ? 'يوجد إدخال سابق بتكلفة غير موثقة؛ صدّر الدفتر ثم أعد ضبط حملة PAPER قبل إضافة صفقة.'
+      : campaignBudget.currencyMismatchEntries > 0
+        ? 'تحتوي الحملة على عملة مختلفة؛ لا نخلط USD وUSDT دون تحويل موثق.'
+        : campaignBudget.remaining <= 1e-9
+          ? 'تم استهلاك سقف الخسارة الإجمالي للحملة (60). أوقف الإضافات حتى تبدأ حملة جديدة.'
+          : '';
   const openInterestCurrencyLabel = market?.openInterestCurrency ?? null;
   const volumeCurrencyLabel = market?.volume24hCurrency ?? null;
   const underlyingReferencePrice = getUnderlyingReferencePrice(selectedQuote);
@@ -707,8 +721,9 @@ function App() {
       ? buildScenarioSeries(selectedQuote, selectedPremium, safeQuantity, safeFees)
       : [];
   }, [hasExplicitConsistentContractScale, safeFees, safeQuantity, selectedPremium, selectedQuote]);
+  const effectiveRiskBudget = campaignBudget.canAllocate ? Math.min(safeRiskBudget, campaignBudget.remaining) : 0;
   const rawAffordableQty = hasPremiumSizingCapability && premiumCostPerContract > 0
-    ? Math.floor(Math.max(0, safeRiskBudget - safeFees) / premiumCostPerContract / quantityStep + 1e-9) * quantityStep
+    ? Math.floor(Math.max(0, effectiveRiskBudget - safeFees) / premiumCostPerContract / quantityStep + 1e-9) * quantityStep
     : 0;
   const affordableQty = selectedQuote.maxQty === undefined ? rawAffordableQty : Math.min(rawAffordableQty, selectedQuote.maxQty);
   const modelPriceLabel = selectedQuote.pricingModel === 'BLACK_76' ? 'Black–76' : 'Black–Scholes مع Carry';
@@ -989,6 +1004,10 @@ function App() {
   };
 
   const savePaperTrade = async () => {
+    if (campaignBudgetBlockMessage) {
+      notify(campaignBudgetBlockMessage);
+      return;
+    }
     if (safeQuantity <= 0) {
       notify('أدخل كمية أكبر من صفر للمحاكاة.');
       return;
@@ -1028,12 +1047,30 @@ function App() {
         notify('لم يُسجّل الإدخال: يلزم عقد Binance موثّق وسعر سوق مرصود مع توقيت مصدر، ومقياس قسط صالح.');
         return;
       }
+      const allocation = canAllocatePaperCampaignTrade(campaignBudget, result.premiumDebit, result.premiumCurrency, safeRiskBudget);
+      if (!allocation.ok) {
+        notify(allocation.reason === 'PER_TRADE_RISK_CAP_EXCEEDED'
+          ? 'تجاوزت الصفقة سقف 20 دولاراً للمحاولة الواحدة.'
+          : allocation.reason === 'CAMPAIGN_RISK_CAP_EXCEEDED'
+            ? 'تتجاوز الصفقة المتبقي من سقف الحملة البالغ 60 دولاراً.'
+            : 'تعذر اعتماد الصفقة ضمن ميزانية الحملة؛ تحقق من العملة وتكلفة الإدخالات السابقة.');
+        return;
+      }
       setTrades((current) => [result.trade, ...current]);
       notify(`سُجّل إدخال PAPER بتكلفة قسط ${formatMoney(result.premiumDebit, 2, result.premiumCurrency)}. لم يُرسل أي أمر ولم تُحسب نتيجة أو ربح وخسارة.`);
       return;
     }
     if (!hasExplicitConsistentContractScale) {
       notify(contractScaleIssueMessage);
+      return;
+    }
+    const legacyAllocation = canAllocatePaperCampaignTrade(campaignBudget, totalCost, quoteAssetLabel ?? '', safeRiskBudget);
+    if (!legacyAllocation.ok) {
+      notify(legacyAllocation.reason === 'PER_TRADE_RISK_CAP_EXCEEDED'
+        ? 'تجاوزت الصفقة سقف 20 دولاراً للمحاولة الواحدة.'
+        : legacyAllocation.reason === 'CAMPAIGN_RISK_CAP_EXCEEDED'
+          ? 'تتجاوز الصفقة المتبقي من سقف الحملة البالغ 60 دولاراً.'
+          : 'تعذر اعتماد الصفقة ضمن ميزانية الحملة؛ تحقق من العملة وتكلفة الإدخالات السابقة.');
       return;
     }
     const newTrade: PaperTrade = {
@@ -1051,6 +1088,14 @@ function App() {
       fees: safeFees,
       spotAtEntry: underlyingReferencePrice,
       quoteAsset: quoteAssetLabel,
+      contractVenueAtEntry: selectedQuote.venue,
+      contractAssetClassAtEntry: selectedQuote.assetClass,
+      contractUnderlyingKindAtEntry: selectedQuote.underlyingKind,
+      contractUnitAtEntry: selectedQuote.unit,
+      premiumMultiplierAtEntry: 1,
+      premiumAmountAtEntry: selectedPremium * safeQuantity * selectedQuote.unit,
+      premiumDebitAtEntry: totalCost,
+      premiumCurrencyAtEntry: quoteAssetLabel ?? undefined,
       status: 'PAPER',
     };
     setTrades((current) => [newTrade, ...current]);
@@ -1072,6 +1117,13 @@ function App() {
     anchor.click();
     URL.revokeObjectURL(url);
     notify('تم تصدير ' + result.count + ' عينة IV محلية.');
+  };
+
+  const clearPaperJournal = () => {
+    if (!trades.length) return;
+    if (!window.confirm('سيتم حذف إدخالات PAPER المحلية وتحرير ميزانية الحملة. صدّر CSV أولاً إذا أردت الاحتفاظ بالسجل. لا يؤثر هذا على أي أموال أو أوامر حقيقية. هل تريد المتابعة؟')) return;
+    setTrades([]);
+    notify('تم تصفير حملة PAPER المحلية فقط؛ لم يتغير أي حساب أو أمر حقيقي.');
   };
 
   const exportTrades = () => {
@@ -1106,6 +1158,10 @@ function App() {
   };
 
   const handleBudgetClick = () => {
+    if (campaignBudgetBlockMessage) {
+      notify(campaignBudgetBlockMessage);
+      return;
+    }
     if (!hasPremiumSizingCapability) {
       notify(contractScaleIssueMessage);
       return;
@@ -1451,7 +1507,15 @@ function App() {
                   <label><span>{dataMode === 'BINANCE' ? 'كمية العقود' : 'الكمية'} <small>{dataMode === 'BINANCE' ? 'حسب مواصفات Binance' : 'من الأصل'}</small></span><input type="number" min={dataMode === 'BINANCE' ? minimumQuantity : 0.01} step={dataMode === 'BINANCE' ? quantityStep : 0.01} max={dataMode === 'BINANCE' ? selectedQuote.maxQty : undefined} value={quantity} onChange={(event) => setQuantity(Math.max(0, Number(event.target.value)))} /></label>
                   <label><span>الرسوم التقديرية <small>{quoteAssetLabel ?? 'عملة غير محددة'}</small></span><input type="number" min="0" step="0.1" value={fees} onChange={(event) => setFees(Math.max(0, Number(event.target.value)))} /></label>
                 </div>
-                {hasPremiumSizingCapability && <div className="budget-row"><label htmlFor="risk-budget">سقف القسط والرسوم للصفقة</label><div><input id="risk-budget" type="number" min="0" step="10" value={riskBudget} onChange={(event) => setRiskBudget(Math.max(0, Number(event.target.value)))} /><span>{quoteAssetLabel ?? 'عملة غير محددة'}</span><button onClick={handleBudgetClick} title="احسب كمية لا تتجاوز الميزانية">احسب الكمية</button></div></div>}
+                {hasPremiumSizingCapability && <div className="budget-row"><label htmlFor="risk-budget">ميزانية المحاولة (حد أقصى 20)</label><div><input id="risk-budget" type="number" min="0" max={PAPER_CAMPAIGN_PER_TRADE_CAP} step="1" value={riskBudget} onChange={(event) => setRiskBudget(Math.min(PAPER_CAMPAIGN_PER_TRADE_CAP, Math.max(0, Number(event.target.value))))} /><span>{quoteAssetLabel ?? 'عملة غير محددة'}</span><button onClick={handleBudgetClick} title="احسب كمية لا تتجاوز الميزانية">احسب الكمية</button></div></div>}
+                <div className="risk-summary campaign-risk-summary">
+                  <div><span>رأس مال الحملة</span><strong>{formatMoney(PAPER_CAMPAIGN_CAPITAL, 0, 'USD')}</strong></div>
+                  <div><span>سقف الخسارة الكلي</span><strong>{formatMoney(PAPER_CAMPAIGN_MAX_LOSS, 0, quoteAssetLabel ?? 'USDT')}</strong></div>
+                  <div><span>المخصص في الدفتر</span><strong>{campaignBudget.unknownEntries || campaignBudget.currencyMismatchEntries ? 'غير محسوب' : formatMoney(campaignBudget.used, 2, campaignBudget.currency || null)}</strong></div>
+                  <div><span>المتبقي للحملة</span><strong>{campaignBudgetBlockMessage ? 'محجوب' : formatMoney(campaignBudget.remaining, 2, campaignBudget.currency || null)}</strong></div>
+                  <div><span>احتياطي خارج التداول</span><strong>{formatMoney(PAPER_CAMPAIGN_CAPITAL - PAPER_CAMPAIGN_MAX_LOSS, 0, 'USD')}</strong></div>
+                </div>
+                {campaignBudgetBlockMessage && <div className="analysis-footnote"><ShieldAlert size={13} /><span>{campaignBudgetBlockMessage} يُحسب كل إدخال PAPER ضمن سقف الحملة حتى إعادة ضبط الدفتر؛ لا يدعم الدفتر حالياً تسجيل إغلاق الصفقات.</span></div>}
                 <div className="risk-summary">
                   <div><span>تكلفة القسط + الرسوم</span><strong>{canCalculatePremiumCost ? formatMoney(totalCost, 2, quoteAssetLabel ?? null) : 'غير متاح'}</strong></div>
                   <div><span>نقطة التعادل عند الانتهاء</span><strong>{canCalculateBreakEven ? formatMoney(breakEven, 0, quoteAssetLabel ?? null) : 'غير متاح'}</strong></div>
@@ -1511,7 +1575,7 @@ function App() {
           </Suspense>
 
           <section className="section-anchor journal-section" id="journal">
-            <div className="section-title-row"><div><span className="section-kicker">PAPER WORKSPACE</span><h2>الدفتر التجريبي</h2><p>سجل الفرضية والكمية والقسط قبل أن تقيم جودة القرار.</p></div><div className="journal-actions"><button className="button button-ghost" onClick={exportTrades}><Download size={14} /> تصدير CSV</button><button className="button button-ghost" onClick={exportIVHistoryBackup}><Download size={14} /> نسخة IV JSON</button><button className="button button-ghost danger-ghost" onClick={() => { setTrades([]); notify('تم مسح الدفتر المحلي.'); }} disabled={!trades.length}><Trash2 size={14} /> مسح الدفتر</button></div></div>
+            <div className="section-title-row"><div><span className="section-kicker">PAPER WORKSPACE</span><h2>الدفتر التجريبي</h2><p>سجل الفرضية والكمية والقسط قبل أن تقيم جودة القرار.</p></div><div className="journal-actions"><button className="button button-ghost" onClick={exportTrades}><Download size={14} /> تصدير CSV</button><button className="button button-ghost" onClick={exportIVHistoryBackup}><Download size={14} /> نسخة IV JSON</button><button className="button button-ghost danger-ghost" onClick={clearPaperJournal} disabled={!trades.length}><Trash2 size={14} /> مسح الدفتر</button></div></div>
             <article className="panel journal-panel">
               <div className="journal-summary"><div className="journal-summary-icon"><WalletCards size={18} /></div><div><strong>{trades.length} <span>صفقة تجريبية</span></strong><small>محفوظة محلياً في هذا المتصفح فقط</small></div><div className="journal-metric"><span>وضع التنفيذ</span><strong><i /> PAPER ONLY</strong></div><div className="journal-metric"><span>مفاتيح تداول</span><strong className="safe-label"><LockKeyhole size={13} /> غير مطلوبة</strong></div></div>
               {trades.length ? <>

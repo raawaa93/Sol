@@ -42,8 +42,13 @@ test('global instrument search and local watchlist work across reloads', async (
 });
 
 test('PAPER-only journal records and exports a local single-option scenario', async ({ page }) => {
-  await expect(page.locator('#risk-budget')).toHaveValue('60');
-  await expect(page.locator('.budget-row')).toContainText('سقف القسط والرسوم للصفقة');
+  await page.locator('.asset-switch').getByRole('button').filter({ hasText: 'XRP' }).click();
+  await expect(page.locator('#overview-metrics')).toContainText('XRP/USD');
+  await expect(page.locator('#risk-budget')).toHaveValue('20');
+  await expect(page.locator('#risk-budget')).toHaveAttribute('max', '20');
+  await expect(page.locator('.budget-row')).toContainText('ميزانية المحاولة');
+  await expect(page.locator('.campaign-risk-summary')).toContainText('60');
+  await expect(page.locator('.campaign-risk-summary')).toContainText('140');
   await page.getByRole('button', { name: 'أضف إلى الدفتر التجريبي' }).click();
   await expect(page.getByText('أضيفت الصفقة إلى الدفتر التجريبي فقط.')).toBeVisible();
   await page.locator('.side-nav').getByRole('button', { name: 'الدفتر التجريبي' }).click();
@@ -360,6 +365,7 @@ test('mobile option chain renders compact cards and selects a contract without t
 test('mobile Greeks and paper journal use readable cards instead of wide tables', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
+  await page.locator('.asset-switch').getByRole('button').filter({ hasText: 'XRP' }).click();
 
   const greekList = page.locator('.greeks-mobile-list');
   await greekList.scrollIntoViewIfNeeded();
