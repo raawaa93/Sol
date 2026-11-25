@@ -255,6 +255,8 @@ export interface PaperTrade {
   priceSourceAtEntry?: QuotePriceSource;
   bidAskSourceAtEntry?: OptionQuote['bidAskSource'];
   sourceTimestampsAtEntry?: OptionQuote['sourceTimestamps'];
+  sourceReceivedAtAtEntry?: OptionQuote['sourceReceivedAt'];
+  takerFeeRateAtEntry?: number;
   exchangeFeeAtEntry?: number;
   additionalFeesAtEntry?: number;
   close?: PaperTradeClose;
