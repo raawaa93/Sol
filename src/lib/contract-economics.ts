@@ -202,10 +202,11 @@ export function validateContractEconomics(economics: unknown): ContractEconomics
   }
 
   const rawProviderFields = isRecord(provenance?.rawFields) ? provenance.rawFields : null;
+  const cashSettlementForProvenance = isRecord(exercise?.cashSettlement) ? exercise.cashSettlement : null;
   const isBinanceCashIndexOption = provenance?.provider === 'BINANCE'
     && exercise?.style === 'EUROPEAN'
     && exercise?.settlement === 'CASH'
-    && exercise?.cashSettlement?.reference === 'INDEX'
+    && cashSettlementForProvenance?.reference === 'INDEX'
     && premium?.priceUnit === 'PER_CONTRACT';
   if (isBinanceCashIndexOption) {
     const legal = isRecord(provenance.legalTerms) ? provenance.legalTerms : null;
