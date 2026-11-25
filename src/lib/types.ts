@@ -256,11 +256,14 @@ export interface PaperTrade {
   bidAskSourceAtEntry?: OptionQuote['bidAskSource'];
   sourceTimestampsAtEntry?: OptionQuote['sourceTimestamps'];
   sourceReceivedAtAtEntry?: OptionQuote['sourceReceivedAt'];
+  bidQuantityAtEntry?: number;
+  askQuantityAtEntry?: number;
+  bidAskSizeUnitAtEntry?: 'CONTRACTS' | 'UNDERLYING_UNITS';
   takerFeeRateAtEntry?: number;
   exchangeFeeAtEntry?: number;
   additionalFeesAtEntry?: number;
   close?: PaperTradeClose;
-  integrityWarning?: 'CLOSE_RECORD_INVALID';
+  integrityWarning?: 'CLOSE_RECORD_INVALID' | 'ENTRY_EXECUTION_EVIDENCE_INVALID';
   status: 'PAPER';
 }
 
