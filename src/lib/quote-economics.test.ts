@@ -245,7 +245,8 @@ function canonicalBinanceRiskQuote(overrides: Partial<OptionQuote> = {}): Option
     carryYield: 0,
     pricingStatus: 'ASSUMED',
     pricingModel: 'BLACK_SCHOLES_CARRY',
-    sourceTimestamps: { index: '2026-11-25T03:00:00.000Z', ticker: '2026-11-25T03:00:00.000Z' },
+    bidAskSource: 'OPTION_TICKER',
+    sourceTimestamps: { index: '2026-11-25T03:00:00.000Z', optionTicker: '2026-11-25T03:00:00.000Z', ticker: '2026-11-25T03:00:00.000Z' },
     contractEconomics: {
       premium: { multiplier: 1, quoteCurrency: 'USDT', priceUnit: 'PER_CONTRACT' },
       exercise: {
@@ -302,5 +303,7 @@ test('canonical risk-neutral metrics fail closed without observed inputs or prov
   assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, bid: 0 }, 900), null);
   assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, sourceTimestamps: { index: '2026-11-25T03:00:00.000Z' } }, 900), null);
   assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, unit: 1 }, 900), null);
+  assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, bidAskSource: 'BOOK_TICKER', sourceTimestamps: { index: quote.sourceTimestamps?.index, optionTicker: quote.sourceTimestamps?.optionTicker } }, 900), null);
+  assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, bidAskSource: undefined }, 900), null);
   assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, venue: 'CSV' }, 900), null);
 });
