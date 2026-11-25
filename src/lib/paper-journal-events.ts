@@ -149,3 +149,11 @@ export function appendPaperCloseEvent(
   }
   return { ok: true, events: next };
 }
+
+export function readPaperCloseEventsRecovery(storage: PaperCloseEventsStorage): string | null {
+  try { return storage.getItem(PAPER_CLOSE_EVENTS_RECOVERY_KEY); } catch { return null; }
+}
+
+export function readPaperCloseEventsPrimary(storage: PaperCloseEventsStorage): string | null {
+  try { return storage.getItem(PAPER_CLOSE_EVENTS_KEY); } catch { return null; }
+}
