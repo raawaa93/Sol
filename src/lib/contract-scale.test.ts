@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { getContractScaleIssue, getContractScaleIssueMessage, hasLegacyScalarAnalyticsCapability, hasCanonicalBinanceModelGreekCapability } from './contract-scale.ts';
+import { BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS } from './contract-economics.ts';
 import type { OptionQuote } from './types.ts';
 
 const demo = { venue: 'DEMO', unit: 1, contractMultiplier: 1 };
@@ -100,6 +101,7 @@ test('canonical terms disable legacy scalar analytics even when unit one is nume
       provenance: {
         status: 'PROVIDER_VERIFIED',
         provider: 'BINANCE',
+        legalTerms: BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS,
         sourceRef: 'https://eapi.binance.com/eapi/v1/exchangeInfo',
         retrievedAt: '2026-11-25T03:00:00Z',
       },
@@ -135,6 +137,7 @@ const canonicalGreekQuote: OptionQuote = {
     provenance: {
       status: 'PROVIDER_VERIFIED',
       provider: 'BINANCE',
+      legalTerms: BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS,
       sourceRef: 'https://eapi.binance.com/eapi/v1/exchangeInfo',
       retrievedAt: '2026-11-25T04:00:00Z',
       rawFields: { unit: 100, underlyingType: 'CRYPTO', contractType: 'CRYPTO_OPTIONS' },
