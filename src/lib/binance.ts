@@ -101,8 +101,6 @@ export interface BinanceOptionMarkPriceEvent {
   markPrice: number;
   /** Venue field vo; preserve separately until Binance explicitly defines it as markIV. */
   venueVolatility?: number;
-  /** Only an explicit markIV field may authorize model IV. */
-  markIv?: number;
 }
 
 export interface BinanceOptionTickerEvent {
@@ -247,8 +245,7 @@ export function parseBinanceOptionMarkPriceMessage(payload: unknown): BinanceOpt
     const markPrice = positiveNumber(data.mp as string | number | undefined);
     if (eventTime === undefined || eventTime <= 0 || markPrice === undefined) return [];
     const venueVolatility = positiveNumber(data.vo as string | number | undefined);
-    const markIv = positiveNumber(data.markIV as string | number | undefined);
-    return [{ symbol: data.s, eventTime, markPrice, ...(venueVolatility !== undefined ? { venueVolatility } : {}), ...(markIv !== undefined ? { markIv } : {}) }];
+    return [{ symbol: data.s, eventTime, markPrice, ...(venueVolatility !== undefined ? { venueVolatility } : {}) }];
   });
 }
 
@@ -372,12 +369,10 @@ export function applyBinanceOptionMarkPrice(quote: OptionQuote, event: BinanceOp
     markPrice: event.markPrice,
     priceSource: 'MARK',
     ...(event.venueVolatility !== undefined ? { venueVolatility: event.venueVolatility } : {}),
-    ...(event.markIv !== undefined ? { iv: event.markIv, ivStatus: 'OBSERVED' as const, markIvSource: 'MARK_PRICE' as const } : {}),
-    estimatedFields: quote.estimatedFields?.filter((field) => field !== 'markPrice' && !(event.markIv !== undefined && field === 'iv')),
+    estimatedFields: quote.estimatedFields?.filter((field) => field !== 'markPrice'),
     sourceTimestamps: {
       ...quote.sourceTimestamps,
       markPrice: new Date(event.eventTime).toISOString(),
-      ...(event.markIv !== undefined ? { markIv: new Date(event.eventTime).toISOString() } : {}),
       ...(event.venueVolatility !== undefined ? { venueVolatility: new Date(event.eventTime).toISOString() } : {}),
     },
   };
