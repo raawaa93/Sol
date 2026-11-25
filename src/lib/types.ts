@@ -115,7 +115,7 @@ export interface OptionQuote {
   bidQuantity?: number;
   askQuantity?: number;
   /** Provenance for the current bid/ask values; no inference from mere presence. */
-  bidAskSource?: 'BOOK_TICKER' | 'OPTION_TICKER';
+  bidAskSource?: 'BOOK_TICKER' | 'OPTION_TICKER' | 'MARK_PRICE';
   markPrice: number;
   priceSource?: QuotePriceSource;
   /** Zero is the unavailable sentinel; ivStatus distinguishes it from a valid observed or modelled value. */
