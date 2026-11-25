@@ -57,7 +57,7 @@ function parseTime(value: unknown): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function validObservation(value: unknown): value is IVHistoryObservation {
+export function isValidIVHistoryObservation(value: unknown): value is IVHistoryObservation {
   if (!value || typeof value !== 'object') return false;
   const item = value as Partial<IVHistoryObservation>;
   return item.schemaVersion === IV_HISTORY_SCHEMA_VERSION
@@ -91,7 +91,7 @@ export function selectDailyIVObservations(
   const daily = new Map<string, IVHistoryObservation>();
 
   for (const item of observations) {
-    if (!validObservation(item)) continue;
+    if (!isValidIVHistoryObservation(item)) continue;
     const capturedAt = parseTime(item.capturedAt);
     const receivedAt = parseTime(item.receivedAt);
     if (capturedAt === null || receivedAt === null || capturedAt > asOfMs || receivedAt > asOfMs
@@ -120,9 +120,9 @@ export function computeIVRankPercentile(
     || !Number.isSafeInteger(lookbackDays) || lookbackDays < 1 || lookbackDays > 3_650
     || !Number.isSafeInteger(minimumSamples) || minimumSamples < 2
     || !Number.isFinite(currentFreshnessMs) || currentFreshnessMs < 0
-    || !validObservation(current);
+    || !isValidIVHistoryObservation(current);
   const empty = (status: IVRankStatus): IVRankPercentileResult => ({
-    status, rank: null, percentile: null, currentIV: validObservation(current) ? current.iv : null,
+    status, rank: null, percentile: null, currentIV: isValidIVHistoryObservation(current) ? current.iv : null,
     minimumIV: null, maximumIV: null, sampleCount: 0, minimumSamples, lookbackDays,
     coverageDays: 0, isPartialHistory: true,
     lookbackStart: asOfMs === null ? '' : new Date(asOfMs - lookbackDays * 86_400_000).toISOString(),
@@ -135,7 +135,7 @@ export function computeIVRankPercentile(
   if (currentCaptured > asOfMs! || currentReceived > asOfMs! || currentCaptured > currentReceived) return empty('INVALID_CURRENT');
   if (asOfMs! - currentReceived > currentFreshnessMs) return empty('STALE_CURRENT');
 
-  const matching = history.filter((item) => validObservation(item) && observationKey(item) === observationKey(current));
+  const matching = history.filter((item) => isValidIVHistoryObservation(item) && observationKey(item) === observationKey(current));
   const daily = selectDailyIVObservations([...matching, current], asOf, lookbackDays);
   const currentDay = new Date(currentCaptured).toISOString().slice(0, 10);
   const selectedCurrent = daily.find((item) => new Date(item.capturedAt).toISOString().slice(0, 10) === currentDay);
