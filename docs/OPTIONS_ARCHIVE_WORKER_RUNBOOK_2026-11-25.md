@@ -1,6 +1,6 @@
 # Supervised Options Archive Worker — Operator Runbook
 
-**Status:** implemented and CI-tested; not deployed, not scheduled, and not live-market verified.
+**Status:** implemented; latest lifecycle and lease-renewal changes are awaiting CI; not deployed, not scheduled, and not live-market verified.
 
 ## Safety boundary
 
