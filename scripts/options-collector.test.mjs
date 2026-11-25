@@ -430,6 +430,39 @@ test('forward collection accepts the documented public Options stream names', as
   assert.deepEqual(result, { processed: 0, archived: 0, gaps: 0, exchangeInfoRefreshes: 0 });
 });
 
+test('forward collection renews the local writer lease while the stream is quiet', async () => {
+  const lease = { expiresAt: Date.now() + 1_500 };
+  let renewals = 0;
+  const archive = {
+    leaseTtlMs: 1_500,
+    async acquireWriterLease() { return lease; },
+    async renewWriterLease(current) {
+      assert.equal(current, lease);
+      renewals += 1;
+      lease.expiresAt = Date.now() + 1_500;
+      return lease;
+    },
+    async appendBatch(records) { assert.equal(records[0].kind, 'GAP'); return { appended: records.length }; },
+    async releaseWriterLease() {},
+  };
+  const transport = {
+    async subscribe() {
+      return (async function* () {
+        await new Promise((resolve) => setTimeout(resolve, 1_100));
+        yield { type: 'disconnect', code: 1000, reason: 'quiet-stream-test' };
+      })();
+    },
+  };
+  const result = await collectForwardOptionsEvents({
+    archive,
+    transport,
+    streams: ['btcusdt@bookTicker'],
+    enabled: true,
+  });
+  assert.ok(renewals >= 1);
+  assert.equal(result.gaps, 1);
+});
+
 test('forward collection is disabled by default and rejects private stream names', async () => {
   const archive = { acquireWriterLease: async () => { throw new Error('must not acquire'); } };
   await assert.rejects(
