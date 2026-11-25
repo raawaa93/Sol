@@ -213,3 +213,10 @@ No cloud resource, subscription, credential, schedule or billing change was crea
 - The check is applied at entry construction, not just in UI presentation, so a stale browser snapshot cannot be saved as a valid observed entry.
 - PR-head CI 45580783479, Lighthouse 45580783570 and Project Context Guard 45580783485 passed. Main post-merge verification is running on the merge SHA.
 - Remaining PAPER limitation: no close/realized-P&L workflow or risk-budget release exists yet; all recorded debit remains reserved until export and explicit reset. No automatic release or settlement is inferred.
+
+## PAPER execution realism — remaining gap
+
+- PR #225 only validates entry expiry and source timestamp age. It does **not** make the journal an executable-fill simulator: canonical entry currently records a timestamped midpoint when a two-sided quote is present, not an Ask-side buy fill.
+- There is still no close record, Bid-side exit, realized P&L, or budget release. Existing entries remain allocated until CSV export and explicit reset.
+- Binance's official Options fee FAQ (updated 22 October 2026) defines trading fee as `min(trading fee rate × Spot Index × contract unit, 10% × option traded price) × option traded size`; it also distinguishes exercise fees. The fee rate can vary by contract/promotion/VIP, so do not substitute a universal hard-coded rate. Source: https://www.binance.com/en-PH/support/faq/detail/5326e5de61c34fed98abe28d2f175a23
+- Next implementation must use Ask plus sufficient ask quantity for a long entry, Bid plus sufficient bid quantity for a close, source/event and receive clocks, same-contract identity, pre-expiry checks, and the documented fee formula using the correct contract unit and source index. If fee inputs or displayed size are missing, fail closed. A mid-price journal snapshot must not be described as a fill or realized return.
