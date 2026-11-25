@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { PaperTrade } from './types.ts';
+import { BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS } from './contract-economics.ts';
 import {
   PAPER_CAMPAIGN_CAPITAL,
   PAPER_CAMPAIGN_MAX_LOSS,
@@ -24,7 +25,7 @@ const canonicalEconomics: NonNullable<PaperTrade['contractEconomics']> = {
     sourceRef: 'https://eapi.binance.com/eapi/v1/exchangeInfo',
     retrievedAt: '2026-11-25T07:00:00.000Z',
     rawFields: { unit: 1, underlyingType: 'CRYPTO', contractType: 'CRYPTO_OPTIONS', quoteAsset: 'USDT', settleAsset: 'USDT' },
-    legalTerms: { jurisdiction: 'TEST', termsVersion: 'TEST', sourceRef: 'https://www.binance.com/en' },
+    legalTerms: { ...BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS },
   },
 };
 
