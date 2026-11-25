@@ -37,61 +37,77 @@ export function readOptionsWorkerConfig(env = process.env) {
 
 export async function runOptionsArchiveWorker({
   config,
-  archive = new ResumableOptionsArchive(config.archiveRoot, { maxBytes: config.maxBytes }),
+  archive,
   transport,
   restTransport = { fetch: (...args) => fetch(...args) },
   signal,
-  logger = (entry) => process.stdout.write(JSON.stringify(entry) + '\\n'),
+  logger = (entry) => process.stdout.write(JSON.stringify(entry) + '\n'),
   now = () => new Date().toISOString(),
 } = {}) {
-  if (!config || !Array.isArray(config.streams) || !config.archiveRoot) {
+  if (!config || !Array.isArray(config.streams) || !config.archiveRoot
+    || !Number.isSafeInteger(config.maxBytes) || config.maxBytes <= 0
+    || !Number.isSafeInteger(config.maxRuntimeMs) || config.maxRuntimeMs <= 0
+    || !Number.isSafeInteger(config.heartbeatMs) || config.heartbeatMs <= 0) {
     throw new Error('A validated options archive worker configuration is required.');
   }
+  const activeArchive = archive ?? new ResumableOptionsArchive(config.archiveRoot, { maxBytes: config.maxBytes });
   const controller = new AbortController();
   const onAbort = () => controller.abort(signal?.reason ?? new Error('Worker stopped.'));
+  let heartbeat;
+  let runtimeTimer;
   signal?.addEventListener('abort', onAbort, { once: true });
   if (signal?.aborted) onAbort();
-  if (!transport) {
-    transport = createBinanceOptionsWebSocketTransport({ signal: controller.signal });
-  }
-  await archive.initialize();
-  const initialBytes = await archive.getArchiveBytes();
-  if (initialBytes > config.maxBytes) throw new Error('Existing archive already exceeds the configured quota.');
-  const startedAt = now();
-  logger({ type: 'worker_started', startedAt, streams: config.streams, archiveRoot: config.archiveRoot, bytes: initialBytes });
-  const heartbeat = setInterval(async () => {
-    try {
-      const bytes = await archive.getArchiveBytes();
-      logger({ type: 'worker_heartbeat', at: now(), bytes, quotaBytes: config.maxBytes });
-    } catch (error) {
-      logger({ type: 'worker_health_error', at: now(), code: error?.code ?? 'HEALTH_CHECK_FAILED' });
-    }
-  }, config.heartbeatMs);
-  heartbeat.unref?.();
-  const runtimeTimer = setTimeout(() => controller.abort(new Error('Configured worker runtime reached.')), config.maxRuntimeMs);
-  runtimeTimer.unref?.();
   try {
+    const activeTransport = transport ?? createBinanceOptionsWebSocketTransport({ signal: controller.signal });
+    await activeArchive.initialize();
+    const initialBytes = await activeArchive.getArchiveBytes();
+    if (initialBytes > config.maxBytes) throw new Error('Existing archive already exceeds the configured quota.');
+    logger({ type: 'worker_started', at: now(), streams: config.streams, archiveRoot: config.archiveRoot, bytes: initialBytes });
+
+    heartbeat = setInterval(async () => {
+      try {
+        const bytes = await activeArchive.getArchiveBytes();
+        if (bytes > config.maxBytes) throw new Error('Archive quota exceeded.');
+        logger({ type: 'worker_heartbeat', at: now(), bytes, quotaBytes: config.maxBytes });
+      } catch (error) {
+        logger({ type: 'worker_health_error', at: now(), code: error?.code ?? 'HEALTH_CHECK_FAILED' });
+      }
+    }, config.heartbeatMs);
+    heartbeat.unref?.();
+    runtimeTimer = setTimeout(() => controller.abort(new Error('Configured worker runtime reached.')), config.maxRuntimeMs);
+    runtimeTimer.unref?.();
+
     const result = await collectForwardOptionsEvents({
-      archive,
-      transport,
+      archive: activeArchive,
+      transport: activeTransport,
       streams: config.streams,
       enabled: true,
       restTransport,
       refreshExchangeInfo: config.refreshExchangeInfo,
-      signal: controller.signal,
       now,
     });
-    const verification = await archive.verify();
+    const verification = await activeArchive.verify();
     if (!verification.ok) throw new Error('Archive verification failed after collection: ' + verification.errors.join('; '));
-    const bytes = await archive.getArchiveBytes();
-    logger({ type: 'worker_stopped', at: now(), result, bytes, verifiedSegments: verification.segmentCount, archiveIntegrity: 'OK' });
-    return { ...result, bytes, verification };
+    const bytes = await activeArchive.getArchiveBytes();
+    if (bytes > config.maxBytes) throw new Error('Archive quota exceeded after collection.');
+    const stopped = controller.signal.aborted;
+    const stopReason = stopped ? String(controller.signal.reason?.message ?? 'Worker stopped by operator.') : null;
+    logger({
+      type: stopped ? 'worker_stopped' : 'worker_completed',
+      at: now(),
+      result,
+      bytes,
+      verifiedSegments: verification.segmentCount,
+      archiveIntegrity: 'OK',
+      stopReason,
+    });
+    return { ...result, bytes, verification, stopped, stopReason };
   } catch (error) {
     logger({ type: 'worker_failed', at: now(), code: error?.code ?? 'WORKER_FAILED', message: String(error?.message ?? error) });
     throw error;
   } finally {
-    clearTimeout(runtimeTimer);
-    clearInterval(heartbeat);
+    if (runtimeTimer) clearTimeout(runtimeTimer);
+    if (heartbeat) clearInterval(heartbeat);
     signal?.removeEventListener('abort', onAbort);
   }
 }
@@ -99,7 +115,7 @@ export async function runOptionsArchiveWorker({
 async function main() {
   const config = readOptionsWorkerConfig();
   const controller = new AbortController();
-  const stop = (signal) => controller.abort(new Error('Received ' + signal));
+  const stop = (signalName) => controller.abort(new Error('Received ' + signalName));
   process.once('SIGINT', stop);
   process.once('SIGTERM', stop);
   try {
@@ -112,7 +128,7 @@ async function main() {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   main().catch((error) => {
-    process.stderr.write(JSON.stringify({ type: 'fatal', code: error?.code ?? 'WORKER_FATAL', message: String(error?.message ?? error) }) + '\\n');
+    process.stderr.write(JSON.stringify({ type: 'fatal', code: error?.code ?? 'WORKER_FATAL', message: String(error?.message ?? error) }) + '\n');
     process.exitCode = 1;
   });
 }
