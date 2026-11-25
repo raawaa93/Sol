@@ -79,6 +79,7 @@ test('canonical PAPER entry stores independent premium scale and full contract/s
   assert.equal(result.trade.entryPremium, 1.25);
   assert.equal(result.trade.premiumAmountAtEntry, 3.75);
   assert.equal(result.trade.premiumMultiplierAtEntry, 1);
+  assert.equal(result.trade.priceSourceAtEntry, 'MID');
   assert.equal(result.trade.contractUnitAtEntry, 100);
   assert.equal(result.trade.contractEconomics?.exercise.cashSettlement?.multiplier, 100);
   assert.equal(result.trade.sourceTimestampsAtEntry?.index, '2026-11-25T03:00:00Z');
