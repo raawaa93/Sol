@@ -413,6 +413,8 @@ test('incomplete or not-yet-available contract terms cannot authorize PIT eligib
   );
   const lateSpec = makeRecord({ contractSpecAvailableAt: '2026-11-25T03:00:02.000Z' });
   assert.ok(evaluateOptionsPointInTime(lateSpec, '2026-11-25T03:00:01.000Z', ['bid']).reasons.includes('CONTRACT_SPEC_LOOKAHEAD'));
+  const laterObservedSpec = makeRecord({ contractSpecObservedAt: '2026-11-25T03:00:00.500Z' });
+  assert.ok(evaluateOptionsPointInTime(laterObservedSpec, '2026-11-25T03:00:02.000Z', ['bid']).reasons.includes('CONTRACT_SPEC_AFTER_FIELD:bid'));
 });
 
 test('future source events and malformed source timestamps are rejected at ingestion', () => {
