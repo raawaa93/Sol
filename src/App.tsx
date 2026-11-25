@@ -930,6 +930,7 @@ function App() {
     }
     if (selectedQuote.contractEconomics) {
       const { createCanonicalPaperTrade } = await import('./lib/paper-journal');
+      const { createCanonicalPaperTrade } = await import('./lib/paper-journal.ts');
       const result = createCanonicalPaperTrade({
         quote: selectedQuote,
         sourceMode: dataMode,
