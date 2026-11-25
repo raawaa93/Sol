@@ -79,3 +79,23 @@ No email has been sent and no server has been purchased. Gmail is not yet connec
 
 Binance's Syrian-resident FAQ dated 12 June 2025 states that Syrian residents may register and access services subject to ordinary KYC/compliance checks after its stated policy change. This does not guarantee every API endpoint, product, or regional Binance entity. Check the terms applicable to the actual product/account; do not route through another country to evade restrictions.
 Source: https://www.binance.com/en/support/faq/detail/863795c36a224bd7aa7d677996328ff9
+
+## Additional provider candidates found in the 25 November follow-up
+
+### Onyx IT Solutions — potential budget fit, location still unproven
+Official offer: https://onyxits.sy/خدماتنا/vps-hosting-syria/
+The provider advertises a Syria VPS starting at $10/month: 1 vCPU, 2 GB RAM, 40 GB SSD, 2 TB/month, root; its $15/month tier lists 1 vCPU, 4 GB RAM, 80 GB SSD, 4 TB/month. The page says prices updated November 2026 and describes local support in Latakia. This is the closest advertised fit to the $15/month ceiling, but the page does not give a facility address, public IP, ASN or an independently verifiable Syria egress. **Do not buy until the provider confirms the physical host and egress IP/ASN in writing.** Contact: +963 932 796 767; info@onyxits.sy (verify spelling from the site contact).
+
+### Mijad Technology / Sham Cloud — promising but insufficient technical disclosure
+Official site: https://mijadtechnology.com/ lists local cloud hosting based on a Tier III-standard data center in Syria, a Damascus address, info@mijadtechnology.com and +963 957 667 723. Its portal link points to https://shamcloud.sy/. A 2025 Syrian government decree search result identifies Mijad Technology Services as registered for hosting, data-center and cloud services. This supports corporate/service legitimacy but does not independently prove current physical location, tier certification, public egress, VPS availability, or pricing. **Treat as a serious second inquiry, not a qualified provider.**
+A third-party BGP page returned conflicting/stale route ownership for an IP prefix previously associated in search snippets with Mijad; the opened current BGP page shows different route data and a bogon warning. Therefore, that prefix is explicitly NOT accepted as proof of Mijad's Syrian egress.
+
+### Updated priority
+1. NDC: strongest physical in-country evidence and official VPS offer; obtain custom specs and current quote.
+2. Onyx: best public price/spec fit within $15/month; obtain physical location and egress proof.
+3. Mijad/Sham Cloud: local Tier III data-center claim and registered company purpose; obtain independently verifiable technical details.
+4. VPS.sy/Nobalaa: local provider with Syria and overseas options; exact plan/location must be named in writing.
+5. Syrian Host and other local firms: lower priority until they publish or confirm the exact Syria-hosted VPS offer.
+
+### Compliance update
+Binance's own FAQ for Syrian residents (published 12 June 2025) says Syrian residents can register subject to standard KYC and compliance, after the policy change described in the FAQ. However, Binance's regional terms are not uniform; one regional terms page includes Syria in a high-risk jurisdiction clause. Do not infer API eligibility from account onboarding FAQ alone. Before any market-data gateway is used, confirm the terms applicable to the correct Binance contracting entity, API product and user context. No geo-evasion, VPN, foreign proxy, or egress switching is allowed.
