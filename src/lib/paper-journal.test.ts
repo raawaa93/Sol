@@ -48,7 +48,7 @@ const quote: OptionQuote = {
   bidQuantity: 10,
   askQuantity: 10,
   takerFeeRate: 0.00024,
-  sourceReceivedAt: { bidAsk: '2026-11-25T03:00:00Z' },
+  sourceReceivedAt: { bidAsk: '2026-11-25T03:00:01Z' },
   iv: 0.5,
   delta: 0.5,
   gamma: 0.01,
@@ -71,7 +71,7 @@ const input = {
   quote,
   sourceMode: 'BINANCE' as const,
   id: 'paper-entry-1',
-  createdAt: '2026-11-25T03:01:00Z',
+  createdAt: '2026-11-25T03:00:02Z',
   quantity: 3,
   premiumPrice: 1.3,
   fees: 0.5,
@@ -187,7 +187,7 @@ test('canonical PAPER entry rejects an option that expired before the recorded e
   const expired = {
     ...input,
     createdAt: '2026-11-25T03:01:00Z',
-    quote: { ...quote, expiry: '2026-11-25T03:00:59Z' },
+    quote: { ...quote, expiry: '2026-11-25T03:00:01Z' },
   };
   const result = createCanonicalPaperTrade(expired);
   assert.equal(result.ok, false);
@@ -197,7 +197,7 @@ test('canonical PAPER entry rejects an option that expired before the recorded e
 test('canonical PAPER entry rejects stale price or index snapshots older than five minutes', () => {
   const stalePrice = {
     ...input,
-    createdAt: '2026-11-25T03:06:00Z',
+    createdAt: '2026-11-25T03:00:06Z',
   };
   const priceResult = createCanonicalPaperTrade(stalePrice);
   assert.equal(priceResult.ok, false);
@@ -210,7 +210,7 @@ test('canonical PAPER entry rejects stale price or index snapshots older than fi
       ...quote,
       sourceTimestamps: {
         ...quote.sourceTimestamps,
-        bookTicker: '2026-11-25T03:05:30Z',
+        bookTicker: '2026-11-25T03:00:04Z',
       },
     },
   };
@@ -370,7 +370,7 @@ test('canonical PAPER close cannot be timestamped before its entry', () => {
   const result = closeCanonicalPaperTrade({
     trade,
     quote: closeQuote(),
-    closedAt: '2026-11-25T03:00:59Z',
+    closedAt: '2026-11-25T03:00:01Z',
   });
   assert.equal(result.ok, false);
   if (!result.ok) assert.equal(result.reason, 'PAPER_CLOSE_TIME_BEFORE_ENTRY');
