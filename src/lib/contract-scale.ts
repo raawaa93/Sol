@@ -98,6 +98,7 @@ export function hasLegacyScalarAnalyticsCapability(
 export function hasCanonicalBinanceModelGreekCapability(
   quote: OptionQuote,
   sourceMode: ContractScaleSourceMode = 'CSV',
+  nowMs = Date.now(),
 ): boolean {
   const economics = quote.contractEconomics;
   const cash = economics?.exercise.cashSettlement;
@@ -105,6 +106,14 @@ export function hasCanonicalBinanceModelGreekCapability(
   const validation = validateContractEconomics(economics);
   const validTimestamp = (value: string | undefined) => Boolean(value && Number.isFinite(Date.parse(value)));
   const estimated = quote.estimatedFields ?? [];
+  const markIvReceivedAt = Date.parse(quote.sourceReceivedAt?.markIv ?? '');
+  const riskFreeReceivedAt = quote.riskFreeRateSource === 'MARK_PRICE'
+    ? Date.parse(quote.sourceTimestamps?.riskFreeRate ?? '')
+    : Date.parse(quote.sourceReceivedAt?.riskFreeRate ?? '');
+  const indexTimestamp = Date.parse(quote.sourceTimestamps?.index ?? '');
+  const markIvFresh = Number.isFinite(markIvReceivedAt) && nowMs >= markIvReceivedAt && nowMs - markIvReceivedAt <= 60_000;
+  const riskFreeFresh = Number.isFinite(riskFreeReceivedAt) && nowMs >= riskFreeReceivedAt && nowMs - riskFreeReceivedAt <= 60_000;
+  const indexFresh = Number.isFinite(indexTimestamp) && nowMs >= indexTimestamp && nowMs - indexTimestamp <= 15_000;
 
   return sourceMode === 'BINANCE'
     && quote.venue === 'BINANCE'
@@ -134,6 +143,9 @@ export function hasCanonicalBinanceModelGreekCapability(
     && quote.pricingModel === 'BLACK_SCHOLES_CARRY'
     && (quote.pricingStatus === 'ASSUMED' || quote.pricingStatus === 'SUPPORTED')
     && quote.ivStatus === 'OBSERVED'
+    && quote.markIvSource === 'REST_MARK'
+    && (quote.riskFreeRateSource === 'REST_MARK' || quote.riskFreeRateSource === 'MARK_PRICE')
+    && markIvFresh && riskFreeFresh && indexFresh
     && !estimated.some((field) => ['iv', 'spot', 'daysToExpiry', 'riskFreeRate', 'delta', 'gamma', 'theta', 'vega', 'rho'].includes(field))
     && Number.isFinite(quote.spot) && quote.spot > 0
     && Number.isFinite(quote.strike) && quote.strike > 0
@@ -143,9 +155,8 @@ export function hasCanonicalBinanceModelGreekCapability(
     && Number.isFinite(quote.carryYield)
     && [quote.delta, quote.gamma, quote.theta, quote.vega, quote.rho].every(Number.isFinite)
     && validTimestamp(quote.sourceTimestamps?.index)
-    && validTimestamp(quote.sourceTimestamps?.markIv)
-    && quote.markIvSource === 'OPTION_TICKER'
     && validTimestamp(quote.sourceTimestamps?.optionTicker)
+    && validTimestamp(quote.sourceTimestamps?.markIv)
     && quote.sourceTimestamps?.markIv === quote.sourceTimestamps?.optionTicker;
 }
 
