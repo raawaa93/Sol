@@ -823,6 +823,7 @@ test('Binance markPrice adapter refreshes index/rate and keeps venue vo out of m
   assert.equal(updated.iv, 0.5, 'venue vo must not be relabelled as observed markIV');
   assert.equal(updated.markIvSource, 'REST_MARK');
   assert.equal(updated.sourceTimestamps?.markPrice, new Date(eventTime).toISOString());
+  assert.equal(updated.sourceTimestamps?.bidAsk, new Date(eventTime).toISOString());
   assert.equal(updated.sourceTimestamps?.index, new Date(eventTime).toISOString());
   assert.equal(updated.sourceTimestamps?.riskFreeRate, new Date(eventTime).toISOString());
   assert.equal(updated.sourceTimestamps?.venueVolatility, new Date(eventTime).toISOString());
@@ -902,6 +903,7 @@ test('Binance 24hr ticker updates last trade and rolling volume only', () => {
   assert.equal(updated.sourceTimestamps?.markPrice, new Date(event.transactionTime).toISOString());
   assert.equal(updated.sourceTimestamps?.venueVolatility, new Date(event.transactionTime).toISOString());
   assert.equal(updated.sourceTimestamps?.optionTicker, new Date(event.transactionTime).toISOString());
+  assert.equal(updated.sourceTimestamps?.bidAsk, new Date(event.transactionTime).toISOString());
   assert.equal(updated.sourceTimestamps?.ticker, new Date(event.closeTime).toISOString());
 });
 
