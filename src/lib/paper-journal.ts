@@ -230,6 +230,62 @@ export function createCanonicalPaperTrade(
   return { ok: true, trade, premiumDebit: debit.value.amount, premiumCurrency: debit.value.currency };
 }
 
+export function hasValidPaperEntryExecutionEvidence(trade: PaperTrade): boolean {
+  const economics = trade.contractEconomics;
+  if (!economics || !validateContractEconomics(economics).adapterReady
+    || economics.provenance.status !== 'PROVIDER_VERIFIED'
+    || economics.provenance.provider !== 'BINANCE'
+    || economics.provenance.sourceRef !== 'https://eapi.binance.com/eapi/v1/exchangeInfo'
+    || economics.premium.priceUnit !== 'PER_CONTRACT' || economics.premium.multiplier !== 1
+    || economics.exercise.style !== 'EUROPEAN' || economics.exercise.settlement !== 'CASH'
+    || economics.exercise.cashSettlement?.reference !== 'INDEX'
+    || economics.exercise.cashSettlement.currency !== trade.premiumCurrencyAtEntry
+    || economics.exercise.cashSettlement.multiplier !== trade.contractUnitAtEntry
+    || economics.provenance.rawFields?.unit !== trade.contractUnitAtEntry
+    || economics.premium.quoteCurrency !== trade.premiumCurrencyAtEntry
+    || trade.contractVenueAtEntry !== 'BINANCE' || trade.contractAssetClassAtEntry !== 'CRYPTO'
+    || trade.contractUnderlyingKindAtEntry !== 'SPOT'
+    || trade.priceSourceAtEntry !== 'ASK' || trade.bidAskSourceAtEntry !== 'BOOK_TICKER'
+    || trade.bidAskSizeUnitAtEntry !== 'CONTRACTS'
+    || !Number.isFinite(trade.contractUnitAtEntry) || trade.contractUnitAtEntry! <= 0
+    || !Number.isFinite(trade.quantity) || trade.quantity <= 0
+    || !Number.isFinite(trade.askQuantityAtEntry) || trade.askQuantityAtEntry! + 1e-9 < trade.quantity
+    || !Number.isFinite(trade.bidQuantityAtEntry) || trade.bidQuantityAtEntry! <= 0
+    || !Number.isFinite(trade.entryPremium) || trade.entryPremium <= 0
+    || !Number.isFinite(trade.spotAtEntry) || trade.spotAtEntry <= 0
+    || !Number.isFinite(trade.takerFeeRateAtEntry) || trade.takerFeeRateAtEntry! < 0
+    || !Number.isFinite(trade.exchangeFeeAtEntry) || trade.exchangeFeeAtEntry! < 0
+    || !Number.isFinite(trade.additionalFeesAtEntry) || trade.additionalFeesAtEntry! < 0
+    || !Number.isFinite(trade.fees) || trade.fees < 0
+    || !Number.isFinite(trade.premiumAmountAtEntry) || trade.premiumAmountAtEntry! <= 0
+    || !Number.isFinite(trade.premiumDebitAtEntry) || trade.premiumDebitAtEntry! <= 0) return false;
+  const entryAt = Date.parse(trade.createdAt);
+  const expiryAt = Date.parse(trade.expiry);
+  const bookAt = Date.parse(trade.sourceTimestampsAtEntry?.bookTicker ?? '');
+  const indexAt = Date.parse(trade.sourceTimestampsAtEntry?.index ?? '');
+  const receivedAt = Date.parse(trade.sourceReceivedAtAtEntry?.bidAsk ?? '');
+  if (!Number.isFinite(entryAt) || !Number.isFinite(expiryAt) || entryAt >= expiryAt
+    || !Number.isFinite(bookAt) || !Number.isFinite(indexAt) || !Number.isFinite(receivedAt)
+    || bookAt > entryAt || indexAt > entryAt || receivedAt > entryAt
+    || entryAt - bookAt > MAX_PAPER_SOURCE_AGE_MS
+    || entryAt - indexAt > MAX_PAPER_SOURCE_AGE_MS
+    || entryAt - receivedAt > MAX_PAPER_SOURCE_AGE_MS) return false;
+  const premium = calculatePremiumCash({ economics, premiumPrice: trade.entryPremium, contracts: trade.quantity, fees: 0 });
+  const exchangeFee = calculateBinanceOptionFeeFromInputs(
+    trade.takerFeeRateAtEntry!,
+    trade.spotAtEntry,
+    trade.contractUnitAtEntry!,
+    trade.entryPremium,
+    trade.quantity,
+  );
+  return premium.ok
+    && exchangeFee !== undefined
+    && Math.abs(premium.value.amount - trade.premiumAmountAtEntry!) <= 1e-8
+    && Math.abs(exchangeFee - trade.exchangeFeeAtEntry!) <= 1e-8
+    && Math.abs(trade.fees - trade.exchangeFeeAtEntry! - trade.additionalFeesAtEntry!) <= 1e-8
+    && Math.abs(trade.premiumDebitAtEntry! - trade.premiumAmountAtEntry! - trade.fees) <= 1e-8;
+}
+
 function hasSameCanonicalContract(trade: PaperTrade, quote: OptionQuote): boolean {
   const entryEconomics = trade.contractEconomics;
   const currentEconomics = quote.contractEconomics;
@@ -272,9 +328,7 @@ function hasSameCanonicalContract(trade: PaperTrade, quote: OptionQuote): boolea
 export function closeCanonicalPaperTrade(input: CanonicalPaperCloseInput): CanonicalPaperCloseResult {
   const { trade, quote, closedAt, additionalFees = 0 } = input;
   if (trade.status !== 'PAPER' || trade.close) return { ok: false, reason: 'PAPER_TRADE_ALREADY_CLOSED_OR_INVALID' };
-  if (!trade.contractEconomics || trade.priceSourceAtEntry !== 'ASK'
-    || trade.bidAskSourceAtEntry !== 'BOOK_TICKER'
-    || !Number.isFinite(trade.premiumDebitAtEntry) || trade.premiumDebitAtEntry! <= 0) {
+  if (!hasValidPaperEntryExecutionEvidence(trade)) {
     return { ok: false, reason: 'LEGACY_OR_NON_EXECUTABLE_PAPER_ENTRY_CANNOT_BE_CLOSED' };
   }
   if (!hasSameCanonicalContract(trade, quote)) return { ok: false, reason: 'PAPER_CLOSE_CONTRACT_MISMATCH' };
@@ -337,7 +391,8 @@ export function closeCanonicalPaperTrade(input: CanonicalPaperCloseInput): Canon
 
 /** Validate a persisted close against its immutable entry and recorded execution inputs. */
 export function isValidPaperTradeCloseRecord(value: unknown, trade: PaperTrade): value is PaperTradeClose {
-  if (!value || typeof value !== 'object' || !trade.contractEconomics
+  if (!value || typeof value !== 'object' || !hasValidPaperEntryExecutionEvidence(trade)
+    || !trade.contractEconomics
     || !validateContractEconomics(trade.contractEconomics).adapterReady
     || trade.contractEconomics.provenance.status !== 'PROVIDER_VERIFIED'
     || trade.contractEconomics.provenance.provider !== 'BINANCE'
