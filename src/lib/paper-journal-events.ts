@@ -52,7 +52,18 @@ export function isCanonicalPaperCloseEvent(value: unknown): value is CanonicalPa
     || !Number.isFinite(Date.parse(value.sourceTimestampsAtExit.index))
     || !isRecord(value.sourceReceivedAtAtExit)
     || typeof value.sourceReceivedAtAtExit.bidAsk !== 'string'
-    || !Number.isFinite(Date.parse(value.sourceReceivedAtAtExit.bidAsk))) return false;
+    || !Number.isFinite(Date.parse(value.sourceReceivedAtAtExit.bidAsk))
+    || !isRecord(value.contractAtExit)
+    || typeof value.contractAtExit.symbol !== 'string' || !value.contractAtExit.symbol
+    || typeof value.contractAtExit.underlying !== 'string' || !value.contractAtExit.underlying
+    || (value.contractAtExit.type !== 'CALL' && value.contractAtExit.type !== 'PUT')
+    || typeof value.contractAtExit.expiry !== 'string' || !Number.isFinite(Date.parse(value.contractAtExit.expiry))
+    || typeof value.contractAtExit.strike !== 'number' || !Number.isFinite(value.contractAtExit.strike) || value.contractAtExit.strike <= 0
+    || value.contractAtExit.venue !== 'BINANCE'
+    || value.contractAtExit.assetClass !== 'CRYPTO'
+    || value.contractAtExit.underlyingKind !== 'SPOT'
+    || typeof value.contractAtExit.unit !== 'number' || !Number.isFinite(value.contractAtExit.unit) || value.contractAtExit.unit <= 0
+    || typeof value.contractAtExit.quoteAsset !== 'string' || !value.contractAtExit.quoteAsset) return false;
   const economics = validateContractEconomics(value.contractEconomicsAtExit);
   if (!economics.adapterReady || !isRecord(value.contractEconomicsAtExit)) return false;
   const provenance = isRecord(value.contractEconomicsAtExit.provenance) ? value.contractEconomicsAtExit.provenance : {};
