@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { mkdtemp, readFile, readdir, rm, writeFile, unlink, symlink } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, writeFile, unlink, symlink, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -56,6 +56,19 @@ async function makeArchive(t, options = {}) {
   const archive = new ResumableOptionsArchive(root, options);
   await archive.initialize();
   return { root, archive };
+}
+
+async function walkArchiveSegments(root) {
+  const found = [];
+  async function walk(directory) {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const path = join(directory, entry.name);
+      if (entry.isDirectory()) await walk(path);
+      else if (entry.isFile() && entry.name.endsWith('.ndjson')) found.push(path);
+    }
+  }
+  await walk(join(root, 'segments'));
+  return found;
 }
 
 async function withLease(archive, fn) {
@@ -213,6 +226,76 @@ test('restart after a durable segment but before cursor update is safely replaya
     assert.equal((await restarted.readCursor()).source.updateId, 42);
   });
   assert.equal((await restarted.verify()).ok, true);
+});
+
+test('restart replays a partially committed multi-partition batch before advancing the cursor', async (t) => {
+  const { root, archive } = await makeArchive(t);
+  const book = makeRecord();
+  const index = makeRecord({
+    kind: 'INDEX_PRICE',
+    endpoint: 'WS_INDEX_PRICE',
+    symbol: 'BTCUSDT',
+    idempotencyKey: 'index|BTCUSDT|event-42',
+    contractSpec: null,
+    contractSpecObservedAt: undefined,
+    contractSpecAvailableAt: undefined,
+    fields: [{
+      name: 'indexPrice',
+      value: 99000,
+      unit: 'USDT_PER_BTC',
+      provenance: 'OBSERVED',
+      sourcePath: 'p',
+      exchangeEventAt: EVENT,
+      receivedAt: RECEIVED,
+      availableAt: AVAILABLE,
+      staleAfterMs: 5000,
+    }],
+  });
+  await withLease(archive, async (lease) => {
+    await archive.appendBatch([book], { lease, cursor: { updateId: 42 } });
+  });
+  await unlink(join(root, 'cursor.json'));
+  const restarted = new ResumableOptionsArchive(root);
+  await restarted.initialize();
+  await withLease(restarted, async (lease) => {
+    const replay = await restarted.appendBatch([book, index], { lease, cursor: { updateId: 43 } });
+    assert.equal(replay.appended, 1);
+    assert.equal(replay.duplicates, 1);
+    assert.equal(replay.segments.length, 1);
+    assert.equal((await restarted.readCursor()).source.updateId, 43);
+  });
+  const report = await restarted.verify();
+  assert.equal(report.ok, true, report.errors.join('; '));
+  assert.equal(report.index.length, 2);
+});
+
+test('cursor checksum corruption blocks archive initialization', async (t) => {
+  const { root, archive } = await makeArchive(t);
+  await withLease(archive, (lease) => archive.appendBatch([makeRecord()], { lease, cursor: { updateId: 42 } }));
+  await writeFile(join(root, 'cursor.json'), JSON.stringify({
+    schemaVersion: 1,
+    value: { updateId: 43 },
+    updatedAt: RECEIVED,
+    checksum: '0'.repeat(64),
+  }));
+  const restarted = new ResumableOptionsArchive(root);
+  await assert.rejects(
+    restarted.initialize(),
+    (error) => error instanceof OptionsArchiveError && error.code === 'ARCHIVE_CORRUPT',
+  );
+});
+
+test('restore refuses a corrupted archive and does not publish a partial destination', async (t) => {
+  const { root, archive } = await makeArchive(t);
+  await withLease(archive, (lease) => archive.appendBatch([makeRecord()], { lease }));
+  const segmentFiles = await walkArchiveSegments(root);
+  await writeFile(segmentFiles[0], (await readFile(segmentFiles[0], 'utf8')) + 'tamper');
+  const destination = join(root, '..', `sol-options-restore-corrupt-${Date.now()}`);
+  await assert.rejects(
+    ResumableOptionsArchive.restore(root, destination),
+    (error) => error instanceof OptionsArchiveError && error.code === 'ARCHIVE_CORRUPT',
+  );
+  await assert.rejects(stat(destination), (error) => error.code === 'ENOENT');
 });
 
 test('tampered segment is detected by its content hash', async (t) => {
