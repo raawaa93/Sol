@@ -20,15 +20,12 @@ export type CanonicalPaperTradeResult =
   | { ok: false; reason: string };
 
 function getPaperEntryPriceSource(quote: OptionQuote): OptionQuote['priceSource'] | undefined {
-  // getMidPrice prefers a two-sided mid over markPrice. Never label that mid
-  // as MARK when its bid/ask source has no matching event timestamp.
-  if (quote.bid > 0 && quote.ask >= quote.bid) {
-    return quote.bidAskSource === 'BOOK_TICKER' || quote.bidAskSource === 'OPTION_TICKER' || quote.bidAskSource === 'MARK_PRICE' ? 'MID' : undefined;
-  }
-  if (quote.priceSource === 'MARK' && quote.markPrice > 0) return 'MARK';
-  if (quote.priceSource === 'LAST' && quote.markPrice > 0) return 'LAST';
-  if (quote.priceSource === 'BID' && quote.bid > 0) return 'BID';
-  if (quote.priceSource === 'ASK' && quote.ask > 0) return 'ASK';
+  // A long option opens at the displayed ask. Only the Binance bookTicker
+  // carries an observed executable ask size in an explicit contract unit.
+  if (quote.bidAskSource === 'BOOK_TICKER'
+    && quote.bid > 0 && quote.ask > 0 && quote.ask >= quote.bid
+    && quote.bidAskSizeUnit === 'CONTRACTS'
+    && Number.isFinite(quote.askQuantity) && quote.askQuantity! > 0) return 'ASK';
   return undefined;
 }
 
@@ -91,7 +88,7 @@ export function canCreateCanonicalPaperTrade(
     || settlement.multiplier !== quote.unit
     || economics.provenance.rawFields?.unit !== quote.unit) return false;
   const entryPriceSource = getPaperEntryPriceSource(quote);
-  if (!entryPriceSource || quote.estimatedFields?.includes('markPrice') && entryPriceSource === 'MARK') return false;
+  if (entryPriceSource !== 'ASK') return false;
   if (!hasObservedPriceTimestamp(quote, entryPriceSource)
     || !quote.sourceTimestamps?.index || !Number.isFinite(Date.parse(quote.sourceTimestamps.index))) return false;
   if (!quote.quoteAsset || quote.quoteAsset !== economics.premium.quoteCurrency) return false;
@@ -131,12 +128,12 @@ export function createCanonicalPaperTrade(
     || createdAtMs - indexTimestamp > MAX_PAPER_ENTRY_SOURCE_AGE_MS) {
     return { ok: false, reason: 'PAPER_ENTRY_MARKET_SNAPSHOT_STALE_OR_FUTURE' };
   }
+  if (quote.bidAskSizeUnit !== 'CONTRACTS' || !Number.isFinite(quote.askQuantity)
+    || quote.askQuantity! + 1e-9 < quantity) {
+    return { ok: false, reason: 'INSUFFICIENT_OBSERVED_ASK_SIZE' };
+  }
   const economics = quote.contractEconomics!;
-  const observedEntryPrice = getPaperEntryPriceSource(quote) === 'MID'
-    ? (quote.bid + quote.ask) / 2
-    : getPaperEntryPriceSource(quote) === 'MARK' || getPaperEntryPriceSource(quote) === 'LAST'
-      ? quote.markPrice
-      : getPaperEntryPriceSource(quote) === 'BID' ? quote.bid : quote.ask;
+  const observedEntryPrice = quote.ask;
   if (!Number.isFinite(observedEntryPrice) || observedEntryPrice <= 0
     || Math.abs(premiumPrice - observedEntryPrice) > Math.max(1e-8, observedEntryPrice * 1e-8)) {
     return { ok: false, reason: 'ENTRY_PREMIUM_DOES_NOT_MATCH_TIMESTAMPED_MARKET_BASIS' };
