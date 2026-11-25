@@ -237,3 +237,39 @@ The old isolated worktree `research/options-pit-archive-2026-11-24` remains unav
 - Observed mark IV is accepted only from the explicit `markIV` field, with `markIvSource=OPTION_TICKER` and a matching event timestamp. Mark-price events cannot create an IV timestamp.
 - Canonical position Greeks remain fail-closed when this explicit IV source is absent. No live trading is enabled.
 - PR CI, Project Context Guard and Lighthouse passed. Subsequent mainline deployment and published-site smoke test passed on the archive merge (run 45548127461).
+
+
+## Execution continuation — 25 November 2026, 04:11–05:03 UTC
+
+### Canonical economics and data provenance
+
+- PR #170 merged as `71a8a027659e880f22aa3b998b0c075c1a071bd3`: risk-neutral cash-settled expiry EV for the narrow verified Binance Crypto Options adapter. This remains a risk-neutral model diagnostic, not a real-world forecast or evidence of profitability. The model assumes carry=0 and approximates the exchange's 30-minute arithmetic-average settlement.
+- PR #172 merged as `8ed00109bc6a265e463bab7f0c7a1809884a1594`, with PR #175 hardening merged as `9ca75b1622e79f9adf70c558a7f7052a70d2a75c`: canonical local PAPER entry snapshots now preserve contract economics, premium scale, price source and source timestamps; reject mixed-source BBO, untrusted CSV provenance, mismatched premium and mismatched index reference. This is an entry audit snapshot only, not a PAPER lifecycle/P&L engine.
+- PR #177 merged as `3bb464ca3bb0f998e8f538c244d49e855232b006`: narrowly gated position Greeks and shock sensitivities for the verified Binance adapter only.
+- PR #180 and PR #187 corrected Binance IV and stream provenance. PR #187 merged as `41a94cd2c08472e3c4d0d77e70e34782f9fc2200`: explicit REST markIV is separate from venue `vo`; REST mark receive time is captured independently; 24-hour ticker closeTime is not treated as trade/BBO time; out-of-order mark events cannot overwrite a newer index; stale or mismatched source inputs hide canonical model Greeks and EV. PR #187 passed CI, Lighthouse and Project Context Guard. Duplicate PR #188 was closed unmerged after a TypeScript build failure.
+- PR #182 merged as `51424aaa54d5163349817d17982937a69faf9523`: UI discloses the 30-minute index averaging settlement approximation.
+- PR #185 merged as `96b9050fe430d2574b0927195996c62e1baa3ca7`: Binance RIE/RCH legal-source provenance is recorded; applicability to the user's exact account/entity remains UNVERIFIED.
+- PR #186 merged as `19d47c1101511a6458b113f1322a4e10ebbdfcfe`: Binance market-depth panel is deferred to preserve the initial JS budget.
+
+### Options archive progress
+
+- PR #176 merged as `8dcd251e2cc6c03dccf04b82c0cd48eb2ada59a2`: durable local Node archive foundation, integrity/idempotency, same-host writer lease, crash replay, quota, export/restore, PIT gate and fake-transport event parser.
+- Main commit `d67d5629c61369dc388e42216b768a6466a38b12` adds opt-in injected REST `exchangeInfo` refresh, five-minute default rate limit, durable raw snapshot before publishing updated contract specs, lease renewal and fake-transport tests. It remains OFF by default and has not been tested against Binance live.
+- There is still no real WebSocket transport, live market capture, cloud archive, scheduled worker or historical PIT dataset. Do not claim a historical edge or profitability.
+
+### Verification at last check
+
+- Main CI on `d67d5629c61369dc388e42216b768a6466a38b12`: success (run 45550879596).
+- Project Context Guard: success (run 45550879632).
+- Lighthouse and GitHub Pages deployment were still in progress at the last check; their final results must be verified before claiming the latest published site is current.
+- No production Supabase writes/migrations, new cloud resources, paid services, API credentials, private streams, live orders or funds movement were used.
+
+### Remaining priorities
+
+1. #91 remains open until every supported consumer path has independent conformance vectors and unsupported multi-market products remain fail-closed.
+2. #159 remains open: add remaining crash/restore fault-injection coverage, then a compliant opt-in public WebSocket transport and supervised worker only after eligibility/legal gates are satisfied.
+3. #155 depends on actual compliant event capture; order-flow parser alone is not an operational order-flow dataset.
+4. #153 needs append-only mark/Greek snapshots, amendments, exits and simulated P&L; current PAPER feature records entry snapshots only.
+5. #152/#160 need timestamped licensed/eligible point-in-time data and out-of-sample validation before opportunity ranking or strategy performance can be claimed.
+6. #106 still has no encrypted production backup or isolated restore evidence; the last known workflow skipped for missing Actions configuration.
+7. #113/#179 remain owner/dashboard actions: GitHub main protection is not enabled through the current connector, and Supabase Free does not provide the leaked-password protection setting without an upgrade. No spending or upgrade is authorized.
