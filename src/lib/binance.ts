@@ -125,6 +125,8 @@ export interface BinanceFixture {
   tickers?: BinanceTicker[];
   indices?: Array<{ requestedUnderlying: string; item: BinanceIndex }>;
   openInterest?: BinanceOpenInterest[];
+  /** Local receive time of the REST /mark response, distinct from aggregate snapshot completion. */
+  marksReceivedAt?: number;
   fetchedAt?: number;
 }
 
@@ -666,8 +668,8 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
     };
     // /eapi/v1/mark publishes markIV and riskFreeInterest without event timestamps.
     // Record the local receive/availability time separately; never fabricate an exchange event time.
-    const markSnapshotReceivedAt = Number.isFinite(fixture.fetchedAt) && fixture.fetchedAt > 0
-      ? new Date(fixture.fetchedAt).toISOString()
+    const markSnapshotReceivedAt = Number.isFinite(fixture.marksReceivedAt) && fixture.marksReceivedAt! > 0
+      ? new Date(fixture.marksReceivedAt!).toISOString()
       : undefined;
     const sourceReceivedAt = {
       ...(observedIv !== undefined && markSnapshotReceivedAt ? { markIv: markSnapshotReceivedAt } : {}),
@@ -892,7 +894,7 @@ export async function fetchBinanceOptions(proxyUrl?: string): Promise<BinanceOpt
   }
 
   const [marksResult, tickersResult, indexResults] = await Promise.allSettled([
-    getJson<BinanceMark[]>('/eapi/v1/mark', undefined, proxyUrl),
+    getJson<BinanceMark[]>('/eapi/v1/mark', undefined, proxyUrl).then((value) => ({ value, receivedAt: Date.now() })),
     getJson<BinanceTicker[]>('/eapi/v1/ticker', undefined, proxyUrl),
     mapWithConcurrency(underlyingSymbols, 4, async (underlying) => {
       try {
@@ -906,7 +908,8 @@ export async function fetchBinanceOptions(proxyUrl?: string): Promise<BinanceOpt
   ]);
 
   const warnings: string[] = [];
-  const marks = marksResult.status === 'fulfilled' ? asArray<BinanceMark>(marksResult.value) : [];
+  const marks = marksResult.status === 'fulfilled' ? asArray<BinanceMark>(marksResult.value.value) : [];
+  const marksReceivedAt = marksResult.status === 'fulfilled' ? marksResult.value.receivedAt : undefined;
   const tickers = tickersResult.status === 'fulfilled' ? asArray<BinanceTicker>(tickersResult.value) : [];
   if (marksResult.status === 'rejected') warnings.push('تعذّر تحميل mark price/IV من Binance؛ ستُستخدم فقط الأسعار التي تسمح باستنتاجها.');
   if (tickersResult.status === 'rejected') warnings.push('تعذّر تحميل بيانات 24 ساعة وBid/Ask من Binance.');
@@ -932,6 +935,7 @@ export async function fetchBinanceOptions(proxyUrl?: string): Promise<BinanceOpt
     tickers,
     indices: indexValues,
     openInterest,
+    marksReceivedAt,
     fetchedAt: Date.now(),
   };
   const snapshot = normalizeBinanceSnapshot(fixture);
