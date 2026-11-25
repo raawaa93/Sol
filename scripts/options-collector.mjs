@@ -66,10 +66,11 @@ function validatePublicStreams(streams) {
   }
 }
 
-async function* readWebSocketEvents(socket, signal) {
+async function* readWebSocketEvents(socket, signal, maxQueuedMessages) {
   const queue = [];
   let wake = null;
   let finished = false;
+  let queuedMessages = 0;
   const push = (event) => {
     queue.push(event);
     if (wake) {
@@ -79,7 +80,16 @@ async function* readWebSocketEvents(socket, signal) {
     }
   };
   const onOpen = () => push({ type: 'open' });
-  const onMessage = (event) => push({ type: 'message', data: event.data });
+  const onMessage = (event) => {
+    if (queuedMessages >= maxQueuedMessages) {
+      push({ type: 'overflow' });
+      finished = true;
+      try { socket.close(1013, 'local-buffer-overflow'); } catch {}
+      return;
+    }
+    queuedMessages += 1;
+    push({ type: 'message', data: event.data });
+  };
   const onError = () => {
     push({ type: 'error' });
     finished = true;
@@ -109,8 +119,9 @@ async function* readWebSocketEvents(socket, signal) {
     while (true) {
       if (queue.length) {
         const event = queue.shift();
+        if (event.type === 'message') queuedMessages -= 1;
         yield event;
-        if (event.type === 'close' || event.type === 'error') return;
+        if (event.type === 'close' || event.type === 'error' || event.type === 'overflow') return;
       } else if (finished) {
         return;
       } else {
@@ -159,13 +170,15 @@ export function createBinanceOptionsWebSocketTransport({
   maxReconnects = 3,
   reconnectBaseDelayMs = 1_000,
   reconnectMaxDelayMs = 30_000,
+  maxQueuedMessages = 2_000,
 } = {}) {
   if (typeof WebSocketImpl !== 'function') {
     throw new OptionsCollectorError('WEBSOCKET_UNAVAILABLE', 'This Node runtime does not provide the WebSocket API.');
   }
   if (!Number.isSafeInteger(maxReconnects) || maxReconnects < 0 || maxReconnects > 100
     || !Number.isSafeInteger(reconnectBaseDelayMs) || reconnectBaseDelayMs < 0
-    || !Number.isSafeInteger(reconnectMaxDelayMs) || reconnectMaxDelayMs < reconnectBaseDelayMs) {
+    || !Number.isSafeInteger(reconnectMaxDelayMs) || reconnectMaxDelayMs < reconnectBaseDelayMs
+    || !Number.isSafeInteger(maxQueuedMessages) || maxQueuedMessages < 1 || maxQueuedMessages > 100_000) {
     throw new OptionsCollectorError('INVALID_RECONNECT_POLICY', 'WebSocket reconnect limits are invalid.');
   }
   return {
@@ -180,7 +193,8 @@ export function createBinanceOptionsWebSocketTransport({
           const socket = new WebSocketImpl(url.toString());
           let closeEvent = null;
           let socketError = false;
-          for await (const event of readWebSocketEvents(socket, signal)) {
+          let socketOverflow = false;
+          for await (const event of readWebSocketEvents(socket, signal, maxQueuedMessages)) {
             if (event.type === 'open') {
               yield { type: connectionCount === 0 ? 'connect' : 'reconnect', reason: 'PUBLIC_OPTIONS_STREAM_CONNECTED' };
               connectionCount += 1;
@@ -188,14 +202,19 @@ export function createBinanceOptionsWebSocketTransport({
               yield { type: 'message', data: event.data };
             } else if (event.type === 'error') {
               socketError = true;
+            } else if (event.type === 'overflow') {
+              socketOverflow = true;
             } else if (event.type === 'close') {
               closeEvent = event;
               break;
             }
           }
           const closeCode = closeEvent?.code ?? 1006;
-          yield { type: 'disconnect', code: closeCode, reason: closeEvent?.reason ?? 'websocket-error' };
+          yield { type: 'disconnect', code: closeCode, reason: socketOverflow ? 'local-buffer-overflow' : (closeEvent?.reason ?? 'websocket-error') };
           if (signal?.aborted) return;
+          if (socketOverflow) {
+            throw new OptionsCollectorError('WEBSOCKET_BUFFER_OVERFLOW', 'WebSocket message queue exceeded its bound; the stream was stopped and a gap marker was emitted.');
+          }
           // WebSocket APIs do not expose the HTTP status for a rejected
           // upgrade. Stop on socket errors/abnormal closes; never try another
           // host, proxy or egress region.
