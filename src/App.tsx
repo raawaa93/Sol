@@ -340,7 +340,7 @@ function App() {
       .filter((quote) => quote.underlying === underlying && quote.expiry === effectiveExpiry && quote.type === selectedType
         && (quote.bid <= 0 || quote.ask <= 0 || quote.ask < quote.bid
           || quote.bidAskSizeUnit !== 'CONTRACTS' || !Number.isFinite(quote.bidQuantity) || !Number.isFinite(quote.askQuantity)))
-      .sort((a, b) => Math.abs(a.strike - getUnderlyingReferencePrice(a)) - Math.abs(b.strike - getUnderlyingReferencePrice(b.strike)))
+      .sort((a, b) => Math.abs(a.strike - getUnderlyingReferencePrice(a)) - Math.abs(b.strike - getUnderlyingReferencePrice(b)))
     : [], [binanceSnapshot, dataMode, effectiveExpiry, selectedType, underlying]);
   const journalBookTickerSymbols = useMemo(() => dataMode === 'BINANCE'
     ? trades.filter((trade) => !trade.close && trade.contractVenueAtEntry === 'BINANCE'
@@ -1058,8 +1058,8 @@ function App() {
       notify('أدخل كمية أكبر من صفر للمحاكاة.');
       return;
     }
-    if (selectedPremium <= 0) {
-      notify('لا يوجد سعر عقد موجب وموثوق لتسجيل القسط. اختر عقداً آخر أو حدّث بيانات السوق.');
+    if (selectedEntryPremium <= 0) {
+      notify('لا يوجد سعر دخول موجب وموثوق لتسجيل القسط. اختر عقداً آخر أو حدّث بيانات السوق.');
       return;
     }
     if (dataMode === 'BINANCE') {
@@ -1085,9 +1085,9 @@ function App() {
         id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`,
         createdAt: new Date().toISOString(),
         quantity: safeQuantity,
-        premiumPrice: selectedPremium,
+        premiumPrice: selectedEntryPremium,
         fees: safeFees,
-        spotAtEntry: underlyingReferencePrice,
+        spotAtEntry: selectedQuote.spot,
       });
       if (!result.ok) {
         notify('لم يُسجّل الإدخال: يلزم عقد Binance موثّق وسعر سوق مرصود مع توقيت مصدر، ومقياس قسط صالح.');
@@ -1103,7 +1103,7 @@ function App() {
         return;
       }
       setTrades((current) => [result.trade, ...current]);
-      notify(`سُجّل إدخال PAPER بتكلفة قسط ${formatMoney(result.premiumDebit, 2, result.premiumCurrency)}. لم يُرسل أي أمر ولم تُحسب نتيجة أو ربح وخسارة.`);
+      notify(`سُجّل دخول PAPER على Ask بتكلفة إجمالية ${formatMoney(result.premiumDebit, 2, result.premiumCurrency)} تشمل رسوم Binance المقدّرة. لم يُرسل أي أمر.`);
       return;
     }
     if (!hasExplicitConsistentContractScale) {
@@ -1532,7 +1532,7 @@ function App() {
                 <div className="analysis-header"><div><span className="section-kicker">CONTRACT REVIEW</span><h3>ملخص العقد</h3></div><span className="analysis-state"><span /> فحص فقط</span></div>
                 <div className="selected-contract-title"><div className={`contract-type-icon ${selectedQuote.type.toLowerCase()}`}>{selectedQuote.type === 'CALL' ? <TrendingUp size={17} /> : <TrendingDown size={17} />}</div><div><strong>{selectedQuote.underlying} {selectedQuote.type}</strong><span>{formatAssetPrice(selectedQuote.strike, underlyingReferencePrice, quoteAssetLabel ?? null)} · ينتهي بعد {selectedQuote.daysToExpiry.toFixed(0)} يوم</span></div><button className="copy-symbol" onClick={() => { navigator.clipboard?.writeText(selectedQuote.symbol); notify('تم نسخ رمز العقد.'); }} title="نسخ رمز العقد">⧉</button></div>
                 {dataMode === 'BINANCE' && <div className="contract-specs"><span><small>وحدة العقد</small><b>{formatSmallNumber(selectedQuote.unit)} {selectedQuote.underlying}</b></span><span><small>حد الكمية</small><b>{selectedQuote.minQty === undefined ? '—' : formatQuantity(selectedQuote.minQty, selectedQuote)} – {selectedQuote.maxQty === undefined ? '—' : formatQuantity(selectedQuote.maxQty, selectedQuote)}</b></span><span><small>رسوم taker</small><b>{selectedQuote.takerFeeRate === undefined ? '—' : formatPercent(selectedQuote.takerFeeRate, 2)}</b></span></div>}
-                <div className="price-highlight"><span>{dataMode === 'BINANCE' ? 'سعر العقد المرجعي' : 'السعر المرجعي التقديري'}</span><strong>{formatOptionPrice(selectedPremium, selectedQuote)}</strong><small>{priceBasis}</small></div>
+                <div className="price-highlight"><span>{dataMode === 'BINANCE' ? 'السعر المرجعي (Mid)' : 'السعر المرجعي التقديري'}</span><strong>{formatOptionPrice(selectedPremium, selectedQuote)}</strong><small>{priceBasis}</small>{dataMode === 'BINANCE' && selectedQuote.contractEconomics && <small>سعر دخول PAPER: Ask {formatOptionPrice(selectedEntryPremium, selectedQuote)} · حجم Ask {formatQuantity(selectedQuote.askQuantity ?? 0, selectedQuote)}</small>}</div>
                 <div className="quote-row"><span>Bid <b>{formatQuotePrice(selectedQuote.bid, selectedQuote)}</b></span><span>Ask <b>{formatQuotePrice(selectedQuote.ask, selectedQuote)}</b></span></div>
                 {dataMode === 'BINANCE' && <div className="source-time-panel" aria-label="توقيتات مصادر بيانات العقد">
                   <div><span>آخر تداول ضمن 24 ساعة · Ticker</span><strong>{formatSourceTimestamp(selectedQuote.sourceTimestamps?.ticker)}</strong><small>{formatSourceTimestampAge(selectedQuote.sourceTimestamps?.ticker)}</small></div>
@@ -1551,7 +1551,7 @@ function App() {
                 <div className="analysis-divider" />
                 <div className="input-grid">
                   <label><span>{dataMode === 'BINANCE' ? 'كمية العقود' : 'الكمية'} <small>{dataMode === 'BINANCE' ? 'حسب مواصفات Binance' : 'من الأصل'}</small></span><input type="number" min={dataMode === 'BINANCE' ? minimumQuantity : 0.01} step={dataMode === 'BINANCE' ? quantityStep : 0.01} max={dataMode === 'BINANCE' ? selectedQuote.maxQty : undefined} value={quantity} onChange={(event) => setQuantity(Math.max(0, Number(event.target.value)))} /></label>
-                  <label><span>الرسوم التقديرية <small>{quoteAssetLabel ?? 'عملة غير محددة'}</small></span><input type="number" min="0" step="0.1" value={fees} onChange={(event) => setFees(Math.max(0, Number(event.target.value)))} /></label>
+                  <label><span>رسوم إضافية يدوية <small>فوق رسوم Binance المحسوبة · {quoteAssetLabel ?? 'عملة غير محددة'}</small></span><input type="number" min="0" step="0.1" value={fees} onChange={(event) => setFees(Math.max(0, Number(event.target.value)))} /></label>
                 </div>
                 {hasPremiumSizingCapability && <div className="budget-row"><label htmlFor="risk-budget">ميزانية المحاولة (حد أقصى 20)</label><div><input id="risk-budget" type="number" min="0" max={PAPER_CAMPAIGN_PER_TRADE_CAP} step="1" value={riskBudget} onChange={(event) => setRiskBudget(Math.min(PAPER_CAMPAIGN_PER_TRADE_CAP, Math.max(0, Number(event.target.value))))} /><span>{quoteAssetLabel ?? 'عملة غير محددة'}</span><button onClick={handleBudgetClick} title="احسب كمية لا تتجاوز الميزانية">احسب الكمية</button></div></div>}
                 <div className="risk-summary campaign-risk-summary">
@@ -1561,13 +1561,13 @@ function App() {
                   <div><span>المتبقي للحملة</span><strong>{campaignBudgetBlockMessage ? 'محجوب' : formatMoney(campaignBudget.remaining, 2, campaignBudget.currency || null)}</strong></div>
                   <div><span>احتياطي خارج التداول</span><strong>{formatMoney(PAPER_CAMPAIGN_CAPITAL - PAPER_CAMPAIGN_MAX_LOSS, 0, 'USD')}</strong></div>
                 </div>
-                {campaignBudgetBlockMessage && <div className="analysis-footnote"><ShieldAlert size={13} /><span>{campaignBudgetBlockMessage} يُحسب كل إدخال PAPER ضمن سقف الحملة حتى إعادة ضبط الدفتر؛ لا يدعم الدفتر حالياً تسجيل إغلاق الصفقات.</span></div>}
+                {campaignBudgetBlockMessage && <div className="analysis-footnote"><ShieldAlert size={13} /><span>{campaignBudgetBlockMessage} يُحجز القسط المفتوح، وبعد الإغلاق يبقى الخسارة المحققة فقط ضمن سقف الحملة؛ لا تُخصم الأرباح من سقف الخسارة.</span></div>}
                 <div className="risk-summary">
                   <div><span>تكلفة القسط + الرسوم</span><strong>{canCalculatePremiumCost ? formatMoney(totalCost, 2, quoteAssetLabel ?? null) : 'غير متاح'}</strong></div>
                   <div><span>نقطة التعادل عند الانتهاء</span><strong>{canCalculateBreakEven ? formatMoney(breakEven, 0, quoteAssetLabel ?? null) : 'غير متاح'}</strong></div>
                   <div className="risk-row"><span>أقصى خسارة للمشتري</span><strong className="loss-value">{canCalculateMaxLoss ? formatMoney(maxLoss, 2, quoteAssetLabel ?? null) : 'غير متاح'}</strong></div>
                 </div>
-                <div className="analysis-footnote"><Info size={13} /><span>{contractScaleIssueMessage ? `${contractScaleIssueMessage} ` : ''}{dataMode !== 'DEMO' && selectedQuote.estimatedFields?.length ? `حقول مقدّرة أو افتراضية في هذا العقد: ${formatEstimatedFields(selectedQuote.estimatedFields)}. ` : ''}اتساق unit وcontractMultiplier إن توفرا هو تحقق داخلي من الحقول فقط، ولا يثبت مطابقة deliverables لمواصفات البورصة. الحساب لا يضيف تلقائياً رسوم المنصة أو أثر التنفيذ؛ أدخل الرسوم الفعلية وراجع وحدة العقد.</span></div>
+                <div className="analysis-footnote"><Info size={13} /><span>{contractScaleIssueMessage ? `${contractScaleIssueMessage} ` : ''}{dataMode !== 'DEMO' && selectedQuote.estimatedFields?.length ? `حقول مقدّرة أو افتراضية في هذا العقد: ${formatEstimatedFields(selectedQuote.estimatedFields)}. ` : ''}اتساق unit وcontractMultiplier إن توفرا هو تحقق داخلي من الحقول فقط، ولا يثبت مطابقة deliverables لمواصفات البورصة. دخول PAPER على Ask وخروج Bid يتطلبان حجم دفتر كافياً؛ رسوم Binance مقدّرة وفق معدل الرمز وصيغة الرسوم الرسمية، وأي رسوم إضافية أدخلها يدوياً.</span></div>
                 <button className="button button-paper" onClick={savePaperTrade} disabled={!hasExplicitConsistentContractScale && !selectedQuote.contractEconomics}><Plus size={16} /> أضف إلى الدفتر التجريبي</button>
                 <div className="no-signal"><ShieldAlert size={15} /><span>لا يصدر المختبر توصية شراء أو بيع.</span></div>
               </aside>
