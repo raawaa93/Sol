@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { mkdtemp, readFile, readdir, rm, writeFile, unlink } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, writeFile, unlink, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -260,6 +260,17 @@ test('restart recovers orphan temp segments only after acquiring the exclusive w
   const report = await restarted.verify();
   assert.equal(report.ok, true, report.errors.join('; '));
   assert.equal(report.index.length, 1);
+});
+
+test('archive verification rejects symbolic links instead of reading outside the archive root', async (t) => {
+  const { root, archive } = await makeArchive(t);
+  const outside = join(root, 'outside-secret.txt');
+  await writeFile(outside, 'not part of archive');
+  await symlink(outside, join(root, 'segments', 'outside-link'));
+  await assert.rejects(
+    archive.verify(),
+    (error) => error instanceof OptionsArchiveError && error.code === 'SYMLINK_NOT_ALLOWED',
+  );
 });
 
 test('quota failure writes neither a segment nor a cursor', async (t) => {
