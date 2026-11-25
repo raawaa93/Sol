@@ -53,11 +53,12 @@ export function canCreateCanonicalPaperTrade(
   if (economics.provenance.status !== 'PROVIDER_VERIFIED'
     || economics.provenance.provider !== 'BINANCE'
     || economics.provenance.sourceRef !== 'https://eapi.binance.com/eapi/v1/exchangeInfo') return false;
+  const settlement = economics.exercise.cashSettlement;
   if (economics.premium.priceUnit !== 'PER_CONTRACT'
     || economics.exercise.style !== 'EUROPEAN'
     || economics.exercise.settlement !== 'CASH'
-    || economics.exercise.cashSettlement?.reference !== 'INDEX'
-    || economics.exercise.cashSettlement.currency !== quote.settlementAsset
+    || !settlement || settlement.reference !== 'INDEX'
+    || settlement.currency !== quote.settlementAsset
     || economics.exercise.settlementCurrency !== quote.settlementAsset) return false;
   const entryPriceSource = getPaperEntryPriceSource(quote);
   if (!entryPriceSource || quote.estimatedFields?.includes('markPrice') && entryPriceSource === 'MARK') return false;
