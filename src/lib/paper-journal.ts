@@ -233,17 +233,22 @@ export function closeCanonicalPaperTrade(input: CanonicalPaperExitInput): Canoni
     || !Number.isFinite(Date.parse(trade.sourceReceivedAtAtEntry.bidAsk))
     || !trade.sourceTimestampsAtEntry?.bookTicker || !Number.isFinite(Date.parse(trade.sourceTimestampsAtEntry.bookTicker))
     || !trade.sourceTimestampsAtEntry?.index || !Number.isFinite(Date.parse(trade.sourceTimestampsAtEntry.index))
+    || Date.parse(trade.sourceReceivedAtAtEntry.bidAsk) < Date.parse(trade.sourceTimestampsAtEntry.bookTicker)
     || Date.parse(trade.sourceReceivedAtAtEntry.bidAsk) > Date.parse(trade.createdAt)
     || Date.parse(trade.sourceTimestampsAtEntry.bookTicker) > Date.parse(trade.createdAt)
     || Date.parse(trade.sourceTimestampsAtEntry.index) > Date.parse(trade.createdAt)
     || Date.parse(trade.createdAt) - Date.parse(trade.sourceReceivedAtAtEntry.bidAsk) > MAX_PAPER_ENTRY_SOURCE_AGE_MS
+    || (trade.entryFeesSource === 'USER_ENTERED' && trade.fees > trade.premiumAmountAtEntry! * 0.1 + 1e-9)
     || Date.parse(trade.createdAt) - Date.parse(trade.sourceTimestampsAtEntry.bookTicker) > MAX_PAPER_ENTRY_SOURCE_AGE_MS
     || Date.parse(trade.createdAt) - Date.parse(trade.sourceTimestampsAtEntry.index) > MAX_PAPER_ENTRY_SOURCE_AGE_MS
     || !validateContractEconomics(trade.contractEconomics).adapterReady) {
     return { ok: false, reason: 'PAPER_ENTRY_SNAPSHOT_NOT_CANONICAL' };
   }
-  if (!Number.isFinite(Date.parse(closedAt)) || !Number.isFinite(Date.parse(trade.expiry))
-    || Date.parse(closedAt) >= Date.parse(trade.expiry)) {
+  if (!Number.isFinite(Date.parse(closedAt)) || !Number.isFinite(Date.parse(trade.createdAt))
+    || Date.parse(closedAt) <= Date.parse(trade.createdAt)) {
+    return { ok: false, reason: 'PAPER_EXIT_TIME_NOT_AFTER_ENTRY' };
+  }
+  if (!Number.isFinite(Date.parse(trade.expiry)) || Date.parse(closedAt) >= Date.parse(trade.expiry)) {
     return { ok: false, reason: 'PAPER_EXIT_AT_OR_AFTER_EXPIRY' };
   }
   if (quote.venue !== 'BINANCE' || quote.assetClass !== 'CRYPTO' || quote.underlyingKind !== 'SPOT'
