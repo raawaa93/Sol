@@ -4,6 +4,7 @@ import { getComparableDeltaSkew, getIvRvSpread, getReviewCandidates, getTermStru
 import { getRiskNeutralExpiryMetrics, getSpreadPct, getUnderlyingReferencePrice } from '../lib/options';
 import { isQuoteFieldEstimated } from '../lib/quote-quality';
 import { getContractScaleIssue } from '../lib/contract-scale';
+import { calculateQuoteCashRiskNeutralMetrics } from '../lib/quote-economics';
 import { formatAssetPrice, formatSmallAmount, formatSmallNumber, getQuoteCurrency } from '../lib/format';
 import type { AssetSnapshot, OptionQuote, Underlying } from '../lib/types';
 
@@ -133,7 +134,13 @@ export default function OpportunityReview({ quotes, market, underlying, dataMode
               && quote.bid > 0 && quote.ask > 0 && quote.ask >= quote.bid
               && quote.unit > 0
               && !['iv', 'daysToExpiry', 'spot', 'unit', 'riskFreeRate', 'carryYield', 'forward'].some((field) => isQuoteFieldEstimated(quote, field));
-            const modelMetrics = modelInputsVerified ? getRiskNeutralExpiryMetrics(quote, quote.ask, undefined, dataMode) : null;
+            const canonicalMetrics = dataMode === 'BINANCE' && quote.contractEconomics
+              ? calculateQuoteCashRiskNeutralMetrics(quote, quote.ask)
+              : null;
+            const modelMetrics = canonicalMetrics ?? (modelInputsVerified ? getRiskNeutralExpiryMetrics(quote, quote.ask, undefined, dataMode) : null);
+            const expectedPnlPerContract = canonicalMetrics?.expectedExpiryPnlPerContract
+              ?? (modelMetrics && 'expectedExpiryPnlPerUnit' in modelMetrics ? modelMetrics.expectedExpiryPnlPerUnit * quote.unit : undefined);
+            const modelCurrency = canonicalMetrics?.currency ?? getQuoteCurrency(quote) ?? null;
             const estimated = quote.estimatedFields?.length
               ? formatEstimatedFields(quote.estimatedFields.slice(0, 4))
               : '';
@@ -147,11 +154,13 @@ export default function OpportunityReview({ quotes, market, underlying, dataMode
                 <strong className="review-symbol">{quote.symbol}</strong>
                 <span className="review-contract-meta">{formatAssetPrice(quote.strike, getUnderlyingReferencePrice(quote), getQuoteCurrency(quote) ?? null)} · {Math.round(quote.daysToExpiry)} يوم · Δ {quote.pricingStatus === 'OBSERVED_ONLY' ? '—' : `${quote.delta.toFixed(2)}${quote.pricingStatus === 'ASSUMED' ? '*' : ''}`}</span>
                 <span className="review-market-meta">IV {quote.ivStatus === 'UNAVAILABLE' || quote.iv <= 0 ? '—' : formatPercent(quote.iv)} · OI {quote.openInterest === null ? '—' : formatSmallNumber(quote.openInterest)} · حجم {quote.volume === null ? '—' : formatSmallNumber(quote.volume)}</span>
-                {modelMetrics && <span className="review-model-meta">احتمال الربح عند الانتهاء: {formatPercent(modelMetrics.probabilityOfProfit)} · EV محايد/عقد: {modelMetrics.expectedExpiryPnlPerUnit * quote.unit >= 0 ? '+' : ''}{formatSmallAmount(modelMetrics.expectedExpiryPnlPerUnit * quote.unit, getQuoteCurrency(quote) ?? null)}</span>}
-                {modelMetrics && <small className="review-model-note">قياس محايد للمخاطر وفق {quote.pricingModel === 'BLACK_76' ? 'Black–76' : 'Black–Scholes مع Carry'} وبالمعدل والـCarry المسجلين في العقد، قبل الرسوم والانزلاق؛ ليس احتمالاً واقعياً ولا توقعاً للسوق.</small>}
+                {modelMetrics && expectedPnlPerContract !== undefined && <span className="review-model-meta">احتمال الربح عند الانتهاء: {formatPercent(modelMetrics.probabilityOfProfit)} · EV محايد/عقد: {expectedPnlPerContract >= 0 ? '+' : ''}{formatSmallAmount(expectedPnlPerContract, modelCurrency)}</span>}
+                {modelMetrics && <small className="review-model-note">{canonicalMetrics
+                  ? 'نموذج Black–Scholes مشروط بـ IV المرصود ومعدل الفائدة المنشور، مع افتراض Carry = 0%، ومضاعف التسوية والقسط الموثقين؛ يشمل الرسوم المدخلة، وليس توقعاً واقعياً أو ضماناً للربح.'
+                  : 'قياس محايد للمخاطر وفق النموذج والمعدل والـCarry المسجلين في العقد، قبل الرسوم والانزلاق؛ ليس احتمالاً واقعياً ولا توقعاً للسوق.'}</small>}
                 {quote.pricingStatus === 'ASSUMED' && <small className="review-estimated">Greeks مبنية على افتراضات: {quote.pricingReason ?? 'تحقق من المعدل والـcarry قبل الاعتماد عليها.'}</small>}
                 {quote.pricingStatus === 'OBSERVED_ONLY' && <small className="review-estimated">لا يوجد نموذج تسعير موثّق لهذا العقد؛ لا تُستخدم Greeks لتوليد احتمال ربح.</small>}
-                {quote.contractEconomics && <small className="review-estimated">تم إيقاف EV المحايد لهذا العقد حتى ربط نموذج الاحتمال بمقياس القسط والتسوية الموثقين.</small>}
+                {quote.contractEconomics && !canonicalMetrics && <small className="review-estimated">تم إيقاف EV المحايد لهذا العقد حتى تتوفر مدخلات النموذج ومقياس القسط والتسوية الموثقين.</small>}
                 {estimated && <small className="review-estimated">حقول تقديرية: {estimated}</small>}
                 <span className="review-open">افتح العقد في الماسح</span>
               </button>
