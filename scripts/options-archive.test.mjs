@@ -237,8 +237,6 @@ test('restart replays a partially committed multi-partition batch before advanci
     symbol: 'BTCUSDT',
     idempotencyKey: 'index|BTCUSDT|event-42',
     contractSpec: null,
-    contractSpecObservedAt: undefined,
-    contractSpecAvailableAt: undefined,
     fields: [{
       name: 'indexPrice',
       value: 99000,
