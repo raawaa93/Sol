@@ -369,7 +369,7 @@ export class ResumableOptionsArchive {
             await unlink(recoveryPath).catch((error) => { if (error.code !== 'ENOENT') throw error; });
             return this.acquireWriterLease();
           }
-          throw new OptionsArchiveError('WRITER_LEASE_RECOVERY_CORRUPT', 'Recovery lock is malformed and too recent to reclaim safely.');
+          throw new OptionsArchiveError('WRITER_LEASE_RECOVERY_BUSY', 'Recovery lock is being initialized or is too recent to reclaim safely.');
         }
         let recoveryProcessAlive = true;
         if (existingRecovery.host === currentHost && Number.isSafeInteger(existingRecovery.pid)) {
