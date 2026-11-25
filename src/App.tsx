@@ -180,7 +180,7 @@ function isPaperTrade(value: unknown): value is PaperTrade {
       && typeof trade.exit.closedAt === 'string' && Number.isFinite(Date.parse(trade.exit.closedAt))
       && typeof trade.exit.exitPremium === 'number' && Number.isFinite(trade.exit.exitPremium) && trade.exit.exitPremium > 0
       && trade.exit.exitQuantity === trade.quantity
-      && (trade.exit.exitFees === undefined || (typeof trade.exit.exitFees === 'number' && Number.isFinite(trade.exit.exitFees) && trade.exit.exitFees >= 0))
+      && (trade.exit.exitFees === undefined ? trade.exit.exitFeesSource === undefined : (typeof trade.exit.exitFees === 'number' && Number.isFinite(trade.exit.exitFees) && trade.exit.exitFees >= 0 && trade.exit.exitFeesSource === 'USER_ENTERED'))
       && typeof trade.exit.exitPremiumAmount === 'number' && Number.isFinite(trade.exit.exitPremiumAmount) && trade.exit.exitPremiumAmount > 0
       && (trade.exit.exitCreditAfterFees === undefined || (typeof trade.exit.exitCreditAfterFees === 'number' && Number.isFinite(trade.exit.exitCreditAfterFees)))
       && typeof trade.exit.realizedGrossPnl === 'number' && Number.isFinite(trade.exit.realizedGrossPnl)
@@ -1264,6 +1264,7 @@ function App() {
       exitPremiumBid: trade.exit?.exitPremium ?? '',
       exitQuantity: trade.exit?.exitQuantity ?? '',
       exitFees: trade.exit?.exitFees ?? '',
+      exitFeesSource: trade.exit?.exitFeesSource ?? '',
       exitPremiumAmount: trade.exit?.exitPremiumAmount ?? '',
       realizedGrossPnl: trade.exit?.realizedGrossPnl ?? '',
       realizedNetPnl: trade.exit?.realizedNetPnl ?? '',
