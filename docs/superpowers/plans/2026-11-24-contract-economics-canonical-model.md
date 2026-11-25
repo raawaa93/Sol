@@ -179,3 +179,17 @@ PR #167 merged to main as `acd5efcdbec53c2fbcee27a0a4e198a85454eb64`.
 - PR verification passed CI, including unit/property tests, mocked backup orchestration, production build, bundle budgets and Playwright browser journeys; Project Context Guard and Lighthouse passed. The published-site smoke-test workflow was skipped by its schedule/conditions, so do not claim a post-merge published-site smoke test from this PR.
 
 Remaining Phase 4 work: model-specific position Greeks, canonical risk-neutral EV, canonical PAPER journal schema and calculations, and canonical replay. CSV v2 remains USER_ASSERTED on import and cannot grant provider provenance.
+
+
+### Canonical cash-settled risk-neutral EV — PR #170 merged 25 November 2026
+
+Merged to main as `71a8a027659e880f22aa3b998b0c075c1a071bd3`.
+
+- Added a narrowly scoped risk-neutral expiry model for provider-verified Binance European Crypto Options cash-settled against the index.
+- Uses the canonical cash-settlement multiplier for payoff/model price and the independent premium multiplier for entry debit; computes ITM probability separately from probability of positive expiry P&L and includes user-entered fees in the latter.
+- Requires observed IV, a valid timestamped index, an observed risk-free rate (estimated/missing rate is rejected), supported Black–Scholes-with-carry metadata, and provider-verified contract economics. Binance carry remains an explicit 0% assumption shown in the UI.
+- The UI calls this a risk-neutral model diagnostic, not a real-world forecast or trade recommendation. It does not establish profitability or historical edge.
+- Binance model Greeks/price normalization now uses canonical cash scale only when premium multiplier is 1 and the verified adapter maps the product. Unsupported products and unknown scales remain blocked.
+- CI, Project Context Guard and Lighthouse passed on PR head `d93a9a9bacae6edc1ecc98bbb00a82a43680a0c5`. Published-site smoke test was skipped by workflow conditions.
+
+Remaining: model-aware position Greek aggregation/shock P&L, canonical PAPER lifecycle valuation and replay. Entry-only PAPER snapshots are handled separately by PR #169 and remain unmerged pending checks.
