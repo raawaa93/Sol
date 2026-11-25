@@ -144,7 +144,8 @@ function isPaperTradeClose(value: unknown, trade: Partial<PaperTrade>): boolean 
   if (!value || typeof value !== 'object') return false;
   const close = value as Partial<NonNullable<PaperTrade['close']>>;
   const debit = trade.premiumDebitAtEntry;
-  return typeof close.closedAt === 'string' && Number.isFinite(Date.parse(close.closedAt))
+  const entryAt = Date.parse(trade.createdAt ?? '');
+  return typeof close.closedAt === 'string' && Number.isFinite(Date.parse(close.closedAt)) && Date.parse(close.closedAt) >= entryAt
     && typeof close.exitPremium === 'number' && Number.isFinite(close.exitPremium) && close.exitPremium > 0
     && typeof close.exitFees === 'number' && Number.isFinite(close.exitFees) && close.exitFees >= 0
     && typeof close.exitExchangeFee === 'number' && Number.isFinite(close.exitExchangeFee) && close.exitExchangeFee >= 0
@@ -200,8 +201,10 @@ function isPaperTrade(value: unknown): value is PaperTrade {
       && typeof trade.premiumDebitAtEntry === 'number' && Number.isFinite(trade.premiumDebitAtEntry) && trade.premiumDebitAtEntry >= trade.premiumAmountAtEntry
       && trade.premiumCurrencyAtEntry === trade.contractEconomics.premium.quoteCurrency
       && (trade.priceSourceAtEntry !== 'ASK' || trade.bidAskSourceAtEntry === 'BOOK_TICKER')))
-    && (trade.exchangeFeeAtEntry === undefined || (Number.isFinite(trade.exchangeFeeAtEntry) && trade.exchangeFeeAtEntry >= 0))
-    && (trade.additionalFeesAtEntry === undefined || (Number.isFinite(trade.additionalFeesAtEntry) && trade.additionalFeesAtEntry >= 0))
+    && ((trade.exchangeFeeAtEntry === undefined && trade.additionalFeesAtEntry === undefined)
+      || (Number.isFinite(trade.exchangeFeeAtEntry) && trade.exchangeFeeAtEntry! >= 0
+        && Number.isFinite(trade.additionalFeesAtEntry) && trade.additionalFeesAtEntry! >= 0
+        && Math.abs(trade.fees! - trade.exchangeFeeAtEntry! - trade.additionalFeesAtEntry!) <= 1e-8))
     && (trade.close === undefined || isPaperTradeClose(trade.close, trade))
     && trade.status === 'PAPER';
 }
@@ -1680,7 +1683,7 @@ function App() {
             <article className="panel journal-panel">
               <div className="journal-summary"><div className="journal-summary-icon"><WalletCards size={18} /></div><div><strong>{trades.length} <span>صفقة تجريبية</span></strong><small>محفوظة محلياً في هذا المتصفح فقط</small></div><div className="journal-metric"><span>وضع التنفيذ</span><strong><i /> PAPER ONLY</strong></div><div className="journal-metric"><span>مفاتيح تداول</span><strong className="safe-label"><LockKeyhole size={13} /> غير مطلوبة</strong></div></div>
               {trades.length ? <>
-                <div className="journal-table-wrap"><table className="journal-table"><thead><tr><th>وقت التسجيل</th><th>العقد</th><th>Strike</th><th>كمية</th><th>قسط الدخول (Ask)</th><th>المؤشر وقت الدخول</th><th>الحالة / النتيجة</th></tr></thead><tbody>{trades.map((trade) => <tr key={trade.id}><td>{formatDateTime(new Date(trade.createdAt))}</td><td><span className={`mini-type ${trade.type.toLowerCase()}`}>{trade.type}</span><strong>{trade.symbol}</strong>{trade.contractEconomics && <small>لقطة العقد: قسط ×{trade.premiumMultiplierAtEntry} · وحدة التسليم {trade.contractUnitAtEntry}</small>}</td><td>{formatAssetPrice(trade.strike, trade.spotAtEntry, trade.quoteAsset ?? null)}</td><td>{formatQuantity(trade.quantity, { quantityScale: trade.quantityPrecision })}</td><td>{formatOptionPrice(trade.entryPremium, { priceScale: trade.pricePrecision }, trade.quoteAsset ?? null)}{trade.premiumDebitAtEntry !== undefined && <small>القسط والرسوم: {formatMoney(trade.premiumDebitAtEntry, 2, trade.premiumCurrencyAtEntry ?? null)}</small>}</td><td>{formatAssetPrice(trade.spotAtEntry, trade.spotAtEntry, trade.quoteAsset ?? null)}</td><td>{trade.close ? <span className="paper-status"><i /> مغلقة · {formatMoney(trade.close.realizedPnl, 2, trade.close.currency)}</span> : trade.priceSourceAtEntry === 'ASK' && trade.contractEconomics ? <button className="button button-ghost" onClick={() => void closePaperTrade(trade)}>إغلاق على Bid الحالي</button> : <span className="paper-status"><i /> سجل قديم · غير قابل للإغلاق</span>}</td></tr>)}</tbody></table></div>
+                <div className="journal-table-wrap"><table className="journal-table"><thead><tr><th>وقت التسجيل</th><th>العقد</th><th>Strike</th><th>كمية</th><th>قسط الدخول</th><th>المؤشر وقت الدخول</th><th>الحالة / النتيجة</th></tr></thead><tbody>{trades.map((trade) => <tr key={trade.id}><td>{formatDateTime(new Date(trade.createdAt))}</td><td><span className={`mini-type ${trade.type.toLowerCase()}`}>{trade.type}</span><strong>{trade.symbol}</strong>{trade.contractEconomics && <small>لقطة العقد: قسط ×{trade.premiumMultiplierAtEntry} · وحدة التسليم {trade.contractUnitAtEntry}</small>}</td><td>{formatAssetPrice(trade.strike, trade.spotAtEntry, trade.quoteAsset ?? null)}</td><td>{formatQuantity(trade.quantity, { quantityScale: trade.quantityPrecision })}</td><td>{formatOptionPrice(trade.entryPremium, { priceScale: trade.pricePrecision }, trade.quoteAsset ?? null)}{trade.premiumDebitAtEntry !== undefined && <small>القسط والرسوم: {formatMoney(trade.premiumDebitAtEntry, 2, trade.premiumCurrencyAtEntry ?? null)}</small>}</td><td>{formatAssetPrice(trade.spotAtEntry, trade.spotAtEntry, trade.quoteAsset ?? null)}</td><td>{trade.close ? <span className="paper-status"><i /> مغلقة · {formatMoney(trade.close.realizedPnl, 2, trade.close.currency)}</span> : trade.priceSourceAtEntry === 'ASK' && trade.contractEconomics ? dataMode === 'BINANCE' ? <button className="button button-ghost" onClick={() => void closePaperTrade(trade)}>إغلاق على Bid الحالي</button> : <span className="paper-status">اختر Binance لتحديث Bid</span> : <span className="paper-status"><i /> سجل قديم · غير قابل للإغلاق</span>}</td></tr>)}</tbody></table></div>
                 <div className="journal-mobile-list" role="list" aria-label="سجل الصفقات التجريبية">
                   {trades.map((trade) => <article className="journal-mobile-card" role="listitem" key={trade.id}>
                     <div className="journal-mobile-card-head">
@@ -1693,7 +1696,7 @@ function App() {
                       <div><small>قسط الدخول</small><strong>{formatOptionPrice(trade.entryPremium, { priceScale: trade.pricePrecision }, trade.quoteAsset ?? null)}</strong>{trade.premiumDebitAtEntry !== undefined && <small>القسط والرسوم: {formatMoney(trade.premiumDebitAtEntry, 2, trade.premiumCurrencyAtEntry ?? null)}</small>}</div>
                       <div><small>السعر المرجعي</small><strong>{formatAssetPrice(trade.spotAtEntry, trade.spotAtEntry, trade.quoteAsset ?? null)}</strong></div>
                     </div>
-                    {trade.close ? <span className="paper-status"><i /> مغلقة · {formatMoney(trade.close.realizedPnl, 2, trade.close.currency)}</span> : trade.priceSourceAtEntry === 'ASK' && trade.contractEconomics ? <button className="button button-ghost" onClick={() => void closePaperTrade(trade)}>إغلاق على Bid الحالي</button> : <span className="paper-status"><i /> سجل قديم · غير قابل للإغلاق</span>}
+                    {trade.close ? <span className="paper-status"><i /> مغلقة · {formatMoney(trade.close.realizedPnl, 2, trade.close.currency)}</span> : trade.priceSourceAtEntry === 'ASK' && trade.contractEconomics ? dataMode === 'BINANCE' ? <button className="button button-ghost" onClick={() => void closePaperTrade(trade)}>إغلاق على Bid الحالي</button> : <span className="paper-status">اختر Binance لتحديث Bid</span> : <span className="paper-status"><i /> سجل قديم · غير قابل للإغلاق</span>}
                   </article>)}
                 </div>
               </> : <div className="journal-empty"><div className="journal-empty-icon"><BookOpen size={20} /></div><strong>لا توجد صفقات مسجلة بعد</strong><span>اختر عقداً من الماسح ثم أضفه إلى الدفتر. لن يتم إرسال أي أمر إلى أي منصة.</span><button className="text-button" onClick={() => navigate('scanner')}>ابدأ بتحليل عقد <ArrowUpLeft size={14} /></button></div>}
