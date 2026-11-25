@@ -96,7 +96,9 @@ Verification:
 - Project Context Guard 45572889839 passed.
 
 No live market capture, scheduled worker, cloud archive, PIT dataset, strategy edge or live order capability was added.
-\n\n## BBO-aware replay update — 25 November 2026
+
+
+## BBO-aware replay update — 25 November 2026
 
 - PR #204 merged as `337e03fb26d44c906125318affc473030c165da4`.
 - Replay requires explicit BBO source, source-event/snapshot time, local receive time, non-estimated bid/ask, displayed-size unit and sufficient Ask size at entry/Bid size at exit. It uses receive/availability time for execution chronology and rejects missing, future, stale, mark-only, estimated or undersized quotes.
