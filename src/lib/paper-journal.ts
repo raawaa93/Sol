@@ -62,7 +62,7 @@ export function canCreateCanonicalPaperTrade(
     || !Number.isFinite(quote.unit) || quote.unit <= 0
     || !Number.isFinite(quote.strike) || quote.strike <= 0
     || !Number.isFinite(Date.parse(quote.expiry))) return false;
-  if (!validateContractEconomics(economics).valid
+  if (!validateContractEconomics(economics).adapterReady
     || economics.provenance.status !== 'PROVIDER_VERIFIED'
     || economics.provenance.provider !== 'BINANCE'
     || economics.provenance.sourceRef !== 'https://eapi.binance.com/eapi/v1/exchangeInfo') return false;
