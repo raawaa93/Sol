@@ -193,6 +193,38 @@ test('risk-neutral put metrics handle impossible non-positive break-even and exp
 });
 
 
+test('risk-neutral metrics reject canonical terms until a canonical probability model is available', () => {
+  const canonicalBinance: OptionQuote = {
+    ...call,
+    venue: 'BINANCE',
+    assetClass: 'CRYPTO',
+    underlyingKind: 'SPOT',
+    exerciseStyle: 'EUROPEAN',
+    settlementStyle: 'CASH',
+    quoteAsset: 'USDT',
+    settlementAsset: 'USDT',
+    unit: 1,
+    sourceTimestamps: { index: '2026-11-25T03:00:00Z' },
+    contractEconomics: {
+      premium: { multiplier: 1, quoteCurrency: 'USDT', priceUnit: 'PER_CONTRACT' },
+      exercise: {
+        style: 'EUROPEAN',
+        settlement: 'CASH',
+        settlementCurrency: 'USDT',
+        deliverables: [],
+        cashSettlement: { formula: 'INTRINSIC_VALUE', reference: 'INDEX', currency: 'USDT', multiplier: 1 },
+      },
+      provenance: {
+        status: 'PROVIDER_VERIFIED',
+        provider: 'BINANCE',
+        sourceRef: 'https://eapi.binance.com/eapi/v1/exchangeInfo',
+        retrievedAt: '2026-11-25T03:00:00Z',
+      },
+    },
+  };
+  assert.equal(getRiskNeutralExpiryMetrics(canonicalBinance, 5, undefined, 'BINANCE'), null);
+});
+
 test('risk-neutral metrics enforce contract-scale guard for direct callers', () => {
   const binanceUnitOne: OptionQuote = {
     ...call,

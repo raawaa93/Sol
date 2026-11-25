@@ -149,3 +149,13 @@ A fresh mainline code-search audit confirmed that canonical quote-level function
 ### Archive worktree availability
 
 A remote branch search for `research/options-pit-archive-2026-11-24` returned no branch. The previously reported local Copilot workspace is not exposed through the current GitHub connector, so its unpushed local diff cannot be inspected or safely continued from this session. No replacement archive implementation was created; the issue remains blocked on recovering/publishing that existing local work or receiving an accessible patch. Mainline archive/PIT/collector delivery remains NOT VERIFIED.
+
+
+## Canonical Binance cash-settlement integration merged — 25 November 2026
+
+- PR #167 merged as `acd5efcdbec53c2fbcee27a0a4e198a85454eb64`: https://github.com/raawaa93/Sol/pull/167
+- Verified the Binance live adapter attaches provider-verified `contractEconomics` from explicit exchangeInfo product-family fields; source index timestamp is retained.
+- Premium debit and affordability now use the independent premium multiplier; break-even, max loss and expiry scenarios use the independent cash-settlement multiplier.
+- No legacy scalar fallback is allowed for a quote carrying canonical terms, even at unit=1. Position Greeks, PAPER, EV and replay remain gated until canonical/model-aware consumers are implemented.
+- PR CI, build, bundle budget, Playwright journeys, Project Context Guard and Lighthouse passed. Published-site smoke-test job was skipped by workflow conditions; no post-merge published-site verification is claimed.
+- A subsequent audit identified that the standalone GreeksPanel and direct risk-neutral EV function still accepted the old unit=1 parity path for canonical quotes. A dedicated follow-up branch now centralizes the legacy capability gate and adds regression tests; see PR to follow.
