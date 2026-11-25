@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { canCreateCanonicalPaperTrade, createCanonicalPaperTrade } from './paper-journal.ts';
+import { canCreateCanonicalPaperTrade, createCanonicalPaperTrade, createCanonicalPaperCloseEvent } from './paper-journal.ts';
+import { appendPaperCloseEvent, isCanonicalPaperCloseEvent, loadPaperCloseEvents, PAPER_CLOSE_EVENTS_KEY, PAPER_CLOSE_EVENTS_RECOVERY_KEY } from './paper-journal-events.ts';
 import type { OptionQuote } from './types.ts';
 import { BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS } from './contract-economics.ts';
 
@@ -260,4 +261,137 @@ test('canonical PAPER long entry requires sufficient displayed ask size in contr
   });
   assert.equal(missingSizeUnit.ok, false);
   if (!missingSizeUnit.ok) assert.equal(missingSizeUnit.reason, 'CANONICAL_PROVIDER_VERIFIED_OBSERVED_PRICE_REQUIRED');
+});
+
+
+test('canonical PAPER close uses fresh executable Bid and sufficient displayed contract size', () => {
+  const entry = createCanonicalPaperTrade(input);
+  assert.equal(entry.ok, true);
+  if (!entry.ok) return;
+  const closeQuote = {
+    ...quote,
+    bid: 1.2,
+    ask: 1.3,
+    bidQuantity: 10,
+    askQuantity: 10,
+    sourceTimestamps: {
+      ...quote.sourceTimestamps,
+      bookTicker: '2026-11-25T03:01:30Z',
+      index: '2026-11-25T03:01:30Z',
+    },
+  };
+  const result = createCanonicalPaperCloseEvent({
+    trade: entry.trade,
+    quote: closeQuote,
+    sourceMode: 'BINANCE',
+    id: 'close-1',
+    closedAt: '2026-11-25T03:02:00Z',
+    exitFees: 0.25,
+    spotAtExit: closeQuote.spot,
+  });
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(result.event.exitPremium, 1.2);
+  assert.equal(result.event.grossProceeds, 3.6);
+  assert.equal(result.event.entryDebit, 4.4);
+  assert.ok(Math.abs(result.event.netPnl - -1.05) < 1e-9);
+  assert.equal(result.event.exitFeesSource, 'USER_ENTERED');
+  assert.equal(isCanonicalPaperCloseEvent(result.event), true);
+});
+
+test('canonical PAPER close rejects insufficient Bid size, wrong contract and stale/future source clocks', () => {
+  const entry = createCanonicalPaperTrade(input);
+  assert.equal(entry.ok, true);
+  if (!entry.ok) return;
+  const baseQuote = {
+    ...quote,
+    sourceTimestamps: {
+      ...quote.sourceTimestamps,
+      bookTicker: '2026-11-25T03:01:30Z',
+      index: '2026-11-25T03:01:30Z',
+    },
+  };
+  const base = {
+    trade: entry.trade,
+    quote: baseQuote,
+    sourceMode: 'BINANCE' as const,
+    id: 'close-reject',
+    closedAt: '2026-11-25T03:02:00Z',
+    exitFees: 0,
+    spotAtExit: baseQuote.spot,
+  };
+  const lowSize = createCanonicalPaperCloseEvent({ ...base, quote: { ...baseQuote, bidQuantity: 2 } });
+  assert.equal(lowSize.ok, false);
+  if (!lowSize.ok) assert.equal(lowSize.reason, 'INSUFFICIENT_OBSERVED_BID_SIZE');
+
+  const wrongContract = createCanonicalPaperCloseEvent({ ...base, quote: { ...baseQuote, strike: baseQuote.strike + 100 } });
+  assert.equal(wrongContract.ok, false);
+  if (!wrongContract.ok) assert.equal(wrongContract.reason, 'PAPER_CLOSE_CONTRACT_IDENTITY_MISMATCH');
+
+  const stale = createCanonicalPaperCloseEvent({
+    ...base,
+    closedAt: '2026-11-25T03:07:00Z',
+  });
+  assert.equal(stale.ok, false);
+  if (!stale.ok) assert.equal(stale.reason, 'PAPER_CLOSE_MARKET_SNAPSHOT_STALE_OR_FUTURE');
+
+  const future = createCanonicalPaperCloseEvent({
+    ...base,
+    quote: { ...baseQuote, sourceTimestamps: { ...baseQuote.sourceTimestamps, bookTicker: '2026-11-25T03:02:01Z' } },
+  });
+  assert.equal(future.ok, false);
+  if (!future.ok) assert.equal(future.reason, 'PAPER_CLOSE_MARKET_SNAPSHOT_STALE_OR_FUTURE');
+});
+
+test('paper close event storage appends once and rejects duplicate trade closures', () => {
+  const entry = createCanonicalPaperTrade(input);
+  assert.equal(entry.ok, true);
+  if (!entry.ok) return;
+  const closeQuote = {
+    ...quote,
+    sourceTimestamps: {
+      ...quote.sourceTimestamps,
+      bookTicker: '2026-11-25T03:01:30Z',
+      index: '2026-11-25T03:01:30Z',
+    },
+  };
+  const close = createCanonicalPaperCloseEvent({
+    trade: entry.trade,
+    quote: closeQuote,
+    sourceMode: 'BINANCE',
+    id: 'close-store-1',
+    closedAt: '2026-11-25T03:02:00Z',
+    exitFees: 0.25,
+    spotAtExit: closeQuote.spot,
+  });
+  assert.equal(close.ok, true);
+  if (!close.ok) return;
+  const values = new Map<string, string>();
+  const storage = {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => { values.set(key, value); },
+  };
+  const first = appendPaperCloseEvent(storage, close.event);
+  assert.equal(first.ok, true);
+  const second = appendPaperCloseEvent(storage, close.event);
+  assert.equal(second.ok, false);
+  if (!second.ok) assert.equal(second.reason, 'PAPER_TRADE_ALREADY_CLOSED');
+  const loaded = loadPaperCloseEvents(storage);
+  assert.equal(loaded.events.length, 1);
+  assert.equal(loaded.persistenceBlocked, false);
+});
+
+test('paper close event storage quarantines invalid rows before replacing the active event list', () => {
+  const values = new Map<string, string>();
+  const raw = JSON.stringify([{ eventType: 'CLOSE', id: 'corrupt' }]);
+  values.set(PAPER_CLOSE_EVENTS_KEY, raw);
+  const storage = {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => { values.set(key, value); },
+  };
+  const loaded = loadPaperCloseEvents(storage);
+  assert.equal(loaded.rejectedCount, 1);
+  assert.equal(loaded.backupAvailable, true);
+  assert.equal(loaded.persistenceBlocked, false);
+  assert.equal(values.get(PAPER_CLOSE_EVENTS_RECOVERY_KEY), raw);
 });
