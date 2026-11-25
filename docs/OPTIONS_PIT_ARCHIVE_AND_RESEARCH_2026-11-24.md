@@ -221,7 +221,9 @@ This update supersedes the earlier 24 November statement that archive/PIT code w
 - The current execution record is maintained in docs/EXECUTION_STATUS_2026-11-24.md, and archive-specific limits are maintained in docs/OPTIONS_ARCHIVE_IMPLEMENTATION_STATUS_2026-11-25.md.
 
 No live capture, production database write, paid service, account credential, live order or funds movement was used in these changes.
-\n\n## Implementation update — BBO-aware replay contract (25 November 2026)
+
+
+## Implementation update — BBO-aware replay contract (25 November 2026)
 
 PR #204 merged as `337e03fb26d44c906125318affc473030c165da4`.
 
