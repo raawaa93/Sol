@@ -389,19 +389,19 @@ test('Binance client requests public exchange and market data endpoints and maps
     const url = new URL(String(input));
     requestedUrls.push(url);
     let payload: unknown;
-    if (url.pathname.endsWith('/exchangeInfo')) {
+    if (url.searchParams.get('endpoint') === 'exchangeInfo') {
       payload = {
         serverTime: now,
         optionContracts: [{ baseAsset: 'BTC', quoteAsset: 'USDT', underlying: 'BTCUSDT' }],
         optionSymbols: [{ symbol, underlying: 'BTCUSDT', quoteAsset: 'USDT', side: 'CALL', strikePrice: 100000, expiryDate: expiry, unit: 1, status: 'TRADING' }],
       };
-    } else if (url.pathname.endsWith('/mark')) {
+    } else if (url.searchParams.get('endpoint') === 'mark') {
       payload = [{ symbol, markPrice: 5000, markIV: 0.5, delta: 0.55, riskFreeInterest: 0 }];
-    } else if (url.pathname.endsWith('/ticker')) {
+    } else if (url.searchParams.get('endpoint') === 'ticker') {
       payload = [{ symbol, bidPrice: 4900, askPrice: 5100, volume: 10, amount: 50000, closeTime: now }];
-    } else if (url.pathname.endsWith('/index')) {
+    } else if (url.searchParams.get('endpoint') === 'index') {
       payload = { indexPrice: 100000, time: now };
-    } else if (url.pathname.endsWith('/openInterest')) {
+    } else if (url.searchParams.get('endpoint') === 'openInterest') {
       payload = { symbol, sumOpenInterest: 5, sumOpenInterestUsd: 500000, timestamp: now };
     } else {
       throw new Error(`Unexpected Binance URL ${url}`);
@@ -410,15 +410,15 @@ test('Binance client requests public exchange and market data endpoints and maps
   };
 
   try {
-    const snapshot = await fetchBinanceOptions();
+    const snapshot = await fetchBinanceOptions('https://market-data-proxy.test/functions/v1/market-data');
     assert.equal(snapshot.activeSymbols, 1);
     assert.equal(snapshot.quotes.length, 1);
     assert.equal(snapshot.quotes[0].openInterestUsd, 500000);
-    assert.ok(requestedUrls.some((url) => url.pathname.endsWith('/exchangeInfo')));
-    assert.ok(requestedUrls.some((url) => url.pathname.endsWith('/mark')));
-    assert.ok(requestedUrls.some((url) => url.pathname.endsWith('/ticker')));
-    assert.ok(requestedUrls.some((url) => url.pathname.endsWith('/index') && url.searchParams.get('underlying') === 'BTCUSDT'));
-    assert.ok(requestedUrls.some((url) => url.pathname.endsWith('/openInterest')
+    assert.ok(requestedUrls.some((url) => url.searchParams.get('endpoint') === 'exchangeInfo'));
+    assert.ok(requestedUrls.some((url) => url.searchParams.get('endpoint') === 'mark'));
+    assert.ok(requestedUrls.some((url) => url.searchParams.get('endpoint') === 'ticker'));
+    assert.ok(requestedUrls.some((url) => url.searchParams.get('endpoint') === 'index' && url.searchParams.get('underlying') === 'BTCUSDT'));
+    assert.ok(requestedUrls.some((url) => url.searchParams.get('endpoint') === 'openInterest'
       && url.searchParams.get('underlyingAsset') === 'BTC'
       && url.searchParams.get('expiration') === expiryCode));
   } finally {
@@ -476,49 +476,18 @@ test('Binance client routes all public market data through the configured proxy'
 });
 
 
-test('Binance client supports direct public market-data requests from the current browser network', async () => {
-  const now = Date.now();
-  const expiry = now + 28 * 86_400_000;
-  const expiryCode = compactDate(expiry);
-  const symbol = `BTC-${expiryCode}-100000-C`;
-  const requestedUrls: URL[] = [];
+test('Binance direct requests are disabled when the approved proxy is absent', async () => {
+  const symbol = 'BTC-261225-100000-C';
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async (input) => {
-    const url = new URL(String(input));
-    requestedUrls.push(url);
-    assert.equal(url.origin, 'https://eapi.binance.com');
-    let payload: unknown;
-    if (url.pathname.endsWith('/exchangeInfo')) {
-      payload = {
-        serverTime: now,
-        optionContracts: [{ baseAsset: 'BTC', quoteAsset: 'USDT', underlying: 'BTCUSDT' }],
-        optionSymbols: [{ symbol, underlying: 'BTCUSDT', quoteAsset: 'USDT', side: 'CALL', strikePrice: 100000, expiryDate: expiry, unit: 1, status: 'TRADING' }],
-      };
-    } else if (url.pathname.endsWith('/mark')) {
-      payload = [{ symbol, markPrice: 5000, markIV: 0.5, delta: 0.55, riskFreeInterest: 0 }];
-    } else if (url.pathname.endsWith('/ticker')) {
-      payload = [{ symbol, bidPrice: 4900, askPrice: 5100, volume: 10, amount: 50000, closeTime: now }];
-    } else if (url.pathname.endsWith('/index')) {
-      payload = [{ underlying: 'BTCUSDT', indexPrice: 100000, time: now }];
-    } else if (url.pathname.endsWith('/openInterest')) {
-      payload = [{ symbol, sumOpenInterest: 5, sumOpenInterestUsd: 500000, timestamp: now }];
-    } else if (url.pathname.endsWith('/depth')) {
-      payload = { lastUpdateId: 7, bids: [['10', '2']], asks: [['11', '3']] };
-    } else {
-      throw new Error(`Unexpected direct Binance URL ${url}`);
-    }
-    return new Response(JSON.stringify(payload), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  let networkCalls = 0;
+  globalThis.fetch = async () => {
+    networkCalls += 1;
+    throw new Error('Network access must not occur without the approved proxy.');
   };
-
   try {
-    const snapshot = await fetchBinanceOptions();
-    assert.equal(snapshot.quotes.length, 1);
-    assert.equal(snapshot.quotes[0].openInterestUsd, 500000);
-    const depth = await fetchBinanceDepth(symbol);
-    assert.equal(depth.bids[0].price, 10);
-    assert.equal(depth.asks[0].price, 11);
-    assert.ok(requestedUrls.length >= 6);
-    assert.ok(requestedUrls.every((url) => url.origin === 'https://eapi.binance.com'));
+    await assert.rejects(fetchBinanceOptions(), /market-data proxy is required/);
+    await assert.rejects(fetchBinanceDepth(symbol), /market-data proxy is required/);
+    assert.equal(networkCalls, 0);
   } finally {
     globalThis.fetch = originalFetch;
   }
