@@ -111,9 +111,17 @@ export function hasCanonicalBinanceModelGreekCapability(
     ? Date.parse(quote.sourceTimestamps?.riskFreeRate ?? '')
     : Date.parse(quote.sourceReceivedAt?.riskFreeRate ?? '');
   const indexTimestamp = Date.parse(quote.sourceTimestamps?.index ?? '');
+  const bboTimestamp = Date.parse(quote.bidAskSource === 'BOOK_TICKER'
+    ? quote.sourceTimestamps?.bookTicker ?? ''
+    : quote.bidAskSource === 'OPTION_TICKER'
+      ? quote.sourceTimestamps?.optionTicker ?? ''
+      : quote.bidAskSource === 'MARK_PRICE'
+        ? quote.sourceTimestamps?.markPrice ?? ''
+        : '');
   const markIvFresh = Number.isFinite(markIvReceivedAt) && nowMs >= markIvReceivedAt && nowMs - markIvReceivedAt <= 60_000;
   const riskFreeFresh = Number.isFinite(riskFreeReceivedAt) && nowMs >= riskFreeReceivedAt && nowMs - riskFreeReceivedAt <= 60_000;
   const indexFresh = Number.isFinite(indexTimestamp) && nowMs >= indexTimestamp && nowMs - indexTimestamp <= 15_000;
+  const bboFresh = Number.isFinite(bboTimestamp) && nowMs >= bboTimestamp && nowMs - bboTimestamp <= 15_000;
 
   return sourceMode === 'BINANCE'
     && quote.venue === 'BINANCE'
@@ -155,9 +163,9 @@ export function hasCanonicalBinanceModelGreekCapability(
     && Number.isFinite(quote.carryYield)
     && [quote.delta, quote.gamma, quote.theta, quote.vega, quote.rho].every(Number.isFinite)
     && validTimestamp(quote.sourceTimestamps?.index)
-    && validTimestamp(quote.sourceTimestamps?.optionTicker)
-    && validTimestamp(quote.sourceTimestamps?.markIv)
-    && quote.sourceTimestamps?.markIv === quote.sourceTimestamps?.optionTicker;
+    && bboFresh
+    && Number.isFinite(quote.bid) && quote.bid > 0
+    && Number.isFinite(quote.ask) && quote.ask >= quote.bid;
 }
 
 export function getContractScaleIssueMessage(issue: ContractScaleIssue): string {
