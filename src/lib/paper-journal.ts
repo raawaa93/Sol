@@ -219,6 +219,7 @@ export interface CanonicalPaperCloseEvent {
     bookTicker: string;
     index: string;
   };
+  sourceReceivedAtAtExit: { bidAsk: string };
   contractEconomicsAtExit: ContractEconomics;
 }
 
@@ -290,12 +291,15 @@ export function createCanonicalPaperCloseEvent(input: {
   const closedAtMs = Date.parse(closedAt);
   const expiryMs = Date.parse(trade.expiry);
   const bookTimestamp = Date.parse(quote.sourceTimestamps?.bookTicker ?? '');
+  const receivedTimestamp = Date.parse(quote.sourceReceivedAt?.bidAsk ?? '');
   const indexTimestamp = Date.parse(quote.sourceTimestamps?.index ?? '');
   if (!Number.isFinite(expiryMs) || expiryMs <= closedAtMs) {
     return { ok: false, reason: 'OPTION_EXPIRED_AT_PAPER_CLOSE' };
   }
-  if (!Number.isFinite(bookTimestamp) || !Number.isFinite(indexTimestamp)
-    || bookTimestamp > closedAtMs || indexTimestamp > closedAtMs
+  if (!Number.isFinite(bookTimestamp) || !Number.isFinite(receivedTimestamp) || !Number.isFinite(indexTimestamp)
+    || bookTimestamp > receivedTimestamp || receivedTimestamp > closedAtMs || indexTimestamp > closedAtMs
+    || receivedTimestamp - bookTimestamp > MAX_PAPER_CLOSE_SOURCE_AGE_MS
+    || closedAtMs - receivedTimestamp > MAX_PAPER_CLOSE_SOURCE_AGE_MS
     || closedAtMs - bookTimestamp > MAX_PAPER_CLOSE_SOURCE_AGE_MS
     || closedAtMs - indexTimestamp > MAX_PAPER_CLOSE_SOURCE_AGE_MS) {
     return { ok: false, reason: 'PAPER_CLOSE_MARKET_SNAPSHOT_STALE_OR_FUTURE' };
@@ -362,6 +366,7 @@ export function createCanonicalPaperCloseEvent(input: {
         bookTicker: quote.sourceTimestamps!.bookTicker!,
         index: quote.sourceTimestamps!.index!,
       },
+      sourceReceivedAtAtExit: { bidAsk: quote.sourceReceivedAt!.bidAsk! },
       contractEconomicsAtExit: economics,
     },
   };
