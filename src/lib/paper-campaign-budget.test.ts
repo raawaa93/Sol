@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { PaperTrade } from './types.ts';
+import type { CanonicalPaperCloseEvent } from './paper-journal.ts';
 import {
   PAPER_CAMPAIGN_CAPITAL,
   PAPER_CAMPAIGN_MAX_LOSS,
@@ -142,4 +143,42 @@ test('inconsistent used and remaining values in a campaign summary fail closed',
     canAllocatePaperCampaignTrade({ ...summary, used: 55, remaining: 10 }, 5, 'USDT').reason,
     'INVALID_CAMPAIGN_BUDGET',
   );
+});
+
+
+test('closed PAPER positions release open debit but retain realized campaign losses', () => {
+  const closed = {
+    tradeId: 'paper-1',
+    currency: 'USDT',
+    entryDebit: 20,
+    netPnl: -5,
+  } as CanonicalPaperCloseEvent;
+  const summary = summarizePaperCampaignBudget([trade()], 'USDT', undefined, [closed]);
+  assert.equal(summary.used, 5);
+  assert.equal(summary.remaining, 55);
+  assert.equal(summary.canAllocate, true);
+});
+
+test('closed PAPER profits offset campaign losses without creating negative risk usage', () => {
+  const closed = {
+    tradeId: 'paper-1',
+    currency: 'USDT',
+    entryDebit: 20,
+    netPnl: 5,
+  } as CanonicalPaperCloseEvent;
+  const summary = summarizePaperCampaignBudget([trade()], 'USDT', undefined, [closed]);
+  assert.equal(summary.used, 0);
+  assert.equal(summary.remaining, 60);
+});
+
+test('orphaned or unreconciled close events block campaign allocation', () => {
+  const orphan = {
+    tradeId: 'missing-trade',
+    currency: 'USDT',
+    entryDebit: 20,
+    netPnl: -5,
+  } as CanonicalPaperCloseEvent;
+  const summary = summarizePaperCampaignBudget([trade()], 'USDT', undefined, [orphan]);
+  assert.equal(summary.unknownEntries, 1);
+  assert.equal(summary.canAllocate, false);
 });
