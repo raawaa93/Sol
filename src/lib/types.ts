@@ -239,6 +239,8 @@ export interface PaperTrade {
   entryPremium: number;
   pricePrecision?: number;
   fees: number;
+  /** Present only when the entry fee amount was explicitly supplied by the user. */
+  entryFeesSource?: 'USER_ENTERED';
   spotAtEntry: number;
   quoteAsset?: string;
   /** Immutable-at-entry canonical snapshot; local storage is an audit record, never trusted for later calculations. */
