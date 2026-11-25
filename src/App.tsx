@@ -711,8 +711,11 @@ function App() {
     () => summarizePaperCampaignBudget(trades, quoteAssetLabel ?? '', undefined, paperCloseEvents),
     [trades, quoteAssetLabel, paperCloseEvents],
   );
-  const campaignBudgetBlockMessage = !campaignBudget.supportedCurrency
-    ? 'سقف الحملة يدعم USD أو USDT فقط حالياً؛ لا نفترض تحويل عملات.'
+  const campaignBudgetBlockMessage = paperJournalLoad.backupAvailable || paperJournalLoad.persistenceBlocked
+    || paperCloseEventsLoad.backupAvailable || paperCloseEventsLoad.persistenceBlocked
+    ? 'توجد نسخة استعادة محلية لم يتم تأكيد حفظها خارج المتصفح؛ نزّل النسخ الخام وأكّد الاستعادة قبل أي إدخال أو إغلاق جديد.'
+    : !campaignBudget.supportedCurrency
+      ? 'سقف الحملة يدعم USD أو USDT فقط حالياً؛ لا نفترض تحويل عملات.'
     : campaignBudget.unknownEntries > 0
       ? 'يوجد إدخال سابق بتكلفة غير موثقة؛ صدّر الدفتر ثم أعد ضبط حملة PAPER قبل إضافة صفقة.'
       : campaignBudget.currencyMismatchEntries > 0
