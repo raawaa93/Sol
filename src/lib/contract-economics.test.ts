@@ -25,6 +25,7 @@ function standardEquity(overrides: Partial<ContractEconomics> = {}): ContractEco
 
 test('Binance legal provenance records the May 2026 amendment without claiming consolidated v1.3 verification', () => {
   assert.equal(BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS.clearingProceduresAmendmentEffectiveDate, '2026-05-21');
+  assert.equal(BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS.clearingProceduresAmendmentScope, 'BINANCE_RCH');
   assert.equal(BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS.clearingProceduresVersion, '1.3');
   assert.equal(BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS.clearingProceduresConsolidatedTextVerified, false);
   assert.match(BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS.clearingProceduresAmendmentNoticeRef, /fa97cef498054d23290ba2a132eda63816395d84766af2db7b433d906432dd0b\.pdf$/);
