@@ -32,15 +32,15 @@
 
 ## Phase 3 — Provider adapters
 
-- [ ] Binance Crypto Options adapter: map contract unit, quote/settlement assets and published exercise/settlement terms.
+- [x] Binance Crypto Options adapter: map contract unit, quote/settlement assets and published exercise/settlement terms (PR #128; runtime attachment confirmed in main).
 - [x] Binance Stock Options reference adapter: map premium multiplier and component deliverables; preserve contractSize independently; no quote/Greeks claim.
 - [ ] OCC/standard-equity reference adapter for test vectors only until a licensed/live data source exists.
 - [ ] Keep futures and commodity adapters blocked until exchange-specific point value and delivery specifications are sourced.
 
 ## Phase 4 — Analytics routing
 
-- [ ] Route premium debit/credit and break-even through canonical economics.
-- [ ] Route expiry payoff, max loss and scenario series through deliverable-aware payoff.
+- [x] Route premium debit/credit and break-even through canonical economics for provider-verified Binance Crypto Options cash-settlement terms (PR #167).
+- [x] Route expiry payoff, max loss and scenario series through canonical cash-settlement payoff for the supported Binance Crypto Options adapter (PR #167).
 - [ ] Route position Greeks through model-specific deliverable scaling.
 - [ ] Route opportunity EV and historical replay through the same validation result.
 - [ ] Add invariants proving no component uses legacy unit/multiplier as a universal shortcut.
@@ -166,3 +166,16 @@ Added `calculateCashSettlementPayoff` as a pure, fail-closed calculation for con
 - Reference tests cover a call, a put, worthless expiry and unknown settlement.
 
 This is a calculation primitive only. It is not yet wired into the legacy payoff chart, break-even, max-loss, scenario, EV, Greeks or replay paths. In particular, break-even and max-loss need product-specific payoff bounds and must not be inferred for physical multi-component deliverables by this helper.
+
+
+### Phase 4 Binance cash-settlement integration — 25 November 2026
+
+PR #167 merged to main as `acd5efcdbec53c2fbcee27a0a4e198a85454eb64`.
+
+- The live Binance adapter already attached provider-verified canonical Crypto Options economics to each eligible `OptionQuote`; this was confirmed in `src/lib/binance.ts`, not assumed from a symbol or venue string.
+- The app now calculates per-contract premium debit and affordability using the canonical premium multiplier, and calculates cash-settlement breakeven, maximum loss and expiry scenario series using the independent cash-settlement multiplier.
+- The Spot Price Index settlement reference is accepted only when the quote includes a source timestamp for the index.
+- Legacy scalar calculations are not used when canonical terms exist, even when unit=1. The app keeps position Greeks, PAPER journal writes, risk-neutral EV and legacy replay blocked until those consumers have explicit canonical/model-aware adapters.
+- PR verification passed CI, including unit/property tests, mocked backup orchestration, production build, bundle budgets and Playwright browser journeys; Project Context Guard and Lighthouse passed. The published-site smoke-test workflow was skipped by its schedule/conditions, so do not claim a post-merge published-site smoke test from this PR.
+
+Remaining Phase 4 work: model-specific position Greeks, canonical risk-neutral EV, canonical PAPER journal schema and calculations, and canonical replay. CSV v2 remains USER_ASSERTED on import and cannot grant provider provenance.
