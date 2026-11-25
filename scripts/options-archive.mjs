@@ -197,7 +197,10 @@ export function evaluateOptionsPointInTime(record, decisionAt, requiredFields) {
   if (record.historicalBackfill) reasons.push('HISTORICAL_BACKFILL');
   if (record.quality.status !== 'VALID') reasons.push('RECORD_QUALITY_NOT_VALID');
   if (!record.contractSpec || !record.contractSpecAvailableAt) reasons.push('CONTRACT_SPEC_UNAVAILABLE');
-  else if (Date.parse(record.contractSpecAvailableAt) > decision) reasons.push('CONTRACT_SPEC_LOOKAHEAD');
+  else {
+    if (Date.parse(record.contractSpecAvailableAt) > decision) reasons.push('CONTRACT_SPEC_LOOKAHEAD');
+    if (Date.parse(record.contractSpec.expiryAt) <= decision) reasons.push('CONTRACT_EXPIRED');
+  }
   if (Date.parse(record.clocks.receivedAt) > decision || Date.parse(record.clocks.availableAt) > decision) reasons.push('RECORD_NOT_AVAILABLE');
   for (const name of requiredFields) {
     const field = record.fields.find((item) => item.name === name);
