@@ -6,8 +6,8 @@ import type { OptionQuote } from './types.ts';
 
 function quote(timestamp: string, overrides: Partial<OptionQuote> = {}): OptionQuote {
   return {
-    id: 'XAU-261124-4000-C',
-    symbol: 'XAU-261124-4000-C',
+    id: 'BTC-261124-4000-C',
+    symbol: 'BTC-261124-4000-C',
     underlying: 'BTC',
     assetClass: 'CRYPTO',
     venue: 'TEST-CRYPTO-VENUE',
