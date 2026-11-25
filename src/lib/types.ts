@@ -219,6 +219,8 @@ export interface PaperTradeClose {
   exitSpot: number;
   exitPriceSource: 'BID';
   exitBidAskSource: 'BOOK_TICKER';
+  exitBidQuantity: number;
+  exitBidSizeUnit: 'CONTRACTS';
   sourceTimestampsAtExit: OptionQuote['sourceTimestamps'];
   realizedPnl: number;
   realizedPnlCurrency: string;
@@ -251,6 +253,8 @@ export interface PaperTrade {
   premiumCurrencyAtEntry?: string;
   priceSourceAtEntry?: QuotePriceSource;
   bidAskSourceAtEntry?: OptionQuote['bidAskSource'];
+  askQuantityAtEntry?: number;
+  askSizeUnitAtEntry?: 'CONTRACTS';
   sourceTimestampsAtEntry?: OptionQuote['sourceTimestamps'];
   close?: PaperTradeClose;
   status: 'PAPER';
