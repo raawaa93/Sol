@@ -18,13 +18,19 @@ export type CanonicalPaperTradeResult =
   | { ok: true; trade: PaperTrade; premiumDebit: number; premiumCurrency: string }
   | { ok: false; reason: string };
 
-function hasObservedPriceTimestamp(quote: OptionQuote): boolean {
+function getPaperEntryPriceSource(quote: OptionQuote): OptionQuote['priceSource'] | undefined {
+  if (quote.bid > 0 && quote.ask >= quote.bid) return 'MID';
+  if (quote.markPrice > 0) return 'MARK';
+  if (quote.bid > 0) return 'BID';
+  if (quote.ask > 0) return 'ASK';
+  return undefined;
+}
+
+function hasObservedPriceTimestamp(quote: OptionQuote, source: NonNullable<OptionQuote['priceSource']>): boolean {
   const timestamps = quote.sourceTimestamps;
   if (!timestamps) return false;
-  if (quote.priceSource === 'MARK') return Boolean(timestamps.markPrice);
-  if (quote.priceSource === 'MID') return Boolean(timestamps.bookTicker || timestamps.optionTicker);
-  if (quote.priceSource === 'LAST') return Boolean(timestamps.ticker || timestamps.optionTicker);
-  if (quote.priceSource === 'BID' || quote.priceSource === 'ASK') return Boolean(timestamps.bookTicker || timestamps.optionTicker);
+  if (source === 'MARK') return Boolean(timestamps.markPrice);
+  if (source === 'MID' || source === 'BID' || source === 'ASK') return Boolean(timestamps.bookTicker || timestamps.optionTicker);
   return false;
 }
 
@@ -42,8 +48,9 @@ export function canCreateCanonicalPaperTrade(
   if (economics.provenance.status !== 'PROVIDER_VERIFIED'
     || economics.provenance.provider !== 'BINANCE'
     || economics.provenance.sourceRef !== 'https://eapi.binance.com/eapi/v1/exchangeInfo') return false;
-  if (quote.priceSource === 'MODEL' || quote.estimatedFields?.includes('markPrice')) return false;
-  if (!hasObservedPriceTimestamp(quote)) return false;
+  const entryPriceSource = getPaperEntryPriceSource(quote);
+  if (!entryPriceSource || quote.estimatedFields?.includes('markPrice') && entryPriceSource === 'MARK') return false;
+  if (!hasObservedPriceTimestamp(quote, entryPriceSource)) return false;
   if (!quote.quoteAsset || quote.quoteAsset !== economics.premium.quoteCurrency) return false;
   return calculatePremiumCash({ economics, premiumPrice: 1, contracts: 1 }).ok;
 }
@@ -102,7 +109,7 @@ export function createCanonicalPaperTrade(
     premiumAmountAtEntry: debit.value.premiumAmount,
     premiumDebitAtEntry: debit.value.amount,
     premiumCurrencyAtEntry: debit.value.currency,
-    priceSourceAtEntry: quote.priceSource,
+    priceSourceAtEntry: getPaperEntryPriceSource(quote),
     sourceTimestampsAtEntry: quote.sourceTimestamps ? { ...quote.sourceTimestamps } : undefined,
     status: 'PAPER',
   };
