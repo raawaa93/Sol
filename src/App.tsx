@@ -1227,6 +1227,8 @@ function App() {
       bidAskSourceAtEntry: trade.bidAskSourceAtEntry ?? '',
       contractEconomicsJSON: trade.contractEconomics ? JSON.stringify(trade.contractEconomics) : '',
       sourceTimestampsAtEntryJSON: trade.sourceTimestampsAtEntry ? JSON.stringify(trade.sourceTimestampsAtEntry) : '',
+      sourceReceivedAtAtEntryJSON: trade.sourceReceivedAtAtEntry ? JSON.stringify(trade.sourceReceivedAtAtEntry) : '',
+      takerFeeRateAtEntry: trade.takerFeeRateAtEntry ?? '',
       exchangeFeeAtEntry: trade.exchangeFeeAtEntry ?? '',
       additionalFeesAtEntry: trade.additionalFeesAtEntry ?? '',
       closedAtUTC: trade.close?.closedAt ?? '',
@@ -1240,6 +1242,11 @@ function App() {
       spotAtExit: trade.close?.spotAtExit ?? '',
       exitBookTimestamp: trade.close?.sourceTimestamps.bookTicker ?? '',
       exitIndexTimestamp: trade.close?.sourceTimestamps.index ?? '',
+      exitReceivedAt: trade.close?.sourceReceivedAt ?? '',
+      exitBidQuantity: trade.close?.bidQuantity ?? '',
+      exitTakerFeeRate: trade.close?.takerFeeRateAtExit ?? '',
+      exitSizeUnit: trade.close?.bidAskSizeUnit ?? '',
+      exitBidAskSource: trade.close?.bidAskSource ?? '',
       mode: 'PAPER',
     })));
   };
