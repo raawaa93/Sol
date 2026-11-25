@@ -165,13 +165,11 @@ function isPaperTrade(value: unknown): value is PaperTrade {
       && trade.contractEconomics.exercise?.style === 'EUROPEAN'
       && trade.contractEconomics.exercise?.settlement === 'CASH'
       && trade.contractEconomics.exercise?.cashSettlement?.reference === 'INDEX'
-      && Number.isFinite(trade.contractEconomics.exercise.cashSettlement.multiplier) && trade.contractEconomics.exercise.cashSettlement.multiplier > 0
-      && typeof trade.contractUnitAtEntry === 'number' && Number.isFinite(trade.contractUnitAtEntry) && trade.contractUnitAtEntry > 0
       && trade.contractUnitAtEntry === trade.contractEconomics.exercise.cashSettlement.multiplier
-      && typeof trade.premiumMultiplierAtEntry === 'number' && Number.isFinite(trade.premiumMultiplierAtEntry) && trade.premiumMultiplierAtEntry > 0
+      && trade.premiumMultiplierAtEntry === trade.contractEconomics.premium.multiplier
       && typeof trade.premiumAmountAtEntry === 'number' && Number.isFinite(trade.premiumAmountAtEntry) && trade.premiumAmountAtEntry >= 0
-      && typeof trade.premiumDebitAtEntry === 'number' && Number.isFinite(trade.premiumDebitAtEntry) && trade.premiumDebitAtEntry >= 0
-      && typeof trade.premiumCurrencyAtEntry === 'string' && /^[A-Z0-9]{2,12}$/.test(trade.premiumCurrencyAtEntry)
+      && typeof trade.premiumDebitAtEntry === 'number' && Number.isFinite(trade.premiumDebitAtEntry) && trade.premiumDebitAtEntry >= trade.premiumAmountAtEntry
+      && trade.premiumCurrencyAtEntry === trade.contractEconomics.premium.quoteCurrency
       && (trade.priceSourceAtEntry !== 'MID' || trade.bidAskSourceAtEntry === 'BOOK_TICKER' || trade.bidAskSourceAtEntry === 'OPTION_TICKER')))
     && trade.status === 'PAPER';
 }
