@@ -32,7 +32,7 @@ import {
 } from 'lucide-react';
 import DeferredVolatilityCharts from './components/DeferredVolatilityCharts';
 import DeferredPayoffChart from './components/DeferredPayoffChart';
-import OpportunityReview from './components/OpportunityReview';
+const OpportunityReview = lazy(() => import('./components/OpportunityReview'));
 
 import { DEMO_MARKETS, DEMO_QUOTES, getExpiryChoices } from './lib/demo';
 import { applyBinanceBookTicker, applyBinanceOptionMarkPrice, applyBinanceOptionTicker, BinanceMarketDataError, fetchBinanceDepth, fetchBinanceOptions, parseBinanceBookTickerMessage, parseBinanceOptionMarkPriceMessage, parseBinanceOptionTickerMessage } from './lib/binance';
@@ -1310,21 +1310,23 @@ function App() {
             </section>
           )}
 
-          <OpportunityReview
-            quotes={assetQuotes}
-            market={market ?? null}
-            ivRank={ivRankMetrics}
-            ivHistoryNotice={ivHistoryNotice}
-            underlying={underlying}
-            dataMode={dataMode}
-            onReviewQuote={(quote) => {
-              setSelectedExpiry(quote.expiry);
-              setSelectedType(quote.type);
-              setSelectedId(quote.id);
-              setQuantity(quote.minQty ?? getQuantityStep(quote));
-              navigate('scanner');
-            }}
-          />
+          <Suspense fallback={<div className="panel chart-loading-area" role="status">جارٍ تحميل مراجعة الفرص...</div>}>
+            <OpportunityReview
+              quotes={assetQuotes}
+              market={market ?? null}
+              ivRank={ivRankMetrics}
+              ivHistoryNotice={ivHistoryNotice}
+              underlying={underlying}
+              dataMode={dataMode}
+              onReviewQuote={(quote) => {
+                setSelectedExpiry(quote.expiry);
+                setSelectedType(quote.type);
+                setSelectedId(quote.id);
+                setQuantity(quote.minQty ?? getQuantityStep(quote));
+                navigate('scanner');
+              }}
+            />
+          </Suspense>
 
           <Suspense fallback={<div className="panel chart-loading-area" role="status">جارٍ تحميل إعادة التشغيل التاريخية...</div>}>
             <HistoricalReplayPanel quotes={assetQuotes} dataMode={dataMode} underlying={underlying} />
