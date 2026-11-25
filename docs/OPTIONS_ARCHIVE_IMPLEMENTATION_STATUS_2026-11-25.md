@@ -1,6 +1,6 @@
 # Options archive implementation status — 25 November 2026
 
-**Merged:** PR #176, commit `8dcd251e2cc6c03dccf04b82c0cd48eb2ada59a2`. CI, Project Context Guard, Lighthouse, deployment and published-site smoke test passed (runs 45548127457, 45548127433, 45548127475 and 45548127461). This is a merged local foundation, not a live collector or cloud archive.
+**Merged:** PR #176 (`8dcd251e2cc6c03dccf04b82c0cd48eb2ada59a2`) plus PR #189 (`d67d5629c61369dc388e42216b768a6466a38b12`). PR #176 delivered the local archive foundation; PR #189 added a disabled-by-default, injected REST exchangeInfo refresh. This remains a local foundation, not a live collector or cloud archive.
 
 
 ## Scope delivered in this branch
@@ -9,7 +9,7 @@ This is a Node-only local archive foundation. It is deliberately outside the bro
 
 - `scripts/options-archive.mjs`: schema-v1 record validation, canonical JSON, raw-payload SHA-256, content-addressed NDJSON segments, deterministic idempotency, conflict rejection, durable temp-write/fsync/non-overwriting publication, checksummed cursor committed after segments, same-host cross-process writer lease with serialized stale-lock recovery, symlink rejection, orphan-temp recovery, explicit byte quota, restart index rebuild, corruption detection, and verified export/restore.
 - `evaluateOptionsPointInTime`: fails closed for missing contract specification, backfill, non-observed fields, missing event clocks, future availability, stale/unbounded fields, and invalid record quality.
-- `scripts/options-collector.mjs`: public REST endpoint allowlist and URL validation; 403/451 stop behavior; raw-event parsing for book ticker, option trades (MARKET/BLOCK kept separate and aggressor side derived from maker flag `m`), mark/index, 24-hour ticker, closed klines, and depth diffs with snapshot bridging and explicit gap markers.
+- `scripts/options-collector.mjs`: public REST endpoint allowlist and URL validation; 403/451 stop behavior; raw-event parsing for book ticker, option trades (MARKET/BLOCK kept separate and aggressor side derived from maker flag `m`), mark/index, 24-hour ticker, closed klines, and depth diffs with snapshot bridging and explicit gap markers. PR #189 adds an opt-in injected REST `exchangeInfo` refresh with durable raw snapshot retention and five-minute default refresh interval.
 - An injected `exchangeInfo` snapshot is archived as a raw source record and mapped only when Binance explicitly identifies `CRYPTO_OPTIONS` / `CRYPTO`, the exact underlying matches, the option side/strike/expiry/unit are present, and quote/settlement currencies agree. It stores premium unit `PER_CONTRACT` separately from the cash settlement multiplier (= verified contract unit), and timestamps spec observation at exchange `serverTime` and availability at local receipt. Snapshots older than five minutes are rejected. The hardcoded European/cash-settlement terms now carry separate legal provenance references: Binance Options Contract Specifications (published 5 January 2026) and Clearing Procedures 126–130 (expiry payoff, arithmetic-mean Index Price over the 30 minutes before expiry, and cash settlement). The archive records `settlementPriceMethod=INDEX_ARITHMETIC_MEAN` and `settlementWindowMs=1800000`; point-price Black–Scholes outputs must be disclosed as approximations to this averaging settlement, not exact settlement-model values.
 - `collectForwardOptionsEvents` is opt-in and requires an injected async-iterable transport. An additional `refreshExchangeInfo` flag now enables a rate-limited public REST `/eapi/v1/exchangeInfo` refresh through a separately injected fetch transport; it archives the raw full snapshot before market events, stages contract-spec changes until the snapshot is durable, and defaults OFF. `createFakeOptionsTransport` and fake REST responses cover this path deterministically. There is still no default HTTP/WebSocket network transport, no live connection, and no real market capture.
 - `npm test` includes deterministic Node-only filesystem and fake-transport tests, including concurrent lease recovery, orphan temp recovery, symlink rejection, partial multi-partition replay, cursor corruption, quota failure, and failed restore.
@@ -38,3 +38,14 @@ The project is shared with other applications. The safe path is to keep the curr
 6. Only then implement a real WebSocket transport and a supervised scheduled worker with restart/gap handling, resource caps and monitoring.
 
 No point-in-time dataset, historical BBO series, measured strategy edge, profitability, or live-trading capability is claimed.
+
+
+## Mainline extension — PR #189 merged 25 November 2026
+
+PR #189 (`d67d5629c61369dc388e42216b768a6466a38b12`) adds `refreshBinanceExchangeInfoSnapshot` and a `refreshExchangeInfo` option to `collectForwardOptionsEvents`. The option defaults to false. When explicitly enabled, the collector uses a separately injected public REST transport to fetch `/eapi/v1/exchangeInfo`, records the full raw snapshot and its exchange/receive/availability clocks, rate-limits refreshes (five minutes by default), and publishes the staged contract-spec map only after the archive append succeeds. The same 403/451 stop behavior remains in force.
+
+Verification on PR head `bb38e7a5cf2068fbaf1ce37275901d5fa1ff404d`: CI 45550722114, Project Context Guard 45550722132 and Lighthouse 45550722136 passed. The REST transport was fake in tests. No live Binance request or network collector was run.
+
+PR #187 (`41a94cd2c08472e3c4d0d77e70e34782f9fc2200`) also corrected the app-side Binance market source semantics: explicit REST markIV and risk-free inputs are tracked with local receive clocks; `vo` is not markIV; 24-hour ticker closeTime is not a trade event timestamp; model Greeks, EV and PAPER entry snapshots require fresh and matching source clocks.
+
+The 21 May 2026 Binance Clearing Procedures amendment notice is recorded as a supplementary legal source: https://bin.bnbstatic.com/static/cms/cg08ou2ak0tn7mcplvfg/file/fa97cef498054d23290ba2a132eda63816395d84766af2db7b433d906432dd0b.pdf. The consolidated v1.3 text and its section-level impact on Crypto Options settlement remain unverified; account-specific RIE/RCH applicability also remains unverified.
