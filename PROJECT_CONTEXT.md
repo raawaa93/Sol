@@ -163,3 +163,11 @@ No second execution venue for a Syrian resident has been verified for global lis
 - Added regression tests for concurrent stale-lease recovery and malformed recovery-lock preservation; fixed the one failing main-branch concurrency test.
 - Replay rejects missing/malformed/expired option expiry and refuses holding periods or exits at/after expiry because settlement/assignment is not modeled.
 - PR-head CI 45580317705, Lighthouse 45580317770 and Project Context Guard 45580317843 passed. Main CI 45581041394, Lighthouse 45581041298, Project Context Guard 45581041397, and GitHub Pages deployment/published-site smoke and Lighthouse 45581041312 passed.
+
+## 16. PAPER journal quarantine and recovery retry — PR #235
+
+- PR #235 merged as `8a4caa82c7612d5f5b5d9da5de2a60c01537c386`.
+- The exact original primary journal JSON is preserved before filtering; previous recovery and current primary snapshots have separate export actions.
+- Writes and clear actions are blocked when preservation is unsafe. After exporting every visible raw snapshot, a confirmation-gated retry can remove the previous recovery key, re-read the unchanged primary, and attempt a new safe quarantine. If quota/access still fails, the journal stays read-only.
+- No journal data is uploaded; recovery data is never automatically re-imported as trusted trades.
+- PR-head CI 45582921361, Lighthouse 45582921191 and Project Context Guard passed. Main Project Context Guard and Pages deployment were started after merge.
