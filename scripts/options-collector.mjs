@@ -128,10 +128,8 @@ export function mapVerifiedBinanceContractSpec(exchangeInfo, symbol, receivedAt)
     ? payload.optionContracts.find((item) => item?.underlying?.toUpperCase() === underlying)
     : undefined;
   if (!contractInfo
-    || String(contractInfo.underlyingType ?? '').toUpperCase() !== 'CRYPTO'
-    || String(contractInfo.contractType ?? '').toUpperCase() !== 'CRYPTO_OPTIONS'
-    || (symbolInfo.underlyingType && String(symbolInfo.underlyingType).toUpperCase() !== 'CRYPTO')
-    || (symbolInfo.contractType && String(symbolInfo.contractType).toUpperCase() !== 'CRYPTO_OPTIONS')) return null;
+    || String(symbolInfo.underlyingType ?? '').toUpperCase() !== 'CRYPTO'
+    || String(symbolInfo.contractType ?? '').toUpperCase() !== 'CRYPTO_OPTIONS') return null;
   const side = String(symbolInfo.side ?? '').toUpperCase();
   const optionType = side === 'CALL' || side === 'C' ? 'CALL' : side === 'PUT' || side === 'P' ? 'PUT' : '';
   const strike = numeric(symbolInfo.strikePrice);
