@@ -1162,6 +1162,7 @@ function App() {
       return;
     }
     setTrades((current) => current.map((item) => item.id === trade.id ? result.trade : item));
+    setPaperExitFees('');
     notify(result.netPnl === undefined
       ? `سُجل الإغلاق عند Bid. الربح/الخسارة الإجمالي ${formatMoney(result.grossPnl, 2, result.currency)}؛ الصافي غير متاح لأن رسوم الخروج غير محددة.`
       : `سُجل الإغلاق عند Bid. صافي الربح/الخسارة ${formatMoney(result.netPnl, 2, result.currency)}.`);
