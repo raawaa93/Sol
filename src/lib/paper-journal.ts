@@ -218,6 +218,9 @@ function hasSameCanonicalContract(trade: PaperTrade, quote: OptionQuote): boolea
     && entryEconomics.provenance.status === 'PROVIDER_VERIFIED'
     && entryEconomics.provenance.provider === 'BINANCE'
     && entryEconomics.provenance.sourceRef === 'https://eapi.binance.com/eapi/v1/exchangeInfo'
+    && entryEconomics.premium.quoteCurrency === trade.premiumCurrencyAtEntry
+    && entryEconomics.exercise.cashSettlement?.multiplier === trade.contractUnitAtEntry
+    && entryEconomics.provenance.rawFields?.unit === trade.contractUnitAtEntry
     && quote.symbol === trade.symbol
     && quote.venue === trade.contractVenueAtEntry
     && quote.assetClass === trade.contractAssetClassAtEntry
@@ -241,6 +244,8 @@ function hasSameCanonicalContract(trade: PaperTrade, quote: OptionQuote): boolea
     && currentEconomics.exercise.cashSettlement?.reference === entryEconomics.exercise.cashSettlement?.reference
     && currentEconomics.exercise.cashSettlement?.currency === entryEconomics.exercise.cashSettlement?.currency
     && currentEconomics.exercise.cashSettlement?.multiplier === entryEconomics.exercise.cashSettlement?.multiplier
+    && currentEconomics.exercise.cashSettlement?.multiplier === quote.unit
+    && currentEconomics.provenance.rawFields?.unit === quote.unit
     && isProviderVerifiedBinanceEconomics(quote));
 }
 
