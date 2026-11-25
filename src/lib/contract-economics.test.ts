@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { validateContractEconomics } from './contract-economics.ts';
+import { BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS, validateContractEconomics } from './contract-economics.ts';
 import type { ContractEconomics } from './types.ts';
 
 function standardEquity(overrides: Partial<ContractEconomics> = {}): ContractEconomics {
@@ -22,6 +22,49 @@ function standardEquity(overrides: Partial<ContractEconomics> = {}): ContractEco
     ...overrides,
   };
 }
+
+test('Binance legal provenance records the May 2026 amendment without claiming consolidated v1.3 verification', () => {
+  assert.equal(BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS.clearingProceduresAmendmentEffectiveDate, '2026-05-21');
+  assert.equal(BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS.clearingProceduresAmendmentScope, 'BINANCE_RCH');
+  assert.equal(BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS.clearingProceduresVersion, '1.3');
+  assert.equal(BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS.clearingProceduresConsolidatedTextVerified, false);
+  assert.match(BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS.clearingProceduresAmendmentNoticeRef, /fa97cef498054d23290ba2a132eda63816395d84766af2db7b433d906432dd0b\.pdf$/);
+
+  const canonical: ContractEconomics = {
+    premium: { multiplier: 1, quoteCurrency: 'USDT', priceUnit: 'PER_CONTRACT' },
+    exercise: {
+      style: 'EUROPEAN',
+      settlement: 'CASH',
+      settlementCurrency: 'USDT',
+      deliverables: [],
+      cashSettlement: { formula: 'INTRINSIC_VALUE', reference: 'INDEX', currency: 'USDT', multiplier: 100 },
+    },
+    provenance: {
+      status: 'PROVIDER_VERIFIED',
+      provider: 'BINANCE',
+      sourceRef: 'https://eapi.binance.com/eapi/v1/exchangeInfo',
+      retrievedAt: '2026-11-25T04:00:00.000Z',
+      rawFields: { unit: 100, underlyingType: 'CRYPTO', contractType: 'CRYPTO_OPTIONS' },
+      legalTerms: { ...BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS },
+    },
+  };
+  assert.equal(validateContractEconomics(canonical).adapterReady, true);
+
+  const staleLegal = {
+    ...canonical,
+    provenance: {
+      ...canonical.provenance,
+      legalTerms: {
+        ...BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS,
+        clearingProceduresAmendmentNoticeRef: 'https://example.invalid/old-notice.pdf',
+      },
+    },
+  };
+  const staleValidation = validateContractEconomics(staleLegal);
+  assert.equal(staleValidation.valid, true);
+  assert.equal(staleValidation.adapterReady, false);
+  assert.ok(staleValidation.unsupportedReasons.includes('MISSING_LEGAL_TERMS_PROVENANCE'));
+});
 
 test('validates a standard equity contract with distinct premium and exercise terms', () => {
   const result = validateContractEconomics(standardEquity());

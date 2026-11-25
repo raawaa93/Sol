@@ -43,6 +43,11 @@ export interface ExerciseTerms {
 export interface ContractLegalTermsProvenance {
   contractSpecificationRef: string;
   clearingProceduresRef: string;
+  clearingProceduresAmendmentNoticeRef: string;
+  clearingProceduresAmendmentEffectiveDate: string;
+  clearingProceduresAmendmentScope: 'BINANCE_RCH';
+  clearingProceduresVersion: '1.3';
+  clearingProceduresConsolidatedTextVerified: false;
   scope: 'BINANCE_RIE_RCH';
   effectiveDate: string;
   accountApplicability: 'UNVERIFIED';
