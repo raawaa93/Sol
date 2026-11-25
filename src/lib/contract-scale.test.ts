@@ -192,6 +192,14 @@ test('canonical Binance model Greek capability rejects missing provenance, times
   }, 'BINANCE'), false);
   assert.equal(hasCanonicalBinanceModelGreekCapability({
     ...canonicalGreekQuote,
+    estimatedFields: ['riskFreeRate'],
+  }, 'BINANCE'), false);
+  assert.equal(hasCanonicalBinanceModelGreekCapability({
+    ...canonicalGreekQuote,
+    sourceTimestamps: { ...canonicalGreekQuote.sourceTimestamps, markIv: '2026-11-25T04:00:02Z' },
+  }, 'BINANCE'), false);
+  assert.equal(hasCanonicalBinanceModelGreekCapability({
+    ...canonicalGreekQuote,
     unit: 10,
   }, 'BINANCE'), false);
   assert.equal(hasCanonicalBinanceModelGreekCapability({
