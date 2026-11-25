@@ -50,7 +50,7 @@ export default function PaperJournalTrades({
                 <td><span className={`mini-type ${trade.type.toLowerCase()}`}>{trade.type}</span><strong>{trade.symbol}</strong>{trade.contractEconomics && <small>لقطة العقد: قسط ×{trade.premiumMultiplierAtEntry} · وحدة التسليم {trade.contractUnitAtEntry}</small>}</td>
                 <td>{formatAssetPrice(trade.strike, trade.spotAtEntry, trade.quoteAsset ?? null)}</td>
                 <td>{formatQuantity(trade.quantity, { quantityScale: trade.quantityPrecision })}</td>
-                <td>{formatOptionPrice(trade.entryPremium, { priceScale: trade.pricePrecision }, trade.quoteAsset ?? null)}{trade.premiumDebitAtEntry !== undefined && <small>القسط والرسوم: {formatMoney(trade.premiumDebitAtEntry, trade.premiumCurrencyAtEntry ?? null)}</small>}</td>
+                <td>{formatOptionPrice(trade.entryPremium, { priceScale: trade.pricePrecision }, trade.quoteAsset ?? null)}{trade.premiumDebitAtEntry !== undefined && <small>{trade.entryFeesSource === 'USER_ENTERED' ? 'القسط + رسوم الدخول المدخلة: ' : 'القسط فقط · رسوم الدخول غير معروفة: '}{formatMoney(trade.premiumDebitAtEntry, trade.premiumCurrencyAtEntry ?? null)}</small>}</td>
                 <td>{formatAssetPrice(trade.spotAtEntry, trade.spotAtEntry, trade.quoteAsset ?? null)}</td>
                 <td>{trade.exit
                   ? <span className="paper-status"><i /> مغلقة · {formatMoney(trade.exit.realizedGrossPnl, trade.premiumCurrencyAtEntry ?? null)} إجمالي{trade.exit.realizedNetPnl !== undefined ? ` · صافي ${formatMoney(trade.exit.realizedNetPnl, trade.premiumCurrencyAtEntry ?? null)}` : ' · الصافي غير معروف'}</span>
