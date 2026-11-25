@@ -167,7 +167,9 @@ export function calculateQuoteCashRiskNeutralMetrics(
       ? !quote.sourceTimestamps?.bookTicker || !Number.isFinite(Date.parse(quote.sourceTimestamps.bookTicker))
       : quote.bidAskSource === 'OPTION_TICKER'
         ? !quote.sourceTimestamps?.optionTicker || !Number.isFinite(Date.parse(quote.sourceTimestamps.optionTicker))
-        : true)
+        : quote.bidAskSource === 'MARK_PRICE'
+          ? !quote.sourceTimestamps?.markPrice || !Number.isFinite(Date.parse(quote.sourceTimestamps.markPrice))
+          : true)
     || !quote.sourceTimestamps?.index
     || !Number.isFinite(Date.parse(quote.sourceTimestamps.index))
     || quote.pricingModel !== 'BLACK_SCHOLES_CARRY'
