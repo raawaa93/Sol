@@ -141,6 +141,15 @@ test('canonical PAPER entry requires the timestamp for the actual observed price
   }, 'BINANCE'), false);
 });
 
+test('canonical PAPER entry accepts a markPrice-stream midpoint only with its own timestamp', () => {
+  const markQuote = {
+    ...quote,
+    bidAskSource: 'MARK_PRICE' as const,
+    sourceTimestamps: { ...quote.sourceTimestamps, markPrice: '2026-11-25T03:00:01Z' },
+  };
+  assert.equal(canCreateCanonicalPaperTrade(markQuote, 'BINANCE'), true);
+});
+
 test('canonical PAPER entry rejects a premium or spot value that does not match the timestamped source', () => {
   assert.equal(createCanonicalPaperTrade({ ...input, premiumPrice: 1.31 }).ok, false);
   assert.equal(createCanonicalPaperTrade({ ...input, spotAtEntry: 99001 }).ok, false);
