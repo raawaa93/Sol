@@ -902,7 +902,7 @@ function App() {
       if (requestId !== binanceRequestId.current) return;
       if (error instanceof BinanceMarketDataError && error.status === 451) {
         setBinanceAccessRestricted(true);
-        setBinanceError('أعاد طلب Binance المباشر HTTP 451 من شبكة متصفحك. هذا يصف الطلب العام الحالي فقط؛ لا يثبت منع حسابك أو المقيمين في سوريا. تذكر صفحة Binance إتاحة الخيارات عموماً وفق KYC والامتثال، لكنها لا تضمن كل منتج فرعي أو صلاحيات الحساب. لم نغيّر IP أو منطقة التنفيذ.');
+        setBinanceError('أعاد وسيط بيانات Binance HTTP 451. لم تتم محاولة اتصال مباشر أو استخدام مسار بديل؛ هذا يصف رفض هذا الطلب العام فقط ولا يثبت منع الحساب. لا نغيّر IP أو منطقة التنفيذ.');
         return;
       }
       setBinanceAccessRestricted(false);
