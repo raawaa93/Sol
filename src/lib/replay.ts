@@ -115,7 +115,9 @@ export function replayLongOptionSnapshots(
       skipped.invalidUnit += 1;
       continue;
     }
-    if (getContractScaleIssue(quote, config.sourceMode ?? 'CSV') !== undefined) {
+    // Canonical terms are never replayed through the legacy unit scalar path.
+    // A canonical replay adapter must explicitly support premium and settlement scales first.
+    if (quote.contractEconomics || getContractScaleIssue(quote, config.sourceMode ?? 'CSV') !== undefined) {
       skipped.invalidContractScale += 1;
       continue;
     }

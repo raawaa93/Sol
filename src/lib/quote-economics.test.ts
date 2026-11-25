@@ -91,6 +91,63 @@ test('maximum loss uses premium multiplier, not settlement multiplier or legacy 
   }
 });
 
+test('Binance crypto options use the verified Spot Price Index settlement reference and per-contract premium', () => {
+  const binanceQuote: OptionQuote = {
+    ...baseQuote,
+    id: 'BTC-INDEX-CALL',
+    symbol: 'BTC-INDEX-CALL',
+    underlying: 'BTC',
+    venue: 'BINANCE',
+    assetClass: 'CRYPTO',
+    underlyingKind: 'SPOT',
+    quoteAsset: 'USDT',
+    settlementAsset: 'USDT',
+    unit: 100,
+    sourceTimestamps: { index: '2026-11-24T10:00:00Z' },
+    contractEconomics: {
+      premium: { multiplier: 1, quoteCurrency: 'USDT', priceUnit: 'PER_CONTRACT' },
+      exercise: {
+        style: 'EUROPEAN',
+        settlement: 'CASH',
+        settlementCurrency: 'USDT',
+        deliverables: [],
+        cashSettlement: { formula: 'INTRINSIC_VALUE', reference: 'INDEX', currency: 'USDT', multiplier: 100 },
+      },
+      provenance: {
+        status: 'PROVIDER_VERIFIED',
+        provider: 'BINANCE',
+        sourceRef: 'https://eapi.binance.com/eapi/v1/exchangeInfo',
+        retrievedAt: '2026-11-24T10:00:00Z',
+      },
+    },
+  };
+
+  const breakeven = calculateQuoteCashBreakeven(binanceQuote, {
+    premiumPrice: 1.25, contracts: 3, fees: 0.5,
+  });
+  assert.equal(breakeven.ok, true);
+  if (breakeven.ok) assert.ok(Math.abs(breakeven.value.price - 100.01416666666667) < 1e-10);
+
+  const maxLoss = calculateQuoteCashMaxLoss(binanceQuote, {
+    premiumPrice: 1.25, contracts: 3, fees: 0.5,
+  });
+  assert.equal(maxLoss.ok, true);
+  if (maxLoss.ok) {
+    assert.equal(maxLoss.value.amount, 4.25);
+    assert.equal(maxLoss.value.currency, 'USDT');
+  }
+
+  const expiry = calculateQuoteCashExpiryPnl(binanceQuote, {
+    settlementReferencePrice: 120, premiumPrice: 1.25, contracts: 3, fees: 0.5,
+  });
+  assert.equal(expiry.ok, true);
+  if (expiry.ok) {
+    assert.equal(expiry.value.grossSettlement, 6000);
+    assert.equal(expiry.value.premiumAmount, 3.75);
+    assert.equal(expiry.value.netPnl, 5995.75);
+  }
+});
+
 test('unknown provenance and physical delivery fail closed', () => {
   const unknown = {
     ...baseQuote,

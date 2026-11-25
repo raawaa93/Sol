@@ -29,7 +29,11 @@ function supportedCashEconomics(quote: OptionQuote) {
   const referenceMatchesQuote = reference === 'SPOT'
     ? quote.underlyingKind === 'SPOT' || quote.underlyingKind === 'FX_SPOT'
     : reference === 'INDEX'
+      // Binance Crypto Options identifies the contract underlying as CRYPTO/SPOT,
+      // while its documented settlement reference is the Spot Price Index.
+      // The quote's spot field is populated from the venue's /eapi/v1/index endpoint.
       ? quote.underlyingKind === 'INDEX'
+        || (quote.underlyingKind === 'SPOT' && Boolean(quote.sourceTimestamps?.index))
       : reference === 'FORWARD' && quote.underlyingKind === 'FUTURE';
   return referenceMatchesQuote ? economics : undefined;
 }

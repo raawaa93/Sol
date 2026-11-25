@@ -89,6 +89,31 @@ test('replay refuses missing timestamps, invalid units, mismatched contract scal
 });
 
 
+test('legacy replay blocks canonical contract terms instead of falling back to unit', () => {
+  const economics = {
+    premium: { multiplier: 1, quoteCurrency: 'USDT', priceUnit: 'PER_CONTRACT' as const },
+    exercise: {
+      style: 'EUROPEAN' as const,
+      settlement: 'CASH' as const,
+      settlementCurrency: 'USDT',
+      deliverables: [],
+      cashSettlement: { formula: 'INTRINSIC_VALUE' as const, reference: 'SPOT' as const, currency: 'USDT', multiplier: 100 },
+    },
+    provenance: {
+      status: 'PROVIDER_VERIFIED' as const,
+      provider: 'BINANCE',
+      sourceRef: 'https://eapi.binance.com/eapi/v1/exchangeInfo',
+      retrievedAt: '2026-11-24T10:00:00Z',
+    },
+  };
+  const result = replayLongOptionSnapshots([
+    quote('2026-11-24T10:00:00.000Z', { contractEconomics: economics }),
+    quote('2026-11-24T11:00:00.000Z', { contractEconomics: economics }),
+  ], config);
+  assert.equal(result.trades.length, 0);
+  assert.equal(result.skipped.invalidContractScale, 2);
+});
+
 test('CSV replay rejects a user-supplied DEMO venue label as source provenance', () => {
   const result = replayLongOptionSnapshots([
     quote('2026-11-24T10:00:00.000Z', { venue: 'DEMO' }),

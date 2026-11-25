@@ -47,7 +47,8 @@ import { getContractScaleIssue, getContractScaleIssueMessage } from './lib/contr
 import { downloadCsv, downloadCsvTemplate, MAX_CSV_FILE_BYTES, parseOptionsCsv } from './lib/csv';
 import type { CsvTimestampRange } from './lib/csv';
 import { buildScenarioSeries, getBreakeven, getExpectedMove, getMaxLoss, getMidPrice, getSpreadPct, getUnderlyingReferencePrice } from './lib/options';
-import { buildQuoteCashExpiryScenarioSeries } from './lib/quote-economics';
+import { buildQuoteCashExpiryScenarioSeries, calculateQuoteCashBreakeven, calculateQuoteCashMaxLoss } from './lib/quote-economics';
+import { calculatePremiumCash } from './lib/contract-economics-calculations';
 import { formatAssetPrice, formatNumber, formatOptionPrice, formatQuantity, formatSmallNumber, getOptionPricePrecision, getQuantityPrecision, getQuoteCurrency } from './lib/format';
 import type { AssetClass, OptionQuote, OptionSide, PaperTrade, Underlying } from './lib/types';
 import { ASSET_CLASS_LABELS } from './lib/asset-class';
@@ -555,11 +556,42 @@ function App() {
   const safeFees = Number.isFinite(fees) ? Math.max(0, fees) : 0;
   const safeRiskBudget = Number.isFinite(riskBudget) ? Math.max(0, riskBudget) : 0;
   const contractScaleIssue = getContractScaleIssue(selectedQuote, dataMode);
-  const hasExplicitConsistentContractScale = contractScaleIssue === undefined;
-  const contractScaleIssueMessage = contractScaleIssue ? getContractScaleIssueMessage(contractScaleIssue) : '';
-  const totalCost = hasExplicitConsistentContractScale ? selectedPremium * safeQuantity * selectedQuote.unit + safeFees : Number.NaN;
-  const breakEven = hasExplicitConsistentContractScale ? getBreakeven(selectedQuote, selectedPremium, safeFees, safeQuantity) : Number.NaN;
-  const maxLoss = hasExplicitConsistentContractScale ? getMaxLoss(selectedPremium, safeQuantity, selectedQuote.unit, safeFees) : Number.NaN;
+  // Canonical terms must never fall back to legacy scalar calculations, even when unit=1.
+  // Legacy calculations remain limited to quotes that have no canonical terms at all.
+  const hasLegacyScalarCapability = !selectedQuote.contractEconomics && contractScaleIssue === undefined;
+  const hasExplicitConsistentContractScale = hasLegacyScalarCapability;
+  const canonicalUnitPremium = selectedQuote.contractEconomics
+    ? calculatePremiumCash({ economics: selectedQuote.contractEconomics, premiumPrice: selectedPremium, contracts: 1 })
+    : undefined;
+  const canonicalPremiumPerContract = canonicalUnitPremium?.ok ? canonicalUnitPremium.value.amount : undefined;
+  const canonicalBreakEven = selectedQuote.contractEconomics
+    ? calculateQuoteCashBreakeven(selectedQuote, { premiumPrice: selectedPremium, contracts: safeQuantity, fees: safeFees })
+    : undefined;
+  const canonicalBreakEvenPrice = canonicalBreakEven?.ok ? canonicalBreakEven.value.price : undefined;
+  const canonicalMaxLossResult = selectedQuote.contractEconomics
+    ? calculateQuoteCashMaxLoss(selectedQuote, { premiumPrice: selectedPremium, contracts: safeQuantity, fees: safeFees })
+    : undefined;
+  const canonicalMaxLossAmount = canonicalMaxLossResult?.ok ? canonicalMaxLossResult.value.amount : undefined;
+  const canCalculatePremiumCost = canonicalPremiumPerContract !== undefined || hasExplicitConsistentContractScale;
+  const canCalculateBreakEven = canonicalBreakEvenPrice !== undefined || hasExplicitConsistentContractScale;
+  const canCalculateMaxLoss = canonicalMaxLossAmount !== undefined || hasExplicitConsistentContractScale;
+  const contractScaleIssueMessage = selectedQuote.contractEconomics
+    ? canonicalPremiumPerContract !== undefined
+      ? 'تم احتساب تكلفة القسط وحجم المركز من مضاعف القسط الموثق. لا تزال Greeks المركز ودفتر PAPER وإعادة التشغيل محجوبة حتى ربطها بالنموذج الاقتصادي الموحد.'
+      : 'مواصفات العقد الاقتصادية غير كافية لحساب القسط أو المخاطر؛ لم نستخدم unit أو أي حساب قديم كبديل.'
+    : contractScaleIssue ? getContractScaleIssueMessage(contractScaleIssue) : '';
+  const totalCost = canonicalPremiumPerContract !== undefined
+    ? canonicalPremiumPerContract * safeQuantity + safeFees
+    : hasExplicitConsistentContractScale ? selectedPremium * safeQuantity * selectedQuote.unit + safeFees : Number.NaN;
+  const breakEven = canonicalBreakEvenPrice !== undefined
+    ? canonicalBreakEvenPrice
+    : hasExplicitConsistentContractScale ? getBreakeven(selectedQuote, selectedPremium, safeFees, safeQuantity) : Number.NaN;
+  const maxLoss = canonicalMaxLossAmount !== undefined
+    ? canonicalMaxLossAmount
+    : hasExplicitConsistentContractScale ? getMaxLoss(selectedPremium, safeQuantity, selectedQuote.unit, safeFees) : Number.NaN;
+  const premiumCostPerContract = canonicalPremiumPerContract
+    ?? (hasExplicitConsistentContractScale ? selectedPremium * selectedQuote.unit : undefined);
+  const hasPremiumSizingCapability = premiumCostPerContract !== undefined;
   const hasModelGreeks = hasExplicitConsistentContractScale && (selectedQuote.pricingStatus ?? (dataMode === 'DEMO' ? 'ASSUMED' : 'OBSERVED_ONLY')) !== 'OBSERVED_ONLY';
   const quoteAssetLabel = getQuoteCurrency(selectedQuote);
   const openInterestCurrencyLabel = market?.openInterestCurrency ?? null;
@@ -574,8 +606,8 @@ function App() {
       ? buildScenarioSeries(selectedQuote, selectedPremium, safeQuantity, safeFees)
       : [];
   }, [hasExplicitConsistentContractScale, safeFees, safeQuantity, selectedPremium, selectedQuote]);
-  const rawAffordableQty = hasExplicitConsistentContractScale && selectedPremium > 0
-    ? Math.floor(Math.max(0, safeRiskBudget - safeFees) / (selectedPremium * selectedQuote.unit) / quantityStep + 1e-9) * quantityStep
+  const rawAffordableQty = hasPremiumSizingCapability && premiumCostPerContract > 0
+    ? Math.floor(Math.max(0, safeRiskBudget - safeFees) / premiumCostPerContract / quantityStep + 1e-9) * quantityStep
     : 0;
   const affordableQty = selectedQuote.maxQty === undefined ? rawAffordableQty : Math.min(rawAffordableQty, selectedQuote.maxQty);
   const modelPriceLabel = selectedQuote.pricingModel === 'BLACK_76' ? 'Black–76' : 'Black–Scholes مع Carry';
@@ -926,7 +958,7 @@ function App() {
   };
 
   const handleBudgetClick = () => {
-    if (!hasExplicitConsistentContractScale) {
+    if (!hasPremiumSizingCapability) {
       notify(contractScaleIssueMessage);
       return;
     }
@@ -1267,13 +1299,13 @@ function App() {
                   <label><span>{dataMode === 'BINANCE' ? 'كمية العقود' : 'الكمية'} <small>{dataMode === 'BINANCE' ? 'حسب مواصفات Binance' : 'من الأصل'}</small></span><input type="number" min={dataMode === 'BINANCE' ? minimumQuantity : 0.01} step={dataMode === 'BINANCE' ? quantityStep : 0.01} max={dataMode === 'BINANCE' ? selectedQuote.maxQty : undefined} value={quantity} onChange={(event) => setQuantity(Math.max(0, Number(event.target.value)))} /></label>
                   <label><span>الرسوم التقديرية <small>{quoteAssetLabel ?? 'عملة غير محددة'}</small></span><input type="number" min="0" step="0.1" value={fees} onChange={(event) => setFees(Math.max(0, Number(event.target.value)))} /></label>
                 </div>
-                {hasExplicitConsistentContractScale && <div className="budget-row"><label htmlFor="risk-budget">حد الميزانية التجريبية</label><div><input id="risk-budget" type="number" min="0" step="10" value={riskBudget} onChange={(event) => setRiskBudget(Math.max(0, Number(event.target.value)))} /><span>{quoteAssetLabel ?? 'عملة غير محددة'}</span><button onClick={handleBudgetClick} title="احسب كمية لا تتجاوز الميزانية">احسب الكمية</button></div></div>}
+                {hasPremiumSizingCapability && <div className="budget-row"><label htmlFor="risk-budget">حد الميزانية التجريبية</label><div><input id="risk-budget" type="number" min="0" step="10" value={riskBudget} onChange={(event) => setRiskBudget(Math.max(0, Number(event.target.value)))} /><span>{quoteAssetLabel ?? 'عملة غير محددة'}</span><button onClick={handleBudgetClick} title="احسب كمية لا تتجاوز الميزانية">احسب الكمية</button></div></div>}
                 <div className="risk-summary">
-                  <div><span>تكلفة القسط + الرسوم</span><strong>{hasExplicitConsistentContractScale ? formatMoney(totalCost, 2, quoteAssetLabel ?? null) : 'غير متاح'}</strong></div>
-                  <div><span>نقطة التعادل عند الانتهاء</span><strong>{hasExplicitConsistentContractScale ? formatMoney(breakEven, 0, quoteAssetLabel ?? null) : 'غير متاح'}</strong></div>
-                  <div className="risk-row"><span>أقصى خسارة للمشتري</span><strong className="loss-value">{hasExplicitConsistentContractScale ? formatMoney(maxLoss, 2, quoteAssetLabel ?? null) : 'غير متاح'}</strong></div>
+                  <div><span>تكلفة القسط + الرسوم</span><strong>{canCalculatePremiumCost ? formatMoney(totalCost, 2, quoteAssetLabel ?? null) : 'غير متاح'}</strong></div>
+                  <div><span>نقطة التعادل عند الانتهاء</span><strong>{canCalculateBreakEven ? formatMoney(breakEven, 0, quoteAssetLabel ?? null) : 'غير متاح'}</strong></div>
+                  <div className="risk-row"><span>أقصى خسارة للمشتري</span><strong className="loss-value">{canCalculateMaxLoss ? formatMoney(maxLoss, 2, quoteAssetLabel ?? null) : 'غير متاح'}</strong></div>
                 </div>
-                <div className="analysis-footnote"><Info size={13} /><span>{contractScaleIssue ? `${contractScaleIssueMessage} ` : ''}{dataMode !== 'DEMO' && selectedQuote.estimatedFields?.length ? `حقول مقدّرة أو افتراضية في هذا العقد: ${formatEstimatedFields(selectedQuote.estimatedFields)}. ` : ''}اتساق unit وcontractMultiplier إن توفرا هو تحقق داخلي من الحقول فقط، ولا يثبت مطابقة deliverables لمواصفات البورصة. الحساب لا يضيف تلقائياً رسوم المنصة أو أثر التنفيذ؛ أدخل الرسوم الفعلية وراجع وحدة العقد.</span></div>
+                <div className="analysis-footnote"><Info size={13} /><span>{contractScaleIssueMessage ? `${contractScaleIssueMessage} ` : ''}{dataMode !== 'DEMO' && selectedQuote.estimatedFields?.length ? `حقول مقدّرة أو افتراضية في هذا العقد: ${formatEstimatedFields(selectedQuote.estimatedFields)}. ` : ''}اتساق unit وcontractMultiplier إن توفرا هو تحقق داخلي من الحقول فقط، ولا يثبت مطابقة deliverables لمواصفات البورصة. الحساب لا يضيف تلقائياً رسوم المنصة أو أثر التنفيذ؛ أدخل الرسوم الفعلية وراجع وحدة العقد.</span></div>
                 <button className="button button-paper" onClick={savePaperTrade} disabled={!hasExplicitConsistentContractScale}><Plus size={16} /> أضف إلى الدفتر التجريبي</button>
                 <div className="no-signal"><ShieldAlert size={15} /><span>لا يصدر المختبر توصية شراء أو بيع.</span></div>
               </aside>
