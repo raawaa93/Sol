@@ -273,6 +273,9 @@ export function createCanonicalPaperClose(input: CanonicalPaperCloseInput): Cano
   const sameContract = quote.venue === trade.contractVenueAtEntry
     && quote.assetClass === trade.contractAssetClassAtEntry
     && quote.underlyingKind === trade.contractUnderlyingKindAtEntry
+    && quote.exerciseStyle === economics.exercise.style
+    && quote.settlementStyle === economics.exercise.settlement
+    && quote.settlementAsset === economics.exercise.settlementCurrency
     && quote.underlying === trade.underlying
     && quote.symbol === trade.symbol
     && quote.type === trade.type
