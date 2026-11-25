@@ -176,16 +176,25 @@ A remote branch search for `research/options-pit-archive-2026-11-24` returned no
 
 - PR #168 merged as `f39ffde79b25ca3fd5416fa075ad1b1e7b3c3958`: https://github.com/raawaa93/Sol/pull/168
 - Shared `hasLegacyScalarAnalyticsCapability` now blocks all legacy scalar analytics for quotes carrying canonical economics, including unit=1.
-- GreeksPanel position-level Greek totals and shock P&L are blocked for canonical terms pending a model-specific adapter; direct risk-neutral EV is also blocked.
+- GreeksPanel position-level Greek totals and shock P&L were initially blocked pending a model-specific adapter; PR #177 now enables them only through a narrowly scoped, provider-verified Binance model-Greek capability. Legacy scalar paths remain blocked for canonical quotes.
 - Unit/property tests, mocked backup tests, build, bundle budgets, Playwright, Project Context Guard, Lighthouse, main CI, GitHub Pages deploy and published-site smoke test all passed.
 
-## Canonical PAPER entry snapshot — PR #169 under verification
+## Canonical PAPER entry journal merged — 25 November 2026
 
-- Added a PAPER-only entry snapshot with provider/source identity, canonical terms, independent premium multiplier and contract unit, premium debit, exact observed price basis and matching source timestamp.
-- CSV-origin or user-asserted provenance, model-derived prices, mismatched/missing source timestamps and invalid quantities/fees are rejected.
-- Existing legacy PAPER entries remain readable. Snapshot fields are exported for audit. No mark-to-market, exit P&L, Greeks, EV or replay are enabled by this entry-recording change.
-- PR #172 (rebased successor to #169): https://github.com/raawaa93/Sol/pull/172. Verification is pending; do not treat it as merged/deployed yet.
+- PR #172 merged as `8ed00109bc6a265e463bab7f0c7a1809884a1594`: https://github.com/raawaa93/Sol/pull/172
+- PR #175 merged as `9ca75b1622e79f9adf70c558a7f7052a70d2a75c`: https://github.com/raawaa93/Sol/pull/175
+- The journal captures provider-verified Binance Crypto Options contract terms, independent premium multiplier and contract unit, premium debit, observed price basis and matching source timestamps.
+- Mixed-source BBO, REST 24h ticker closeTime as a BBO event timestamp, model prices, CSV provenance and mismatched entry price/index reference are rejected.
+- This remains an entry audit snapshot only. No mark-to-market, amendments, exits, simulated P&L, Greeks, EV or replay are inferred from stored snapshots. Browser local storage is not a durable server journal.
+- PR #169 was superseded and closed unmerged; its successor #172 and hardening #175 are the delivered mainline work.
+- CI, Project Context Guard, Lighthouse, GitHub Pages deployment and published-site smoke test passed on the merged mainline commits.
 
+## Canonical Binance model position Greeks merged — 25 November 2026
+
+- PR #177 merged as `3bb464ca3bb0f998e8f538c244d49e855232b006`: https://github.com/raawaa93/Sol/pull/177
+- Enables position Greeks and local Greek shock estimates only for provider-verified Binance European Crypto Options cash-settled to INDEX, with premium multiplier=1, cash multiplier=unit, observed IV, model metadata, and exact index/mark-IV timestamps.
+- Outputs are model sensitivities under explicit Black–Scholes/Carry assumptions, not observed Greeks, forecasts or trading signals. Unsupported products and incomplete/stale inputs remain blocked.
+- CI, Project Context Guard and Lighthouse passed. The published-site deployment triggered from the latest mainline commit is being checked separately.
 
 ## Canonical PAPER entry source consistency hardening — 25 November 2026
 
@@ -195,3 +204,12 @@ A remote branch search for `research/options-pit-archive-2026-11-24` returned no
 - Premium cash uses the canonical premium multiplier only; contract unit and cash settlement multiplier remain separate.
 - This remains an entry audit snapshot only. No mark-to-market, exits, realized P&L, Greeks, EV or replay are enabled. Local browser storage is not a durable server journal.
 - Follow-up PR #175: https://github.com/raawaa93/Sol/pull/175. Await CI before treating this hardening as delivered.
+
+
+## Durable local options archive foundation — PR #176 under verification
+
+- PR #176: https://github.com/raawaa93/Sol/pull/176
+- Adds a Node-only local archive writer, content-addressed segments, raw-payload hashes, idempotency, cursor-after-durable-commit, quota, integrity checks, local export/restore, point-in-time eligibility gate, and fake-transport-first public stream parsing.
+- During review, serialized stale writer-lease recovery and added regression coverage for concurrent stale-lock recovery; orphaned temporary segments are cleaned only while holding the writer lease.
+- The latest PR head is still running CI, Project Context Guard and Lighthouse. Do not merge until all gates pass.
+- No real Binance HTTP/WebSocket transport, exchangeInfo contract-spec mapper, cloud archive, or market capture is delivered. No historical edge or profitability claim.
