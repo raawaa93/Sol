@@ -1197,6 +1197,9 @@ function App() {
         PAPER_CLOSE_SPOT_DOES_NOT_MATCH_INDEX: 'السعر المرجعي لا يطابق لقطة المؤشر الموقّتة.',
         PAPER_ENTRY_DEBIT_SNAPSHOT_INVALID: 'تكلفة الدخول المحفوظة غير متطابقة؛ أوقفنا حساب الربح والخسارة.',
         PAPER_CLOSE_CONTRACT_ECONOMICS_NOT_VERIFIED: 'مواصفات العقد المحفوظة لم تعد موثقة.',
+        PAPER_ENTRY_ASK_DEPTH_SNAPSHOT_INVALID: 'لقطة حجم Ask عند الدخول غير كافية أو غير موثقة؛ لا يمكن حساب إغلاق مطابق.',
+        PAPER_ENTRY_RECEIVE_TIMESTAMP_MISSING_OR_INVALID: 'توقيت الاستلام المحلي عند الدخول غير صالح؛ لا نحتسب نتيجة الصفقة.',
+        EXIT_FEES_EXCEED_GROSS_PROCEEDS: 'رسوم الخروج المدخلة تتجاوز حصيلة البيع الإجمالية؛ راجع قيمة الرسوم.',
       };
       notify(messages[result.reason] ?? `تعذر إغلاق الصفقة: ${result.reason}`);
       return;
