@@ -31,6 +31,9 @@ const canonicalEconomics: NonNullable<PaperTrade['contractEconomics']> = {
 
 function canonicalTrade(overrides: Partial<PaperTrade> = {}): PaperTrade {
   return trade({
+    createdAt: '2026-11-25T07:00:00.200Z',
+    fees: 0.1,
+    premiumDebitAtEntry: 20.1,
     contractEconomics: canonicalEconomics,
     contractVenueAtEntry: 'BINANCE',
     contractAssetClassAtEntry: 'CRYPTO',
@@ -42,6 +45,13 @@ function canonicalTrade(overrides: Partial<PaperTrade> = {}): PaperTrade {
     priceSourceAtEntry: 'ASK',
     bidAskSourceAtEntry: 'BOOK_TICKER',
     sourceTimestampsAtEntry: { bookTicker: '2026-11-25T07:00:00.000Z', index: '2026-11-25T07:00:00.000Z' },
+    sourceReceivedAtAtEntry: { bidAsk: '2026-11-25T07:00:00.100Z' },
+    bidQuantityAtEntry: 1,
+    askQuantityAtEntry: 1,
+    bidAskSizeUnitAtEntry: 'CONTRACTS',
+    takerFeeRateAtEntry: 0.000001,
+    exchangeFeeAtEntry: 0.1,
+    additionalFeesAtEntry: 0,
     ...overrides,
   });
 }
@@ -183,7 +193,7 @@ test('inconsistent used and remaining values in a campaign summary fail closed',
 
 
 function closeRecord(realizedPnl: number, overrides: Partial<NonNullable<PaperTrade['close']>> = {}): NonNullable<PaperTrade['close']> {
-  const exitNetProceeds = 20 + realizedPnl;
+  const exitNetProceeds = 20.1 + realizedPnl;
   const exitExchangeFee = 0.1;
   const exitGrossProceeds = exitNetProceeds + exitExchangeFee;
   return {
