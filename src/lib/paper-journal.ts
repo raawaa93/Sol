@@ -19,18 +19,25 @@ export type CanonicalPaperTradeResult =
   | { ok: false; reason: string };
 
 function getPaperEntryPriceSource(quote: OptionQuote): OptionQuote['priceSource'] | undefined {
-  if (quote.bid > 0 && quote.ask >= quote.bid) return 'MID';
-  if (quote.markPrice > 0) return 'MARK';
-  if (quote.bid > 0) return 'BID';
-  if (quote.ask > 0) return 'ASK';
+  if (quote.bid > 0 && quote.ask >= quote.bid
+    && (quote.bidAskSource === 'BOOK_TICKER' || quote.bidAskSource === 'OPTION_TICKER')) return 'MID';
+  if (quote.priceSource === 'MARK' && quote.markPrice > 0) return 'MARK';
+  if (quote.priceSource === 'LAST' && quote.markPrice > 0) return 'LAST';
+  if (quote.priceSource === 'BID' && quote.bid > 0) return 'BID';
+  if (quote.priceSource === 'ASK' && quote.ask > 0) return 'ASK';
   return undefined;
 }
 
 function hasObservedPriceTimestamp(quote: OptionQuote, source: NonNullable<OptionQuote['priceSource']>): boolean {
   const timestamps = quote.sourceTimestamps;
   if (!timestamps) return false;
-  if (source === 'MARK') return Boolean(timestamps.markPrice);
-  if (source === 'MID' || source === 'BID' || source === 'ASK') return Boolean(timestamps.bookTicker || timestamps.optionTicker || timestamps.ticker);
+  const isValidTimestamp = (value: string | undefined) => Boolean(value && Number.isFinite(Date.parse(value)));
+  if (source === 'MARK') return isValidTimestamp(timestamps.markPrice);
+  if (source === 'LAST') return isValidTimestamp(timestamps.ticker);
+  if (source === 'MID' || source === 'BID' || source === 'ASK') {
+    if (quote.bidAskSource === 'BOOK_TICKER') return isValidTimestamp(timestamps.bookTicker);
+    if (quote.bidAskSource === 'OPTION_TICKER') return isValidTimestamp(timestamps.optionTicker);
+  }
   return false;
 }
 
@@ -62,7 +69,8 @@ export function canCreateCanonicalPaperTrade(
     || economics.exercise.settlementCurrency !== quote.settlementAsset) return false;
   const entryPriceSource = getPaperEntryPriceSource(quote);
   if (!entryPriceSource || quote.estimatedFields?.includes('markPrice') && entryPriceSource === 'MARK') return false;
-  if (!hasObservedPriceTimestamp(quote, entryPriceSource) || !quote.sourceTimestamps?.index) return false;
+  if (!hasObservedPriceTimestamp(quote, entryPriceSource)
+    || !quote.sourceTimestamps?.index || !Number.isFinite(Date.parse(quote.sourceTimestamps.index))) return false;
   if (!quote.quoteAsset || quote.quoteAsset !== economics.premium.quoteCurrency) return false;
   return calculatePremiumCash({ economics, premiumPrice: 1, contracts: 1 }).ok;
 }
