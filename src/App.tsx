@@ -297,22 +297,6 @@ function App() {
   }, [binanceSnapshot?.fetchedAt, dataMode]);
 
   useEffect(() => {
-    if (dataMode !== 'BINANCE' || !currentIVExtraction) return;
-    if (!currentIVExtraction.ok) {
-      setIvHistoryNotice(currentIVExtraction.reason);
-      return;
-    }
-    const captured = currentIVExtraction.observation;
-    const saved = appendIVHistoryObservation(localStorage, captured, captured.capturedAt);
-    if (!saved.ok) {
-      setIvHistoryNotice(saved.reason);
-      return;
-    }
-    setIvHistoryState(loadIVHistory(localStorage));
-    setIvHistoryNotice('حُفظت عينة IV مرصودة محلياً؛ السجل لا يغادر هذا المتصفح.');
-  }, [currentIVExtraction, dataMode]);
-
-  useEffect(() => {
     if (effectiveExpiry && effectiveExpiry !== selectedExpiry) setSelectedExpiry(effectiveExpiry);
   }, [effectiveExpiry, selectedExpiry]);
 
@@ -352,6 +336,22 @@ function App() {
   const ivRankMetrics: IVRankPercentileResult | null = useMemo(() => currentIVObservation
     ? computeIVRankPercentile(ivHistory, currentIVObservation, currentIVObservation.capturedAt)
     : null, [currentIVObservation, ivHistory]);
+
+  useEffect(() => {
+    if (dataMode !== 'BINANCE' || !currentIVExtraction) return;
+    if (!currentIVExtraction.ok) {
+      setIvHistoryNotice(currentIVExtraction.reason);
+      return;
+    }
+    const captured = currentIVExtraction.observation;
+    const saved = appendIVHistoryObservation(localStorage, captured, captured.capturedAt);
+    if (!saved.ok) {
+      setIvHistoryNotice(saved.reason);
+      return;
+    }
+    setIvHistoryState(loadIVHistory(localStorage));
+    setIvHistoryNotice('حُفظت عينة IV مرصودة محلياً؛ السجل لا يغادر هذا المتصفح.');
+  }, [currentIVExtraction, dataMode]);
   const filteredQuotes = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     return assetQuotes
