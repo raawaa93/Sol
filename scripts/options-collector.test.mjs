@@ -465,7 +465,7 @@ test('real WebSocket transport uses only the official public endpoint and fails 
   });
   const streams = ['btcusdt@optionTrade', 'btcusdt@bookTicker'];
   const iterator = (await transport.subscribe(streams))[Symbol.asyncIterator]();
-  assert.equal((await iterator.next()).value.type, 'reconnect');
+  assert.equal((await iterator.next()).value.type, 'connect');
   const url = new URL(FakeWebSocket.instances[0].url);
   assert.equal(url.origin, 'wss://fstream.binance.com');
   assert.equal(url.pathname, '/public/stream');
@@ -518,7 +518,7 @@ test('WebSocket transport reconnects only after normal 24-hour close and support
     reconnectMaxDelayMs: 0,
   });
   const iterator = (await transport.subscribe(['btcusdt@bookTicker']))[Symbol.asyncIterator]();
-  assert.equal((await iterator.next()).value.type, 'reconnect');
+  assert.equal((await iterator.next()).value.type, 'connect');
   FakeWebSocket.instances[0].close(1000, '24h-rotation');
   assert.equal((await iterator.next()).value.type, 'disconnect');
   assert.equal((await iterator.next()).value.type, 'reconnect');
