@@ -509,7 +509,7 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
 }
 
 export function downloadCsvTemplate(): void {
-  const template = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,delta,gamma,theta,vega,rho,openInterest,openInterestUsd,volume,volumeQuote,spot,forward,unit,timestamp,assetClass,venue,underlyingKind,carryYield,riskFreeRate,quoteAsset,settlementAsset,contractMultiplier,exerciseStyle,settlementStyle,expiryTimezone,' + CONTRACT_ECONOMICS_CSV_V2_FIELDS.join(',');
+  const template = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,delta,gamma,theta,vega,rho,openInterest,openInterestUsd,volume,volumeQuote,spot,forward,unit,timestamp,assetClass,venue,underlyingKind,carryYield,riskFreeRate,quoteAsset,settlementAsset,contractMultiplier,exerciseStyle,settlementStyle,expiryTimezone,bidAskSource,bidAskTimestamp,bidAskReceivedAt,bidAskSizeUnit,bidQuantity,askQuantity,' + CONTRACT_ECONOMICS_CSV_V2_FIELDS.join(',');
   const blob = new Blob([template], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
