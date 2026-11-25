@@ -52,7 +52,8 @@
 4. **Local IV history is device-local and unencrypted.** JSON export exists; import is intentionally deferred because an imported file cannot independently prove original source provenance. No cross-device sync.
 5. **Supabase cloud destination is not provisioned.** Existing project Ghaioooth-core (ref oyoyozdugicmnkfhjovo) is shared with other workloads and remains untouched. Existing branch rawaa-consent-staging-test is for Raawaa-store and non-persistent; do not reuse. A new development branch costs USD 0.01344/hour (~USD 9.81 per 730-hour month) and is not suitable for a permanent free archive. A new project quote is USD 0/month, but the connector requires the user to choose the organization; only organization Ghaioooth is currently listed. Free projects can pause after seven days of low database activity and have limited quotas. A secure auth/RLS model is required before cloud writes; do not expose unauthenticated public writes.
 6. **Legal and account eligibility.** Syrian local legal position for foreign options derivatives remains unverified; Binance product/account eligibility must be checked separately. No live orders, funding or VPN/egress circumvention.
-7. **No measured strategy edge.** PBO/Deflated Sharpe and conservative replay foundations do not create performance evidence without point-in-time data. Cross-asset profitability ranking remains blocked.
+7. **PAPER campaign cap is local journal allocation, not a live risk engine.** The journal reserves every recorded premium debit until explicit reset; it does not yet model closes/realized P&L and cannot constrain exchange-side orders.
+8. **No measured strategy edge.** PBO/Deflated Sharpe and conservative replay foundations do not create performance evidence without point-in-time data. Cross-asset profitability ranking remains blocked.
 
 ## Next execution order
 1. Resolve the dedicated free Supabase project organization choice and secure authentication/RLS model; only then create it. Do not use the shared project or paid branches.
@@ -78,4 +79,17 @@
 - Lighthouse baseline run 45570955246 passed.
 - Project Context Guard run 45570955274 passed.
 - This is test coverage only; it does not create a live Binance connection, background sampler, cloud archive, or empirical strategy result.
-\n\n## Follow-up — PAPER risk sizing default (25 November 2026, 08:09 UTC)\n- PR #205 merged as `b4c014131be9de4d610740ef30c4ad48308c5c6b`. The per-trade premium-plus-fees budget defaults to 60 quote units; the field label states its scope.\n- Added a Playwright regression assertion for the value and label.\n- CI 45573552188 passed 303/303 tests, build, bundle and 18/18 Playwright journeys. Lighthouse 45573547735 and Project Context Guard 45573547738 passed.\n- Total bankroll, available cash and aggregate open risk are not yet modeled. This does not enable live trading.\n
+\n\n## Superseded intermediate state — PR #205 (25 November 2026, 08:09 UTC)
+
+- PR #205 briefly introduced a 60 quote-unit per-trade sizing default.
+- This was superseded by PR #209 because a per-trade limit alone did not enforce the user's 60 total campaign risk ceiling.
+
+## Follow-up — cumulative PAPER campaign risk cap (25 November 2026, 08:17 UTC)
+
+- PR #209 merged as `f413ba8a5453a730fe4649d90c648f27390499b1`.
+- Campaign assumption: 200 USD capital, 60 USD/USDT cumulative premium-and-fee allocation, 20 per attempt, 140 outside the risk budget.
+- Sizing uses remaining campaign allocation; the save handler rechecks both per-attempt and cumulative limits even after manual quantity changes.
+- New legacy entries store premium debit/currency. Unknown old cost and mixed currencies fail closed; USD and USDT are not implicitly converted.
+- Every append-only PAPER entry remains allocated until export and explicit reset; there is no close/realized-P&L workflow yet. Reset is confirmation-protected.
+- CI 45574730769 passed 309/309 tests, production build, bundle budget and 18/18 Playwright journeys. Lighthouse 45574730886 and Project Context Guard 45574730851 passed.
+- This is local PAPER-only protection, not an exchange-side or live loss limit.
