@@ -839,8 +839,8 @@ test('Binance underlying 24hr ticker preserves vo separately from explicit REST 
   const payload = {
     stream: 'btc@ticker@261225',
     data: [{
-      e: '24hrTicker', E: 1_800_000_001_000, C: 1_800_000_000_900,
-      s: 'BTC-261225-100000-C', c: '5200', Q: '0.5', v: '12.5', q: '65000',
+      e: '24hrTicker', E: 1_800_000_001_000, T: 1_800_000_000_950, C: 1_800_000_000_900,
+      s: 'BTC-261225-100000-C', c: '5200', Q: '0.5', V: '12.5', A: '65000',
       vo: '0.60', mp: '5100', bo: '5000', ao: '5300', bq: '1.2', aq: '2.3', b: '0.58', a: '0.62', d: '0.51', g: '0.00003', t: '-20', v: '45',
     }],
   };
@@ -849,6 +849,7 @@ test('Binance underlying 24hr ticker preserves vo separately from explicit REST 
   assert.deepEqual(events[0], {
     symbol: 'BTC-261225-100000-C',
     eventTime: 1_800_000_001_000,
+    transactionTime: 1_800_000_000_950,
     lastPrice: 5200,
     lastQuantity: 0.5,
     volume: 12.5,
@@ -877,7 +878,7 @@ test('Binance 24hr ticker updates last trade and rolling volume only', () => {
     sourceTimestamps: { markPrice: '2026-11-24T10:00:00.000Z' },
   };
   const event = {
-    symbol: quote.symbol, eventTime: 1_800_000_001_000, lastPrice: 5200,
+    symbol: quote.symbol, eventTime: 1_800_000_001_000, transactionTime: 1_800_000_000_950, lastPrice: 5200,
     lastQuantity: 0.5, volume: 12.5, volumeQuote: 65000, closeTime: 1_800_000_000_900,
     markPrice: 5100, bestBid: 5000, bestAsk: 5300, bestBidQuantity: 1.2, bestAskQuantity: 2.3,
     bidIv: 0.58, askIv: 0.62, venueVolatility: 0.6,
@@ -898,9 +899,9 @@ test('Binance 24hr ticker updates last trade and rolling volume only', () => {
   assert.equal(updated.unverifiedSourceGreeks?.delta, 0.99);
   assert.equal(updated.iv, 0.5, 'ticker vo must not be treated as explicit REST markIV');
   assert.equal(updated.sourceTimestamps?.markIv, undefined);
-  assert.equal(updated.sourceTimestamps?.markPrice, new Date(event.eventTime).toISOString());
-  assert.equal(updated.sourceTimestamps?.venueVolatility, new Date(event.eventTime).toISOString());
-  assert.equal(updated.sourceTimestamps?.optionTicker, new Date(event.eventTime).toISOString());
+  assert.equal(updated.sourceTimestamps?.markPrice, new Date(event.transactionTime).toISOString());
+  assert.equal(updated.sourceTimestamps?.venueVolatility, new Date(event.transactionTime).toISOString());
+  assert.equal(updated.sourceTimestamps?.optionTicker, new Date(event.transactionTime).toISOString());
   assert.equal(updated.sourceTimestamps?.ticker, new Date(event.closeTime).toISOString());
 });
 
