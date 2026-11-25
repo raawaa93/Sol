@@ -75,7 +75,7 @@ export default function PaperJournalSection({
       <article className="panel journal-panel">
         <div className="journal-summary">
           <div className="journal-summary-icon"><WalletCards size={18} /></div>
-          <div><strong>{trades.length} <span>صفقة تجريبية</span></strong><small>محفوظة محلياً في هذا المتصفح فقط</small></div>
+          <div><strong>{trades.length} <span>صفقة تجريبية</span></strong><small>محفوظة محلياً في هذا المتصفح فقط · التخزين المحلي غير مشفر</small></div>
           <div className="journal-metric"><span>وضع التنفيذ</span><strong><i /> PAPER ONLY</strong></div>
           <div className="journal-metric"><span>مفاتيح تداول</span><strong className="safe-label"><LockKeyhole size={13} /> غير مطلوبة</strong></div>
         </div>
