@@ -23,7 +23,7 @@ class MemoryStorage {
 const isValid = (value: unknown): value is { id: string } =>
   Boolean(value && typeof value === 'object' && typeof (value as { id?: unknown }).id === 'string');
 
-test('invalid rows are quarantined byte-for-byte before the caller persists filtered entries', () => {
+test('unrecoverable invalid rows are quarantined byte-for-byte and block new primary writes', () => {
   const storage = new MemoryStorage();
   const raw = JSON.stringify([{ id: 'good' }, { id: 7 }, { unexpected: true }]);
   storage.setItem(PAPER_JOURNAL_STORAGE_KEY, raw);
@@ -31,11 +31,11 @@ test('invalid rows are quarantined byte-for-byte before the caller persists filt
   assert.deepEqual(result.entries, [{ id: 'good' }]);
   assert.equal(result.rejectedCount, 2);
   assert.equal(result.backupAvailable, true);
-  assert.equal(result.persistenceBlocked, false);
+  assert.equal(result.persistenceBlocked, true);
   assert.equal(readPaperJournalRecovery(storage), raw);
 });
 
-test('malformed JSON is preserved and primary writes are allowed only after backup succeeds', () => {
+test('malformed JSON is preserved and primary writes remain blocked even after backup succeeds', () => {
   const storage = new MemoryStorage();
   const raw = '{"incomplete":';
   storage.setItem(PAPER_JOURNAL_STORAGE_KEY, raw);
@@ -43,7 +43,7 @@ test('malformed JSON is preserved and primary writes are allowed only after back
   assert.deepEqual(result.entries, []);
   assert.equal(result.parseError, true);
   assert.equal(result.backupAvailable, true);
-  assert.equal(result.persistenceBlocked, false);
+  assert.equal(result.persistenceBlocked, true);
   assert.equal(readPaperJournalRecovery(storage), raw);
 });
 
@@ -99,4 +99,35 @@ test('valid journal loads preserve an existing recovery snapshot without blockin
   assert.deepEqual(result.entries, [{ id: 'good' }]);
   assert.equal(result.backupAvailable, true);
   assert.equal(result.persistenceBlocked, false);
+});
+
+
+test('recoverable invalid rows keep their original risk entry while raw JSON is backed up', () => {
+  const storage = new MemoryStorage();
+  const raw = JSON.stringify([{ id: 'good' }, { id: 'damaged-close' }]);
+  storage.setItem(PAPER_JOURNAL_STORAGE_KEY, raw);
+  const result = loadPaperJournal(
+    storage,
+    isValid,
+    (value) => value && typeof value === 'object' && (value as { id?: unknown }).id === 'damaged-close'
+      ? { id: 'damaged-close', recoveredAsOpen: true }
+      : undefined,
+  );
+  assert.deepEqual(result.entries, [
+    { id: 'good' },
+    { id: 'damaged-close', recoveredAsOpen: true },
+  ]);
+  assert.equal(result.rejectedCount, 1);
+  assert.equal(result.backupAvailable, true);
+  assert.equal(result.persistenceBlocked, false);
+  assert.equal(readPaperJournalRecovery(storage), raw);
+});
+
+test('missing primary with an existing recovery snapshot blocks writes until acknowledgement', () => {
+  const storage = new MemoryStorage();
+  storage.setItem(PAPER_JOURNAL_RECOVERY_KEY, '{"raw":"previous"}');
+  const result = loadPaperJournal(storage, isValid);
+  assert.equal(result.entries.length, 0);
+  assert.equal(result.backupAvailable, true);
+  assert.equal(result.persistenceBlocked, true);
 });
