@@ -97,3 +97,18 @@ Verification:
 
 No live market capture, scheduled worker, cloud archive, PIT dataset, strategy edge or live order capability was added.
 \n\n## BBO-aware replay update — 25 November 2026\n\n- PR #204 merged as `337e03fb26d44c906125318affc473030c165da4`.\n- Replay requires explicit BBO source, source-event/snapshot time, local receive time, non-estimated bid/ask, displayed-size unit and sufficient Ask size at entry/Bid size at exit. It uses receive/availability time for execution chronology and rejects missing, future, stale, mark-only, estimated or undersized quotes.\n- Binance `bookTicker` is the executable BBO source and records quantities in contracts/lots. The 24-hour `optionTicker` stream is not BBO. REST `OPTION_TICKER` BBO uses the `ticker` source clock.\n- CSV imports preserve source/receive clocks and displayed size, but their provenance is user-asserted and not independently authenticated. Zero fees/slippage are unmodelled and potentially optimistic.\n- CI 45572889900: 303/303 tests, production build, bundle budget and 18/18 Playwright journeys passed. Lighthouse 45572889852: Performance 99, Accessibility/Best Practices/SEO 100. Project Context Guard 45572889839 passed.\n- The replay remains PAPER-only. No live capture, historical BBO corpus, full depth/queue/partial-fill/latency/expiry-settlement/hedging model or measured strategy edge is claimed.\n
+
+## PAPER campaign risk reconciliation — 25 November 2026, 08:26 UTC
+
+- PR #213 merged to main as `bda4a680aa89c983889eabb65c35d6b9ea996503` after the updated head passed CI run 45576189481, Lighthouse run 45576189448, and Project Context Guard run 45576189336.
+- The campaign ledger now fails closed on zero/negative or unreconciled premium debits, non-finite/overflowing costs, malformed or internally inconsistent summaries, invalid per-attempt limits, and unsupported/mixed currencies.
+- The configured PAPER limits remain a $60 cumulative premium-and-fee allocation ceiling and $20 per attempt. This is a local PAPER allocation guard, not an exchange-side or live loss guarantee.
+- The PR-head CI completed successfully, including unit/property tests, production build, compressed bundle budget and browser journeys. Lighthouse and Project Context Guard also completed successfully.
+
+## Remaining archive and research gates — still open
+
+- The archive schema, local resumable filesystem store, public REST allowlist, fake-transport-tested REST refresh, and opt-in Node WebSocket transport exist. They are libraries/primitives, not an operating supervised collector.
+- No real Binance market capture, point-in-time historical BBO corpus, scheduled worker, durable off-device archive, restore drill, or strategy edge is verified.
+- Do not use the shared Supabase project for archive writes: it is shared with other workloads and no isolated Sol archive namespace, retention policy, quota, or restore path has been approved and tested.
+- Next implementation order: (1) a supervised Node worker with explicit start/stop, heartbeat, bounded runtime/storage, durable-commit-before-cursor, restart and gap tests; (2) a separately reviewed durable destination with ownership, least-privilege access, retention and restore proof; (3) a forward-only capture trial only after legal/product eligibility and network response are confirmed without routing around restrictions; (4) strategy experiments only when sufficient point-in-time executable quote data exists.
+- Keep all work read-only/PAPER. No API credentials, account streams, order methods, paid services, new cloud resources, or live trading.
