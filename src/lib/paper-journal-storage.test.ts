@@ -4,6 +4,7 @@ import {
   PAPER_JOURNAL_RECOVERY_KEY,
   PAPER_JOURNAL_STORAGE_KEY,
   loadPaperJournal,
+  clearPaperJournalRecovery,
   readPaperJournalPrimary,
   readPaperJournalRecovery,
 } from './paper-journal-storage.ts';
@@ -16,6 +17,7 @@ class MemoryStorage {
     if (this.failSet) throw new Error('quota exceeded');
     this.values.set(key, value);
   }
+  removeItem(key: string) { this.values.delete(key); }
 }
 
 const isValid = (value: unknown): value is { id: string } =>
@@ -77,6 +79,15 @@ test('raw primary snapshot remains exportable when recovery preservation fails',
   assert.equal(result.persistenceBlocked, true);
   assert.equal(readPaperJournalPrimary(storage), raw);
   assert.equal(readPaperJournalRecovery(storage), null);
+});
+
+test('confirmed recovery acknowledgement removes only the recovery key', () => {
+  const storage = new MemoryStorage();
+  storage.setItem(PAPER_JOURNAL_STORAGE_KEY, '[{"id":"kept"}]');
+  storage.setItem(PAPER_JOURNAL_RECOVERY_KEY, '{"raw":"previous"}');
+  assert.equal(clearPaperJournalRecovery(storage), true);
+  assert.equal(storage.getItem(PAPER_JOURNAL_STORAGE_KEY), '[{"id":"kept"}]');
+  assert.equal(storage.getItem(PAPER_JOURNAL_RECOVERY_KEY), null);
 });
 
 test('valid journal loads preserve an existing recovery snapshot without blocking normal writes', () => {
