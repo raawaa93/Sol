@@ -473,6 +473,3 @@ test('forward collection is disabled by default and rejects private stream names
     (error) => error.code === 'INVALID_STREAMS',
   );
 });
-
-
-test('real WebSocket transport uses only
