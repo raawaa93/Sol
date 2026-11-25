@@ -208,6 +208,21 @@ export interface AssetSnapshot {
   fundingRate: number;
 }
 
+export interface PaperTradeClose {
+  closedAt: string;
+  exitPremium: number;
+  exitPremiumAmount: number;
+  exitFees: number;
+  exitProceeds: number;
+  exitCurrency: string;
+  exitSpot: number;
+  exitPriceSource: 'BID';
+  exitBidAskSource: 'BOOK_TICKER';
+  sourceTimestampsAtExit: OptionQuote['sourceTimestamps'];
+  realizedPnl: number;
+  realizedPnlCurrency: string;
+}
+
 export interface PaperTrade {
   id: string;
   createdAt: string;
@@ -236,6 +251,7 @@ export interface PaperTrade {
   priceSourceAtEntry?: QuotePriceSource;
   bidAskSourceAtEntry?: OptionQuote['bidAskSource'];
   sourceTimestampsAtEntry?: OptionQuote['sourceTimestamps'];
+  close?: PaperTradeClose;
   status: 'PAPER';
 }
 
