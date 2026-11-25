@@ -556,7 +556,10 @@ function App() {
   const safeFees = Number.isFinite(fees) ? Math.max(0, fees) : 0;
   const safeRiskBudget = Number.isFinite(riskBudget) ? Math.max(0, riskBudget) : 0;
   const contractScaleIssue = getContractScaleIssue(selectedQuote, dataMode);
-  const hasExplicitConsistentContractScale = contractScaleIssue === undefined;
+  // Canonical terms must never fall back to legacy scalar calculations, even when unit=1.
+  // Legacy calculations remain limited to quotes that have no canonical terms at all.
+  const hasLegacyScalarCapability = !selectedQuote.contractEconomics && contractScaleIssue === undefined;
+  const hasExplicitConsistentContractScale = hasLegacyScalarCapability;
   const canonicalUnitPremium = selectedQuote.contractEconomics
     ? calculatePremiumCash({ economics: selectedQuote.contractEconomics, premiumPrice: selectedPremium, contracts: 1 })
     : undefined;
@@ -572,11 +575,11 @@ function App() {
   const canCalculatePremiumCost = canonicalPremiumPerContract !== undefined || hasExplicitConsistentContractScale;
   const canCalculateBreakEven = canonicalBreakEvenPrice !== undefined || hasExplicitConsistentContractScale;
   const canCalculateMaxLoss = canonicalMaxLossAmount !== undefined || hasExplicitConsistentContractScale;
-  const contractScaleIssueMessage = contractScaleIssue
+  const contractScaleIssueMessage = selectedQuote.contractEconomics
     ? canonicalPremiumPerContract !== undefined
       ? 'تم احتساب تكلفة القسط وحجم المركز من مضاعف القسط الموثق. لا تزال Greeks المركز ودفتر PAPER وإعادة التشغيل محجوبة حتى ربطها بالنموذج الاقتصادي الموحد.'
-      : getContractScaleIssueMessage(contractScaleIssue)
-    : '';
+      : 'مواصفات العقد الاقتصادية غير كافية لحساب القسط أو المخاطر؛ لم نستخدم unit أو أي حساب قديم كبديل.'
+    : contractScaleIssue ? getContractScaleIssueMessage(contractScaleIssue) : '';
   const totalCost = canonicalPremiumPerContract !== undefined
     ? canonicalPremiumPerContract * safeQuantity + safeFees
     : hasExplicitConsistentContractScale ? selectedPremium * safeQuantity * selectedQuote.unit + safeFees : Number.NaN;
