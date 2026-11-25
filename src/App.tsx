@@ -194,7 +194,23 @@ function isPaperTrade(value: unknown): value is PaperTrade {
       && typeof trade.exit.sourceTimestampsAtExit?.index === 'string'
       && Number.isFinite(Date.parse(trade.exit.sourceTimestampsAtExit.index))
       && typeof trade.exit.sourceReceivedAtAtExit?.bidAsk === 'string'
-      && Number.isFinite(Date.parse(trade.exit.sourceReceivedAtAtExit.bidAsk))))
+      && Number.isFinite(Date.parse(trade.exit.sourceReceivedAtAtExit.bidAsk))
+      && Date.parse(trade.exit.closedAt) > Date.parse(trade.createdAt)
+      && Date.parse(trade.exit.closedAt) < Date.parse(trade.expiry)
+      && Date.parse(trade.exit.sourceTimestampsAtExit.bookTicker) <= Date.parse(trade.exit.closedAt)
+      && Date.parse(trade.exit.sourceTimestampsAtExit.index) <= Date.parse(trade.exit.closedAt)
+      && Date.parse(trade.exit.sourceReceivedAtAtExit.bidAsk) <= Date.parse(trade.exit.closedAt)
+      && Date.parse(trade.exit.closedAt) - Date.parse(trade.exit.sourceTimestampsAtExit.bookTicker) <= 300_000
+      && Date.parse(trade.exit.closedAt) - Date.parse(trade.exit.sourceTimestampsAtExit.index) <= 300_000
+      && Date.parse(trade.exit.closedAt) - Date.parse(trade.exit.sourceReceivedAtAtExit.bidAsk) <= 300_000
+      && Math.abs(trade.exit.realizedGrossPnl - (trade.exit.exitPremiumAmount - (trade.premiumAmountAtEntry ?? 0))) <= Math.max(1e-8, Math.abs(trade.exit.realizedGrossPnl) * 1e-8)
+      && (trade.exit.exitFees === undefined
+        ? trade.exit.exitFeesSource === undefined && trade.exit.exitCreditAfterFees === undefined && trade.exit.realizedNetPnl === undefined
+        : trade.exit.exitFeesSource === 'USER_ENTERED'
+          && typeof trade.exit.exitCreditAfterFees === 'number'
+          && Math.abs(trade.exit.exitCreditAfterFees - (trade.exit.exitPremiumAmount - trade.exit.exitFees)) <= Math.max(1e-8, Math.abs(trade.exit.exitCreditAfterFees) * 1e-8)
+          && typeof trade.exit.realizedNetPnl === 'number'
+          && Math.abs(trade.exit.realizedNetPnl - (trade.exit.exitCreditAfterFees - (trade.premiumDebitAtEntry ?? 0))) <= Math.max(1e-8, Math.abs(trade.exit.realizedNetPnl) * 1e-8))))
     && trade.status === 'PAPER';
 }
 
