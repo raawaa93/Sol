@@ -1,6 +1,6 @@
 import { Info } from 'lucide-react';
 import { estimateGreekPnl } from '../lib/options';
-import { getContractScaleIssue, getContractScaleIssueMessage } from '../lib/contract-scale';
+import { getContractScaleIssue, getContractScaleIssueMessage, hasLegacyScalarAnalyticsCapability } from '../lib/contract-scale';
 import { formatSmallAmount, formatSmallNumber, getQuoteCurrency } from '../lib/format';
 import type { OptionQuote } from '../lib/types';
 
@@ -24,7 +24,7 @@ function greekSource(key: GreekKey, quote: OptionQuote, dataMode: DataMode): str
 
 export default function GreeksPanel({ quote, quantity, dataMode }: GreeksPanelProps) {
   const scaleIssue = getContractScaleIssue(quote, dataMode);
-  const hasExplicitConsistentContractScale = scaleIssue === undefined;
+  const hasExplicitConsistentContractScale = hasLegacyScalarAnalyticsCapability(quote, dataMode);
   const scaleIssueMessage = scaleIssue ? getContractScaleIssueMessage(scaleIssue) : '';
   const positionUnits = hasExplicitConsistentContractScale ? Math.max(0, Number.isFinite(quantity) ? quantity : 0) * quote.unit : 0;
   const pricingStatus = quote.pricingStatus ?? (dataMode === 'DEMO' ? 'ASSUMED' : 'OBSERVED_ONLY');
@@ -96,6 +96,7 @@ export default function GreeksPanel({ quote, quantity, dataMode }: GreeksPanelPr
       <article className="panel greeks-panel">
         {pricingStatus === 'OBSERVED_ONLY' && <div className="greeks-footnote"><Info size={14} /><span>تتوفر بيانات السوق وIV، لكن مواصفات هذا العقد لا تسمح حالياً بحساب Greeks موثوقة. لن نستخدم أصفاراً مصطنعة أو نموذج Spot بديل. {quote.pricingReason ?? 'أدخل مواصفات عقد كاملة أو بيانات Greeks موثقة.'}</span></div>}
         {pricingStatus === 'ASSUMED' && <div className="greeks-footnote"><Info size={14} /><span>القيم التالية محسوبة بنموذج {modelName} مع افتراضات غير مرصودة بالكامل. {quote.pricingReason ?? 'تحقق من معدل الفائدة والـcarry ومواصفات التسوية قبل الاعتماد عليها.'}</span></div>}
+        {quote.contractEconomics && <div className="greeks-footnote"><Info size={14} /><span>مواصفات العقد الاقتصادية موثّقة، لكن نموذج Greeks الحالي لم يُثبت بعد على مقياس القسط والتسوية لهذا النوع. نعرض قيمة النموذج لكل وحدة كمرجع فقط، ونحجب Greeks المركز واختبارات الصدمات حتى اعتماد محوّل نموذج متوافق.</span></div>}
         {scaleIssue && <div className="greeks-footnote"><Info size={14} /><span>{scaleIssueMessage} ستبقى Greeks لكل وحدة مرجعية ظاهرة عند توفر النموذج، لكننا نحجب حساسية المركز المجمعة.</span></div>}
         <div className="greeks-table-wrap">
           <table className="greeks-table">
