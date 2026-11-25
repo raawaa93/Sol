@@ -236,6 +236,7 @@ export interface PaperTrade {
   priceSourceAtEntry?: QuotePriceSource;
   bidAskSourceAtEntry?: OptionQuote['bidAskSource'];
   sourceTimestampsAtEntry?: OptionQuote['sourceTimestamps'];
+  sourceReceivedAtAtEntry?: OptionQuote['sourceReceivedAt'];
   status: 'PAPER';
 }
 
