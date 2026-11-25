@@ -83,6 +83,9 @@ export interface OptionReplayResult {
   returnOnPremiumPct: number | null;
   skipped: {
     missingTimestamp: number;
+    invalidExpiry: number;
+    expiredContract: number;
+    expiryBeforeExit: number;
     invalidBidAskSource: number;
     staleQuote: number;
     estimatedExecutionPrice: number;
@@ -113,6 +116,9 @@ export function replayLongOptionSnapshots(
 ): OptionReplayResult {
   const emptySkipped = {
     missingTimestamp: 0,
+    invalidExpiry: 0,
+    expiredContract: 0,
+    expiryBeforeExit: 0,
     invalidBidAskSource: 0,
     staleQuote: 0,
     estimatedExecutionPrice: 0,
@@ -146,7 +152,7 @@ export function replayLongOptionSnapshots(
   const maxTrades = Number.isFinite(config.maxTrades)
     ? Math.max(1, Math.floor(config.maxTrades ?? 1_000))
     : 1_000;
-  const grouped = new Map<string, Array<{ quote: OptionQuote; timestamp: number; sourceTimestamp: number }>>();
+  const grouped = new Map<string, Array<{ quote: OptionQuote; timestamp: number; sourceTimestamp: number; expiryTimestamp: number }>>();
   const skipped = { ...emptySkipped };
 
   for (const quote of quotes) {
@@ -163,6 +169,15 @@ export function replayLongOptionSnapshots(
     }
     if (receivedAt - sourceTimestamp > maxQuoteDelayMs) {
       skipped.staleQuote += 1;
+      continue;
+    }
+    const expiryTimestamp = Date.parse(quote.expiry);
+    if (!Number.isFinite(expiryTimestamp)) {
+      skipped.invalidExpiry += 1;
+      continue;
+    }
+    if (expiryTimestamp <= receivedAt) {
+      skipped.expiredContract += 1;
       continue;
     }
     if (isQuoteFieldEstimated(quote, 'bid') || isQuoteFieldEstimated(quote, 'ask')) {
@@ -203,26 +218,33 @@ export function replayLongOptionSnapshots(
       continue;
     }
     const rows = grouped.get(quote.symbol) ?? [];
-    rows.push({ quote, timestamp: receivedAt, sourceTimestamp });
+    rows.push({ quote, timestamp: receivedAt, sourceTimestamp, expiryTimestamp });
     grouped.set(quote.symbol, rows);
   }
 
   const trades: OptionReplayTrade[] = [];
   for (const [symbol, rows] of grouped) {
-    const latestByTimestamp = new Map<number, { quote: OptionQuote; sourceTimestamp: number }>();
+    const latestByTimestamp = new Map<number, { quote: OptionQuote; sourceTimestamp: number; expiryTimestamp: number }>();
     rows.forEach((row) => {
       const previous = latestByTimestamp.get(row.timestamp);
       if (!previous || row.sourceTimestamp > previous.sourceTimestamp) {
-        latestByTimestamp.set(row.timestamp, { quote: row.quote, sourceTimestamp: row.sourceTimestamp });
+        latestByTimestamp.set(row.timestamp, { quote: row.quote, sourceTimestamp: row.sourceTimestamp, expiryTimestamp: row.expiryTimestamp });
       }
     });
     const uniqueRows = [...latestByTimestamp.entries()]
-      .map(([timestamp, row]) => ({ timestamp, quote: row.quote, sourceTimestamp: row.sourceTimestamp }))
+      .map(([timestamp, row]) => ({ timestamp, quote: row.quote, sourceTimestamp: row.sourceTimestamp, expiryTimestamp: row.expiryTimestamp }))
       .sort((a, b) => a.timestamp - b.timestamp);
     let index = 0;
     while (index < uniqueRows.length - 1 && trades.length < maxTrades) {
       const entry = uniqueRows[index];
       const targetExitTime = entry.timestamp + config.holdingPeriodMs;
+      // The replay has no expiry-settlement/assignment model. Never carry a
+      // simulated position to or beyond expiry and pretend a quote exit exists.
+      if (targetExitTime >= entry.expiryTimestamp) {
+        skipped.expiryBeforeExit += 1;
+        index += 1;
+        continue;
+      }
       let exitIndex = index + 1;
       while (exitIndex < uniqueRows.length
         && uniqueRows[exitIndex].timestamp < targetExitTime) exitIndex += 1;
@@ -231,6 +253,11 @@ export function replayLongOptionSnapshots(
       if (!exit || exit.timestamp > targetExitTime + config.maxExitDelayMs) {
         skipped.noExitSnapshot += 1;
         index += 1;
+        continue;
+      }
+      if (exit.timestamp >= entry.expiryTimestamp || exit.expiryTimestamp !== entry.expiryTimestamp) {
+        skipped.expiryBeforeExit += 1;
+        index = exitIndex + 1;
         continue;
       }
 
