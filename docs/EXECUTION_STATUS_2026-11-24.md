@@ -159,3 +159,18 @@ A remote branch search for `research/options-pit-archive-2026-11-24` returned no
 - No legacy scalar fallback is allowed for a quote carrying canonical terms, even at unit=1. Position Greeks, PAPER, EV and replay remain gated until canonical/model-aware consumers are implemented.
 - PR CI, build, bundle budget, Playwright journeys, Project Context Guard and Lighthouse passed. Published-site smoke-test job was skipped by workflow conditions; no post-merge published-site verification is claimed.
 - A subsequent audit identified that the standalone GreeksPanel and direct risk-neutral EV function still accepted the old unit=1 parity path for canonical quotes. A dedicated follow-up branch now centralizes the legacy capability gate and adds regression tests; see PR to follow.
+
+
+## Canonical Greek/EV safety gate merged — 25 November 2026
+
+- PR #168 merged as `f39ffde79b25ca3fd5416fa075ad1b1e7b3c3958`: https://github.com/raawaa93/Sol/pull/168
+- Shared `hasLegacyScalarAnalyticsCapability` now blocks all legacy scalar analytics for quotes carrying canonical economics, including unit=1.
+- GreeksPanel position-level Greek totals and shock P&L are blocked for canonical terms pending a model-specific adapter; direct risk-neutral EV is also blocked.
+- Unit/property tests, mocked backup tests, build, bundle budgets, Playwright, Project Context Guard, Lighthouse, main CI, GitHub Pages deploy and published-site smoke test all passed.
+
+## Canonical PAPER entry snapshot — PR #169 under verification
+
+- Added a PAPER-only entry snapshot with provider/source identity, canonical terms, independent premium multiplier and contract unit, premium debit, exact observed price basis and matching source timestamp.
+- CSV-origin or user-asserted provenance, model-derived prices, mismatched/missing source timestamps and invalid quantities/fees are rejected.
+- Existing legacy PAPER entries remain readable. Snapshot fields are exported for audit. No mark-to-market, exit P&L, Greeks, EV or replay are enabled by this entry-recording change.
+- PR: https://github.com/raawaa93/Sol/pull/169. Verification is pending; do not treat it as merged/deployed yet.
