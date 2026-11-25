@@ -248,6 +248,18 @@ test('verified export and restore preserve segment and cursor integrity', async 
   assert.equal(restoreReport.index.length, 1);
 });
 
+test('export recovers orphaned temporary files before integrity verification', async (t) => {
+  const { root, archive } = await makeArchive(t);
+  await withLease(archive, (lease) => archive.appendBatch([makeRecord()], { lease }));
+  const orphan = join(root, '.tmp', 'crashed-export.ndjson.tmp');
+  await writeFile(orphan, 'partial');
+  const destination = join(root, '..', `sol-options-export-recovery-${Date.now()}`);
+  t.after(() => rm(destination, { recursive: true, force: true }));
+  const report = await archive.exportTo(destination);
+  assert.equal(report.ok, true, report.errors.join('; '));
+  await assert.rejects(readFile(orphan, 'utf8'), (error) => error.code === 'ENOENT');
+});
+
 test('point-in-time gate rejects future, stale, backfilled and modelled observations', () => {
   const record = makeRecord();
   assert.equal(evaluateOptionsPointInTime(record, '2026-11-25T03:00:01.000Z', ['bid']).eligible, true);
