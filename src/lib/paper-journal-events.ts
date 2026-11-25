@@ -36,6 +36,7 @@ export function isCanonicalPaperCloseEvent(value: unknown): value is CanonicalPa
     || typeof value.exitFees !== 'number' || !Number.isFinite(value.exitFees) || value.exitFees < 0
     || value.exitFeesSource !== 'USER_ENTERED'
     || typeof value.grossProceeds !== 'number' || !Number.isFinite(value.grossProceeds) || value.grossProceeds <= 0
+    || (value.exitFees as number) > (value.grossProceeds as number)
     || typeof value.entryDebit !== 'number' || !Number.isFinite(value.entryDebit) || value.entryDebit <= 0
     || typeof value.netPnl !== 'number' || !Number.isFinite(value.netPnl)
     || typeof value.currency !== 'string' || !value.currency.trim()
@@ -93,7 +94,8 @@ export function isCanonicalPaperCloseEvent(value: unknown): value is CanonicalPa
     && receivedAt - bookAt <= 5 * 60_000
     && closedAt - receivedAt <= 5 * 60_000
     && closedAt - bookAt <= 5 * 60_000
-    && closedAt - indexAt <= 5 * 60_000;
+    && closedAt - indexAt <= 5 * 60_000
+    && Date.parse(value.contractAtExit.expiry as string) > closedAt;
 }
 
 export function loadPaperCloseEvents(storage: PaperCloseEventsStorage): PaperCloseEventsLoadResult {
