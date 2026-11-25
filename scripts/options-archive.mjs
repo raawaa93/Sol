@@ -384,9 +384,23 @@ export class ResumableOptionsArchive {
     return total;
   }
 
+  async cleanTemporaryFiles(lease) {
+    await this.assertLease(lease);
+    const tempRoot = join(this.root, '.tmp');
+    const entries = await readdir(tempRoot, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith('.ndjson.tmp')) {
+        throw new OptionsArchiveError('TEMP_DIRECTORY_UNEXPECTED_ENTRY', 'Archive temp directory contains an unexpected entry; manual inspection is required.');
+      }
+      await unlink(join(tempRoot, entry.name));
+    }
+    if (entries.length) await fsyncDirectory(tempRoot);
+  }
+
   async appendBatch(records, options = {}) {
     if (!this.initialized) await this.initialize();
     await this.assertLease(options.lease);
+    await this.cleanTemporaryFiles(options.lease);
     if (!Array.isArray(records) || records.length === 0) throw new OptionsArchiveError('EMPTY_BATCH', 'At least one archive record is required.');
     const groups = new Map();
     let duplicates = 0;
