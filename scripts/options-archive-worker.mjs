@@ -47,7 +47,10 @@ export async function runOptionsArchiveWorker({
   if (!config || !Array.isArray(config.streams) || !config.archiveRoot
     || !Number.isSafeInteger(config.maxBytes) || config.maxBytes <= 0
     || !Number.isSafeInteger(config.maxRuntimeMs) || config.maxRuntimeMs <= 0
-    || !Number.isSafeInteger(config.heartbeatMs) || config.heartbeatMs <= 0) {
+    || config.streams.length === 0 || config.streams.length > 200
+    || !Number.isSafeInteger(config.maxBytes) || config.maxBytes <= 0 || config.maxBytes > MAX_ARCHIVE_BYTES
+    || !Number.isSafeInteger(config.maxRuntimeMs) || config.maxRuntimeMs <= 0 || config.maxRuntimeMs > MAX_RUNTIME_MS
+    || !Number.isSafeInteger(config.heartbeatMs) || config.heartbeatMs <= 0 || config.heartbeatMs > 5 * 60 * 1000) {
     throw new Error('A validated options archive worker configuration is required.');
   }
   const activeArchive = archive ?? new ResumableOptionsArchive(config.archiveRoot, { maxBytes: config.maxBytes });
@@ -117,13 +120,15 @@ async function main() {
   const config = readOptionsWorkerConfig();
   const controller = new AbortController();
   const stop = (signalName) => controller.abort(new Error('Received ' + signalName));
-  process.once('SIGINT', stop);
-  process.once('SIGTERM', stop);
+  const stopOnInterrupt = () => stop('SIGINT');
+  const stopOnTerminate = () => stop('SIGTERM');
+  process.once('SIGINT', stopOnInterrupt);
+  process.once('SIGTERM', stopOnTerminate);
   try {
     await runOptionsArchiveWorker({ config, signal: controller.signal });
   } finally {
-    process.removeListener('SIGINT', stop);
-    process.removeListener('SIGTERM', stop);
+    process.removeListener('SIGINT', stopOnInterrupt);
+    process.removeListener('SIGTERM', stopOnTerminate);
   }
 }
 
