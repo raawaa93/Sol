@@ -42,6 +42,8 @@ test('global instrument search and local watchlist work across reloads', async (
 });
 
 test('PAPER-only journal records and exports a local single-option scenario', async ({ page }) => {
+  await expect(page.locator('#risk-budget')).toHaveValue('60');
+  await expect(page.locator('.budget-row')).toContainText('سقف القسط والرسوم للصفقة');
   await page.getByRole('button', { name: 'أضف إلى الدفتر التجريبي' }).click();
   await expect(page.getByText('أضيفت الصفقة إلى الدفتر التجريبي فقط.')).toBeVisible();
   await page.locator('.side-nav').getByRole('button', { name: 'الدفتر التجريبي' }).click();
