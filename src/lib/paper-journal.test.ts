@@ -73,7 +73,8 @@ const input = {
   createdAt: '2026-11-25T03:01:00Z',
   quantity: 3,
   premiumPrice: 1.3,
-  fees: 0.5,
+  fees: 0.3,
+  entryFeesSource: 'USER_ENTERED' as const,
   spotAtEntry: 99000,
 };
 
@@ -82,7 +83,7 @@ test('canonical PAPER entry stores independent premium scale and full contract/s
   const result = createCanonicalPaperTrade(input);
   assert.equal(result.ok, true);
   if (!result.ok) return;
-  assert.equal(result.premiumDebit, 4.4);
+  assert.equal(result.premiumDebit, 4.2);
   assert.equal(result.premiumCurrency, 'USDT');
   assert.equal(result.trade.entryPremium, 1.3);
   assert.ok(Math.abs(result.trade.premiumAmountAtEntry! - 3.9) < 1e-9);
@@ -92,6 +93,8 @@ test('canonical PAPER entry stores independent premium scale and full contract/s
   assert.equal(result.trade.contractUnitAtEntry, 100);
   assert.equal(result.trade.contractEconomics?.exercise.cashSettlement?.multiplier, 100);
   assert.equal(result.trade.sourceTimestampsAtEntry?.index, '2026-11-25T03:00:00Z');
+  assert.equal(result.trade.sourceReceivedAtAtEntry?.bidAsk, '2026-11-25T03:00:00Z');
+  assert.equal(result.trade.entryFeesSource, 'USER_ENTERED');
   assert.equal(result.trade.status, 'PAPER');
 });
 
@@ -295,7 +298,7 @@ test('canonical PAPER close uses observed Bid, checks displayed bid size and com
   assert.equal(result.trade.exit?.bidQuantityAtExit, 10);
   assert.ok(Math.abs(result.grossCredit - 4.5) < 1e-9);
   assert.ok(Math.abs(result.grossPnl - 0.6) < 1e-9);
-  assert.ok(Math.abs(result.netPnl! - (-0.1)) < 1e-9);
+  assert.ok(Math.abs(result.netPnl! - 0.1) < 1e-9);
 });
 
 test('canonical PAPER close omits net P&L when exit fees are unknown', () => {
@@ -430,4 +433,80 @@ test('canonical PAPER close rejects stale or future local receive clocks', () =>
   });
   assert.equal(future.ok, false);
   if (!future.ok) assert.equal(future.reason, 'PAPER_EXIT_MARKET_SNAPSHOT_STALE_OR_FUTURE');
+});
+
+
+test('canonical PAPER close keeps net P&L unknown when entry fees were not explicitly supplied', () => {
+  const noEntryFeeProof = createCanonicalPaperTrade({ ...input, fees: 0, entryFeesSource: undefined });
+  assert.equal(noEntryFeeProof.ok, true);
+  if (!noEntryFeeProof.ok) return;
+  const result = closeCanonicalPaperTrade({
+    trade: noEntryFeeProof.trade,
+    quote: exitQuote,
+    closedAt: '2026-11-25T03:02:01Z',
+    exitFees: 0.2,
+  });
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(result.trade.exit?.exitFees, 0.2);
+  assert.equal(result.trade.exit?.exitCreditAfterFees, 4.3);
+  assert.equal(result.trade.exit?.realizedNetPnl, undefined);
+  assert.equal(result.netPnl, undefined);
+});
+
+test('canonical PAPER close rejects entry snapshots without a persisted receive clock', () => {
+  const legacyEntry = { ...canonicalEntry.trade, sourceReceivedAtAtEntry: undefined };
+  const result = closeCanonicalPaperTrade({
+    trade: legacyEntry,
+    quote: exitQuote,
+    closedAt: '2026-11-25T03:02:01Z',
+  });
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.reason, 'PAPER_ENTRY_SNAPSHOT_NOT_CANONICAL');
+});
+
+test('canonical PAPER entry and exit fees cannot exceed Binance published premium cap', () => {
+  const entryFeeTooHigh = createCanonicalPaperTrade({ ...input, fees: 0.5, entryFeesSource: 'USER_ENTERED' });
+  assert.equal(entryFeeTooHigh.ok, false);
+  if (!entryFeeTooHigh.ok) assert.equal(entryFeeTooHigh.reason, 'PAPER_ENTRY_FEE_EXCEEDS_EXCHANGE_CAP');
+  const validEntry = createCanonicalPaperTrade({ ...input, fees: 0.3, entryFeesSource: 'USER_ENTERED' });
+  assert.equal(validEntry.ok, true);
+  if (!validEntry.ok) return;
+  const exitFeeTooHigh = closeCanonicalPaperTrade({
+    trade: validEntry.trade,
+    quote: exitQuote,
+    closedAt: '2026-11-25T03:02:01Z',
+    exitFees: 0.6,
+  });
+  assert.equal(exitFeeTooHigh.ok, false);
+  if (!exitFeeTooHigh.ok) assert.equal(exitFeeTooHigh.reason, 'PAPER_EXIT_FEE_EXCEEDS_EXCHANGE_CAP');
+});
+
+
+test('canonical PAPER entry rejects a non-zero entry fee without explicit fee provenance', () => {
+  const result = createCanonicalPaperTrade({ ...input, entryFeesSource: undefined });
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.reason, 'PAPER_ENTRY_FEE_PROVENANCE_REQUIRED');
+});
+
+
+test('canonical PAPER close rejects a timestamp before entry and an impossible entry receive order', () => {
+  const beforeEntry = closeCanonicalPaperTrade({
+    trade: canonicalEntry.trade,
+    quote: exitQuote,
+    closedAt: '2026-11-25T03:00:59Z',
+  });
+  assert.equal(beforeEntry.ok, false);
+  if (!beforeEntry.ok) assert.equal(beforeEntry.reason, 'PAPER_EXIT_TIME_NOT_AFTER_ENTRY');
+
+  const impossibleReceive = closeCanonicalPaperTrade({
+    trade: {
+      ...canonicalEntry.trade,
+      sourceReceivedAtAtEntry: { bidAsk: '2026-11-25T02:59:59Z' },
+    },
+    quote: exitQuote,
+    closedAt: '2026-11-25T03:02:01Z',
+  });
+  assert.equal(impossibleReceive.ok, false);
+  if (!impossibleReceive.ok) assert.equal(impossibleReceive.reason, 'PAPER_ENTRY_SNAPSHOT_NOT_CANONICAL');
 });

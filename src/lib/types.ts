@@ -239,6 +239,8 @@ export interface PaperTrade {
   entryPremium: number;
   pricePrecision?: number;
   fees: number;
+  /** Present only when the entry fee amount was explicitly supplied by the user. */
+  entryFeesSource?: 'USER_ENTERED';
   spotAtEntry: number;
   quoteAsset?: string;
   /** Immutable-at-entry canonical snapshot; local storage is an audit record, never trusted for later calculations. */
@@ -254,6 +256,7 @@ export interface PaperTrade {
   priceSourceAtEntry?: QuotePriceSource;
   bidAskSourceAtEntry?: OptionQuote['bidAskSource'];
   sourceTimestampsAtEntry?: OptionQuote['sourceTimestamps'];
+  sourceReceivedAtAtEntry?: { bidAsk: string };
   /** A verified simulated close; absence means the PAPER position remains open. */
   exit?: PaperTradeExit;
   status: 'PAPER';
