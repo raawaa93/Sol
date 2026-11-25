@@ -526,3 +526,43 @@ test('WebSocket transport reconnects only after normal 24-hour close and support
   controller.abort();
   await iterator.return();
 });
+
+
+test('WebSocket transport bounds pending messages and emits an explicit gap before stopping', async () => {
+  class FakeWebSocket {
+    static instances = [];
+    constructor(url) {
+      this.url = url;
+      this.listeners = new Map();
+      FakeWebSocket.instances.push(this);
+      queueMicrotask(() => this.emit('open', {}));
+    }
+    addEventListener(type, callback) {
+      if (!this.listeners.has(type)) this.listeners.set(type, new Set());
+      this.listeners.get(type).add(callback);
+    }
+    removeEventListener(type, callback) { this.listeners.get(type)?.delete(callback); }
+    emit(type, event) {
+      for (const callback of this.listeners.get(type) ?? []) callback(event);
+    }
+    close(code = 1000, reason = '') { this.emit('close', { code, reason }); }
+  }
+  const transport = createBinanceOptionsWebSocketTransport({
+    WebSocketImpl: FakeWebSocket,
+    maxReconnects: 0,
+    maxQueuedMessages: 1,
+  });
+  const iterator = (await transport.subscribe(['btcusdt@optionTrade']))[Symbol.asyncIterator]();
+  assert.equal((await iterator.next()).value.type, 'connect');
+  const socket = FakeWebSocket.instances[0];
+  socket.emit('message', { data: '{"stream":"btcusdt@optionTrade","data":{"e":"trade"}}' });
+  socket.emit('message', { data: '{"stream":"btcusdt@optionTrade","data":{"e":"trade","t":2}}' });
+  assert.equal((await iterator.next()).value.type, 'message');
+  assert.deepEqual((await iterator.next()).value, {
+    type: 'disconnect', code: 1006, reason: 'local-buffer-overflow',
+  });
+  await assert.rejects(
+    iterator.next(),
+    (error) => error instanceof OptionsCollectorError && error.code === 'WEBSOCKET_BUFFER_OVERFLOW',
+  );
+});
