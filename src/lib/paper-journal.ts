@@ -455,12 +455,6 @@ export function isValidPaperTradeCloseRecord(value: unknown, trade: PaperTrade):
 /** A corrupt close record is discarded, but the immutable entry remains open and fully reserved. */
 export function normalizePaperTradeRecord(trade: PaperTrade): PaperTrade {
   const normalized: PaperTrade = { ...trade };
-  if (trade.close !== undefined && !isValidPaperTradeCloseRecord(trade.close, trade)) {
-    delete normalized.close;
-    normalized.integrityWarning = 'CLOSE_RECORD_INVALID';
-  } else if (normalized.integrityWarning !== 'CLOSE_RECORD_INVALID') {
-    delete normalized.integrityWarning;
-  }
   const feeBreakdownValid = Number.isFinite(trade.takerFeeRateAtEntry) && trade.takerFeeRateAtEntry! >= 0
     && Number.isFinite(trade.exchangeFeeAtEntry) && trade.exchangeFeeAtEntry! >= 0
     && Number.isFinite(trade.additionalFeesAtEntry) && trade.additionalFeesAtEntry! >= 0
@@ -469,6 +463,17 @@ export function normalizePaperTradeRecord(trade: PaperTrade): PaperTrade {
     delete normalized.takerFeeRateAtEntry;
     delete normalized.exchangeFeeAtEntry;
     delete normalized.additionalFeesAtEntry;
+  }
+  const entryEvidenceValid = trade.priceSourceAtEntry !== 'ASK'
+    || hasValidPaperEntryExecutionEvidence(normalized);
+  if (!entryEvidenceValid) {
+    delete normalized.close;
+    normalized.integrityWarning = 'ENTRY_EXECUTION_EVIDENCE_INVALID';
+    return normalized;
+  }
+  if (trade.close !== undefined && !isValidPaperTradeCloseRecord(trade.close, normalized)) {
+    delete normalized.close;
+    normalized.integrityWarning = 'CLOSE_RECORD_INVALID';
   }
   return normalized;
 }
