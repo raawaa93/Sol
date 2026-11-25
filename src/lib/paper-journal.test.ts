@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { canCreateCanonicalPaperTrade, createCanonicalPaperTrade, createCanonicalPaperCloseEvent } from './paper-journal.ts';
-import { appendPaperCloseEvent, isCanonicalPaperCloseEvent, loadPaperCloseEvents, PAPER_CLOSE_EVENTS_KEY, PAPER_CLOSE_EVENTS_RECOVERY_KEY } from './paper-journal-events.ts';
+import { appendPaperCloseEvent, clearPaperCloseEvents, isCanonicalPaperCloseEvent, loadPaperCloseEvents, PAPER_CLOSE_EVENTS_KEY, PAPER_CLOSE_EVENTS_RECOVERY_KEY } from './paper-journal-events.ts';
 import type { OptionQuote } from './types.ts';
 import { BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS } from './contract-economics.ts';
 
@@ -370,6 +370,7 @@ test('paper close event storage appends once and rejects duplicate trade closure
   const storage = {
     getItem: (key: string) => values.get(key) ?? null,
     setItem: (key: string, value: string) => { values.set(key, value); },
+    removeItem: (key: string) => { values.delete(key); },
   };
   const first = appendPaperCloseEvent(storage, close.event);
   assert.equal(first.ok, true);
@@ -394,4 +395,19 @@ test('paper close event storage quarantines invalid rows before replacing the ac
   assert.equal(loaded.backupAvailable, true);
   assert.equal(loaded.persistenceBlocked, false);
   assert.equal(values.get(PAPER_CLOSE_EVENTS_RECOVERY_KEY), raw);
+});
+
+
+test('explicit PAPER campaign reset removes active close events but preserves recovery bytes', () => {
+  const values = new Map<string, string>();
+  values.set(PAPER_CLOSE_EVENTS_KEY, '[]');
+  values.set(PAPER_CLOSE_EVENTS_RECOVERY_KEY, '{"prior":"backup"}');
+  const storage = {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => { values.set(key, value); },
+    removeItem: (key: string) => { values.delete(key); },
+  };
+  assert.equal(clearPaperCloseEvents(storage), true);
+  assert.equal(values.has(PAPER_CLOSE_EVENTS_KEY), false);
+  assert.equal(values.get(PAPER_CLOSE_EVENTS_RECOVERY_KEY), '{"prior":"backup"}');
 });
