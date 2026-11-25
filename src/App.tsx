@@ -209,7 +209,8 @@ function isPaperTrade(value: unknown): value is PaperTrade {
       && typeof trade.premiumAmountAtEntry === 'number' && Number.isFinite(trade.premiumAmountAtEntry) && trade.premiumAmountAtEntry >= 0
       && typeof trade.premiumDebitAtEntry === 'number' && Number.isFinite(trade.premiumDebitAtEntry) && trade.premiumDebitAtEntry >= trade.premiumAmountAtEntry
       && trade.premiumCurrencyAtEntry === trade.contractEconomics.premium.quoteCurrency
-      && (trade.priceSourceAtEntry !== 'MID' || trade.bidAskSourceAtEntry === 'BOOK_TICKER' || trade.bidAskSourceAtEntry === 'OPTION_TICKER' || trade.bidAskSourceAtEntry === 'MARK_PRICE')))
+      && (trade.priceSourceAtEntry !== 'MID' || trade.bidAskSourceAtEntry === 'BOOK_TICKER' || trade.bidAskSourceAtEntry === 'OPTION_TICKER' || trade.bidAskSourceAtEntry === 'MARK_PRICE')
+      && (trade.priceSourceAtEntry !== 'ASK' || (trade.bidAskSourceAtEntry === 'BOOK_TICKER' && trade.askSizeUnitAtEntry === 'CONTRACTS' && Number.isFinite(trade.askQuantityAtEntry) && trade.askQuantityAtEntry! + 1e-9 >= trade.quantity))))
     && (trade.close === undefined || isPaperTradeClose(trade.close, trade))
     && trade.status === 'PAPER';
 }
