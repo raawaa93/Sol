@@ -318,16 +318,40 @@ export class ResumableOptionsArchive {
       }
       const recoveryPath = join(this.root, '.writer.recovery.lock');
       const recoveryToken = randomUUID();
+      const currentHost = process.env.HOSTNAME ?? 'local';
       let recoveryHandle;
       try {
         recoveryHandle = await open(recoveryPath, 'wx', 0o600);
-        await recoveryHandle.writeFile(canonicalJson({ token: recoveryToken, pid: process.pid }), 'utf8');
+        await recoveryHandle.writeFile(canonicalJson({
+          token: recoveryToken,
+          pid: process.pid,
+          host: currentHost,
+          createdAt: new Date().toISOString(),
+        }), 'utf8');
         await recoveryHandle.sync();
       } catch (recoveryError) {
-        if (recoveryError.code === 'EEXIST') {
-          throw new OptionsArchiveError('WRITER_LEASE_RECOVERY_BUSY', 'Another process is checking the expired writer lease.');
+        if (recoveryError.code !== 'EEXIST') throw recoveryError;
+        let existingRecovery;
+        try { existingRecovery = JSON.parse(await readFile(recoveryPath, 'utf8')); } catch {
+          const recoveryStat = await stat(recoveryPath);
+          if (Date.now() - recoveryStat.mtimeMs > this.leaseTtlMs) {
+            await unlink(recoveryPath).catch((error) => { if (error.code !== 'ENOENT') throw error; });
+            return this.acquireWriterLease();
+          }
+          throw new OptionsArchiveError('WRITER_LEASE_RECOVERY_CORRUPT', 'Recovery lock is malformed and too recent to reclaim safely.');
         }
-        throw recoveryError;
+        let recoveryProcessAlive = true;
+        if (existingRecovery.host === currentHost && Number.isSafeInteger(existingRecovery.pid)) {
+          try { process.kill(existingRecovery.pid, 0); } catch (probe) { recoveryProcessAlive = probe.code === 'EPERM'; }
+        } else if (!existingRecovery.host) {
+          const recoveryStat = await stat(recoveryPath);
+          if (Date.now() - recoveryStat.mtimeMs > this.leaseTtlMs) recoveryProcessAlive = false;
+        }
+        if (!recoveryProcessAlive) {
+          await unlink(recoveryPath).catch((error) => { if (error.code !== 'ENOENT') throw error; });
+          return this.acquireWriterLease();
+        }
+        throw new OptionsArchiveError('WRITER_LEASE_RECOVERY_BUSY', 'Another process is checking the expired writer lease.');
       } finally {
         await recoveryHandle?.close();
       }
