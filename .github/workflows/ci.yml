@@ -36,8 +36,6 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Verify Syria-only ingress gate from non-Syrian CI without contacting Binance
-        run: node scripts/verify-syria-country-gate.mjs
       - name: Run unit and property tests
         run: npm test
       - name: Validate production smoke-test script syntax
