@@ -1,4 +1,5 @@
 import { isQuoteFieldEstimated } from './quote-quality.ts';
+import { validateContractEconomics } from './contract-economics.ts';
 import type { OptionQuote } from './types.ts';
 
 export type ContractScaleIssue = 'UNIT_UNVERIFIED' | 'MULTIPLIER_MISMATCH' | 'PREMIUM_SCALE_UNVERIFIED' | 'UNSUPPORTED_CONTRACT_SCALE';
@@ -86,6 +87,64 @@ export function hasLegacyScalarAnalyticsCapability(
 ): boolean {
   return quote.contractEconomics === undefined
     && getContractScaleIssue(quote, sourceMode) === undefined;
+}
+
+/**
+ * A narrowly scoped adapter for Binance European crypto options whose model
+ * Greeks are calculated per underlying unit and whose verified cash payout
+ * multiplier equals that underlying quantity per contract. This does not
+ * authorize legacy premium/P&L/EV/PAPER/replay calculations.
+ */
+export function hasCanonicalBinanceModelGreekCapability(
+  quote: OptionQuote,
+  sourceMode: ContractScaleSourceMode = 'CSV',
+): boolean {
+  const economics = quote.contractEconomics;
+  const cash = economics?.exercise.cashSettlement;
+  if (!economics || !cash) return false;
+  const validation = validateContractEconomics(economics);
+  const validTimestamp = (value: string | undefined) => Boolean(value && Number.isFinite(Date.parse(value)));
+  const estimated = quote.estimatedFields ?? [];
+
+  return sourceMode === 'BINANCE'
+    && quote.venue === 'BINANCE'
+    && quote.assetClass === 'CRYPTO'
+    && quote.underlyingKind === 'SPOT'
+    && quote.exerciseStyle === 'EUROPEAN'
+    && quote.settlementStyle === 'CASH'
+    && validation.valid
+    && validation.adapterReady
+    && economics.provenance.status === 'PROVIDER_VERIFIED'
+    && economics.provenance.provider === 'BINANCE'
+    && economics.provenance.sourceRef === 'https://eapi.binance.com/eapi/v1/exchangeInfo'
+    && economics.provenance.rawFields?.unit === quote.unit
+    && economics.premium.priceUnit === 'PER_CONTRACT'
+    && economics.premium.multiplier === 1
+    && economics.premium.quoteCurrency === quote.quoteAsset
+    && economics.premium.quoteCurrency === cash.currency
+    && economics.exercise.style === 'EUROPEAN'
+    && economics.exercise.settlement === 'CASH'
+    && economics.exercise.settlementCurrency === quote.settlementAsset
+    && cash.formula === 'INTRINSIC_VALUE'
+    && cash.reference === 'INDEX'
+    && cash.currency === quote.settlementAsset
+    && Number.isFinite(quote.unit)
+    && quote.unit > 0
+    && cash.multiplier === quote.unit
+    && quote.pricingModel === 'BLACK_SCHOLES_CARRY'
+    && (quote.pricingStatus === 'ASSUMED' || quote.pricingStatus === 'SUPPORTED')
+    && quote.ivStatus === 'OBSERVED'
+    && !estimated.some((field) => ['iv', 'spot', 'daysToExpiry', 'delta', 'gamma', 'theta', 'vega', 'rho'].includes(field))
+    && Number.isFinite(quote.spot) && quote.spot > 0
+    && Number.isFinite(quote.strike) && quote.strike > 0
+    && Number.isFinite(quote.daysToExpiry) && quote.daysToExpiry >= 0
+    && Number.isFinite(quote.iv) && quote.iv > 0 && quote.iv <= 5
+    && Number.isFinite(quote.riskFreeRate)
+    && Number.isFinite(quote.carryYield)
+    && [quote.delta, quote.gamma, quote.theta, quote.vega, quote.rho].every(Number.isFinite)
+    && validTimestamp(quote.sourceTimestamps?.index)
+    && validTimestamp(quote.sourceTimestamps?.optionTicker)
+    && validTimestamp(quote.sourceTimestamps?.markIv);
 }
 
 export function getContractScaleIssueMessage(issue: ContractScaleIssue): string {
