@@ -5,6 +5,7 @@ import {
   PAPER_JOURNAL_STORAGE_KEY,
   loadPaperJournal,
   readPaperJournalRecovery,
+  readPaperJournalPrimary,
 } from './paper-journal-storage.ts';
 
 class MemoryStorage {
