@@ -255,7 +255,7 @@ test('depth diffs remain invalid until a snapshot bridge and sequence gaps are e
   const result = await collectForwardOptionsEvents({
     archive,
     transport,
-    streams: ['btc-261225-100000-c@depth20@100ms'],
+    streams: ['btc-261225-100000-c@depth@100ms'],
     enabled: true,
     now: () => RECEIVED,
   });
@@ -264,6 +264,58 @@ test('depth diffs remain invalid until a snapshot bridge and sequence gaps are e
   const report = await archive.verify();
   assert.equal(report.ok, true, report.errors.join('; '));
   assert.ok(report.index.length >= 7);
+});
+
+test('collector accepts current public Binance Options stream names and rejects obsolete aliases', async (t) => {
+  const archive = await makeArchive(t);
+  const streams = [
+    'btc-261225-100000-c@bookTicker',
+    'btc-261225-100000-c@optionTrade',
+    'btc-261225-100000-c@optionTicker',
+    'btcusdt@optionTicker@261225',
+    'btcusdt@optionMarkPrice',
+    '!index@arr',
+    'btc-261225-100000-c@kline_1m',
+    'btc-261225-100000-c@depth@100ms',
+  ];
+  let subscribed;
+  await collectForwardOptionsEvents({
+    archive,
+    transport: { subscribe: async (requested) => { subscribed = requested; return []; } },
+    streams,
+    enabled: true,
+    now: () => RECEIVED,
+  });
+  assert.deepEqual(subscribed, streams);
+  await assert.rejects(
+    collectForwardOptionsEvents({
+      archive,
+      transport: { subscribe: async () => [] },
+      streams: ['btcusdt@index'],
+      enabled: true,
+      now: () => RECEIVED,
+    }),
+    (error) => error.code === 'INVALID_STREAMS',
+  );
+});
+
+test('index and mark price stream arrays are parsed into independent raw archive records', () => {
+  const indexEvents = [
+    { e: 'indexPrice', E: EVENT_MS, s: 'BTCUSDT', p: '120000.0' },
+    { e: 'indexPrice', E: EVENT_MS, s: 'ETHUSDT', p: '4000.0' },
+  ];
+  const indexRecords = parseBinancePublicStreamEvent(indexEvents, RECEIVED);
+  assert.equal(indexRecords.length, 2);
+  assert.ok(indexRecords.every((record) => record.kind === 'INDEX_PRICE'));
+
+  const markEvents = [{
+    e: 'optionMarkPrice', E: EVENT_MS, s: SYMBOL, mp: '1250.0', iv: '0.42',
+    delta: '0.55', theta: '-12', gamma: '0.0001', vega: '22',
+  }];
+  const markRecords = parseBinancePublicStreamEvent(markEvents, RECEIVED);
+  assert.equal(markRecords.length, 1);
+  assert.equal(markRecords[0].kind, 'MARK_PRICE');
+  assert.equal(markRecords[0].symbol, SYMBOL);
 });
 
 test('forward collection is disabled by default and rejects private stream names', async () => {
