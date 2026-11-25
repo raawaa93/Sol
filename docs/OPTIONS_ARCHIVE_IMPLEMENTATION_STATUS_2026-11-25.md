@@ -132,3 +132,24 @@ No live market capture, scheduled worker, cloud archive, PIT dataset, strategy e
 - The worker requires explicit archive path and public stream names, enforces a 512 MiB maximum archive quota and six-hour maximum runtime, records graceful/operator/runtime stops distinctly, verifies archive integrity at shutdown, and renews the local single-host writer lease during quiet streams. Lease-renewal failure aborts collection.
 - An operator runbook is available at `docs/OPTIONS_ARCHIVE_WORKER_RUNBOOK_2026-11-25.md`.
 - The worker is opt-in only. No schedule, cloud destination, live Binance capture, off-device backup, or trading capability was activated. No eligibility or legal-use conclusion is inferred from public market-data API documentation.
+
+## Durable storage and unattended compute decision — 25 November 2026
+
+### Compared options
+
+- **Cloudflare R2 — preferred storage candidate, not provisioned.** The current Standard free allowance is 10 GB-month storage, 1 million Class A operations and 10 million Class B operations per month; internet egress is free. Usage above the included allowance is billable, the allowance is monthly, and R2 requires account activation/checkout. Use immutable, batched archive segments and a manifest rather than one object per market event. Do not enable until account ownership, a hard usage ceiling, billing controls, scoped credentials, retention and restore are verified. Sources: https://developers.cloudflare.com/r2/pricing/ and https://developers.cloudflare.com/r2/get-started/
+- **GitHub Actions — viable bounded compute, not an always-on guarantee.** Standard hosted runners are free and unlimited for public repositories, but each hosted job has a six-hour maximum. Public scheduled workflows can be delayed or dropped during high load and are disabled after 60 days without repository activity. Actions artifacts have finite retention and the Free plan's artifact-storage allowance is 500 MB, so they are not the canonical long-term archive. Sources: https://docs.github.com/en/actions/reference/runners/github-hosted-runners, https://docs.github.com/en/actions/reference/limits, https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows, https://docs.github.com/en/actions/reference/limits
+- **Cloudflare Workers Free — not suitable for the current long-lived WebSocket collector.** Current free limits include 10 ms CPU per invocation and a 15-minute Cron Trigger execution ceiling. It may be useful for small scheduled REST sampling, but it cannot replace the current six-hour Node worker as a continuous stream process. Source: https://developers.cloudflare.com/workers/platform/limits/
+- **Supabase Free — rejected for this archive.** The existing project is shared and remains off-limits. The free tier has no automatic backups and may pause after a week of inactivity; a separate project would still require an isolated access/RLS model and a tested restore process. Sources: https://supabase.com/pricing and https://supabase.com/docs/guides/platform/billing-on-supabase
+
+### Decision
+
+No cloud resource, subscription, credential, schedule or billing change was created. The best zero-recurring-cost candidate architecture is a bounded GitHub-hosted runner session that exports immutable, verified segments to a dedicated R2 bucket, with a separate restore drill and usage guard. GitHub scheduled runs are not a reliability guarantee; if continuous 24/7 capture is required, a persistent compute host is still needed and no verified zero-cost, authorized host is currently available.
+
+### Next release gates
+
+1. Confirm current Binance product/account/jurisdiction eligibility and data-retention rights before any real capture. Public API reachability is not proof of permission to trade or redistribute data.
+2. Provision an isolated R2 bucket only after account access and cost controls are available; use a narrowly scoped token and never commit credentials.
+3. Add an idempotent segment uploader and manifest/cursor reconciliation, with checksums, object-size caps, retry bounds and no destructive overwrite.
+4. Restore into a fresh directory/device and compare segment hashes, counts and cursor state.
+5. Only then evaluate a scheduled bounded capture. Preserve gap markers and alert on missed sessions; do not describe scheduled Actions as continuous coverage.
