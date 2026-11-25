@@ -77,3 +77,14 @@ This is provenance tracking only. The notice is for Binance RCH and does not est
 - PR #196 merged as `26b82d63bdd533c96fba8a881a8036fcf7c0b470`, adding a deterministic browser journey for paired 20/40-DTE CALL/PUT quotes, insufficient-history disclosure and provenance-preserving JSON export.
 - CI 45570955327 passed 293 unit/property tests, production build, compressed bundle budget and 18 Playwright journeys. Lighthouse 45570955246 and Project Context Guard 45570955274 passed.
 - These are code/test results only. No live Binance request, scheduled capture, cloud archive, historical BBO corpus or strategy edge is claimed.
+
+
+## Follow-up verification — BBO-aware replay, 25 November 2026
+
+- PR #204 merged as 337e03fb26d44c906125318affc473030c165da4.
+- The replay execution clock now uses local BBO receive/availability time, not generic/last-trade time. It requires an explicit BOOK_TICKER or OPTION_TICKER BBO source, source event/snapshot time, receive time, non-estimated bid/ask, explicit size unit and enough displayed size (Ask at entry, Bid at exit).
+- Rejects mark-only, estimated, future, missing, stale (>5-minute source-to-receive delay), unknown-size-unit and undersized rows. Adds configurable adverse slippage per side and surfaces fills, source clocks, displayed size and slippage cost.
+- CSV import/template accepts explicit BBO source, event time, receive time, size unit and bid/ask quantities. CSV metadata is user-supplied and not independently authenticated.
+- Binance bookTicker adapter stamps local receive time and contract-size units; optionTicker 24-hour statistics event time is not a BBO timestamp.
+- CI 45572889900 passed 303/303 tests, production build, bundle budget and 18/18 Playwright journeys; Lighthouse 45572889852 and Project Context Guard 45572889839 passed.
+- This is not a strategy backtest. No historical point-in-time BBO corpus, live collector, cloud archive, partial-fill model, queue/market-impact model, expiry/settlement model, measured edge or live trading capability exists.
