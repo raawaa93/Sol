@@ -227,7 +227,7 @@ test('replay requires explicit displayed size units and enough size at both entr
   const result = replayLongOptionSnapshots([
     quote('2026-11-24T10:00:00.000Z', { bidAskSizeUnit: undefined }),
     quote('2026-11-24T10:30:00.000Z', { askQuantity: 0.5 }),
-    quote('2026-11-24T11:00:00.000Z'),
+    quote('2026-11-24T11:30:00.000Z'),
   ], config);
   assert.equal(result.trades.length, 0);
   assert.equal(result.skipped.invalidSizeUnit, 1);
@@ -255,9 +255,9 @@ test('replay applies adverse per-side slippage to ask entry and bid exit', () =>
 
 test('underlying-unit displayed size is compared against contracts times contract unit', () => {
   const result = replayLongOptionSnapshots([
-    quote('2026-11-24T10:00:00.000Z', { unit: 2, bidAskSizeUnit: 'UNDERLYING_UNITS', askQuantity: 1.5 }),
-    quote('2026-11-24T11:00:00.000Z', { unit: 2, bidAskSizeUnit: 'UNDERLYING_UNITS' }),
-  ], config);
+    quote('2026-11-24T10:00:00.000Z', { bidAskSizeUnit: 'UNDERLYING_UNITS', askQuantity: 1.5 }),
+    quote('2026-11-24T11:00:00.000Z', { bidAskSizeUnit: 'UNDERLYING_UNITS' }),
+  ], { ...config, quantity: 2 });
   assert.equal(result.trades.length, 0);
   assert.equal(result.skipped.insufficientDisplayedSize, 1);
 });
