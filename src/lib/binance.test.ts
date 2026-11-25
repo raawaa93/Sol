@@ -192,7 +192,7 @@ test('Binance preserves explicit crypto, commodity, and unknown contract metadat
   assert.equal(commodity?.settlementStyle, 'CASH');
   assert.equal(commodity?.pricingModel, undefined);
   assert.ok(commodity?.pricingReason?.includes('Perpetual Contract Index'));
-  assert.ok(snapshot.warnings.some((warning) => warning.includes('مقياس القسط غير مفصول')));
+  assert.ok(!snapshot.warnings.some((warning) => warning.includes('مقياس القسط غير مفصول')), 'verified canonical premium and settlement scales should not be reported as unverified');
   assert.equal(unknown?.exerciseStyle, undefined);
   assert.equal(unknown?.settlementStyle, undefined);
   assert.equal(unknown?.pricingModel, undefined);
