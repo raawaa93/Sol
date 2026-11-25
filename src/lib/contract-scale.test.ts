@@ -170,7 +170,7 @@ const canonicalGreekQuote: OptionQuote = {
     markIv: '2026-11-25T04:00:00Z',
     riskFreeRate: '2026-11-25T04:00:00Z',
   },
-  sourceTimestamps: { index: '2026-11-25T04:00:00Z' },
+  sourceTimestamps: { index: '2026-11-25T04:00:00Z', bookTicker: '2026-11-25T04:00:00Z' },
 };
 
 const canonicalGreekNow = Date.parse('2026-11-25T04:00:05Z');
@@ -202,6 +202,10 @@ test('canonical Binance model Greek capability rejects missing provenance, times
     ...canonicalGreekQuote,
     sourceReceivedAt: { ...canonicalGreekQuote.sourceReceivedAt, markIv: '2026-11-25T03:00:00Z' },
   }, 'BINANCE'), false);
+  assert.equal(hasCanonicalBinanceModelGreekCapability({
+    ...canonicalGreekQuote,
+    sourceTimestamps: { ...canonicalGreekQuote.sourceTimestamps, bookTicker: '2026-11-25T03:59:40Z' },
+  }, 'BINANCE', canonicalGreekNow), false, 'stale BBO must block model Greeks');
   assert.equal(hasCanonicalBinanceModelGreekCapability({
     ...canonicalGreekQuote,
     unit: 10,
