@@ -29,6 +29,20 @@ function hasUniqueIds<T>(entries: T[]): boolean {
   return true;
 }
 
+/** Compare JSON-safe records independent of object-key insertion order. */
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map((item) => stableJson(item)).join(',')}]`;
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    const fields = Object.keys(record)
+      .filter((key) => record[key] !== undefined)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${stableJson(record[key])}`);
+    return `{${fields.join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'null';
+}
+
 export function createPaperJournalBackup<T>(
   entries: T[],
   isValid: (value: unknown) => value is T,
@@ -86,7 +100,8 @@ export function mergePaperJournalBackup<T extends { id: string }>(
   isValid: (value: unknown) => value is T,
 ): PaperJournalBackupResult<T> {
   if (!Array.isArray(current) || !Array.isArray(incoming)
-    || current.length + incoming.length > PAPER_JOURNAL_BACKUP_MAX_ENTRIES
+    || current.length > PAPER_JOURNAL_BACKUP_MAX_ENTRIES
+    || incoming.length > PAPER_JOURNAL_BACKUP_MAX_ENTRIES
     || !current.every(isValid) || !incoming.every(isValid)
     || !hasUniqueIds(current) || !hasUniqueIds(incoming)) {
     return { ok: false, reason: 'INVALID_OR_OVERSIZED_JOURNAL' };
@@ -100,7 +115,7 @@ export function mergePaperJournalBackup<T extends { id: string }>(
       merged.push(entry);
       continue;
     }
-    if (JSON.stringify(existing) !== JSON.stringify(entry)) {
+    if (stableJson(existing) !== stableJson(entry)) {
       return { ok: false, reason: 'JOURNAL_ID_CONFLICT' };
     }
   }
