@@ -60,3 +60,12 @@ This is provenance tracking only. The notice is for Binance RCH and does not est
 - The merged PR passed CI run 45569786353, Lighthouse baseline 45569786394, and Project Context Guard 45569786341. The tests use a fake WebSocket; they do not prove live Binance connectivity.
 - The transport is Node-only and opt-in. It does not create a scheduler, persistent worker, cloud archive, credentials, private streams or order path. It does not bypass regional restrictions.
 - Still not verified: any live Binance market capture, account/product eligibility, legal permission to trade from Syria, historical BBO coverage, or a strategy edge.
+
+
+## Follow-up verification — IV history and collector transport, 25 November 2026
+
+- PR #194 merged as 7183ab85eac7e9d7556cc3716b7d1790948c63d6. It adds source-bound IV Rank/Percentile and near-30-day ATM IV extraction from fresh paired Binance REST mark-IV quotes; it interpolates total variance only when expiries bracket 30 days. The series is isolated by underlying, venue, source and IV convention.
+- Local IV history is versioned and bounded (400 days, 2,000 records), deduplicates exact observation IDs, fails closed on corrupt storage/quota errors and supports JSON export. It is stored in the current browser only, is unencrypted and is collected only on a user-triggered Binance refresh.
+- UI explicitly shows insufficient/partial history and states that IV Rank/Percentile are not probabilities of profit or direction forecasts. Demo/CSV/model/venue-volatility values are not mixed into the observed Binance REST mark-IV series.
+- CI 45570010720 passed 293 tests, production build, bundle budget and Playwright; Lighthouse 45570010778 and Project Context Guard 45570010823 passed.
+- No real Binance HTTP/WebSocket capture, scheduled worker, cross-device cloud archive, historical BBO dataset, strategy edge, or live trading capability is claimed.
