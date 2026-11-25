@@ -26,8 +26,8 @@ test('Binance crypto adapter keeps premium and underlying delivery scales indepe
   assert.equal(economics.provenance.legalTerms?.scope, 'BINANCE_RIE_RCH');
   assert.equal(economics.provenance.legalTerms?.effectiveDate, '2026-01-05');
   assert.equal(economics.provenance.legalTerms?.accountApplicability, 'UNVERIFIED');
-  assert.match(economics.provenance.legalTerms?.contractSpecificationRef ?? '', /bin\\.bnbstatic\\.com/);
-  assert.match(economics.provenance.legalTerms?.clearingProceduresRef ?? '', /bin\\.bnbstatic\\.com/);
+  assert.ok((economics.provenance.legalTerms?.contractSpecificationRef ?? '').includes('bin.bnbstatic.com'));
+  assert.ok((economics.provenance.legalTerms?.clearingProceduresRef ?? '').includes('bin.bnbstatic.com'));
   assert.equal(validateContractEconomics(economics).adapterReady, true);
   const missingLegalTerms = structuredClone(economics);
   delete missingLegalTerms.provenance.legalTerms;
