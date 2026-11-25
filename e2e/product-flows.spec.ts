@@ -49,6 +49,11 @@ test('PAPER-only journal records and exports a local single-option scenario', as
   await expect(page.locator('.budget-row')).toContainText('ميزانية المحاولة');
   await expect(page.locator('.campaign-risk-summary')).toContainText('60');
   await expect(page.locator('.campaign-risk-summary')).toContainText('140');
+  const quantity = page.locator('#trade-lab label').filter({ hasText: 'الكمية' }).locator('input');
+  await quantity.fill('100000');
+  await page.getByRole('button', { name: 'أضف إلى الدفتر التجريبي' }).click();
+  await expect(page.getByText('تجاوزت الصفقة سقف 20 دولاراً للمحاولة الواحدة.')).toBeVisible();
+  await quantity.fill('0.01');
   await page.getByRole('button', { name: 'أضف إلى الدفتر التجريبي' }).click();
   await expect(page.getByText('أضيفت الصفقة إلى الدفتر التجريبي فقط.')).toBeVisible();
   await page.locator('.side-nav').getByRole('button', { name: 'الدفتر التجريبي' }).click();
@@ -59,6 +64,15 @@ test('PAPER-only journal records and exports a local single-option scenario', as
   await page.locator('#journal').getByRole('button', { name: 'تصدير CSV' }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe('volterra-paper-journal.csv');
+
+  page.once('dialog', (dialog) => dialog.dismiss());
+  await page.locator('#journal').getByRole('button', { name: 'مسح الدفتر' }).click();
+  await expect(page.locator('#journal tbody tr')).toHaveCount(1);
+
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.locator('#journal').getByRole('button', { name: 'مسح الدفتر' }).click();
+  await expect(page.locator('#journal tbody tr')).toHaveCount(0);
+  await expect(page.locator('.campaign-risk-summary')).toContainText('60');
 });
 
 test('CSV asset-class and venue filters isolate traditional listed option contracts', async ({ page }) => {
