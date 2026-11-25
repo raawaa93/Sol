@@ -332,6 +332,7 @@ test('canonical PAPER close uses fresh executable Bid and sufficient displayed c
   assert.equal(result.event.entryDebit, 4.4);
   assert.ok(Math.abs(result.event.netPnl - -1.05) < 1e-9);
   assert.equal(result.event.exitFeesSource, 'USER_ENTERED');
+  assert.equal(result.event.exitFeesCurrency, 'USDT');
   assert.equal(isCanonicalPaperCloseEvent(result.event), true);
 
   const invalidEntryDepth = createCanonicalPaperCloseEvent({
