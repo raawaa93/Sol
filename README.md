@@ -141,7 +141,9 @@ Volterra هو مختبر خيارات متعدد الأصول وليس منتج�
 - لا تظهر القيم قبل 30 عينة يومية صالحة على الأقل. التاريخ الجزئي موسوم بوضوح، ويُفصل كل أصل ومنصة ومنهج IV عن الآخر. لا تُخلط بيانات Demo أو CSV أو IV النموذجي أو bid/ask IV مع Binance REST Mark IV.
 - تُسجل العينات عند فتح/تحديث شاشة Binance فقط، وليس في الخلفية. تُحفظ في localStorage في المتصفح الحالي، بحد 400 يوم و2,000 سجل، ويمكن تصدير نسخة JSON. التخزين المحلي غير مشفر ولا يتزامن بين الأجهزة.
 - لا يوجد بعد أرشيف سحابي دائم أو جامع بيانات مجدول أو سلسلة تاريخية موثقة لعروض وطلبات الخيارات. لذلك لا تُستخدم هذه المؤشرات وحدها لترتيب صفقة على أنها مربحة.
-\n\n## BBO-aware PAPER replay
+
+
+## BBO-aware PAPER replay
 
 - Multi-row CSV replay requires `bidAskSource`, `bidAskTimestamp`, `bidAskReceivedAt`, `bidAskSizeUnit`, `bidQuantity` and `askQuantity`. The engine uses source-event and local receive clocks separately, buys at Ask, exits at Bid, checks freshness and requires enough displayed size on both sides.
 - Binance `bookTicker` is the BBO source. Its quantities are recorded in contracts/lots. The `optionTicker` WebSocket stream is 24-hour statistics/last-price data, not BBO; its event time must not be used for bid/ask. REST `OPTION_TICKER` BBO snapshots use `sourceTimestamps.ticker`.
