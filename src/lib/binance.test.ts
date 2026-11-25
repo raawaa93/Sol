@@ -865,6 +865,11 @@ test('Binance Options ticker fills missing sides but never overrides BookTicker 
   assert.equal(refreshed.bid, 5100);
   assert.equal(refreshed.ask, 5300);
   assert.equal(refreshed.bidAskSource, 'OPTION_TICKER');
+
+  const oneSidedTicker = applyBinanceOptionTicker(staleBookQuote, { ...event, bestAsk: undefined });
+  assert.equal(oneSidedTicker.bid, 5100);
+  assert.equal(oneSidedTicker.ask, 5400);
+  assert.equal(oneSidedTicker.bidAskSource, undefined, 'mixed BookTicker/OptionTicker sides must not be labelled as one observed midpoint');
 });
 
 
