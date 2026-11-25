@@ -126,6 +126,7 @@ export default function OpportunityReview({ quotes, market, underlying, dataMode
             const spread = getSpreadPct(quote);
             const spreadClass = getSpreadClass(spread);
             const modelInputsVerified = dataMode !== 'DEMO'
+              && !quote.contractEconomics
               && getContractScaleIssue(quote, dataMode) === undefined
               && quote.pricingStatus === 'SUPPORTED'
               && quote.exerciseStyle === 'EUROPEAN'
