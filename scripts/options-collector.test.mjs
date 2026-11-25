@@ -100,6 +100,19 @@ test('exchangeInfo maps only explicit Binance Crypto Options contract terms with
     ...exchangeInfoFixture(),
     optionContracts: [{ ...exchangeInfoFixture().optionContracts[0], settleAsset: 'USDC' }],
   }, SYMBOL, RECEIVED), null);
+  assert.equal(mapVerifiedBinanceContractSpec(exchangeInfoFixture(), SYMBOL, 'not-a-timestamp'), null);
+  assert.equal(mapVerifiedBinanceContractSpec({
+    ...exchangeInfoFixture(),
+    optionSymbols: [...exchangeInfoFixture().optionSymbols, exchangeInfoFixture().optionSymbols[0]],
+  }, SYMBOL, RECEIVED), null);
+  assert.equal(mapVerifiedBinanceContractSpec({
+    ...exchangeInfoFixture(),
+    optionContracts: [...exchangeInfoFixture().optionContracts, exchangeInfoFixture().optionContracts[0]],
+  }, SYMBOL, RECEIVED), null);
+  assert.equal(mapVerifiedBinanceContractSpec({
+    ...exchangeInfoFixture(),
+    optionSymbols: [{ ...exchangeInfoFixture().optionSymbols[0], unit: '0.5' }],
+  }, SYMBOL, RECEIVED), null);
   assert.equal(mapVerifiedBinanceContractSpec(exchangeInfoFixture(), SYMBOL, '2026-11-25T03:10:00.000Z'), null);
   assert.equal(mapVerifiedBinanceContractSpec({
     ...exchangeInfoFixture(),
