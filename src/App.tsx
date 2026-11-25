@@ -192,7 +192,9 @@ function isPaperTrade(value: unknown): value is PaperTrade {
       && typeof trade.exit.sourceTimestampsAtExit?.bookTicker === 'string'
       && Number.isFinite(Date.parse(trade.exit.sourceTimestampsAtExit.bookTicker))
       && typeof trade.exit.sourceTimestampsAtExit?.index === 'string'
-      && Number.isFinite(Date.parse(trade.exit.sourceTimestampsAtExit.index))))
+      && Number.isFinite(Date.parse(trade.exit.sourceTimestampsAtExit.index))
+      && typeof trade.exit.sourceReceivedAtAtExit?.bidAsk === 'string'
+      && Number.isFinite(Date.parse(trade.exit.sourceReceivedAtAtExit.bidAsk))))
     && trade.status === 'PAPER';
 }
 
