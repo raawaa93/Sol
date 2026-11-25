@@ -192,6 +192,19 @@ export function validateContractEconomics(economics: unknown): ContractEconomics
     unsupportedReasons.push('UNKNOWN_PROVENANCE');
   }
 
+  if (provenance?.provider === 'BINANCE'
+    && provenance.rawFields?.contractType === 'CRYPTO_OPTIONS') {
+    const legal = provenance.legalTerms;
+    if (!legal
+      || legal.contractSpecificationRef !== 'https://bin.bnbstatic.com/static/cms/cg08ou2ak0tn7mcplvfg/file/443bcc67fde7274898ff8e3f7af23c7d89e654c5e609d250772e0ddaa96409be.pdf'
+      || legal.clearingProceduresRef !== 'https://bin.bnbstatic.com/static/cms/cg08ou2ak0tn7mcplvfg/file/a86691f40d8155992c622715ce727d608d7f972ebb93ce90fa0106830e8a0a36.pdf'
+      || legal.scope !== 'BINANCE_RIE_RCH'
+      || legal.effectiveDate !== '2026-01-05'
+      || legal.accountApplicability !== 'UNVERIFIED') {
+      issues.push('MISSING_LEGAL_TERMS_PROVENANCE');
+    }
+  }
+
   if (isCurrency(premium.quoteCurrency)
     && isCurrency(settlementCurrency)
     && premium.quoteCurrency !== settlementCurrency) {
