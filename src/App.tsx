@@ -44,6 +44,8 @@ import { getQuoteDataCoverage } from './lib/quote-data-coverage';
 import { assessSnapshotFreshness, DEFAULT_SNAPSHOT_STALE_AFTER_MS, formatSourceTimestampAge } from './lib/market-data-health';
 import { isQuoteFieldEstimated } from './lib/quote-quality';
 import { getContractScaleIssue, getContractScaleIssueMessage, hasLegacyScalarAnalyticsCapability } from './lib/contract-scale';
+import { canCreateCanonicalPaperTrade, createCanonicalPaperTrade } from './lib/paper-journal';
+import { validateContractEconomics } from './lib/contract-economics';
 import { downloadCsv, downloadCsvTemplate, MAX_CSV_FILE_BYTES, parseOptionsCsv } from './lib/csv';
 import type { CsvTimestampRange } from './lib/csv';
 import { buildScenarioSeries, getBreakeven, getExpectedMove, getMaxLoss, getMidPrice, getSpreadPct, getUnderlyingReferencePrice } from './lib/options';
@@ -155,6 +157,12 @@ function isPaperTrade(value: unknown): value is PaperTrade {
     && typeof trade.fees === 'number' && Number.isFinite(trade.fees) && trade.fees >= 0
     && typeof trade.spotAtEntry === 'number' && Number.isFinite(trade.spotAtEntry) && trade.spotAtEntry > 0
     && (trade.quoteAsset === undefined || (typeof trade.quoteAsset === 'string' && /^[A-Z0-9]{2,12}$/.test(trade.quoteAsset)))
+    && (trade.contractEconomics === undefined || (validateContractEconomics(trade.contractEconomics).valid
+      && trade.contractEconomics.provenance.status === 'PROVIDER_VERIFIED'
+      && typeof trade.contractUnitAtEntry === 'number' && Number.isFinite(trade.contractUnitAtEntry) && trade.contractUnitAtEntry > 0
+      && typeof trade.premiumMultiplierAtEntry === 'number' && Number.isFinite(trade.premiumMultiplierAtEntry) && trade.premiumMultiplierAtEntry > 0
+      && typeof trade.premiumAmountAtEntry === 'number' && Number.isFinite(trade.premiumAmountAtEntry) && trade.premiumAmountAtEntry >= 0
+      && typeof trade.premiumCurrencyAtEntry === 'string' && /^[A-Z0-9]{2,12}$/.test(trade.premiumCurrencyAtEntry)))
     && trade.status === 'PAPER';
 }
 
@@ -577,7 +585,7 @@ function App() {
   const canCalculateMaxLoss = canonicalMaxLossAmount !== undefined || hasExplicitConsistentContractScale;
   const contractScaleIssueMessage = selectedQuote.contractEconomics
     ? canonicalPremiumPerContract !== undefined
-      ? 'تم احتساب تكلفة القسط وحجم المركز من مضاعف القسط الموثق. لا تزال Greeks المركز ودفتر PAPER وإعادة التشغيل محجوبة حتى ربطها بالنموذج الاقتصادي الموحد.'
+      ? 'تم احتساب تكلفة القسط وحجم المركز من مضاعف القسط الموثق، ويمكن تسجيل إدخال PAPER مع حفظ مواصفات العقد والمصدر. لا تزال Greeks المركز وEV وإعادة التشغيل محجوبة حتى ربطها بنموذج متوافق.'
       : 'مواصفات العقد الاقتصادية غير كافية لحساب القسط أو المخاطر؛ لم نستخدم unit أو أي حساب قديم كبديل.'
     : contractScaleIssue ? getContractScaleIssueMessage(contractScaleIssue) : '';
   const totalCost = canonicalPremiumPerContract !== undefined
@@ -888,10 +896,6 @@ function App() {
   };
 
   const savePaperTrade = () => {
-    if (!hasExplicitConsistentContractScale) {
-      notify(contractScaleIssueMessage);
-      return;
-    }
     if (safeQuantity <= 0) {
       notify('أدخل كمية أكبر من صفر للمحاكاة.');
       return;
@@ -914,6 +918,29 @@ function App() {
         notify(`الكمية يجب أن تتوافق مع خطوة العقد ${formatQuantity(quantityStep, selectedQuote)}.`);
         return;
       }
+    }
+    if (selectedQuote.contractEconomics) {
+      const result = createCanonicalPaperTrade({
+        quote: selectedQuote,
+        sourceMode: dataMode,
+        id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`,
+        createdAt: new Date().toISOString(),
+        quantity: safeQuantity,
+        premiumPrice: selectedPremium,
+        fees: safeFees,
+        spotAtEntry: underlyingReferencePrice,
+      });
+      if (!result.ok) {
+        notify('لم يُسجّل الإدخال: يلزم عقد Binance موثّق وسعر سوق مرصود مع توقيت مصدر، ومقياس قسط صالح.');
+        return;
+      }
+      setTrades((current) => [result.trade, ...current]);
+      notify(`سُجّل إدخال PAPER بتكلفة قسط ${formatMoney(result.premiumDebit, 2, result.premiumCurrency)}. لم يُرسل أي أمر ولم تُحسب نتيجة أو ربح وخسارة.`);
+      return;
+    }
+    if (!hasExplicitConsistentContractScale) {
+      notify(contractScaleIssueMessage);
+      return;
     }
     const newTrade: PaperTrade = {
       id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`,
@@ -953,6 +980,14 @@ function App() {
       fees: trade.fees,
       spotAtEntry: trade.spotAtEntry,
       quoteAsset: trade.quoteAsset ?? '',
+      contractVenueAtEntry: trade.contractVenueAtEntry ?? '',
+      contractUnitAtEntry: trade.contractUnitAtEntry ?? '',
+      premiumMultiplierAtEntry: trade.premiumMultiplierAtEntry ?? '',
+      premiumAmountAtEntry: trade.premiumAmountAtEntry ?? '',
+      premiumCurrencyAtEntry: trade.premiumCurrencyAtEntry ?? '',
+      priceSourceAtEntry: trade.priceSourceAtEntry ?? '',
+      contractEconomicsJSON: trade.contractEconomics ? JSON.stringify(trade.contractEconomics) : '',
+      sourceTimestampsAtEntryJSON: trade.sourceTimestampsAtEntry ? JSON.stringify(trade.sourceTimestampsAtEntry) : '',
       mode: 'PAPER',
     })));
   };
@@ -1306,7 +1341,7 @@ function App() {
                   <div className="risk-row"><span>أقصى خسارة للمشتري</span><strong className="loss-value">{canCalculateMaxLoss ? formatMoney(maxLoss, 2, quoteAssetLabel ?? null) : 'غير متاح'}</strong></div>
                 </div>
                 <div className="analysis-footnote"><Info size={13} /><span>{contractScaleIssueMessage ? `${contractScaleIssueMessage} ` : ''}{dataMode !== 'DEMO' && selectedQuote.estimatedFields?.length ? `حقول مقدّرة أو افتراضية في هذا العقد: ${formatEstimatedFields(selectedQuote.estimatedFields)}. ` : ''}اتساق unit وcontractMultiplier إن توفرا هو تحقق داخلي من الحقول فقط، ولا يثبت مطابقة deliverables لمواصفات البورصة. الحساب لا يضيف تلقائياً رسوم المنصة أو أثر التنفيذ؛ أدخل الرسوم الفعلية وراجع وحدة العقد.</span></div>
-                <button className="button button-paper" onClick={savePaperTrade} disabled={!hasExplicitConsistentContractScale}><Plus size={16} /> أضف إلى الدفتر التجريبي</button>
+                <button className="button button-paper" onClick={savePaperTrade} disabled={!hasExplicitConsistentContractScale && !canCreateCanonicalPaperTrade(selectedQuote, dataMode)}><Plus size={16} /> أضف إلى الدفتر التجريبي</button>
                 <div className="no-signal"><ShieldAlert size={15} /><span>لا يصدر المختبر توصية شراء أو بيع.</span></div>
               </aside>
             </div>
