@@ -1,4 +1,5 @@
 import type { PaperTrade } from './types.ts';
+import { isValidPaperTradeCloseRecord } from './paper-journal.ts';
 
 export const PAPER_CAMPAIGN_CAPITAL = 200;
 export const PAPER_CAMPAIGN_MAX_LOSS = 60;
@@ -46,9 +47,8 @@ function getTradeDebit(trade: PaperTrade): number | undefined {
 }
 
 /**
- * A campaign reserves the full premium debit of every append-only PAPER entry.
- * The journal has no close/realized-P&L workflow yet, so entries remain allocated
- * until the user exports and explicitly resets the local campaign.
+ * Risk usage is open premium debit plus realized losses on closed PAPER trades.
+ * Realized gains do not offset losses or create extra risk budget.
  */
 export function summarizePaperCampaignBudget(
   trades: PaperTrade[],
@@ -70,6 +70,15 @@ export function summarizePaperCampaignBudget(
     const debit = getTradeDebit(trade);
     if (debit === undefined || !Number.isFinite(debit) || debit <= 0) {
       unknownEntries += 1;
+      continue;
+    }
+    if (trade.close) {
+      if (!isValidPaperTradeCloseRecord(trade.close, trade)
+        || trade.close.currency !== normalizedCurrency) {
+        unknownEntries += 1;
+        continue;
+      }
+      used += Math.max(0, -trade.close.realizedPnl);
       continue;
     }
     used += debit;
