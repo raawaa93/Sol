@@ -43,11 +43,15 @@ export default function HistoricalReplayPanel({ quotes, dataMode, underlying }: 
 
   if (dataMode !== 'CSV') return null;
 
-  const timestampedRows = quotes.filter((quote) => {
+  const replayReadyRows = quotes.filter((quote) => {
     const eventTime = quote.bidAskSource === 'BOOK_TICKER' ? quote.sourceTimestamps?.bookTicker
       : quote.bidAskSource === 'OPTION_TICKER' ? quote.sourceTimestamps?.ticker : undefined;
     return Boolean(eventTime && quote.sourceReceivedAt?.bidAsk
-      && Number.isFinite(Date.parse(eventTime)) && Number.isFinite(Date.parse(quote.sourceReceivedAt.bidAsk)));
+      && Number.isFinite(Date.parse(eventTime)) && Number.isFinite(Date.parse(quote.sourceReceivedAt.bidAsk))
+      && (quote.bidAskSizeUnit === 'CONTRACTS' || quote.bidAskSizeUnit === 'UNDERLYING_UNITS')
+      && Number.isFinite(quote.bidQuantity) && Number.isFinite(quote.askQuantity)
+      && (quote.bidQuantity ?? 0) > 0 && (quote.askQuantity ?? 0) > 0
+      && !quote.estimatedFields?.includes('bid') && !quote.estimatedFields?.includes('ask'));
   }).length;
   const totalTrades = replay?.trades.length ?? 0;
   const replayCurrencies = [...new Set(quotes.map((quote) => getQuoteCurrency(quote) ?? ''))];
@@ -61,7 +65,7 @@ export default function HistoricalReplayPanel({ quotes, dataMode, underlying }: 
           <h2 id="historical-replay-heading">إعادة تشغيل تاريخية محافظة</h2>
           <p>شراء عند Ask ثم إغلاق عند Bid بعد مدة محددة، باستخدام وقت توفر BBO لا وقت آخر صفقة.</p>
         </div>
-        <span className="replay-status"><History size={13} /> {timestampedRows} لقطة مؤرخة</span>
+        <span className="replay-status"><History size={13} /> {replayReadyRows} لقطة مؤرخة</span>
       </div>
 
       <div className="panel replay-panel">
@@ -107,10 +111,10 @@ export default function HistoricalReplayPanel({ quotes, dataMode, underlying }: 
               ))}</tbody>
             </table>
           </div>
-        </> : <div className="replay-empty"><strong>لا توجد صفقة قابلة لإعادة التشغيل بهذه الإعدادات</strong><span>يلزم BBO موثق المصدر ووقت الحدث والاستلام، وحجم معروض بوحدة صريحة يكفي الكمية، ولقطتان للعقد نفسه ضمن حد السبريد وفترة الخروج.</span></div>}
+        </> : <div className="replay-empty"><strong>لا توجد صفقة قابلة لإعادة التشغيل بهذه الإعدادات</strong><span>يلزم BBO معرّف المصدر ووقت الحدث والاستلام، وحجم معروض بوحدة صريحة يكفي الكمية، ولقطتان للعقد نفسه ضمن حد السبريد وفترة الخروج.</span></div>}
 
         <div className="replay-footnote"><AlertTriangle size={14} /><span>
-          هذا خط أساس لتنفيذ شراء/إغلاق، وليس اختبار استراتيجية ذات إشارة دخول. يستخدم وقت استلام BBO كساعة التنفيذ، ويرفض آخر صفقة كبديل لوقت العرض، والأسعار المقدّرة، والحجم غير الكافي أو مجهول الوحدة. الانزلاق الإضافي والرسوم افتراضات تدخلها؛ والتراجع محسوب من P&L المحقق فقط، ولا يمثل نتائج مستقبلية.
+          هذا خط أساس لتنفيذ شراء/إغلاق، وليس اختبار استراتيجية ذات إشارة دخول. يستخدم وقت استلام BBO كساعة التنفيذ، ويرفض آخر صفقة كبديل لوقت العرض، والأسعار المقدّرة، والحجم غير الكافي أو مجهول الوحدة. في ملفات CSV، مصدر BBO والطوابع الزمنية والأحجام ادعاءات واردة من الملف ولا يتحقق المختبر مستقلاً من أصالتها. الانزلاق الإضافي والرسوم افتراضات تدخلها؛ والتراجع محسوب من P&L المحقق فقط، ولا يمثل نتائج مستقبلية.
           {replay && ` تم استبعاد: وقت مفقود ${replay.skipped.missingTimestamp}، مصدر BBO غير صالح ${replay.skipped.invalidBidAskSource}، لقطة متأخرة ${replay.skipped.staleQuote}، سعر مقدّر ${replay.skipped.estimatedExecutionPrice}، حجم مفقود ${replay.skipped.missingDisplayedSize}، وحدة حجم غير معروفة ${replay.skipped.invalidSizeUnit}، حجم غير كافٍ ${replay.skipped.insufficientDisplayedSize}، عرض غير صالح ${replay.skipped.invalidQuote}، وحدة عقد غير صالحة ${replay.skipped.invalidUnit}، مقياس عقد غير متحقق ${replay.skipped.invalidContractScale}، Spread واسع ${replay.skipped.wideSpread}، بلا لقطة خروج ${replay.skipped.noExitSnapshot}.`}
         </span></div>
       </div>
