@@ -4,6 +4,25 @@ Base: `main` at `853035548878eef674d5b525df8d54ea634f520a`.
 Execution branch: `execution/sol-completion-2026-11-24`.
 Scope: close the remaining safety, analytics, recovery, market-data and governance gaps without changing production financial data or enabling live trading.
 
+## Bundle budget fix — 25 November 2026
+
+Issue #161 is addressed in the isolated branch `fix/bundle-budget-161-isolated-2026-11-25`, based on origin/main at `82312ae958f548375c395550bb2e96fb5dc13cfa`.
+
+The chart implementation no longer loads Recharts or D3 chart-vendor chunks. The volatility smile, term structure and payoff views use lightweight responsive SVG with native `<title>` tooltips and retain the existing units, data labels and empty states. Historical replay is lazy-loaded behind a Suspense fallback so that CSV/replay code is not required for the initial application shell.
+
+Measured in the isolated branch:
+
+- Unit/property tests: 209/209 pass.
+- Browser journeys: 17/17 pass.
+- Production build: pass.
+- Initial JavaScript: 97.210 KiB / 100 KiB pass.
+- All JavaScript: 111.525 KiB / 240 KiB pass.
+- CSS: 13.571 KiB / 14 KiB pass.
+- Project Context Guard: pass.
+- Production dependency audit: 0 vulnerabilities.
+
+Lighthouse and production URL smoke were not run because Chrome and `PUBLISHED_URL` are unavailable in the current execution environment. These gates remain to be reported by CI or the owner with the appropriate environment.
+
 ## Verified baseline
 
 - Main CI run `45400201639` completed successfully at 13:08 UTC. Unit/property tests, mocked backup orchestration, build, bundle budget and Playwright browser journeys all passed.
