@@ -44,8 +44,6 @@ import { getQuoteDataCoverage } from './lib/quote-data-coverage';
 import { assessSnapshotFreshness, DEFAULT_SNAPSHOT_STALE_AFTER_MS, formatSourceTimestampAge } from './lib/market-data-health';
 import { isQuoteFieldEstimated } from './lib/quote-quality';
 import { getContractScaleIssue, getContractScaleIssueMessage, hasLegacyScalarAnalyticsCapability } from './lib/contract-scale';
-import { canCreateCanonicalPaperTrade, createCanonicalPaperTrade } from './lib/paper-journal';
-import { validateContractEconomics } from './lib/contract-economics';
 import { downloadCsv, downloadCsvTemplate, MAX_CSV_FILE_BYTES, parseOptionsCsv } from './lib/csv';
 import type { CsvTimestampRange } from './lib/csv';
 import { buildScenarioSeries, getBreakeven, getExpectedMove, getMaxLoss, getMidPrice, getSpreadPct, getUnderlyingReferencePrice } from './lib/options';
@@ -157,9 +155,18 @@ function isPaperTrade(value: unknown): value is PaperTrade {
     && typeof trade.fees === 'number' && Number.isFinite(trade.fees) && trade.fees >= 0
     && typeof trade.spotAtEntry === 'number' && Number.isFinite(trade.spotAtEntry) && trade.spotAtEntry > 0
     && (trade.quoteAsset === undefined || (typeof trade.quoteAsset === 'string' && /^[A-Z0-9]{2,12}$/.test(trade.quoteAsset)))
-    && (trade.contractEconomics === undefined || (validateContractEconomics(trade.contractEconomics).valid
-      && trade.contractEconomics.provenance.status === 'PROVIDER_VERIFIED'
+    && (trade.contractEconomics === undefined || (
+      trade.contractEconomics.provenance?.status === 'PROVIDER_VERIFIED'
+      && trade.contractEconomics.provenance?.provider === 'BINANCE'
+      && trade.contractEconomics.provenance?.sourceRef === 'https://eapi.binance.com/eapi/v1/exchangeInfo'
+      && trade.contractEconomics.premium?.priceUnit === 'PER_CONTRACT'
+      && Number.isFinite(trade.contractEconomics.premium?.multiplier) && trade.contractEconomics.premium.multiplier > 0
+      && trade.contractEconomics.exercise?.style === 'EUROPEAN'
+      && trade.contractEconomics.exercise?.settlement === 'CASH'
+      && trade.contractEconomics.exercise?.cashSettlement?.reference === 'INDEX'
+      && Number.isFinite(trade.contractEconomics.exercise.cashSettlement.multiplier) && trade.contractEconomics.exercise.cashSettlement.multiplier > 0
       && typeof trade.contractUnitAtEntry === 'number' && Number.isFinite(trade.contractUnitAtEntry) && trade.contractUnitAtEntry > 0
+      && trade.contractUnitAtEntry === trade.contractEconomics.exercise.cashSettlement.multiplier
       && typeof trade.premiumMultiplierAtEntry === 'number' && Number.isFinite(trade.premiumMultiplierAtEntry) && trade.premiumMultiplierAtEntry > 0
       && typeof trade.premiumAmountAtEntry === 'number' && Number.isFinite(trade.premiumAmountAtEntry) && trade.premiumAmountAtEntry >= 0
       && typeof trade.premiumDebitAtEntry === 'number' && Number.isFinite(trade.premiumDebitAtEntry) && trade.premiumDebitAtEntry >= 0
@@ -897,7 +904,7 @@ function App() {
     notify('تمت استعادة مجموعة المحاكاة.');
   };
 
-  const savePaperTrade = () => {
+  const savePaperTrade = async () => {
     if (safeQuantity <= 0) {
       notify('أدخل كمية أكبر من صفر للمحاكاة.');
       return;
@@ -922,6 +929,7 @@ function App() {
       }
     }
     if (selectedQuote.contractEconomics) {
+      const { createCanonicalPaperTrade } = await import('./lib/paper-journal');
       const result = createCanonicalPaperTrade({
         quote: selectedQuote,
         sourceMode: dataMode,
@@ -1345,7 +1353,7 @@ function App() {
                   <div className="risk-row"><span>أقصى خسارة للمشتري</span><strong className="loss-value">{canCalculateMaxLoss ? formatMoney(maxLoss, 2, quoteAssetLabel ?? null) : 'غير متاح'}</strong></div>
                 </div>
                 <div className="analysis-footnote"><Info size={13} /><span>{contractScaleIssueMessage ? `${contractScaleIssueMessage} ` : ''}{dataMode !== 'DEMO' && selectedQuote.estimatedFields?.length ? `حقول مقدّرة أو افتراضية في هذا العقد: ${formatEstimatedFields(selectedQuote.estimatedFields)}. ` : ''}اتساق unit وcontractMultiplier إن توفرا هو تحقق داخلي من الحقول فقط، ولا يثبت مطابقة deliverables لمواصفات البورصة. الحساب لا يضيف تلقائياً رسوم المنصة أو أثر التنفيذ؛ أدخل الرسوم الفعلية وراجع وحدة العقد.</span></div>
-                <button className="button button-paper" onClick={savePaperTrade} disabled={!hasExplicitConsistentContractScale && !canCreateCanonicalPaperTrade(selectedQuote, dataMode)}><Plus size={16} /> أضف إلى الدفتر التجريبي</button>
+                <button className="button button-paper" onClick={savePaperTrade} disabled={!hasExplicitConsistentContractScale && !selectedQuote.contractEconomics}><Plus size={16} /> أضف إلى الدفتر التجريبي</button>
                 <div className="no-signal"><ShieldAlert size={15} /><span>لا يصدر المختبر توصية شراء أو بيع.</span></div>
               </aside>
             </div>
