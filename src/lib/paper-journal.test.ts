@@ -437,7 +437,7 @@ test('canonical PAPER close rejects stale or future local receive clocks', () =>
 
 
 test('canonical PAPER close keeps net P&L unknown when entry fees were not explicitly supplied', () => {
-  const noEntryFeeProof = createCanonicalPaperTrade({ ...input, entryFeesSource: undefined });
+  const noEntryFeeProof = createCanonicalPaperTrade({ ...input, fees: 0, entryFeesSource: undefined });
   assert.equal(noEntryFeeProof.ok, true);
   if (!noEntryFeeProof.ok) return;
   const result = closeCanonicalPaperTrade({
@@ -480,4 +480,11 @@ test('canonical PAPER entry and exit fees cannot exceed Binance published premiu
   });
   assert.equal(exitFeeTooHigh.ok, false);
   if (!exitFeeTooHigh.ok) assert.equal(exitFeeTooHigh.reason, 'PAPER_EXIT_FEE_EXCEEDS_EXCHANGE_CAP');
+});
+
+
+test('canonical PAPER entry rejects a non-zero entry fee without explicit fee provenance', () => {
+  const result = createCanonicalPaperTrade({ ...input, entryFeesSource: undefined });
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.reason, 'PAPER_ENTRY_FEE_PROVENANCE_REQUIRED');
 });
