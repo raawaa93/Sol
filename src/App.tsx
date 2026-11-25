@@ -31,7 +31,7 @@ import DeferredVolatilityCharts from './components/DeferredVolatilityCharts';
 import DeferredPayoffChart from './components/DeferredPayoffChart';
 
 import { DEMO_MARKETS, DEMO_QUOTES, getExpiryChoices } from './lib/demo';
-import { applyBinanceBookTicker, applyBinanceOptionMarkPrice, applyBinanceOptionTicker, BinanceMarketDataError, fetchBinanceDepth, fetchBinanceOptions, parseBinanceBookTickerMessage, parseBinanceOptionMarkPriceMessage, parseBinanceOptionTickerMessage } from './lib/binance';
+import { BinanceMarketDataError, fetchBinanceDepth, fetchBinanceOptions } from './lib/binance';
 import type { BinanceDepthSnapshot, BinanceOptionsSnapshot } from './lib/binance';
 import { getAtmTermStructure } from './lib/analysis';
 import type { IVHistoryObservation, IVRankPercentileResult } from './lib/iv-history';
@@ -294,10 +294,10 @@ function App() {
   const [binanceDepthLoading, setBinanceDepthLoading] = useState(false);
   const [binanceDepthError, setBinanceDepthError] = useState('');
   const [binanceDepthRefreshKey, setBinanceDepthRefreshKey] = useState(0);
-  const [bookTickerStatus, setBookTickerStatus] = useState<'idle' | 'connecting' | 'connected' | 'reconnecting'>('idle');
-  const [bookTickerUpdates, setBookTickerUpdates] = useState(0);
-  const [optionMarkStatus, setOptionMarkStatus] = useState<'idle' | 'connecting' | 'connected' | 'reconnecting'>('idle');
-  const [optionMarkUpdates, setOptionMarkUpdates] = useState(0);
+  const bookTickerStatus = 'idle' as const;
+  const bookTickerUpdates = 0;
+  const optionMarkStatus = 'idle' as const;
+  const optionMarkUpdates = 0;
   const [importedAt, setImportedAt] = useState<Date | null>(null);
   const [sourceTimeRange, setSourceTimeRange] = useState<CsvTimestampRange | null>(null);
   const [activeView, setActiveView] = useState('overview');
@@ -473,155 +473,8 @@ function App() {
     setFees('');
   }, [selectedQuote.symbol]);
 
-  useEffect(() => {
-    if (dataMode !== 'BINANCE' || !optionMarkTarget) {
-      setOptionMarkStatus('idle');
-      return;
-    }
-
-    let active = true;
-    let socket: WebSocket | null = null;
-    let retryTimer: number | undefined;
-    let attempts = 0;
-    const subscriptionId = Math.floor(Date.now() % 2_147_483_647);
-    let connect = () => {};
-    const scheduleRetry = () => {
-      if (!active) return;
-      attempts += 1;
-      setOptionMarkStatus('reconnecting');
-      const delay = Math.min(30_000, 3_000 * (2 ** Math.min(attempts - 1, 3)));
-      retryTimer = window.setTimeout(() => connect(), delay);
-    };
-
-    connect = () => {
-      if (!active) return;
-      setOptionMarkStatus(attempts === 0 ? 'connecting' : 'reconnecting');
-      let connection: WebSocket;
-      try {
-        connection = new WebSocket('wss://fstream.binance.com/market/stream');
-        socket = connection;
-      } catch {
-        scheduleRetry();
-        return;
-      }
-      connection.onopen = () => {
-        if (!active) return;
-        connection.send(JSON.stringify({
-          method: 'SUBSCRIBE',
-          params: [`${optionMarkTarget}@markPrice`, ...optionTickerTargets],
-          id: subscriptionId,
-        }));
-      };
-      connection.onmessage = (message) => {
-        if (!active) return;
-        if (typeof message.data === 'string') {
-          try {
-            const acknowledgement = JSON.parse(message.data) as Record<string, unknown>;
-            if (acknowledgement.id === subscriptionId) {
-              if (acknowledgement.result === null && acknowledgement.code === undefined) {
-                setOptionMarkStatus('connected');
-              } else {
-                setOptionMarkStatus('reconnecting');
-                connection.close();
-                return;
-              }
-            }
-          } catch {
-            // The market event parser below rejects malformed payloads.
-          }
-        }
-        const markEvents = parseBinanceOptionMarkPriceMessage(message.data);
-        const tickerEvents = parseBinanceOptionTickerMessage(message.data);
-        if (!markEvents.length && !tickerEvents.length) return;
-        setOptionMarkStatus('connected');
-        setQuotes((current) => {
-          const marksBySymbol = new Map(markEvents.map((event) => [event.symbol, event]));
-          const tickersBySymbol = new Map(tickerEvents.map((event) => [event.symbol, event]));
-          return current.map((quote) => {
-            const mark = marksBySymbol.get(quote.symbol);
-            const ticker = tickersBySymbol.get(quote.symbol);
-            const withMark = mark ? applyBinanceOptionMarkPrice(quote, mark) : quote;
-            return ticker ? applyBinanceOptionTicker(withMark, ticker) : withMark;
-          });
-        });
-        setOptionMarkUpdates((current) => current + markEvents.length + tickerEvents.length);
-      };
-      connection.onerror = () => {
-        if (active) connection.close();
-      };
-      connection.onclose = () => scheduleRetry();
-    };
-
-    connect();
-    return () => {
-      active = false;
-      if (retryTimer !== undefined) window.clearTimeout(retryTimer);
-      socket?.close();
-    };
-  }, [optionMarkTarget, optionTickerTargets, dataMode]);
-
-  useEffect(() => {
-    if (dataMode !== 'BINANCE' || !bookTickerTargets.length) {
-      setBookTickerStatus('idle');
-      return;
-    }
-
-    let active = true;
-    let socket: WebSocket | null = null;
-    let retryTimer: number | undefined;
-    let attempts = 0;
-
-    let connect = () => {};
-    const scheduleRetry = () => {
-      if (!active) return;
-      attempts += 1;
-      setBookTickerStatus('reconnecting');
-      const delay = Math.min(30_000, 3_000 * (2 ** Math.min(attempts - 1, 3)));
-      retryTimer = window.setTimeout(() => connect(), delay);
-    };
-
-    connect = () => {
-      if (!active) return;
-      setBookTickerStatus(attempts === 0 ? 'connecting' : 'reconnecting');
-      let connection: WebSocket;
-      try {
-        connection = new WebSocket('wss://fstream.binance.com/public/stream');
-        socket = connection;
-      } catch {
-        scheduleRetry();
-        return;
-      }
-      connection.onopen = () => {
-        if (!active) return;
-        setBookTickerStatus('connected');
-        connection.send(JSON.stringify({
-          method: 'SUBSCRIBE',
-          params: bookTickerTargets.map((symbol) => `${symbol.toLowerCase()}@bookTicker`),
-          id: Math.floor(Date.now() % 2_147_483_647),
-        }));
-      };
-      connection.onmessage = (event) => {
-        if (!active) return;
-        const ticker = parseBinanceBookTickerMessage(event.data);
-        if (!ticker) return;
-        setQuotes((current) => current.map((quote) => quote.symbol === ticker.symbol
-          ? applyBinanceBookTicker(quote, ticker)
-          : quote));
-        setBookTickerUpdates((current) => current + 1);
-      };
-      connection.onerror = () => {
-        if (active) connection.close();
-      };
-      connection.onclose = () => scheduleRetry();
-    };
-
-    connect();
-    return () => {
-      active = false;
-      if (retryTimer !== undefined) window.clearTimeout(retryTimer);
-      socket?.close();
-    };
-  }, [bookTickerTargets, dataMode]);
+  // Live WebSocket streams are intentionally disabled. Market data is REST-only through the approved proxy.
+  // The app must never open direct Binance WebSocket connections from an arbitrary client network.
 
   useEffect(() => {
     if (dataMode !== 'BINANCE') {
