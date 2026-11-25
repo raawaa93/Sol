@@ -21,13 +21,14 @@ function getTradeCurrency(trade: PaperTrade): string {
 
 function getTradeDebit(trade: PaperTrade): number | undefined {
   const debit = trade.premiumDebitAtEntry;
-  if (Number.isFinite(debit) && debit! >= 0) return debit;
+  if (Number.isFinite(debit) && debit! > 0) return debit;
   const fees = Number.isFinite(trade.fees) && trade.fees >= 0 ? trade.fees : undefined;
   if (fees === undefined) return undefined;
   const amount = trade.premiumAmountAtEntry;
   const multiplier = trade.premiumMultiplierAtEntry;
-  if (Number.isFinite(amount) && amount! >= 0 && Number.isFinite(multiplier) && multiplier! > 0) {
-    return amount! * multiplier! + fees;
+  if (Number.isFinite(amount) && amount! > 0 && Number.isFinite(multiplier) && multiplier! > 0) {
+    const reconciled = amount! * multiplier! + fees;
+    return Number.isFinite(reconciled) && reconciled > 0 ? reconciled : undefined;
   }
   const unit = trade.contractUnitAtEntry;
   if (Number.isFinite(trade.entryPremium) && trade.entryPremium > 0
@@ -35,6 +36,9 @@ function getTradeDebit(trade: PaperTrade): number | undefined {
     && Number.isFinite(unit) && unit! > 0
     && Number.isFinite(multiplier) && multiplier! > 0) {
     return trade.entryPremium * trade.quantity * unit! * multiplier! + fees;
+  }
+    const reconciled = trade.entryPremium * trade.quantity * unit! * multiplier! + fees;
+    return Number.isFinite(reconciled) && reconciled > 0 ? reconciled : undefined;
   }
   return undefined;
 }
@@ -51,6 +55,7 @@ export function summarizePaperCampaignBudget(
 ): PaperCampaignBudgetSummary {
   const normalizedCurrency = currency.trim().toUpperCase();
   const supportedCurrency = normalizedCurrency === 'USD' || normalizedCurrency === 'USDT';
+  const effectiveCap = Number.isFinite(cap) && cap > 0 ? Math.min(cap, PAPER_CAMPAIGN_MAX_LOSS) : 0;
   let used = 0;
   let unknownEntries = 0;
   let currencyMismatchEntries = 0;
@@ -68,16 +73,16 @@ export function summarizePaperCampaignBudget(
     used += debit;
   }
 
-  const remaining = Math.max(0, cap - used);
+  const remaining = Math.max(0, effectiveCap - used);
   return {
     currency: normalizedCurrency,
-    cap,
+    cap: effectiveCap,
     used,
     remaining,
     unknownEntries,
     currencyMismatchEntries,
     supportedCurrency,
-    canAllocate: supportedCurrency && unknownEntries === 0
+    canAllocate: supportedCurrency && effectiveCap > 0 && unknownEntries === 0
       && currencyMismatchEntries === 0 && remaining > 1e-9,
   };
 }
@@ -89,12 +94,28 @@ export function canAllocatePaperCampaignTrade(
   perTradeCap = PAPER_CAMPAIGN_PER_TRADE_CAP,
 ): { ok: true } | { ok: false; reason: string } {
   const normalizedCurrency = currency.trim().toUpperCase();
+  const expectedRemaining = Number.isFinite(summary.cap) && Number.isFinite(summary.used)
+    ? Math.max(0, summary.cap - summary.used)
+    : Number.NaN;
+  if (!Number.isFinite(summary.cap) || summary.cap <= 0 || summary.cap > PAPER_CAMPAIGN_MAX_LOSS
+    || !Number.isFinite(summary.used) || summary.used < 0
+    || !Number.isFinite(summary.remaining) || summary.remaining < 0
+    || !Number.isFinite(expectedRemaining) || Math.abs(summary.remaining - expectedRemaining) > 1e-9
+    || !Number.isInteger(summary.unknownEntries) || summary.unknownEntries < 0
+    || !Number.isInteger(summary.currencyMismatchEntries) || summary.currencyMismatchEntries < 0) {
+    return { ok: false, reason: 'INVALID_CAMPAIGN_BUDGET' };
+  }
+  if (!Number.isFinite(perTradeCap) || perTradeCap <= 0) {
+    return { ok: false, reason: 'INVALID_PER_TRADE_CAP' };
+  }
   if (!summary.supportedCurrency) return { ok: false, reason: 'UNSUPPORTED_CAMPAIGN_CURRENCY' };
   if (normalizedCurrency !== summary.currency) return { ok: false, reason: 'CAMPAIGN_CURRENCY_MISMATCH' };
   if (summary.unknownEntries > 0) return { ok: false, reason: 'UNKNOWN_EXISTING_PAPER_RISK' };
   if (summary.currencyMismatchEntries > 0) return { ok: false, reason: 'MIXED_EXISTING_PAPER_CURRENCIES' };
   if (!Number.isFinite(debit) || debit <= 0) return { ok: false, reason: 'INVALID_PAPER_DEBIT' };
-  if (debit > perTradeCap + 1e-9) return { ok: false, reason: 'PER_TRADE_RISK_CAP_EXCEEDED' };
+  const effectivePerTradeCap = Math.min(perTradeCap, PAPER_CAMPAIGN_PER_TRADE_CAP);
+  if (debit > effectivePerTradeCap + 1e-9) return { ok: false, reason: 'PER_TRADE_RISK_CAP_EXCEEDED' };
   if (debit > summary.remaining + 1e-9) return { ok: false, reason: 'CAMPAIGN_RISK_CAP_EXCEEDED' };
+  if (!summary.canAllocate) return { ok: false, reason: 'INVALID_CAMPAIGN_BUDGET' };
   return { ok: true };
 }
