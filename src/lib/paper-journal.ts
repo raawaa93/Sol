@@ -252,10 +252,11 @@ export function closeCanonicalPaperTrade(input: CanonicalPaperCloseInput): Canon
   const closedAtMs = Date.parse(closedAt);
   const entryAtMs = Date.parse(trade.createdAt);
   const expiryMs = Date.parse(trade.expiry);
-  if (!Number.isFinite(closedAtMs) || !Number.isFinite(entryAtMs) || closedAtMs < entryAtMs
-    || !Number.isFinite(expiryMs) || closedAtMs >= expiryMs) {
-    return { ok: false, reason: 'OPTION_EXPIRED_BEFORE_PAPER_CLOSE' };
+  if (!Number.isFinite(closedAtMs) || !Number.isFinite(entryAtMs) || !Number.isFinite(expiryMs)) {
+    return { ok: false, reason: 'INVALID_PAPER_CLOSE_TIMESTAMP' };
   }
+  if (closedAtMs < entryAtMs) return { ok: false, reason: 'PAPER_CLOSE_TIME_BEFORE_ENTRY' };
+  if (closedAtMs >= expiryMs) return { ok: false, reason: 'OPTION_EXPIRED_BEFORE_PAPER_CLOSE' };
   if (!Number.isFinite(additionalFees) || additionalFees < 0
     || quote.bidAskSource !== 'BOOK_TICKER' || quote.bidAskSizeUnit !== 'CONTRACTS'
     || !Number.isFinite(quote.bid) || quote.bid <= 0
