@@ -29,6 +29,14 @@ export type ContractEconomicsUnsupportedReason =
   | 'CROSS_CURRENCY_TOTALS_REQUIRE_FX'
   | 'DELIVERABLE_CURRENCY_UNKNOWN';
 
+export const BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS = {
+  contractSpecificationRef: 'https://bin.bnbstatic.com/static/cms/cg08ou2ak0tn7mcplvfg/file/443bcc67fde7274898ff8e3f7af23c7d89e654c5e609d250772e0ddaa96409be.pdf',
+  clearingProceduresRef: 'https://bin.bnbstatic.com/static/cms/cg08ou2ak0tn7mcplvfg/file/a86691f40d8155992c622715ce727d608d7f972ebb93ce90fa0106830e8a0a36.pdf',
+  scope: 'BINANCE_RIE_RCH',
+  effectiveDate: '2026-01-05',
+  accountApplicability: 'UNVERIFIED',
+} as const;
+
 export interface ContractEconomicsValidation {
   valid: boolean;
   adapterReady: boolean;
@@ -190,6 +198,19 @@ export function validateContractEconomics(economics: unknown): ContractEconomics
     unsupportedReasons.push('SYNTHETIC_DEMO_ONLY');
   } else if (provenance.status === 'UNKNOWN') {
     unsupportedReasons.push('UNKNOWN_PROVENANCE');
+  }
+
+  if (provenance?.provider === 'BINANCE'
+    && provenance.rawFields?.contractType === 'CRYPTO_OPTIONS') {
+    const legal = provenance.legalTerms;
+    if (!legal
+      || legal.contractSpecificationRef !== BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS.contractSpecificationRef
+      || legal.clearingProceduresRef !== BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS.clearingProceduresRef
+      || legal.scope !== BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS.scope
+      || legal.effectiveDate !== BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS.effectiveDate
+      || legal.accountApplicability !== BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS.accountApplicability) {
+      unsupportedReasons.push('MISSING_LEGAL_TERMS_PROVENANCE');
+    }
   }
 
   if (isCurrency(premium.quoteCurrency)
