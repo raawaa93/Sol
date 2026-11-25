@@ -55,16 +55,17 @@ npm run build
 
 ### إعادة التشغيل التاريخية (CSV)
 
-- عند استيراد CSV يحوي لقطات متعددة للعقد نفسه مع `timestamp` صالح، تعرض الواجهة إعادة تشغيل شراء عند Ask وإغلاق عند Bid بعد مدة يحددها المستخدم. يستخدم المحرك الطوابع الزمنية المصدرية فقط، ويستبعد الأسعار أحادية الجانب أو المتقاطعة أو ذات السبريد الأعلى من الحد، والوحدات المقدّرة.
-- هذا اختبار تنفيذ baseline وليس اختبار استراتيجية ذات إشارة دخول. لا يستخدم Mark أو السعر النظري للتنفيذ، ويمنع تداخل الصفقات على العقد نفسه. الرسوم صفر افتراضياً ويجب إدخال نسبة كل طرف يدوياً؛ لا تُستنتج رسوم المنصة أو رسوم التمرين.
-- لا توجد نتيجة قابلة للاعتماد دون سجل تاريخي كافٍ ومرخّص. لا يملأ التطبيق فجوات التاريخ، ولا يحوّل سيناريوهات الانتهاء إلى Backtest.
+- عند استيراد CSV يحوي لقطات متعددة للعقد نفسه، لا تتم إعادة التشغيل إلا إذا احتوى الصف على `bidAskSource` و`bidAskTimestamp` و`bidAskReceivedAt` و`bidAskSizeUnit` و`bidQuantity` و`askQuantity`. يستخدم المحرك وقت حدث BBO ووقت الاستلام المحلي؛ يشتري عند Ask ويغلق عند Bid، ويتحقق من حداثة اللقطة وكفاية الحجم المعروض ووحدة الحجم. يرفض Mark/الأسعار المقدّرة/المصدر أو الوقت أو الحجم المجهول.
+- تدفق Binance `bookTicker` هو مصدر BBO القابل للاستخدام، ويحمّل التطبيق كمياته بوحدة `CONTRACTS`. تدفق `optionTicker` هو إحصاءات 24 ساعة وليس BBO؛ لا تستخدم وقت `E` أو `C` منه كوقت عرض. بيانات CSV وحقول المصدر/الأوقات/الحجم الواردة فيها ادعاءات مستخدم ولا يتحقق التطبيق مستقلاً من أصالتها.
+- هذا اختبار تنفيذ baseline لعقد شراء واحد وإغلاقه بعد مدة ثابتة، وليس اختبار استراتيجية ذات إشارة دخول. يعرض المصدر والأوقات والأسعار المنفذة والحجم المعروض والانزلاق. الرسوم والانزلاق لكل طرف قابلان للإدخال؛ القيمة صفر تعني أن هذا المكوّن غير محسوب وقد تجعل النتيجة متفائلة. لا يحاكي بعدُ ترتيب الطابور أو الملء الجزئي أو عمق دفتر الأوامر الكامل أو التأخير الشبكي أو تسوية الانتهاء أو التحوط.
+- لا توجد نتيجة قابلة للاعتماد دون سجل تاريخي كافٍ ومرخّص. لا يملأ التطبيق فجوات التاريخ، ولا يحوّل سيناريوهات الانتهاء إلى Backtest أو يدّعي وجود أفضل استراتيجية.
 
 ## استيراد CSV
 
 يمكن تنزيل قالب فارغ من الواجهة. الأعمدة المتعرّف عليها:
 
 ```text
-symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,delta,gamma,theta,vega,rho,openInterest,openInterestUsd,volume,volumeQuote,spot,forward,unit,timestamp,assetClass,venue,underlyingKind,carryYield,riskFreeRate,quoteAsset,settlementAsset,contractMultiplier,exerciseStyle,settlementStyle,expiryTimezone
+symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,delta,gamma,theta,vega,rho,openInterest,openInterestUsd,volume,volumeQuote,spot,forward,unit,timestamp,assetClass,venue,underlyingKind,carryYield,riskFreeRate,quoteAsset,settlementAsset,contractMultiplier,exerciseStyle,settlementStyle,expiryTimezone,bidAskSource,bidAskTimestamp,bidAskReceivedAt,bidAskSizeUnit,bidQuantity,askQuantity
 ```
 
 الحد الأدنى اللازم لكل صف صالح: رمز أصل أساسي من 2 إلى 16 حرفاً أو رقماً، نوع العقد، تاريخ الانتهاء، سعر التنفيذ، سعر مرجعي موجب مناسب لنوع الأصل (`spot` أو `forward`)، وسعر سوق مرصود موجب واحد على الأقل من `bid` أو `ask` أو `markPrice`، إضافة إلى IV مرصود صالح أو مواصفات عقد صريحة تسمح بحل IV بنموذج مدعوم. لا تقتصر ملفات CSV على BTC/ETH؛ يمكن أن يحدد رمز مثل `BTC-261230-95000-C` أو `XAU-261230-4000-P` الأصل والنوع والتنفيذ والانتهاء.
