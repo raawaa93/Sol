@@ -410,6 +410,29 @@ test('export recovers orphaned temporary files before integrity verification', a
   await assert.rejects(readFile(orphan, 'utf8'), (error) => error.code === 'ENOENT');
 });
 
+test('export and restore never overwrite existing destinations', async (t) => {
+  const { root, archive } = await makeArchive(t);
+  await withLease(archive, (lease) => archive.appendBatch([makeRecord()], { lease }));
+  const exportTarget = join(root, '..', `sol-export-existing-${Date.now()}`);
+  const restoreTarget = join(root, '..', `sol-restore-existing-${Date.now()}`);
+  await writeFile(exportTarget, 'keep-export-target');
+  await writeFile(restoreTarget, 'keep-restore-target');
+  t.after(async () => {
+    await rm(exportTarget, { force: true });
+    await rm(restoreTarget, { force: true });
+  });
+  await assert.rejects(
+    archive.exportTo(exportTarget),
+    (error) => error instanceof OptionsArchiveError && error.code === 'EXPORT_DESTINATION_EXISTS',
+  );
+  await assert.rejects(
+    ResumableOptionsArchive.restore(root, restoreTarget),
+    (error) => error instanceof OptionsArchiveError && error.code === 'RESTORE_DESTINATION_EXISTS',
+  );
+  assert.equal(await readFile(exportTarget, 'utf8'), 'keep-export-target');
+  assert.equal(await readFile(restoreTarget, 'utf8'), 'keep-restore-target');
+});
+
 test('point-in-time gate rejects future, stale, backfilled and modelled observations', () => {
   const record = makeRecord();
   assert.equal(evaluateOptionsPointInTime(record, '2026-11-25T03:00:01.000Z', ['bid']).eligible, true);
