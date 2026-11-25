@@ -346,8 +346,8 @@ function App() {
   const market = useMemo(() => dataMode === 'DEMO' ? DEMO_MARKETS[underlying] : getMarketSnapshotFromQuotes(scopedQuotes, underlying), [dataMode, scopedQuotes, underlying]);
   const ivHistory = ivHistoryState.ok ? ivHistoryState.observations : [];
   const currentIVExtraction = useMemo(() => dataMode === 'BINANCE' && binanceSnapshot
-    ? extractObservedAtm30DayIV(binanceSnapshot.quotes, new Date(binanceSnapshot.fetchedAt).toISOString())
-    : null, [binanceSnapshot, dataMode]);
+    ? extractObservedAtm30DayIV(binanceSnapshot.quotes.filter((quote) => quote.underlying === underlying), new Date(binanceSnapshot.fetchedAt).toISOString())
+    : null, [binanceSnapshot, dataMode, underlying]);
   const currentIVObservation = currentIVExtraction?.ok ? currentIVExtraction.observation : null;
   const ivRankMetrics: IVRankPercentileResult | null = useMemo(() => currentIVObservation
     ? computeIVRankPercentile(ivHistory, currentIVObservation, currentIVObservation.capturedAt)
