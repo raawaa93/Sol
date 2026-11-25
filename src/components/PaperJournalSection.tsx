@@ -50,11 +50,15 @@ export default function PaperJournalSection({
   onNavigateToScanner,
 }: PaperJournalSectionProps) {
   const exportJson = async () => {
-    const { downloadPaperJournalJsonBackup } = await import('../lib/paper-journal-backup-actions');
-    const result = downloadPaperJournalJsonBackup(trades, isValidTrade);
-    onNotify(result.ok
-      ? `تم تنزيل نسخة PAPER JSON (${result.count} سجل)؛ البيانات لم تُرفع إلى أي خادم.`
-      : result.message);
+    try {
+      const { downloadPaperJournalJsonBackup } = await import('../lib/paper-journal-backup-actions');
+      const result = downloadPaperJournalJsonBackup(trades, isValidTrade);
+      onNotify(result.ok
+        ? `تم تنزيل نسخة PAPER JSON (${result.count} سجل)؛ البيانات لم تُرفع إلى أي خادم.`
+        : result.message);
+    } catch {
+      onNotify('تعذر تحميل أداة النسخ الاحتياطي؛ لم تتغير بيانات الدفتر.');
+    }
   };
 
   const importBackup = async (raw: string) => {
