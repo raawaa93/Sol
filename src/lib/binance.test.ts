@@ -835,13 +835,13 @@ test('Binance markPrice adapter refreshes index/rate and keeps venue vo out of m
   assert.equal(stale, updated);
 });
 
-test('Binance 24hr ticker parser reads only rolling statistics and ignores markPrice-only fields', () => {
+test('Binance underlying 24hr ticker preserves vo separately from explicit REST markIV', () => {
   const payload = {
     stream: 'btc@ticker@261225',
     data: [{
       e: '24hrTicker', E: 1_800_000_001_000, C: 1_800_000_000_900,
       s: 'BTC-261225-100000-C', c: '5200', Q: '0.5', v: '12.5', q: '65000',
-      vo: '0.60', mp: '5100', bo: '5000', ao: '5300', b: '0.58', a: '0.62',
+      vo: '0.60', mp: '5100', bo: '5000', ao: '5300', bq: '1.2', aq: '2.3', b: '0.58', a: '0.62', d: '0.51', g: '0.00003', t: '-20', v: '45',
     }],
   };
   const events = parseBinanceOptionTickerMessage(payload);
@@ -854,6 +854,15 @@ test('Binance 24hr ticker parser reads only rolling statistics and ignores markP
     volume: 12.5,
     volumeQuote: 65000,
     closeTime: 1_800_000_000_900,
+    markPrice: 5100,
+    bestBid: 5000,
+    bestAsk: 5300,
+    bestBidQuantity: 1.2,
+    bestAskQuantity: 2.3,
+    bidIv: 0.58,
+    askIv: 0.62,
+    venueVolatility: 0.6,
+    sourceGreeks: { delta: 0.51, gamma: 0.00003, theta: -20, vega: 45 },
   });
 });
 
@@ -870,17 +879,27 @@ test('Binance 24hr ticker updates last trade and rolling volume only', () => {
   const event = {
     symbol: quote.symbol, eventTime: 1_800_000_001_000, lastPrice: 5200,
     lastQuantity: 0.5, volume: 12.5, volumeQuote: 65000, closeTime: 1_800_000_000_900,
+    markPrice: 5100, bestBid: 5000, bestAsk: 5300, bestBidQuantity: 1.2, bestAskQuantity: 2.3,
+    bidIv: 0.58, askIv: 0.62, venueVolatility: 0.6,
+    sourceGreeks: { delta: 0.99, gamma: 0.00004, theta: -30, vega: 55 },
   };
   const updated = applyBinanceOptionTicker(quote, event);
   assert.equal(updated.lastPrice, 5200);
   assert.equal(updated.lastQuantity, 0.5);
   assert.equal(updated.volume, 12.5);
   assert.equal(updated.volumeQuote, 65000);
-  assert.equal(updated.markPrice, 5000);
-  assert.equal(updated.bid, 4900);
-  assert.equal(updated.ask, 5100);
-  assert.equal(updated.iv, 0.5);
+  assert.equal(updated.markPrice, 5100);
+  assert.equal(updated.bid, 5000);
+  assert.equal(updated.ask, 5300);
+  assert.equal(updated.bidAskSource, 'OPTION_TICKER');
+  assert.equal(updated.bidIv, 0.58);
+  assert.equal(updated.askIv, 0.62);
+  assert.equal(updated.venueVolatility, 0.6);
+  assert.equal(updated.unverifiedSourceGreeks?.delta, 0.99);
+  assert.equal(updated.iv, 0.5, 'ticker vo must not be treated as explicit REST markIV');
   assert.equal(updated.sourceTimestamps?.markIv, undefined);
+  assert.equal(updated.sourceTimestamps?.markPrice, new Date(event.eventTime).toISOString());
+  assert.equal(updated.sourceTimestamps?.venueVolatility, new Date(event.eventTime).toISOString());
   assert.equal(updated.sourceTimestamps?.optionTicker, new Date(event.eventTime).toISOString());
   assert.equal(updated.sourceTimestamps?.ticker, new Date(event.closeTime).toISOString());
 });
