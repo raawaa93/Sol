@@ -300,11 +300,11 @@ export function parseBinanceOptionTickerMessage(payload: unknown): BinanceOption
 
 /** Apply 24-hour ticker statistics only; it is not a book, mark or IV source. */
 export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptionTickerEvent): OptionQuote {
+  const marketTimestamp = event.transactionTime ?? event.eventTime;
   const previousTimestamp = quote.sourceTimestamps?.optionTicker
     ? new Date(quote.sourceTimestamps.optionTicker).getTime()
     : 0;
-  if (event.eventTime < previousTimestamp) return quote;
-  const marketTimestamp = event.transactionTime ?? event.eventTime;
+  if (marketTimestamp < previousTimestamp) return quote;
   const currentBboTimestamp = quote.bidAskSource === 'BOOK_TICKER'
     ? Date.parse(quote.sourceTimestamps?.bookTicker ?? '')
     : quote.bidAskSource === 'MARK_PRICE'
@@ -334,6 +334,15 @@ export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptio
     ...(Object.values(event.sourceGreeks).some(Number.isFinite)
       ? { unverifiedSourceGreeks: { ...quote.unverifiedSourceGreeks, ...event.sourceGreeks } }
       : {}),
+    ...(quote.estimatedFields ? {
+      estimatedFields: quote.estimatedFields.filter((field) => !(
+        (updateMark && field === 'markPrice')
+        || (useTickerBid && field === 'bid')
+        || (useTickerAsk && field === 'ask')
+        || (event.bidIv !== undefined && field === 'bidIv')
+        || (event.askIv !== undefined && field === 'askIv')
+      )),
+    } : {}),
     ...(event.lastQuantity !== undefined ? { lastQuantity: event.lastQuantity } : {}),
     ...(event.volume !== undefined ? { volume: event.volume } : {}),
     ...(event.volumeQuote !== undefined ? { volumeQuote: event.volumeQuote } : {}),
