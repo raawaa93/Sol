@@ -264,10 +264,11 @@ function App() {
   const [riskBudget, setRiskBudget] = useState(PAPER_CAMPAIGN_PER_TRADE_CAP);
   const [fees, setFees] = useState(0);
   const [exitFees, setExitFees] = useState<number | null>(null);
-  const [paperCloseEventsLoad] = useState(() => loadPaperCloseEvents(localStorage));
+  const [paperCloseEventsLoad, setPaperCloseEventsLoad] = useState(() => loadPaperCloseEvents(localStorage));
   const [paperCloseEvents, setPaperCloseEvents] = useState(paperCloseEventsLoad.events);
   const [paperJournalLoad, setPaperJournalLoad] = useState(() => loadPaperJournal<PaperTrade>(localStorage, isPaperTrade));
   const [trades, setTrades] = useState<PaperTrade[]>(paperJournalLoad.entries);
+  const closedTradeIds = useMemo(() => new Set(paperCloseEvents.map((event) => event.tradeId)), [paperCloseEvents]);
   const [toast, setToast] = useState('');
   const [csvWarnings, setCsvWarnings] = useState<string[]>([]);
   const [showAllCsvWarnings, setShowAllCsvWarnings] = useState(false);
@@ -1106,6 +1107,76 @@ function App() {
     };
     setTrades((current) => [newTrade, ...current]);
     notify('أضيفت الصفقة إلى الدفتر التجريبي فقط.');
+  };
+
+  const closePaperTrade = (trade: PaperTrade) => {
+    if (paperJournalLoad.persistenceBlocked || paperCloseEventsLoad.persistenceBlocked) {
+      notify('إغلاق PAPER متوقف حتى تُحل مشكلة استعادة الدفتر بأمان.');
+      return;
+    }
+    if (closedTradeIds.has(trade.id)) {
+      notify('هذه الصفقة مغلقة بالفعل في دفتر PAPER.');
+      return;
+    }
+    if (dataMode !== 'BINANCE') {
+      notify('إغلاق الصفقة يتطلب لقطة Binance موثقة للعقد نفسه.');
+      return;
+    }
+    if (exitFees === null || !Number.isFinite(exitFees) || exitFees < 0) {
+      notify('أدخل رسوم الخروج يدوياً وفق جدول الرسوم المطبق على حسابك؛ لا نفترض أنها صفر.');
+      return;
+    }
+    const result = createCanonicalPaperCloseEvent({
+      trade,
+      quote: selectedQuote,
+      sourceMode: dataMode,
+      id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `close-${Date.now()}`,
+      closedAt: new Date().toISOString(),
+      exitFees,
+      spotAtExit: underlyingReferencePrice,
+    });
+    if (!result.ok) {
+      const messages: Record<string, string> = {
+        CANONICAL_EXECUTABLE_BID_REQUIRED: 'يلزم Bid مرصود من BookTicker مع حجم معروض بوحدة العقود.',
+        PAPER_CLOSE_CONTRACT_IDENTITY_MISMATCH: 'العقد المحدد لا يطابق عقد الدخول تماماً؛ اختر العقد نفسه قبل الإغلاق.',
+        INVALID_PAPER_CLOSE_INPUT: 'مدخلات الإغلاق غير صالحة.',
+        OPTION_EXPIRED_AT_PAPER_CLOSE: 'انتهى العقد؛ لا نسجل إغلاقاً سوقياً بعد الانتهاء. يلزم مسار تسوية مستقل.',
+        PAPER_CLOSE_MARKET_SNAPSHOT_STALE_OR_FUTURE: 'توقيت Bid أو المؤشر قديم أو مستقبلي؛ حدّث بيانات السوق.',
+        INSUFFICIENT_OBSERVED_BID_SIZE: 'حجم Bid المعروض أقل من كمية الصفقة؛ لا نفترض تعبئة الكمية كاملة.',
+        PAPER_CLOSE_SPOT_DOES_NOT_MATCH_INDEX: 'السعر المرجعي لا يطابق لقطة المؤشر الموقّتة.',
+        PAPER_ENTRY_DEBIT_SNAPSHOT_INVALID: 'تكلفة الدخول المحفوظة غير متطابقة؛ أوقفنا حساب الربح والخسارة.',
+        PAPER_CLOSE_CONTRACT_ECONOMICS_NOT_VERIFIED: 'مواصفات العقد المحفوظة لم تعد موثقة.',
+      };
+      notify(messages[result.reason] ?? `تعذر إغلاق الصفقة: ${result.reason}`);
+      return;
+    }
+    const appended = appendPaperCloseEvent(localStorage, result.event);
+    if (!appended.ok) {
+      setPaperCloseEventsLoad(loadPaperCloseEvents(localStorage));
+      notify(appended.reason === 'PAPER_TRADE_ALREADY_CLOSED'
+        ? 'هذه الصفقة مغلقة بالفعل.'
+        : 'تعذر حفظ حدث الإغلاق بأمان؛ لم نعرض الصفقة كمغلقة. صدّر نسخة الدفتر إذا ظهر تنبيه الاستعادة.');
+      return;
+    }
+    setPaperCloseEvents(appended.events);
+    notify(`سُجّل إغلاق PAPER بسعر Bid. النتيجة المحاكاة: ${formatMoney(result.event.netPnl, 2, result.event.currency)}. رسوم الخروج مدخلة يدوياً؛ لا يوجد أمر حقيقي.`);
+  };
+
+  const exportPaperCloseEvents = (raw: string | null, filename: string) => {
+    if (raw === null) {
+      notify('لا توجد نسخة أحداث قابلة للتصدير في التخزين المحلي.');
+      return;
+    }
+    const blob = new Blob([raw], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+    notify('تم تنزيل نسخة أحداث PAPER؛ احتفظ بها خارج المتصفح.');
   };
 
   const exportIVHistoryBackup = async () => {
