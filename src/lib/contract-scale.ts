@@ -75,6 +75,19 @@ export function getContractScaleIssue(
   return hasNamedVenue && hasExplicitMultiplier ? undefined : 'UNSUPPORTED_CONTRACT_SCALE';
 }
 
+/**
+ * Legacy scalar analytics are never valid for a quote that carries canonical
+ * terms. Such quotes must be consumed by an explicitly canonical/model-aware
+ * capability, even when the old unit=1 parity guard would otherwise pass.
+ */
+export function hasLegacyScalarAnalyticsCapability(
+  quote: OptionQuote,
+  sourceMode: ContractScaleSourceMode = 'CSV',
+): boolean {
+  return quote.contractEconomics === undefined
+    && getContractScaleIssue(quote, sourceMode) === undefined;
+}
+
 export function getContractScaleIssueMessage(issue: ContractScaleIssue): string {
   return issue === 'UNIT_UNVERIFIED'
     ? 'وحدة العقد غير موثّقة أو افتراضية؛ أوقفنا حسابات الكمية والربح والخسارة لكل عقد.'
