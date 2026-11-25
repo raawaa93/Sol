@@ -313,3 +313,72 @@ export function closeCanonicalPaperTrade(input: CanonicalPaperCloseInput): Canon
   };
   return { ok: true, trade: { ...trade, close }, close };
 }
+
+
+/** Validate a persisted close against its immutable entry and recorded execution inputs. */
+export function isValidPaperTradeCloseRecord(value: unknown, trade: PaperTrade): value is PaperTradeClose {
+  if (!value || typeof value !== 'object' || !trade.contractEconomics
+    || !Number.isFinite(trade.contractUnitAtEntry) || trade.contractUnitAtEntry! <= 0
+    || !Number.isFinite(trade.premiumDebitAtEntry) || trade.premiumDebitAtEntry! <= 0) return false;
+  const close = value as Partial<PaperTradeClose>;
+  const closedAt = Date.parse(close.closedAt ?? '');
+  const entryAt = Date.parse(trade.createdAt);
+  const expiryAt = Date.parse(trade.expiry);
+  const bookAt = Date.parse(close.sourceTimestamps?.bookTicker ?? '');
+  const indexAt = Date.parse(close.sourceTimestamps?.index ?? '');
+  const receivedAt = Date.parse(close.sourceReceivedAt ?? '');
+  if (!Number.isFinite(closedAt) || !Number.isFinite(entryAt) || !Number.isFinite(expiryAt)
+    || closedAt < entryAt || closedAt >= expiryAt
+    || !Number.isFinite(bookAt) || !Number.isFinite(indexAt) || !Number.isFinite(receivedAt)
+    || bookAt > closedAt || indexAt > closedAt || receivedAt > closedAt
+    || closedAt - bookAt > MAX_PAPER_SOURCE_AGE_MS
+    || closedAt - indexAt > MAX_PAPER_SOURCE_AGE_MS
+    || closedAt - receivedAt > MAX_PAPER_SOURCE_AGE_MS) return false;
+  if (close.bidAskSource !== 'BOOK_TICKER' || close.bidAskSizeUnit !== 'CONTRACTS'
+    || !Number.isFinite(close.exitPremium) || close.exitPremium! <= 0
+    || !Number.isFinite(close.bidQuantity) || close.bidQuantity! + 1e-9 < trade.quantity
+    || !Number.isFinite(close.takerFeeRateAtExit) || close.takerFeeRateAtExit! < 0
+    || !Number.isFinite(close.spotAtExit) || close.spotAtExit! <= 0
+    || close.currency !== trade.premiumCurrencyAtEntry
+    || !Number.isFinite(close.exitAdditionalFees) || close.exitAdditionalFees! < 0) return false;
+  const gross = calculatePremiumCash({
+    economics: trade.contractEconomics,
+    premiumPrice: close.exitPremium!,
+    contracts: trade.quantity,
+    fees: 0,
+  });
+  if (!gross.ok) return false;
+  const indexBasedFee = close.takerFeeRateAtExit! * close.spotAtExit! * trade.contractUnitAtEntry!;
+  const premiumCap = MAX_BINANCE_OPTION_TRADING_FEE_CAP * close.exitPremium!;
+  if (!Number.isFinite(indexBasedFee) || !Number.isFinite(premiumCap)) return false;
+  const expectedExchangeFee = Math.min(indexBasedFee, premiumCap) * trade.quantity;
+  const expectedExitFees = expectedExchangeFee + close.exitAdditionalFees!;
+  const expectedNet = gross.value.amount - expectedExitFees;
+  const expectedPnl = expectedNet - trade.premiumDebitAtEntry!;
+  return Number.isFinite(expectedExchangeFee) && Number.isFinite(expectedExitFees)
+    && expectedNet >= 0
+    && Number.isFinite(close.exitExchangeFee) && Math.abs(close.exitExchangeFee! - expectedExchangeFee) <= 1e-8
+    && Number.isFinite(close.exitFees) && Math.abs(close.exitFees! - expectedExitFees) <= 1e-8
+    && Number.isFinite(close.exitGrossProceeds) && Math.abs(close.exitGrossProceeds! - gross.value.amount) <= 1e-8
+    && Number.isFinite(close.exitNetProceeds) && Math.abs(close.exitNetProceeds! - expectedNet) <= 1e-8
+    && Number.isFinite(close.realizedPnl) && Math.abs(close.realizedPnl! - expectedPnl) <= 1e-8;
+}
+
+/** A corrupt close record is discarded, but the immutable entry remains open and fully reserved. */
+export function normalizePaperTradeRecord(trade: PaperTrade): PaperTrade {
+  const normalized: PaperTrade = { ...trade };
+  if (trade.close !== undefined && !isValidPaperTradeCloseRecord(trade.close, trade)) {
+    delete normalized.close;
+    normalized.integrityWarning = 'CLOSE_RECORD_INVALID';
+  } else if (normalized.integrityWarning !== 'CLOSE_RECORD_INVALID') {
+    delete normalized.integrityWarning;
+  }
+  const feeBreakdownValid = Number.isFinite(trade.exchangeFeeAtEntry) && trade.exchangeFeeAtEntry! >= 0
+    && Number.isFinite(trade.additionalFeesAtEntry) && trade.additionalFeesAtEntry! >= 0
+    && Math.abs(trade.fees - trade.exchangeFeeAtEntry! - trade.additionalFeesAtEntry!) <= 1e-8;
+  if (!feeBreakdownValid) {
+    delete normalized.exchangeFeeAtEntry;
+    delete normalized.additionalFeesAtEntry;
+  }
+  return normalized;
+}
