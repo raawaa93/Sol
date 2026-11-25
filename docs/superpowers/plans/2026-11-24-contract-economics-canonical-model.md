@@ -41,11 +41,11 @@
 
 - [x] Route premium debit/credit and break-even through canonical economics for provider-verified Binance Crypto Options cash-settlement terms (PR #167).
 - [x] Route expiry payoff, max loss and scenario series through canonical cash-settlement payoff for the supported Binance Crypto Options adapter (PR #167).
-- [ ] Route position Greeks through model-specific deliverable scaling.
+- [x] Route Binance position Greeks through model-specific deliverable scaling (PR #177; other products remain blocked).
 - [x] Add canonical risk-neutral expiry EV for provider-verified Binance Crypto Options (PR #170; carry=0 assumption, EV shown before fees in Opportunity Review).
 - [ ] Complete canonical historical replay through the same validation result.
 - [x] Persist a canonical PAPER entry snapshot with the premium multiplier, contract unit and matching observed price/index timestamps (PR #172; entry record only, no P&L/exit valuation).
-- [ ] Harden journal ingestion by requiring the recorded premium and spot to equal their timestamped market/index inputs, and validate snapshot field consistency on reload (PR #175 pending).
+- [x] Harden journal ingestion by requiring the recorded premium and spot to equal their timestamped market/index inputs, and validate snapshot field consistency on reload (PR #175).
 - [ ] Complete canonical PAPER lifecycle valuation (mark-to-market, exits and P&L).
 - [ ] Add invariants proving no component uses legacy unit/multiplier as a universal shortcut.
 
@@ -182,7 +182,7 @@ PR #167 merged to main as `acd5efcdbec53c2fbcee27a0a4e198a85454eb64`.
 - Legacy scalar calculations are not used when canonical terms exist, even when unit=1. The app keeps position Greeks, PAPER journal writes, risk-neutral EV and legacy replay blocked until those consumers have explicit canonical/model-aware adapters.
 - PR verification passed CI, including unit/property tests, mocked backup orchestration, production build, bundle budgets and Playwright browser journeys; Project Context Guard and Lighthouse passed. The published-site smoke-test workflow was skipped by its schedule/conditions, so do not claim a post-merge published-site smoke test from this PR.
 
-Remaining Phase 4 work: model-specific position Greeks, canonical risk-neutral EV, canonical PAPER journal schema and calculations, and canonical replay. CSV v2 remains USER_ASSERTED on import and cannot grant provider provenance.
+Remaining Phase 4 work: canonical PAPER lifecycle valuation (mark-to-market, amendments, exits and simulated P&L) and point-in-time replay. Binance position Greeks (PR #177), risk-neutral EV (PR #170), and the PAPER entry snapshot/hardening (PR #172/#175) are merged. CSV v2 remains USER_ASSERTED on import and cannot grant provider provenance.
 
 
 ### Canonical cash-settled risk-neutral EV — PR #170 merged 25 November 2026
