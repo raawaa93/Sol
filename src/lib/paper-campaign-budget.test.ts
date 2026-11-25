@@ -62,6 +62,11 @@ function canonicalTradeForBudget(): PaperTrade {
     premiumAmountAtEntry: 20,
     premiumDebitAtEntry: 20,
     premiumCurrencyAtEntry: 'USDT',
+    sourceTimestampsAtEntry: {
+      bookTicker: '2026-11-25T07:00:00Z',
+      index: '2026-11-25T07:00:00Z',
+    },
+    sourceReceivedAtAtEntry: { bidAsk: '2026-11-25T07:00:01Z' },
   });
 }
 
