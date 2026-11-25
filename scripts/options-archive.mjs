@@ -3,6 +3,12 @@ import { cp, link, mkdir, open, readFile, readdir, rename, stat, unlink } from '
 import { dirname, join, relative, resolve } from 'node:path';
 
 export const OPTIONS_ARCHIVE_SCHEMA_VERSION = 1;
+const ALLOWED_ENDPOINTS = new Set([
+  'REST_EXCHANGE_INFO', 'REST_KLINES', 'REST_RECENT_TRADES', 'REST_DEPTH',
+  'REST_TICKER', 'REST_MARK', 'REST_INDEX', 'REST_OPEN_INTEREST',
+  'WS_BOOK_TICKER', 'WS_OPTION_TRADE', 'WS_MARK_PRICE', 'WS_INDEX_PRICE',
+  'WS_KLINE', 'WS_OPTION_TICKER', 'WS_DEPTH',
+]);
 const RECORD_KINDS = new Set([
   'EXCHANGE_INFO', 'KLINE_CLOSED', 'TRADE_MARKET', 'TRADE_BLOCK',
   'BOOK_TICKER', 'DEPTH_SNAPSHOT', 'DEPTH_DIFF', 'MARK_PRICE',
@@ -72,7 +78,7 @@ export function validateOptionsArchiveRecord(record) {
   if (record.schemaVersion !== OPTIONS_ARCHIVE_SCHEMA_VERSION) throw new OptionsArchiveError('SCHEMA_VERSION', 'Unsupported archive schema version.');
   if (record.provider !== 'BINANCE') throw new OptionsArchiveError('PROVIDER_NOT_ALLOWED', 'Only the approved public Binance provider is accepted.');
   if (!RECORD_KINDS.has(record.kind)) throw new OptionsArchiveError('KIND_NOT_ALLOWED', 'Unsupported archive event kind.');
-  if (typeof record.endpoint !== 'string' || !record.endpoint.trim()) throw new OptionsArchiveError('ENDPOINT_REQUIRED', 'An explicit endpoint or stream name is required.');
+  if (!ALLOWED_ENDPOINTS.has(record.endpoint)) throw new OptionsArchiveError('ENDPOINT_NOT_ALLOWED', 'Only explicitly approved public Binance endpoints and streams may be archived.');
   if (typeof record.symbol !== 'string' || !/^[A-Z0-9-]{2,64}$/.test(record.symbol)) throw new OptionsArchiveError('INVALID_SYMBOL', 'A normalized option or underlying symbol is required.');
   if (typeof record.idempotencyKey !== 'string' || !record.idempotencyKey.trim() || record.idempotencyKey.length > 256) {
     throw new OptionsArchiveError('INVALID_IDEMPOTENCY_KEY', 'A stable idempotency key is required.');
