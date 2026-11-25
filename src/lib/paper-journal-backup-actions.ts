@@ -54,8 +54,28 @@ export function importPaperJournalJsonBackup<T extends { id: string }>(
   }
   const added = merged.entries.length - current.length;
   if (added === 0) return { ok: true, entries: merged.entries, added: 0 };
+  let original: string | null;
   try {
-    storage.setItem(storageKey, JSON.stringify(merged.entries));
+    original = storage.getItem(storageKey);
+  } catch {
+    return { ok: false, message: 'تعذر قراءة الدفتر الحالي؛ لم تتغير بياناتك.' };
+  }
+  const expectedCurrent = current.length === 0 && original === null ? null : JSON.stringify(current);
+  if (original !== expectedCurrent) {
+    return { ok: false, message: 'تغير الدفتر في تبويب آخر؛ أعد تحميل الصفحة ثم أعد الاستيراد لتجنب فقد أي تعديل.' };
+  }
+  const serialized = JSON.stringify(merged.entries);
+  if (new TextEncoder().encode(serialized).byteLength > 5 * 1024 * 1024) {
+    return { ok: false, message: 'النسخة المدمجة تتجاوز 5 MiB؛ لم تتغير بياناتك.' };
+  }
+  try {
+    if (storage.getItem(storageKey) !== original) {
+      return { ok: false, message: 'تغير الدفتر أثناء الاستيراد؛ لم نكتب فوق التعديل الآخر.' };
+    }
+    storage.setItem(storageKey, serialized);
+    if (storage.getItem(storageKey) !== serialized) {
+      return { ok: false, message: 'تعذر التحقق من حفظ النسخة المدمجة؛ أعد تنزيل الدفتر قبل المتابعة.' };
+    }
   } catch {
     return { ok: false, message: 'تعذر حفظ النسخة المدمجة بسبب مساحة التخزين؛ بقي الدفتر الحالي كما هو.' };
   }
