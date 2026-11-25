@@ -139,6 +139,30 @@ function formatSourceTimestamp(timestamp: string | undefined): string {
   return Number.isFinite(date.getTime()) ? `${formatDateTime(date)} UTC` : 'وقت المصدر غير صالح';
 }
 
+function isPaperTradeClose(value: unknown, trade: Partial<PaperTrade>): boolean {
+  if (!value || typeof value !== 'object') return false;
+  const close = value as Partial<NonNullable<PaperTrade['close']>>;
+  const debit = trade.premiumDebitAtEntry;
+  return typeof close.closedAt === 'string' && Number.isFinite(Date.parse(close.closedAt))
+    && typeof close.exitPremium === 'number' && Number.isFinite(close.exitPremium) && close.exitPremium > 0
+    && typeof close.exitFees === 'number' && Number.isFinite(close.exitFees) && close.exitFees >= 0
+    && typeof close.exitExchangeFee === 'number' && Number.isFinite(close.exitExchangeFee) && close.exitExchangeFee >= 0
+    && typeof close.exitAdditionalFees === 'number' && Number.isFinite(close.exitAdditionalFees) && close.exitAdditionalFees >= 0
+    && typeof close.exitGrossProceeds === 'number' && Number.isFinite(close.exitGrossProceeds) && close.exitGrossProceeds >= 0
+    && typeof close.exitNetProceeds === 'number' && Number.isFinite(close.exitNetProceeds) && close.exitNetProceeds >= 0
+    && typeof close.realizedPnl === 'number' && Number.isFinite(close.realizedPnl)
+    && typeof debit === 'number' && Number.isFinite(debit) && Math.abs(close.realizedPnl - (close.exitNetProceeds - debit)) <= 1e-8
+    && Math.abs(close.exitGrossProceeds - close.exitNetProceeds - close.exitFees) <= 1e-8
+    && typeof close.currency === 'string' && close.currency === trade.premiumCurrencyAtEntry
+    && typeof close.spotAtExit === 'number' && Number.isFinite(close.spotAtExit) && close.spotAtExit > 0
+    && close.bidAskSource === 'BOOK_TICKER'
+    && typeof close.sourceTimestamps?.bookTicker === 'string' && Number.isFinite(Date.parse(close.sourceTimestamps.bookTicker))
+    && typeof close.sourceTimestamps?.index === 'string' && Number.isFinite(Date.parse(close.sourceTimestamps.index))
+    && typeof close.sourceReceivedAt === 'string' && Number.isFinite(Date.parse(close.sourceReceivedAt))
+    && typeof close.bidQuantity === 'number' && Number.isFinite(close.bidQuantity) && close.bidQuantity > 0
+    && close.bidAskSizeUnit === 'CONTRACTS';
+}
+
 function isPaperTrade(value: unknown): value is PaperTrade {
   if (!value || typeof value !== 'object') return false;
   const trade = value as Partial<PaperTrade>;
@@ -173,7 +197,10 @@ function isPaperTrade(value: unknown): value is PaperTrade {
       && typeof trade.premiumAmountAtEntry === 'number' && Number.isFinite(trade.premiumAmountAtEntry) && trade.premiumAmountAtEntry >= 0
       && typeof trade.premiumDebitAtEntry === 'number' && Number.isFinite(trade.premiumDebitAtEntry) && trade.premiumDebitAtEntry >= trade.premiumAmountAtEntry
       && trade.premiumCurrencyAtEntry === trade.contractEconomics.premium.quoteCurrency
-      && (trade.priceSourceAtEntry !== 'MID' || trade.bidAskSourceAtEntry === 'BOOK_TICKER' || trade.bidAskSourceAtEntry === 'OPTION_TICKER' || trade.bidAskSourceAtEntry === 'MARK_PRICE')))
+      && (trade.priceSourceAtEntry !== 'ASK' || trade.bidAskSourceAtEntry === 'BOOK_TICKER')))
+    && (trade.exchangeFeeAtEntry === undefined || (Number.isFinite(trade.exchangeFeeAtEntry) && trade.exchangeFeeAtEntry >= 0))
+    && (trade.additionalFeesAtEntry === undefined || (Number.isFinite(trade.additionalFeesAtEntry) && trade.additionalFeesAtEntry >= 0))
+    && (trade.close === undefined || isPaperTradeClose(trade.close, trade))
     && trade.status === 'PAPER';
 }
 
@@ -311,10 +338,19 @@ function App() {
   const bookTickerCandidates = useMemo(() => dataMode === 'BINANCE' && binanceSnapshot
     ? binanceSnapshot.quotes
       .filter((quote) => quote.underlying === underlying && quote.expiry === effectiveExpiry && quote.type === selectedType
-        && (quote.bid <= 0 || quote.ask <= 0 || quote.ask < quote.bid))
-      .sort((a, b) => Math.abs(a.strike - getUnderlyingReferencePrice(a)) - Math.abs(b.strike - getUnderlyingReferencePrice(b)))
+        && (quote.bid <= 0 || quote.ask <= 0 || quote.ask < quote.bid
+          || quote.bidAskSizeUnit !== 'CONTRACTS' || !Number.isFinite(quote.bidQuantity) || !Number.isFinite(quote.askQuantity)))
+      .sort((a, b) => Math.abs(a.strike - getUnderlyingReferencePrice(a)) - Math.abs(b.strike - getUnderlyingReferencePrice(b.strike)))
     : [], [binanceSnapshot, dataMode, effectiveExpiry, selectedType, underlying]);
-  const bookTickerTargets = useMemo(() => bookTickerCandidates.slice(0, 180).map((quote) => quote.symbol), [bookTickerCandidates]);
+  const journalBookTickerSymbols = useMemo(() => dataMode === 'BINANCE'
+    ? trades.filter((trade) => !trade.close && trade.contractVenueAtEntry === 'BINANCE'
+      && trade.priceSourceAtEntry === 'ASK' && trade.bidAskSourceAtEntry === 'BOOK_TICKER')
+      .map((trade) => trade.symbol)
+    : [], [dataMode, trades]);
+  const bookTickerTargets = useMemo(() => [...new Set([
+    ...journalBookTickerSymbols,
+    ...bookTickerCandidates.slice(0, 180).map((quote) => quote.symbol),
+  ])].slice(0, 200), [bookTickerCandidates, journalBookTickerSymbols]);
   const optionMarkTarget = useMemo(() => (
     dataMode === 'BINANCE' && binanceSnapshot ? underlying.toLowerCase() : ''
   ), [binanceSnapshot, dataMode, underlying]);
@@ -652,6 +688,7 @@ function App() {
   }, [toast]);
 
   const selectedPremium = getMidPrice(selectedQuote);
+  const selectedEntryPremium = dataMode === 'BINANCE' && selectedQuote.contractEconomics ? selectedQuote.ask : selectedPremium;
   const quantityStep = getQuantityStep(selectedQuote);
   const minimumQuantity = selectedQuote.minQty ?? quantityStep;
   const safeQuantity = Number.isFinite(quantity) ? Math.max(0, quantity) : 0;
@@ -663,15 +700,23 @@ function App() {
   const hasLegacyScalarCapability = hasLegacyScalarAnalyticsCapability(selectedQuote, dataMode);
   const hasExplicitConsistentContractScale = hasLegacyScalarCapability;
   const canonicalUnitPremium = selectedQuote.contractEconomics
-    ? calculatePremiumCash({ economics: selectedQuote.contractEconomics, premiumPrice: selectedPremium, contracts: 1 })
+    ? calculatePremiumCash({ economics: selectedQuote.contractEconomics, premiumPrice: selectedEntryPremium, contracts: 1 })
     : undefined;
   const canonicalPremiumPerContract = canonicalUnitPremium?.ok ? canonicalUnitPremium.value.amount : undefined;
+  const canonicalExchangeFeePerContract = selectedQuote.contractEconomics && dataMode === 'BINANCE'
+    && Number.isFinite(selectedQuote.takerFeeRate) && selectedQuote.takerFeeRate! >= 0
+    && Number.isFinite(selectedQuote.spot) && selectedQuote.spot > 0 && selectedQuote.unit > 0
+    ? Math.min(selectedQuote.takerFeeRate! * selectedQuote.spot * selectedQuote.unit, 0.1 * selectedEntryPremium)
+    : selectedQuote.contractEconomics && dataMode === 'BINANCE' ? undefined : 0;
+  const canonicalTotalFees = canonicalExchangeFeePerContract === undefined
+    ? Number.NaN
+    : canonicalExchangeFeePerContract * safeQuantity + safeFees;
   const canonicalBreakEven = selectedQuote.contractEconomics
-    ? calculateQuoteCashBreakeven(selectedQuote, { premiumPrice: selectedPremium, contracts: safeQuantity, fees: safeFees })
+    ? calculateQuoteCashBreakeven(selectedQuote, { premiumPrice: selectedEntryPremium, contracts: safeQuantity, fees: canonicalTotalFees })
     : undefined;
   const canonicalBreakEvenPrice = canonicalBreakEven?.ok ? canonicalBreakEven.value.price : undefined;
   const canonicalMaxLossResult = selectedQuote.contractEconomics
-    ? calculateQuoteCashMaxLoss(selectedQuote, { premiumPrice: selectedPremium, contracts: safeQuantity, fees: safeFees })
+    ? calculateQuoteCashMaxLoss(selectedQuote, { premiumPrice: selectedEntryPremium, contracts: safeQuantity, fees: canonicalTotalFees })
     : undefined;
   const canonicalMaxLossAmount = canonicalMaxLossResult?.ok ? canonicalMaxLossResult.value.amount : undefined;
   const canCalculatePremiumCost = canonicalPremiumPerContract !== undefined || hasExplicitConsistentContractScale;
@@ -683,7 +728,7 @@ function App() {
       : 'مواصفات العقد الاقتصادية غير كافية لحساب القسط أو المخاطر؛ لم نستخدم unit أو أي حساب قديم كبديل.'
     : contractScaleIssue ? getContractScaleIssueMessage(contractScaleIssue) : '';
   const totalCost = canonicalPremiumPerContract !== undefined
-    ? canonicalPremiumPerContract * safeQuantity + safeFees
+    ? canonicalPremiumPerContract * safeQuantity + canonicalTotalFees
     : hasExplicitConsistentContractScale ? selectedPremium * safeQuantity * selectedQuote.unit + safeFees : Number.NaN;
   const breakEven = canonicalBreakEvenPrice !== undefined
     ? canonicalBreakEvenPrice
@@ -691,8 +736,9 @@ function App() {
   const maxLoss = canonicalMaxLossAmount !== undefined
     ? canonicalMaxLossAmount
     : hasExplicitConsistentContractScale ? getMaxLoss(selectedPremium, safeQuantity, selectedQuote.unit, safeFees) : Number.NaN;
-  const premiumCostPerContract = canonicalPremiumPerContract
-    ?? (hasExplicitConsistentContractScale ? selectedPremium * selectedQuote.unit : undefined);
+  const premiumCostPerContract = canonicalPremiumPerContract !== undefined && canonicalExchangeFeePerContract !== undefined
+    ? canonicalPremiumPerContract + canonicalExchangeFeePerContract
+    : hasExplicitConsistentContractScale ? selectedPremium * selectedQuote.unit : undefined;
   const hasPremiumSizingCapability = premiumCostPerContract !== undefined;
   const hasModelGreeks = hasExplicitConsistentContractScale && (selectedQuote.pricingStatus ?? (dataMode === 'DEMO' ? 'ASSUMED' : 'OBSERVED_ONLY')) !== 'OBSERVED_ONLY';
   const quoteAssetLabel = getQuoteCurrency(selectedQuote);
