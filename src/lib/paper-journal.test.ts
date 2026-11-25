@@ -63,6 +63,7 @@ const quote: OptionQuote = {
     bookTicker: '2026-11-25T03:00:00Z',
     markPrice: '2026-11-25T03:00:00Z',
   },
+  sourceReceivedAt: { bidAsk: '2026-11-25T03:00:00Z' },
 };
 
 const input = {
@@ -387,4 +388,46 @@ test('canonical PAPER close rejects repeated exits and invalid fee amounts', () 
   });
   assert.equal(invalidFee.ok, false);
   if (!invalidFee.ok) assert.equal(invalidFee.reason, 'INVALID_PAPER_EXIT_FEES');
+});
+
+
+test('canonical PAPER entry rejects missing, stale and future local receive clocks', () => {
+  const missing = createCanonicalPaperTrade({
+    ...input,
+    quote: { ...quote, sourceReceivedAt: undefined },
+  });
+  assert.equal(missing.ok, false);
+  if (!missing.ok) assert.equal(missing.reason, 'PAPER_ENTRY_MARKET_SNAPSHOT_STALE_OR_FUTURE');
+
+  const stale = createCanonicalPaperTrade({
+    ...input,
+    quote: { ...quote, sourceReceivedAt: { bidAsk: '2026-11-25T02:55:00Z' } },
+  });
+  assert.equal(stale.ok, false);
+  if (!stale.ok) assert.equal(stale.reason, 'PAPER_ENTRY_MARKET_SNAPSHOT_STALE_OR_FUTURE');
+
+  const future = createCanonicalPaperTrade({
+    ...input,
+    quote: { ...quote, sourceReceivedAt: { bidAsk: '2026-11-25T03:02:00Z' } },
+  });
+  assert.equal(future.ok, false);
+  if (!future.ok) assert.equal(future.reason, 'PAPER_ENTRY_MARKET_SNAPSHOT_STALE_OR_FUTURE');
+});
+
+test('canonical PAPER close rejects stale or future local receive clocks', () => {
+  const stale = closeCanonicalPaperTrade({
+    trade: canonicalEntry.trade,
+    quote: { ...exitQuote, sourceReceivedAt: { bidAsk: '2026-11-25T02:56:00Z' } },
+    closedAt: '2026-11-25T03:02:01Z',
+  });
+  assert.equal(stale.ok, false);
+  if (!stale.ok) assert.equal(stale.reason, 'PAPER_EXIT_MARKET_SNAPSHOT_STALE_OR_FUTURE');
+
+  const future = closeCanonicalPaperTrade({
+    trade: canonicalEntry.trade,
+    quote: { ...exitQuote, sourceReceivedAt: { bidAsk: '2026-11-25T03:03:00Z' } },
+    closedAt: '2026-11-25T03:02:01Z',
+  });
+  assert.equal(future.ok, false);
+  if (!future.ok) assert.equal(future.reason, 'PAPER_EXIT_MARKET_SNAPSHOT_STALE_OR_FUTURE');
 });
