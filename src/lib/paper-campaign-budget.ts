@@ -96,11 +96,19 @@ export function canAllocatePaperCampaignTrade(
   perTradeCap = PAPER_CAMPAIGN_PER_TRADE_CAP,
 ): { ok: true } | { ok: false; reason: string } {
   const normalizedCurrency = currency.trim().toUpperCase();
+  const summaryCurrency = typeof summary.currency === 'string' ? summary.currency.trim().toUpperCase() : '';
+  const summarySupportsCurrency = summaryCurrency === 'USD' || summaryCurrency === 'USDT';
   const expectedRemaining = Number.isFinite(summary.cap) && Number.isFinite(summary.used)
     ? Math.max(0, summary.cap - summary.used)
     : Number.NaN;
+  const expectedCanAllocate = summarySupportsCurrency && Number.isFinite(summary.cap)
+    && summary.cap > 0 && Number.isFinite(summary.used) && summary.used >= 0
+    && Number.isFinite(summary.remaining) && summary.remaining > 1e-9
+    && summary.unknownEntries === 0 && summary.currencyMismatchEntries === 0;
 
-  if (!Number.isFinite(summary.cap) || summary.cap <= 0 || summary.cap > PAPER_CAMPAIGN_MAX_LOSS
+  if (!summaryCurrency || summary.supportedCurrency !== summarySupportsCurrency
+    || summary.canAllocate !== expectedCanAllocate
+    || !Number.isFinite(summary.cap) || summary.cap <= 0 || summary.cap > PAPER_CAMPAIGN_MAX_LOSS
     || !Number.isFinite(summary.used) || summary.used < 0
     || !Number.isFinite(summary.remaining) || summary.remaining < 0
     || !Number.isFinite(expectedRemaining) || Math.abs(summary.remaining - expectedRemaining) > 1e-9
@@ -112,7 +120,8 @@ export function canAllocatePaperCampaignTrade(
     return { ok: false, reason: 'INVALID_PER_TRADE_CAP' };
   }
   if (!summary.supportedCurrency) return { ok: false, reason: 'UNSUPPORTED_CAMPAIGN_CURRENCY' };
-  if (normalizedCurrency !== summary.currency) return { ok: false, reason: 'CAMPAIGN_CURRENCY_MISMATCH' };
+  if (!summarySupportsCurrency) return { ok: false, reason: 'UNSUPPORTED_CAMPAIGN_CURRENCY' };
+  if (normalizedCurrency !== summaryCurrency) return { ok: false, reason: 'CAMPAIGN_CURRENCY_MISMATCH' };
   if (summary.unknownEntries > 0) return { ok: false, reason: 'UNKNOWN_EXISTING_PAPER_RISK' };
   if (summary.currencyMismatchEntries > 0) return { ok: false, reason: 'MIXED_EXISTING_PAPER_CURRENCIES' };
   if (!Number.isFinite(debit) || debit <= 0) return { ok: false, reason: 'INVALID_PAPER_DEBIT' };
