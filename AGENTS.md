@@ -13,6 +13,13 @@
 - Always distinguish intended coverage from implemented coverage. Current Demo includes BTC, ETH, SOL, XRP, DOGE, BNB, XAU, XAG, CL and BZ. Live data is Binance-specific and limited to instruments returned by its current catalogue. CSV is more generic. This is not universal live market coverage.
 - Never label a perpetual, CFD, binary contract, prediction market or synthetic payoff as an exchange-listed option. Describe rights, exercise style, expiry, settlement, multiplier, collateral and margin explicitly.
 
+## Binance market-data network policy
+- Follow [SYRIAN_NETWORK_ONLY_MARKET_DATA_POLICY.md](docs/SYRIAN_NETWORK_ONLY_MARKET_DATA_POLICY.md) as a mandatory repository rule.
+- Binance market-data requests must use the approved read-only Volterra proxy and the verified Syrian-origin client network path only. Never use GitHub-hosted runners, foreign server-side polling, direct browser fallback, direct archive workers, proxy rotation, VPN routing, or region overrides to fetch Binance data.
+- A 451 or any upstream restriction is terminal for that request: stop and report it; do not try another egress, region, host, or network route.
+- Do not claim that Supabase Edge is hosted in Syria. The verified 24 November 2026 result was a Syriatel/Damascus-classified client path through Supabase Edge eu-west-2; it does not prove a Syrian-hosted server.
+- Any proposed geographic allowlist must rely on trusted server-side source-country verification, never a client-supplied country header or CORS alone. Until such enforcement exists, do not claim that non-Syrian invocations are technically blocked.
+
 ## User jurisdiction and connectivity
 - The account owner is physically resident in **Syria**, not the United Kingdom.
 - A VPN may be necessary for ordinary internet connectivity. Treat VPN egress IP as network routing only; it does not change residence, KYC, legal jurisdiction, tax residence, sanctions screening or venue eligibility.
