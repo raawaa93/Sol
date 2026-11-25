@@ -23,7 +23,19 @@ test('Binance crypto adapter keeps premium and underlying delivery scales indepe
   assert.equal(economics.exercise.cashSettlement?.reference, 'INDEX');
   assert.equal(economics.exercise.settlementCurrency, 'USDT');
   assert.equal(economics.provenance.status, 'PROVIDER_VERIFIED');
+  assert.equal(economics.provenance.legalTerms?.scope, 'BINANCE_RIE_RCH');
+  assert.equal(economics.provenance.legalTerms?.contractSpecificationPublicationDate, '2026-01-05');
+  assert.equal(economics.provenance.legalTerms?.accountApplicability, 'UNVERIFIED');
+  assert.match(economics.provenance.legalTerms?.contractSpecificationRef ?? '', /bin\.bnbstatic\.com/);
+  assert.match(economics.provenance.legalTerms?.clearingProceduresRef ?? '', /bin\.bnbstatic\.com/);
   assert.equal(validateContractEconomics(economics).adapterReady, true);
+  const missingLegalTerms = structuredClone(economics);
+  delete missingLegalTerms.provenance.legalTerms;
+  assert.equal(validateContractEconomics(missingLegalTerms).valid, true, 'the provider quote/premium fields remain valid');
+  assert.equal(validateContractEconomics(missingLegalTerms).adapterReady, false);
+  assert.ok(validateContractEconomics(missingLegalTerms).unsupportedReasons.includes('MISSING_LEGAL_TERMS_PROVENANCE'));
+  const premiumOnly = calculatePremiumCash({ economics: missingLegalTerms, premiumPrice: 12, contracts: 3 });
+  assert.equal(premiumOnly.ok, true, 'premium scale is independently sourced from exchangeInfo');
 
   const premium = calculatePremiumCash({ economics, premiumPrice: 12, contracts: 3 });
   assert.deepEqual(premium, {
