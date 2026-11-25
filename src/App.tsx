@@ -1270,6 +1270,7 @@ function App() {
       spotAtExit: trade.exit?.spotAtExit ?? '',
       exitBidQuantity: trade.exit?.bidQuantityAtExit ?? '',
       exitSourceTimestampsJSON: trade.exit?.sourceTimestampsAtExit ? JSON.stringify(trade.exit.sourceTimestampsAtExit) : '',
+      exitSourceReceivedAtJSON: trade.exit?.sourceReceivedAtAtExit ? JSON.stringify(trade.exit.sourceReceivedAtAtExit) : '',
       mode: 'PAPER',
     })));
   };
@@ -1699,7 +1700,7 @@ function App() {
               {trades.length ? <>
                 <div className="journal-exit-controls">
                   <p>إغلاق الصفقة التجريبية يستخدم سعر Bid وحجم العرض المرصود للعقد نفسه. اختر العقد من الماسح أولاً. اترك الرسوم فارغة إذا لم تعرفها؛ عندها نعرض الربح/الخسارة الإجمالي فقط ولا نخمن الصافي.</p>
-                  <label>رسوم الخروج الدقيقة (USDT، اختياري)
+                  <label>رسوم الخروج الدقيقة بعملة العقد (اختياري)
                     <input type="number" min="0" step="any" inputMode="decimal" value={paperExitFees} onChange={(event) => setPaperExitFees(event.target.value)} placeholder="اتركه فارغاً إذا كانت غير معروفة" />
                   </label>
                 </div>
