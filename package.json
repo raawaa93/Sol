@@ -16,7 +16,8 @@
     "perf:lighthouse": "lhci autorun",
     "perf:lighthouse:production": "lhci autorun --config=lighthouserc.production.json",
     "preview": "vite preview --host 0.0.0.0",
-    "build:pages": "tsc -b && vite build --mode pages && node scripts/copy-pages-dotfiles.mjs"
+    "build:pages": "tsc -b && vite build --mode pages && node scripts/copy-pages-dotfiles.mjs",
+    "test:archive": "node --test scripts/options-archive.test.mjs scripts/options-collector.test.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
