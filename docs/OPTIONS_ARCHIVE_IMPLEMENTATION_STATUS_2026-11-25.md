@@ -110,5 +110,15 @@ No live market capture, scheduled worker, cloud archive, PIT dataset, strategy e
 - The archive schema, local resumable filesystem store, public REST allowlist, fake-transport-tested REST refresh, and opt-in Node WebSocket transport exist. They are libraries/primitives, not an operating supervised collector.
 - No real Binance market capture, point-in-time historical BBO corpus, scheduled worker, durable off-device archive, restore drill, or strategy edge is verified.
 - Do not use the shared Supabase project for archive writes: it is shared with other workloads and no isolated Sol archive namespace, retention policy, quota, or restore path has been approved and tested.
-- Next implementation order: (1) a supervised Node worker with explicit start/stop, heartbeat, bounded runtime/storage, durable-commit-before-cursor, restart and gap tests; (2) a separately reviewed durable destination with ownership, least-privilege access, retention and restore proof; (3) a forward-only capture trial only after legal/product eligibility and network response are confirmed without routing around restrictions; (4) strategy experiments only when sufficient point-in-time executable quote data exists.
+- **Completed in PR #216:** a supervised Node worker with explicit start/stop, bounded runtime/storage, periodic writer-lease renewal during quiet streams, graceful transport cancellation, archive verification at shutdown, and offline tests for bounds, stop semantics and idle-stream lease renewal. It remains opt-in and is not scheduled or deployed.
+- Remaining order: (1) select a separately reviewed durable destination with ownership, least-privilege access, cost controls, retention and restore proof; (2) conduct a supervised forward-only capture trial only after legal/product eligibility and network response are confirmed without routing around restrictions; (3) build a verified point-in-time executable quote corpus; (4) run out-of-sample strategy experiments only after adequate data quality and coverage.
 - Keep all work read-only/PAPER. No API credentials, account streams, order methods, paid services, new cloud resources, or live trading.
+
+
+## Supervised worker merge — 25 November 2026, 08:38 UTC
+
+- PR #216 merged to main as `50dfed865c75556f96aadcda12a2f8845af3fe07` (squash). Superseded PR #215 was closed unmerged.
+- PR-head CI run 45577826033 passed, including unit/property tests, mocked backup checks, production build, compressed bundle budget and browser journeys. Lighthouse run 45577826088 passed. Project Context Guard run 45577826027 passed.
+- The worker requires explicit archive path and public stream names, enforces a 512 MiB maximum archive quota and six-hour maximum runtime, records graceful/operator/runtime stops distinctly, verifies archive integrity at shutdown, and renews the local single-host writer lease during quiet streams. Lease-renewal failure aborts collection.
+- An operator runbook is available at `docs/OPTIONS_ARCHIVE_WORKER_RUNBOOK_2026-11-25.md`.
+- The worker is opt-in only. No schedule, cloud destination, live Binance capture, off-device backup, or trading capability was activated. No eligibility or legal-use conclusion is inferred from public market-data API documentation.
