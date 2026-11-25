@@ -163,7 +163,8 @@ function isPaperTrade(value: unknown): value is PaperTrade {
       && typeof trade.premiumMultiplierAtEntry === 'number' && Number.isFinite(trade.premiumMultiplierAtEntry) && trade.premiumMultiplierAtEntry > 0
       && typeof trade.premiumAmountAtEntry === 'number' && Number.isFinite(trade.premiumAmountAtEntry) && trade.premiumAmountAtEntry >= 0
       && typeof trade.premiumDebitAtEntry === 'number' && Number.isFinite(trade.premiumDebitAtEntry) && trade.premiumDebitAtEntry >= 0
-      && typeof trade.premiumCurrencyAtEntry === 'string' && /^[A-Z0-9]{2,12}$/.test(trade.premiumCurrencyAtEntry)))
+      && typeof trade.premiumCurrencyAtEntry === 'string' && /^[A-Z0-9]{2,12}$/.test(trade.premiumCurrencyAtEntry)
+      && (trade.priceSourceAtEntry !== 'MID' || trade.bidAskSourceAtEntry === 'BOOK_TICKER' || trade.bidAskSourceAtEntry === 'OPTION_TICKER')))
     && trade.status === 'PAPER';
 }
 
@@ -988,6 +989,7 @@ function App() {
       premiumDebitAtEntry: trade.premiumDebitAtEntry ?? '',
       premiumCurrencyAtEntry: trade.premiumCurrencyAtEntry ?? '',
       priceSourceAtEntry: trade.priceSourceAtEntry ?? '',
+      bidAskSourceAtEntry: trade.bidAskSourceAtEntry ?? '',
       contractEconomicsJSON: trade.contractEconomics ? JSON.stringify(trade.contractEconomics) : '',
       sourceTimestampsAtEntryJSON: trade.sourceTimestampsAtEntry ? JSON.stringify(trade.sourceTimestampsAtEntry) : '',
       mode: 'PAPER',
