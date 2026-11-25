@@ -281,3 +281,14 @@ The old isolated worktree `research/options-pit-archive-2026-11-24` remains unav
 - Execution-record-only commits `b705bdcaa81643ef6807b3e8f82b32f38d0765d9` and subsequent documentation commits passed Project Context Guard; they did not change application code.
 - Main remains unprotected. The branch-protection endpoint returned 403 to the connected integration; this is an access limitation, not evidence that protection was enabled.
 - No live Binance collector, cloud archive, production backup/restore, or live trading was performed.
+
+
+## Legal amendment provenance — 25 November 2026, 05:11 UTC
+
+- PR #193 merged as `02686037ef33c658d06178062be69311568c72b9`.
+- The canonical Binance RIE/RCH contract provenance now stores the official 21 May 2026 Clearing Procedures amendment notice, effective date, version 1.3, and `clearingProceduresConsolidatedTextVerified=false`.
+- The amendment notice is explicitly scoped to Binance RCH only. It does not establish applicability to Binance RIE or to a specific user account/entity.
+- The canonical validator requires the exact amendment notice URL, date, scope and version. Missing or substituted metadata fails adapter readiness. UI disclosures state that the consolidated v1.3 text has not been independently verified.
+- PR-head checks passed: CI 45551595600, Lighthouse 45551595615, Project Context Guard 45551595778. Post-merge main CI/deploy checks were queued at the time of this update and must be checked before claiming the latest deployment is current.
+
+This is legal-source provenance, not legal advice or account eligibility confirmation. No trading or network capture was performed.
