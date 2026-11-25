@@ -119,7 +119,7 @@ No second execution venue for a Syrian resident has been verified for global lis
 - The REST option-ticker BBO timestamp (`ticker`) is not the WebSocket `optionTicker` event clock; the latter is a separate 24-hour statistics/last-price stream. Keep these source clocks independent.
 - Verification: CI 45572889900 passed 303/303 tests, production build, compressed bundle budgets and 18/18 Playwright journeys; Lighthouse 45572889852 passed (99 Performance, 100 Accessibility/Best Practices/SEO); Project Context Guard 45572889839 passed.
 - CSV provenance remains user-asserted; tests use controlled fixtures and do not establish live market availability or authenticity.
-- Still blocked: live/forward capture, scheduled worker, durable cloud archive, PIT executable BBO corpus, strategy edge and any live trading. Continue research/PAPER only under the Syria legal gate.
+- PR #216 completed the opt-in supervised local Node worker; it is not deployed or scheduled. Still blocked: live/forward capture, durable cloud archive, PIT executable BBO corpus, strategy edge and any live trading. Continue research/PAPER only under the applicable product/legal gate.
 
 
 ## 11. Verified BBO replay and risk sizing update — 25 November 2026
