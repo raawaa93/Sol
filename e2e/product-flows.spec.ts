@@ -75,6 +75,41 @@ test('PAPER-only journal records and exports a local single-option scenario', as
   await expect(page.locator('.campaign-risk-summary')).toContainText('60');
 });
 
+test('versioned PAPER JSON backup exports, clears and restores locally without replacing existing entries', async ({ page }) => {
+  await page.locator('.asset-switch').getByRole('button').filter({ hasText: 'XRP' }).click();
+  await expect(page.locator('#overview-metrics')).toContainText('XRP/USD');
+  const quantity = page.locator('#trade-lab label').filter({ hasText: 'الكمية' }).locator('input');
+  await quantity.fill('0.01');
+  await page.getByRole('button', { name: 'أضف إلى الدفتر التجريبي' }).click();
+  await expect(page.getByText('أضيفت الصفقة إلى الدفتر التجريبي فقط.')).toBeVisible();
+  await page.locator('.side-nav').getByRole('button', { name: 'الدفتر التجريبي' }).click();
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.locator('#journal').getByRole('button', { name: 'نسخة الدفتر JSON' }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe('sol-paper-journal-v1.json');
+  const stream = await download.createReadStream();
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
+  const backup = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  expect(backup.format).toBe('SOL_PAPER_JOURNAL');
+  expect(backup.schemaVersion).toBe(1);
+  expect(backup.trades).toHaveLength(1);
+  expect(backup.trades[0].status).toBe('PAPER');
+
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.locator('#journal').getByRole('button', { name: 'مسح الدفتر' }).click();
+  await expect(page.locator('#journal tbody tr')).toHaveCount(0);
+
+  await page.locator('#journal').getByLabel('استيراد نسخة دفتر PAPER JSON').setInputFiles({
+    name: 'sol-paper-journal-v1.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(backup)),
+  });
+  await expect(page.locator('#journal tbody tr')).toHaveCount(1);
+  await expect(page.locator('#journal')).toContainText('PAPER ONLY');
+});
+
 test('CSV asset-class and venue filters isolate traditional listed option contracts', async ({ page }) => {
   const expiry = new Date(Date.now() + 40 * 86_400_000).toISOString();
   const header = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,spot,unit,timestamp,assetClass,venue,quoteAsset,settlementAsset,contractMultiplier,exerciseStyle,settlementStyle';

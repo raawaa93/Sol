@@ -777,3 +777,9 @@ h1, h2, h3, p { margin: 0; }
 .journal-exit-controls input { width: 100%; min-height: 38px; padding: 8px 10px; border: 1px solid var(--border, rgba(255,255,255,.12)); border-radius: 8px; background: var(--surface, #15171b); color: inherit; font: inherit; }
 .journal-close-button { min-height: 32px; padding: 6px 10px; white-space: nowrap; }
 .journal-close-button:disabled { opacity: .42; cursor: not-allowed; }
+
+.journal-import-button { position: relative; display: inline-flex; align-items: center; overflow: hidden; cursor: pointer; }
+.journal-import-button input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.journal-import-button:focus-within { outline: 2px solid var(--green); outline-offset: 2px; }
+.journal-import-button:has(input:disabled) { opacity: .45; cursor: not-allowed; }
+.journal-import-button input:disabled { cursor: not-allowed; }

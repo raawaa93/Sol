@@ -1,8 +1,10 @@
 import {
+  PAPER_JOURNAL_BACKUP_MAX_BYTES,
   createPaperJournalBackup,
   mergePaperJournalBackup,
   parsePaperJournalBackup,
 } from './paper-journal-backup.ts';
+import { PAPER_JOURNAL_STORAGE_KEY } from './paper-journal-storage.ts';
 import type { PaperJournalStorage } from './paper-journal-storage.ts';
 
 export function downloadPaperJournalJsonBackup<T>(
@@ -30,8 +32,7 @@ export function importPaperJournalJsonBackup<T extends { id: string }>(
   current: T[],
   isValid: (value: unknown) => value is T,
   storage: PaperJournalStorage,
-  storageKey: string,
-): { ok: true; entries: T[]; added: number } | { ok: false; message: string } {
+): { ok: true; entries: T[]; added: number } | { ok: false; message: string; persistenceBlocked?: true } {
   const parsed = parsePaperJournalBackup(raw, isValid);
   if (!parsed.ok) {
     return {
@@ -54,10 +55,42 @@ export function importPaperJournalJsonBackup<T extends { id: string }>(
   }
   const added = merged.entries.length - current.length;
   if (added === 0) return { ok: true, entries: merged.entries, added: 0 };
+  let original: string | null;
   try {
-    storage.setItem(storageKey, JSON.stringify(merged.entries));
+    original = storage.getItem(PAPER_JOURNAL_STORAGE_KEY);
+  } catch {
+    return { ok: false, persistenceBlocked: true, message: 'تعذر قراءة الدفتر الحالي؛ أوقفنا الاستيراد والكتابة حتى تعيد تحميل الصفحة وتتحقق من النسخة الخام.' };
+  }
+  const expectedCurrent = current.length === 0 && original === null ? null : JSON.stringify(current);
+  if (original !== expectedCurrent) {
+    return { ok: false, persistenceBlocked: true, message: 'تغير الدفتر في تبويب آخر؛ أوقفنا الكتابة. أعد تحميل الصفحة ثم أعد الاستيراد لتجنب فقد أي تعديل.' };
+  }
+  const serialized = JSON.stringify(merged.entries);
+  if (new TextEncoder().encode(serialized).byteLength > PAPER_JOURNAL_BACKUP_MAX_BYTES) {
+    return { ok: false, message: 'النسخة المدمجة تتجاوز 5 MiB؛ لم تتغير بياناتك.' };
+  }
+  let beforeWrite: string | null;
+  try {
+    beforeWrite = storage.getItem(PAPER_JOURNAL_STORAGE_KEY);
+  } catch {
+    return { ok: false, persistenceBlocked: true, message: 'تعذر إعادة قراءة الدفتر قبل الكتابة؛ أوقفنا العملية. أعد تحميل الصفحة وتحقق من النسخة الخام.' };
+  }
+  if (beforeWrite !== original) {
+    return { ok: false, persistenceBlocked: true, message: 'تغير الدفتر أثناء الاستيراد؛ أوقفنا الكتابة ولم نكتب فوق التعديل الآخر. أعد تحميل الصفحة.' };
+  }
+  try {
+    storage.setItem(PAPER_JOURNAL_STORAGE_KEY, serialized);
   } catch {
     return { ok: false, message: 'تعذر حفظ النسخة المدمجة بسبب مساحة التخزين؛ بقي الدفتر الحالي كما هو.' };
+  }
+  let persisted: string | null;
+  try {
+    persisted = storage.getItem(PAPER_JOURNAL_STORAGE_KEY);
+  } catch {
+    return { ok: false, persistenceBlocked: true, message: 'تعذر التحقق من حفظ النسخة المدمجة؛ أوقفنا الكتابة. نزّل الملف الأصلي ثم أعد تحميل الصفحة قبل المتابعة.' };
+  }
+  if (persisted !== serialized) {
+    return { ok: false, persistenceBlocked: true, message: 'تعذر التحقق من حفظ النسخة المدمجة؛ أوقفنا الكتابة. نزّل الملف الأصلي ثم أعد تحميل الصفحة قبل المتابعة.' };
   }
   return { ok: true, entries: merged.entries, added };
 }

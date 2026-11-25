@@ -277,3 +277,13 @@ No live orders, account credentials, payments, new cloud resources, or Binance-r
 - The canonical entry stores the local BOOK_TICKER receive timestamp. A close requires that stored clock and verifies it alongside the entry event/index clocks; older canonical rows without this clock remain visible and exportable but cannot be closed using an unverifiable entry snapshot.
 - Net P&L requires both USER_ENTERED entry fees and USER_ENTERED exit fees. Gross P&L remains available without inventing a net figure. Stored fee amounts above Binance's published 10% premium cap are rejected; this cap is not used as an assumed fee rate.
 - Added tests for missing fee provenance, zero-default behavior, fee-cap violations, persisted entry receive time and legacy close rejection.
+
+
+## Versioned local PAPER JSON backup and restore — PR #248 (verification pending)
+
+- Adds a versioned `SOL_PAPER_JOURNAL` JSON format (schema v1), with a 5 MiB and 10,000-entry limit.
+- Export validates every record and unique IDs before producing a downloadable backup. The file is created locally in the browser and is not uploaded.
+- Import validates format/version/timestamp/size, each record through the same runtime `isPaperTrade` validator, and duplicate IDs. It merges additively: identical records are skipped; same-ID/different-content conflicts reject the whole import; existing rows are never silently replaced.
+- Before writing, import checks that the stored journal still matches the in-memory journal, checks again before commit, enforces the merged 5 MiB limit, and verifies the stored bytes after write. Concurrent-tab or readback conflicts block further journal writes until reload/recovery rather than overwriting unseen edits.
+- The JSON file picker remains keyboard accessible; the browser-only localStorage boundary is explicit. This is not encrypted storage or cross-device backup.
+- PR #248: https://github.com/raawaa93/Sol/pull/248. CI, browser journeys, Lighthouse and Project Context Guard must pass before merge.

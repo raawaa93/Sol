@@ -1250,7 +1250,7 @@ function App() {
       'تم تنزيل الملف الأصلي الحالي من دفتر PAPER',
     );
   };
-
+  
   const retryPaperJournalPersistence = () => {
     if (!paperJournalLoad.persistenceBlocked) return;
     if (!window.confirm('بعد تنزيل كل النسخ الخام الظاهرة وحفظها خارج المتصفح، هل تريد إزالة قفل الاستعادة وإعادة فحص الملف الأصلي؟')) return;
@@ -1738,6 +1738,10 @@ function App() {
               onClose={closePaperTrade}
               onExportTrades={exportTrades}
               onExportIVHistory={exportIVHistoryBackup}
+              isValidTrade={isPaperTrade}
+              onImportEntries={setTrades}
+              onImportBlocked={() => setPaperJournalLoad((current) => ({ ...current, persistenceBlocked: true }))}
+              onNotify={notify}
               onClearJournal={clearPaperJournal}
               onExportRecovery={exportPaperJournalRecovery}
               onExportOriginal={exportPaperJournalOriginal}
