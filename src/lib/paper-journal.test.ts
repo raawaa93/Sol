@@ -41,6 +41,7 @@ const quote: OptionQuote = {
   ask: 1.3,
   markPrice: 1.25,
   priceSource: 'MARK',
+  bidAskSource: 'BOOK_TICKER',
   iv: 0.5,
   delta: 0.5,
   gamma: 0.01,
@@ -111,6 +112,31 @@ test('canonical PAPER entry accepts REST ticker timestamps when both bid and ask
     },
   };
   assert.equal(canCreateCanonicalPaperTrade(restQuote, 'BINANCE'), true);
+});
+
+test('canonical PAPER entry requires the timestamp for the actual observed price source', () => {
+  assert.equal(canCreateCanonicalPaperTrade({
+    ...quote,
+    bidAskSource: 'BOOK_TICKER',
+    sourceTimestamps: { index: quote.sourceTimestamps?.index, optionTicker: quote.sourceTimestamps?.optionTicker },
+  }, 'BINANCE'), false);
+  assert.equal(canCreateCanonicalPaperTrade({
+    ...quote,
+    bidAskSource: 'OPTION_TICKER',
+    sourceTimestamps: { ...quote.sourceTimestamps, optionTicker: undefined },
+  }, 'BINANCE'), false);
+  assert.equal(canCreateCanonicalPaperTrade({
+    ...quote,
+    priceSource: 'MODEL',
+    bid: 0,
+    ask: 0,
+    bidAskSource: undefined,
+  }, 'BINANCE'), false);
+  assert.equal(canCreateCanonicalPaperTrade({
+    ...quote,
+    bidAskSource: 'BOOK_TICKER',
+    sourceTimestamps: { ...quote.sourceTimestamps, index: 'not-a-date' },
+  }, 'BINANCE'), false);
 });
 
 test('canonical PAPER entry rejects invalid quantity, premium, fees and reference price', () => {
