@@ -185,6 +185,7 @@ test('Binance preserves explicit crypto, commodity, and unknown contract metadat
   assert.equal(crypto?.pricingModel, 'BLACK_SCHOLES_CARRY');
   assert.ok(crypto?.pricingReason?.includes('carry yield is assumed to be 0%'));
   assert.ok(Number.isFinite(crypto?.delta));
+  assert.equal(crypto?.delta, blackScholes(crypto!.spot, crypto!.strike, crypto!.daysToExpiry, crypto!.iv, 'CALL', 0).delta);
   assert.equal(crypto?.ivStatus, 'OBSERVED');
   assert.equal(crypto?.iv, 0.5);
   assert.equal(commodity?.exerciseStyle, 'EUROPEAN');
