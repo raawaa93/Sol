@@ -1115,6 +1115,10 @@ function App() {
       notify(`سُجّل دخول PAPER على Ask بتكلفة إجمالية ${formatMoney(result.premiumDebit, 2, result.premiumCurrency)} تشمل رسوم Binance المقدّرة. لم يُرسل أي أمر.`);
       return;
     }
+    if (dataMode === 'BINANCE' && !selectedQuote.contractEconomics) {
+      notify('لا نسجل إدخال Binance دون مواصفات عقد موثقة ومضاعف قسط مستقل.');
+      return;
+    }
     if (!hasExplicitConsistentContractScale) {
       notify(contractScaleIssueMessage);
       return;
@@ -1630,7 +1634,7 @@ function App() {
                   <div className="risk-row"><span>أقصى خسارة للمشتري</span><strong className="loss-value">{canCalculateMaxLoss ? formatMoney(maxLoss, 2, quoteAssetLabel ?? null) : 'غير متاح'}</strong></div>
                 </div>
                 <div className="analysis-footnote"><Info size={13} /><span>{contractScaleIssueMessage ? `${contractScaleIssueMessage} ` : ''}{dataMode !== 'DEMO' && selectedQuote.estimatedFields?.length ? `حقول مقدّرة أو افتراضية في هذا العقد: ${formatEstimatedFields(selectedQuote.estimatedFields)}. ` : ''}اتساق unit وcontractMultiplier إن توفرا هو تحقق داخلي من الحقول فقط، ولا يثبت مطابقة deliverables لمواصفات البورصة. دخول PAPER على Ask وخروج Bid يتطلبان حجم دفتر كافياً؛ رسوم Binance مقدّرة وفق معدل الرمز وصيغة الرسوم الرسمية، وأي رسوم إضافية أدخلها يدوياً.</span></div>
-                <button className="button button-paper" onClick={savePaperTrade} disabled={selectedQuote.contractEconomics ? !canCreateCanonicalPaperTrade(selectedQuote, dataMode) || (dataMode === 'BINANCE' && (!Number.isFinite(selectedQuote.askQuantity) || selectedQuote.askQuantity! + 1e-9 < safeQuantity || estimateBinanceOptionsTradingFee(selectedQuote, selectedEntryPremium, 1) === undefined)) : !hasExplicitConsistentContractScale}><Plus size={16} /> أضف إلى الدفتر التجريبي</button>
+                <button className="button button-paper" onClick={savePaperTrade} disabled={dataMode === 'BINANCE' ? !selectedQuote.contractEconomics || !canCreateCanonicalPaperTrade(selectedQuote, dataMode) || !Number.isFinite(selectedQuote.askQuantity) || selectedQuote.askQuantity! + 1e-9 < safeQuantity || estimateBinanceOptionsTradingFee(selectedQuote, selectedEntryPremium, 1) === undefined : selectedQuote.contractEconomics ? !canCreateCanonicalPaperTrade(selectedQuote, dataMode) : !hasExplicitConsistentContractScale}><Plus size={16} /> أضف إلى الدفتر التجريبي</button>
                 <div className="no-signal"><ShieldAlert size={15} /><span>لا يصدر المختبر توصية شراء أو بيع.</span></div>
               </aside>
             </div>
