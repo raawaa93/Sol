@@ -346,6 +346,21 @@ test('restart recovers orphan temp segments only after acquiring the exclusive w
   assert.equal(report.index.length, 1);
 });
 
+test('archive initialization rejects a symbolic-link root before creating child directories', async (t) => {
+  const parent = await mkdtemp(join(tmpdir(), 'sol-options-symlink-root-'));
+  t.after(() => rm(parent, { recursive: true, force: true }));
+  const target = join(parent, 'target');
+  const alias = join(parent, 'alias');
+  await mkdir(target);
+  await symlink(target, alias);
+  const archive = new ResumableOptionsArchive(alias);
+  await assert.rejects(
+    archive.initialize(),
+    (error) => error instanceof OptionsArchiveError && error.code === 'SYMLINK_NOT_ALLOWED',
+  );
+  assert.deepEqual(await readdir(target), []);
+});
+
 test('archive verification rejects symbolic links instead of reading outside the archive root', async (t) => {
   const { root, archive } = await makeArchive(t);
   const outside = join(root, 'outside-secret.txt');
