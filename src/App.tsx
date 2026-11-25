@@ -49,7 +49,7 @@ import { formatAssetPrice, formatNumber, formatOptionPrice, formatQuantity, form
 import type { AssetClass, OptionQuote, OptionSide, PaperTrade, Underlying } from './lib/types';
 import { ASSET_CLASS_LABELS } from './lib/asset-class';
 import { PAPER_CAMPAIGN_CAPITAL, PAPER_CAMPAIGN_MAX_LOSS, PAPER_CAMPAIGN_PER_TRADE_CAP, canAllocatePaperCampaignTrade, summarizePaperCampaignBudget } from './lib/paper-campaign-budget';
-import { PAPER_JOURNAL_STORAGE_KEY, clearPaperJournalRecovery, loadPaperJournal, readPaperJournalPrimary, readPaperJournalRecovery } from './lib/paper-journal-storage';
+import { clearPaperJournalRecovery, loadPaperJournal, readPaperJournalPrimary, readPaperJournalRecovery } from './lib/paper-journal-storage';
 const MarketDepthPanel = lazy(() => import('./components/MarketDepthPanel'));
 const OpportunityReview = lazy(() => import('./components/OpportunityReview'));
 const GreeksPanel = lazy(() => import('./components/GreeksPanel'));
@@ -1265,7 +1265,7 @@ function App() {
       return;
     }
     const { importPaperJournalJsonBackup } = await import('./lib/paper-journal-backup-actions');
-    const result = importPaperJournalJsonBackup(raw, trades, isPaperTrade, localStorage, PAPER_JOURNAL_STORAGE_KEY);
+    const result = importPaperJournalJsonBackup(raw, trades, isPaperTrade, localStorage);
     if (!result.ok) {
       notify(result.message);
       return;
