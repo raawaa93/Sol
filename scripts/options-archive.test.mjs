@@ -92,6 +92,18 @@ test('archive commits a content-addressed segment and deduplicates deterministic
   assert.equal(report.segmentCount, 1);
 });
 
+test('archive schema rejects source-kind mismatches and observed null values', () => {
+  assert.throws(
+    () => makeRecord({ endpoint: 'WS_OPTION_TRADE' }),
+    (error) => error instanceof OptionsArchiveError && error.code === 'KIND_ENDPOINT_MISMATCH',
+  );
+  const record = makeRecord();
+  assert.throws(
+    () => makeRecord({ fields: [{ ...record.fields[0], value: null }] }),
+    (error) => error instanceof OptionsArchiveError && error.code === 'FIELD_VALUE_REQUIRED',
+  );
+});
+
 test('same idempotency key with different evidence is rejected, never overwritten', async (t) => {
   const { archive } = await makeArchive(t);
   const original = makeRecord();
