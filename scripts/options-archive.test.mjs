@@ -320,6 +320,7 @@ test('archive verification rejects a symlinked cursor without reading its target
   const report = await archive.verify();
   assert.equal(report.ok, false);
   assert.ok(report.errors.includes('CURSOR_NOT_REGULAR_FILE'));
+  await assert.rejects(archive.readCursor(), (error) => error instanceof OptionsArchiveError && error.code === 'CURSOR_NOT_REGULAR_FILE');
 });
 
 test('orphaned temporary segments are removed under the writer lease before the next append', async (t) => {
