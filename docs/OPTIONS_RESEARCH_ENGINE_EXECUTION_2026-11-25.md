@@ -98,3 +98,15 @@ PR #196 merged as `26b82d63bdd533c96fba8a881a8036fcf7c0b470`. It adds an end-to-
 - Project Context Guard 45570955274: passed.
 
 This test does not change the operational limitations: there is still no live capture, scheduled worker, durable cloud archive or measured strategy edge.
+
+
+## Follow-up — BBO-aware execution replay, PR #204
+
+- Merged 25 November 2026 at 08:04:36 UTC as 337e03fb26d44c906125318affc473030c165da4.
+- Replay now requires a recognized BBO source, source event/snapshot time, local receive time, fresh data (max five-minute source-to-receive delay), non-estimated bid/ask, explicit displayed-size unit and sufficient displayed size. It uses receive/availability time as the execution clock; the legacy generic/last-trade timestamp is not a substitute.
+- Entry is simulated at Ask and exit at Bid. Entry Ask size and exit Bid size must each cover the configured contract quantity. Mark-only, stale, future, estimated, missing-clock, unknown-unit and undersized records are rejected.
+- Added configurable adverse slippage in basis points per side and surfaced source timestamps, fills, size and slippage cost in the replay UI.
+- CSV parser/template now accept explicit BBO source, event time, receive time, size unit and bid/ask quantities. CSV source claims remain unauthenticated; imported files are not provider-verified.
+- Binance bookTicker adapter records local receive time and explicit contract-size unit. The optionTicker 24-hour statistics event is kept separate from the REST ticker snapshot clock used for OPTION_TICKER BBO.
+- CI 45572889900: 303 tests passed, 0 failed; production build, compressed bundle budget and 18/18 Playwright journeys passed. Lighthouse 45572889852 and Project Context Guard 45572889839 passed.
+- No live capture, scheduled worker, cloud archive, historical BBO corpus, strategy edge or live trading capability is claimed.
