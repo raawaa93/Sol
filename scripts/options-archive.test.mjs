@@ -158,6 +158,46 @@ test('concurrent stale-lease recovery never removes a newly acquired writer leas
   await (attempts[0].status === 'fulfilled' ? archive : second).releaseWriterLease(lease);
 });
 
+test('expired writer and abandoned recovery locks can be reclaimed without deleting a live recovery lock', async (t) => {
+  const { root, archive } = await makeArchive(t);
+  const writerPath = join(root, '.writer.lock');
+  const recoveryPath = join(root, '.writer.recovery.lock');
+  const host = process.env.HOSTNAME ?? 'local';
+  await writeFile(writerPath, JSON.stringify({
+    token: 'expired-writer',
+    pid: process.pid + 1_000_000,
+    host,
+    expiresAt: Date.now() - 1_000,
+  }));
+  await writeFile(recoveryPath, JSON.stringify({
+    token: 'abandoned-recovery',
+    pid: process.pid + 2_000_000,
+    host,
+    createdAt: new Date(Date.now() - 60_000).toISOString(),
+  }));
+  const lease = await archive.acquireWriterLease();
+  await archive.releaseWriterLease(lease);
+  await assert.rejects(readFile(recoveryPath, 'utf8'), (error) => error.code === 'ENOENT');
+
+  await writeFile(writerPath, JSON.stringify({
+    token: 'expired-writer-2',
+    pid: process.pid + 3_000_000,
+    host,
+    expiresAt: Date.now() - 1_000,
+  }));
+  await writeFile(recoveryPath, JSON.stringify({
+    token: 'live-recovery',
+    pid: process.pid,
+    host,
+    createdAt: new Date().toISOString(),
+  }));
+  await assert.rejects(
+    archive.acquireWriterLease(),
+    (error) => error instanceof OptionsArchiveError && error.code === 'WRITER_LEASE_RECOVERY_BUSY',
+  );
+  assert.equal(JSON.parse(await readFile(writerPath, 'utf8')).token, 'expired-writer-2');
+});
+
 test('restart after a durable segment but before cursor update is safely replayable', async (t) => {
   const { root, archive } = await makeArchive(t);
   const record = makeRecord();
