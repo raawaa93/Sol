@@ -176,7 +176,7 @@ The old isolated worktree `research/options-pit-archive-2026-11-24` remains unav
 - Requires observed IV, valid timestamped index, observed risk-free rate and model metadata; 0% carry remains an explicit assumption in UI.
 - Binance per-underlying model price/Greeks normalize to per-contract only through verified canonical cash scale (premium multiplier 1). Unknown products remain blocked.
 - CI, Project Context Guard and Lighthouse passed on PR head; its own published-site smoke job was skipped. A later mainline deployment and published-site smoke test passed after PR #172 and PR #177. No strategy profitability or historical edge claim.
-- Remaining canonical work: model-aware position Greeks/shock P&L, PAPER lifecycle valuation and replay. PR #169 entry-only PAPER snapshot is under verification.
+- Remaining canonical work: PAPER lifecycle valuation (mark-to-market, amendments, exits, simulated P&L) and point-in-time replay. Binance position Greeks are merged in PR #177; canonical EV is merged in PR #170; PAPER entry snapshots are merged in PR #172/#175.
 
 
 ## Canonical Greek/EV safety gate merged — 25 November 2026
@@ -210,16 +210,16 @@ The old isolated worktree `research/options-pit-archive-2026-11-24` remains unav
 - Mixed BookTicker/OptionsTicker bid/ask pairs without a single coherent source are rejected; REST 24h ticker closeTime is not accepted as a bid/ask event timestamp.
 - Premium cash uses the canonical premium multiplier only; contract unit and cash settlement multiplier remain separate.
 - This remains an entry audit snapshot only. No mark-to-market, exits, realized P&L, Greeks, EV or replay are enabled. Local browser storage is not a durable server journal.
-- Follow-up PR #175: https://github.com/raawaa93/Sol/pull/175. Await CI before treating this hardening as delivered.
+- Follow-up PR #175: https://github.com/raawaa93/Sol/pull/175. Merged as `9ca75b1622e79f9adf70c558a7f7052a70d2a75c`; CI and published-site verification passed.
 
 
-## Durable local options archive foundation — PR #176 under verification
+## Durable local options archive foundation merged — 25 November 2026
 
-- PR #176: https://github.com/raawaa93/Sol/pull/176
-- Adds a Node-only local archive writer, content-addressed segments, raw-payload hashes, idempotency, cursor-after-durable-commit, quota, integrity checks, local export/restore, point-in-time eligibility gate, and fake-transport-first public stream parsing.
-- During review, serialized stale writer-lease recovery and added regression coverage for concurrent stale-lock recovery; orphaned temporary segments are cleaned only while holding the writer lease.
-- The latest PR head is still running CI, Project Context Guard and Lighthouse. Do not merge until all gates pass.
-- No real Binance HTTP/WebSocket transport, exchangeInfo contract-spec mapper, cloud archive, or market capture is delivered. No historical edge or profitability claim.
+- PR #176 merged as `8dcd251e2cc6c03dccf04b82c0cd48eb2ada59a2`: https://github.com/raawaa93/Sol/pull/176
+- Adds a Node-only local archive writer, content-addressed segments, raw-payload hashes, deterministic idempotency, cursor-after-durable-commit, quota, integrity checks, symlink protection, same-host serialized writer lease, orphan-temp recovery, atomic local export/restore, point-in-time eligibility gate, and fake-transport-first public stream parsing.
+- Adds a strict injected `exchangeInfo` contract-spec mapper, with independent premium multiplier and cash settlement multiplier, exact underlying match, trading-status checks, event/availability clocks and separate legal terms references. The legal terms scope is explicitly Binance RIE/RCH; account-specific applicability is not yet verified.
+- CI run 45548127457, Project Context Guard 45548127433, Lighthouse 45548127475, deployment 45548127461 and published-site smoke test all passed.
+- No real Binance HTTP/WebSocket transport, automatic `exchangeInfo` refresh, cloud archive, or market capture is delivered. No historical edge or profitability claim.
 
 
 ## Binance mark-IV source provenance correction merged — 25 November 2026
@@ -228,4 +228,4 @@ The old isolated worktree `research/options-pit-archive-2026-11-24` remains unav
 - Binance `vo` is now preserved as venue-reported volatility, not relabelled as observed `markIV`.
 - Observed mark IV is accepted only from the explicit `markIV` field, with `markIvSource=OPTION_TICKER` and a matching event timestamp. Mark-price events cannot create an IV timestamp.
 - Canonical position Greeks remain fail-closed when this explicit IV source is absent. No live trading is enabled.
-- PR CI, Project Context Guard and Lighthouse passed. Mainline deployment/smoke verification for this merge is pending.
+- PR CI, Project Context Guard and Lighthouse passed. Subsequent mainline deployment and published-site smoke test passed on the archive merge (run 45548127461).
