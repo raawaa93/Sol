@@ -49,7 +49,7 @@ import { formatAssetPrice, formatNumber, formatOptionPrice, formatQuantity, form
 import type { AssetClass, OptionQuote, OptionSide, PaperTrade, Underlying } from './lib/types';
 import { ASSET_CLASS_LABELS } from './lib/asset-class';
 import { PAPER_CAMPAIGN_CAPITAL, PAPER_CAMPAIGN_MAX_LOSS, PAPER_CAMPAIGN_PER_TRADE_CAP, canAllocatePaperCampaignTrade, summarizePaperCampaignBudget } from './lib/paper-campaign-budget';
-import { clearPaperJournalRecovery, loadPaperJournal, readPaperJournalPrimary, readPaperJournalRecovery } from './lib/paper-journal-storage';
+import { PAPER_JOURNAL_STORAGE_KEY, clearPaperJournalRecovery, loadPaperJournal, readPaperJournalPrimary, readPaperJournalRecovery } from './lib/paper-journal-storage';
 const MarketDepthPanel = lazy(() => import('./components/MarketDepthPanel'));
 const OpportunityReview = lazy(() => import('./components/OpportunityReview'));
 const GreeksPanel = lazy(() => import('./components/GreeksPanel'));
@@ -1225,7 +1225,64 @@ function App() {
       'sol-paper-journal-original.json',
       'تم تنزيل الملف الأصلي الحالي من دفتر PAPER',
     );
+  }
+  
+  const exportPaperJournalJson = async () => {
+    const { createPaperJournalBackup } = await import('./lib/paper-journal-backup');
+    const result = createPaperJournalBackup(trades, isPaperTrade);
+    if (!result.ok || !result.json) {
+      notify('تعذر إنشاء نسخة JSON: توجد سجلات غير صالحة أو تجاوزت النسخة الحد المسموح.');
+      return;
+    }
+    const blob = new Blob([result.json], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'sol-paper-journal-v1.json';
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+    notify(`تم تنزيل نسخة PAPER JSON (${result.entries.length} سجل)؛ البيانات لم تُرفع إلى أي خادم.`);
   };
+
+  const importPaperJournalJson = async (raw: string) => {
+    if (paperJournalLoad.persistenceBlocked) {
+      notify('الاستيراد متوقف لحماية نسخة الاستعادة؛ نزّل النسخ الخام أولاً.');
+      return;
+    }
+    const { mergePaperJournalBackup, parsePaperJournalBackup } = await import('./lib/paper-journal-backup');
+    const parsed = parsePaperJournalBackup(raw, isPaperTrade);
+    if (!parsed.ok) {
+      notify(parsed.reason === 'UNSUPPORTED_BACKUP_VERSION'
+        ? 'إصدار نسخة PAPER غير مدعوم؛ لم تتغير بياناتك.'
+        : parsed.reason === 'BACKUP_TOO_LARGE'
+          ? 'حجم النسخة يتجاوز 5 MiB؛ لم تتغير بياناتك.'
+          : 'ملف النسخة غير صالح أو يحتوي سجلات غير موثوقة/مكررة؛ لم تتغير بياناتك.');
+      return;
+    }
+    const merged = mergePaperJournalBackup(trades, parsed.entries, isPaperTrade);
+    if (!merged.ok) {
+      notify(merged.reason === 'JOURNAL_ID_CONFLICT'
+        ? 'تعارض معرّف صفقة: النسخة تحتوي بيانات مختلفة لسجل موجود. لم نستبدل أي سجل.'
+        : 'تعذر دمج النسخة بسبب حد الحجم أو سلامة السجلات؛ لم تتغير بياناتك.');
+      return;
+    }
+    const added = merged.entries.length - trades.length;
+    if (added === 0) {
+      notify('النسخة صالحة، ولا تحتوي صفقات جديدة غير الموجودة حالياً.');
+      return;
+    }
+    try {
+      localStorage.setItem(PAPER_JOURNAL_STORAGE_KEY, JSON.stringify(merged.entries));
+    } catch {
+      notify('تعذر حفظ النسخة المدمجة بسبب مساحة التخزين؛ بقي الدفتر الحالي كما هو.');
+      return;
+    }
+    setTrades(merged.entries);
+    notify(`تم استيراد ${added} صفقة جديدة محلياً دون استبدال السجلات الموجودة.`);
+  };
+;
 
   const retryPaperJournalPersistence = () => {
     if (!paperJournalLoad.persistenceBlocked) return;
@@ -1712,6 +1769,9 @@ function App() {
               onClose={closePaperTrade}
               onExportTrades={exportTrades}
               onExportIVHistory={exportIVHistoryBackup}
+              onExportJson={exportPaperJournalJson}
+              onImportBackup={importPaperJournalJson}
+              onImportBackupError={notify}
               onClearJournal={clearPaperJournal}
               onExportRecovery={exportPaperJournalRecovery}
               onExportOriginal={exportPaperJournalOriginal}
