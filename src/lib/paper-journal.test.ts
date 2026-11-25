@@ -161,13 +161,13 @@ test('canonical PAPER entry requires the timestamp for the actual observed price
   }, 'BINANCE'), false);
 });
 
-test('canonical PAPER entry accepts a markPrice-stream midpoint only with its own timestamp', () => {
+test('canonical PAPER entry rejects mark-price midpoint as a non-executable buy fill', () => {
   const markQuote = {
     ...quote,
     bidAskSource: 'MARK_PRICE' as const,
     sourceTimestamps: { ...quote.sourceTimestamps, markPrice: '2026-11-25T03:00:01Z' },
   };
-  assert.equal(canCreateCanonicalPaperTrade(markQuote, 'BINANCE'), true);
+  assert.equal(canCreateCanonicalPaperTrade(markQuote, 'BINANCE'), false);
 });
 
 test('canonical PAPER entry rejects a premium or spot value that does not match the timestamped source', () => {
@@ -324,4 +324,26 @@ test('canonical PAPER close cannot be applied twice', () => {
   assert.equal(closed.ok, true);
   if (!closed.ok) return;
   assert.equal(closeCanonicalPaperTrade({ trade: closed.trade, quote: closeQuote(), closedAt: '2026-11-25T03:11:00Z' }).reason, 'PAPER_TRADE_ALREADY_CLOSED_OR_INVALID');
+});
+
+
+test('canonical PAPER entry requires Ask size to cover the full quantity and a receive timestamp', () => {
+  assert.equal(createCanonicalPaperTrade({ ...input, quantity: 11 }).reason, 'INSUFFICIENT_ASK_SIZE_FOR_PAPER_ENTRY');
+  assert.equal(canCreateCanonicalPaperTrade({ ...quote, askQuantity: 0 }, 'BINANCE'), false);
+  const missingReceiveTime = { ...quote, sourceReceivedAt: undefined };
+  const result = createCanonicalPaperTrade({ ...input, quote: missingReceiveTime });
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.reason, 'PAPER_ENTRY_MARKET_SNAPSHOT_STALE_OR_FUTURE');
+});
+
+test('Binance PAPER entry fee uses the symbol taker rate, index, unit and 10 percent premium cap', () => {
+  const capped = createCanonicalPaperTrade(input);
+  assert.equal(capped.ok, true);
+  if (!capped.ok) return;
+  assert.equal(capped.trade.exchangeFeeAtEntry, 0.39);
+  const uncappedQuote = { ...quote, takerFeeRate: 0.000001 };
+  const uncapped = createCanonicalPaperTrade({ ...input, quote: uncappedQuote });
+  assert.equal(uncapped.ok, true);
+  if (!uncapped.ok) return;
+  assert.equal(uncapped.trade.exchangeFeeAtEntry, 0.0297);
 });
