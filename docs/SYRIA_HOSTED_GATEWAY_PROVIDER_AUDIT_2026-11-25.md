@@ -99,3 +99,36 @@ A third-party BGP page returned conflicting/stale route ownership for an IP pref
 
 ### Compliance update
 Binance's own FAQ for Syrian residents (published 12 June 2025) says Syrian residents can register subject to standard KYC and compliance, after the policy change described in the FAQ. However, Binance's regional terms are not uniform; one regional terms page includes Syria in a high-risk jurisdiction clause. Do not infer API eligibility from account onboarding FAQ alone. Before any market-data gateway is used, confirm the terms applicable to the correct Binance contracting entity, API product and user context. No geo-evasion, VPN, foreign proxy, or egress switching is allowed.
+
+## Sham Cloud / Mijad — upgraded priority after current platform review
+
+Official platform: https://shamcloud.sy/ar and https://shamcloud.sy/en  
+Operator: Mijad Technology Services Company. Official site identifies the platform as a local Syrian cloud and hosting service. The published plans visible in the current search index include:
+- Cloud VM business: 8 vCPU, 16 GB RAM, 100 GB storage, 50 Mbps.
+- IaaS Enterprise: 6 vCPU, 8 GB RAM, 100 GB storage, 1 public IP, 20 Mbps.
+- IaaS Professional: 4 vCPU, 6 GB RAM, 75 GB storage, 1 public IP, 20 Mbps.
+No prices are shown in the indexed plan cards; ask for a small gateway-only quote and monthly billing. The platform describes local infrastructure and 99.95% availability; these are provider claims, not an independently audited SLA.
+The platform's own news/index says the local cloud service launched in September 2026 under Ministry of Communications sponsorship. Mijad's official contact: info@mijadtechnology.com; +963 957 667 732 / +963 11 4855. Its website's separate company contact page lists +963 957 667 723; verify which is the correct sales/support number.
+
+**Priority adjustment:** Mijad/Sham Cloud becomes the leading private-provider candidate because it publicly lists cloud VM/IaaS capacities materially above the NDC public VPS tiers and explicitly markets local Syrian cloud hosting. NDC remains the leading government/public-provider candidate. Neither is technically qualified until the exact hosting facility, public egress IP/ASN, current quote, and external connectivity are confirmed.
+
+## Inquiry message — Arabic
+
+الموضوع: طلب عرض فني وتجاري لخادم سحابي مستضاف فعلياً داخل سوريا
+
+نرغب بتشغيل بوابة HTTPS صغيرة للقراءة فقط لجلب بيانات السوق العامة من واجهات Binance Options API، دون مفاتيح API أو دخول حسابات أو تنفيذ أوامر تداول.
+
+نرجو تأكيد النقاط التالية كتابةً:
+1. هل الخادم الافتراضي أو عقدة الحوسبة التي ستستضيفه موجودة فعلياً داخل مركز بيانات في سوريا؟ نرجو ذكر اسم المركز والمدينة.
+2. هل يخرج الاتصال إلى الإنترنت من عنوان IP عام سوري؟ نرجو تزويدنا بعنوان IPv4 المقترح وASN/مزود الشبكة، وتوضيح أي NAT أو وسيط خروج.
+3. هل يمكن توفير Ubuntu 22.04 أو 24.04 مع Root، و2 vCPU على الأقل و4GB RAM و40GB SSD (أو أصغر مواصفات متاحة قابلة للترقية)، وعنوان IPv4 ثابت، واتصال صادر TCP/443؟
+4. هل يمكن إجراء اختبار اتصال تجريبي من الخادم نفسه إلى واجهات Binance العامة للقراءة فقط قبل الالتزام السنوي أو الدفع؟
+5. ما السعر الشهري والسنوي النهائي، ورسوم الإعداد والعنوان الثابت والنسخ الاحتياطي والتجديد والضرائب؟ وهل يمكن الدفع شهرياً؟
+6. ما ضمان التوافر والدعم، وسياسة الصيانة، والنسخ الاحتياطي والاستعادة؟
+7. هل تسمح شروطكم بهذا الاستخدام المحدد؟ نرجو إرسال شروط الخدمة وسياسة الاستخدام المقبول.
+
+لن نستخدم VPN أو بروكسي أجنبي أو تغيير منطقة خروج. إذا لم تسمح الخدمة أو لم ينجح الاتصال من عنوانها السوري الفعلي، فلن نتابع هذا المسار. هذا استفسار فني فقط ولا يمثل موافقة على شراء أو التزام مالي.
+
+## Outreach status
+
+This inquiry is prepared for NDC, Mijad/Sham Cloud and Onyx. It has **not** been sent. The connected Activepieces project currently has only a GitHub connection; no email or WhatsApp sender is connected. Gmail was offered for connection in ChatGPT but no connection confirmation was received. No external provider has been contacted from this session.
