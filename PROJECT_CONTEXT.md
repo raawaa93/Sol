@@ -162,4 +162,4 @@ No second execution venue for a Syrian resident has been verified for global lis
 - Recent partially written recovery locks are treated as BUSY; malformed recovery locks are never auto-deleted without verifiable owner metadata.
 - Added regression tests for concurrent stale-lease recovery and malformed recovery-lock preservation; fixed the one failing main-branch concurrency test.
 - Replay rejects missing/malformed/expired option expiry and refuses holding periods or exits at/after expiry because settlement/assignment is not modeled.
-- PR-head CI, Lighthouse and Project Context Guard passed. Post-merge main workflows were started and must be checked before calling the main branch green.
+- PR-head CI 45580317705, Lighthouse 45580317770 and Project Context Guard 45580317843 passed. Main CI 45581041394, Lighthouse 45581041298, Project Context Guard 45581041397, and GitHub Pages deployment/published-site smoke and Lighthouse 45581041312 passed.
