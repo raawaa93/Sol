@@ -40,6 +40,27 @@ test('Binance time to expiry uses exchange server time rather than the browser c
   assert.equal(snapshot.quotes[0].pricingModel, 'BLACK_SCHOLES_CARRY');
 });
 
+test('REST mark IV never borrows the aggregate snapshot completion time as its receive time', () => {
+  const now = Date.UTC(2026, 10, 25, 4);
+  const expiry = now + 30 * 86_400_000;
+  const symbol = `BTC-${compactDate(expiry)}-100000-C`;
+  const snapshot = normalizeBinanceSnapshot({
+    fetchedAt: now,
+    exchangeInfo: {
+      serverTime: now,
+      optionContracts: [{ baseAsset: 'BTC', quoteAsset: 'USDT', underlying: 'BTCUSDT', settleAsset: 'USDT' }],
+      optionSymbols: [{ symbol, underlying: 'BTCUSDT', quoteAsset: 'USDT', side: 'CALL', strikePrice: 100000, expiryDate: expiry, unit: 100, status: 'TRADING' }],
+    },
+    marks: [{ symbol, markPrice: 1, markIV: 0.5, riskFreeInterest: 0.02 }],
+    indices: [{ requestedUnderlying: 'BTCUSDT', item: { indexPrice: 100000, time: now } }],
+  });
+  const quote = snapshot.quotes[0];
+  assert.equal(quote.markIvSource, 'REST_MARK');
+  assert.equal(quote.sourceReceivedAt?.markIv, undefined);
+  assert.equal(quote.sourceReceivedAt?.riskFreeRate, undefined);
+  assert.equal(quote.sourceTimestamps?.markIv, undefined);
+});
+
 test('Binance snapshot normalizer merges the active option universe and public market feeds', () => {
   const now = Date.now();
   const expiry = now + 30 * 86_400_000;
