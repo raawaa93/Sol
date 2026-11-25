@@ -167,6 +167,7 @@ const canonicalGreekQuote: OptionQuote = {
   sourceTimestamps: {
     index: '2026-11-25T04:00:00Z',
     optionTicker: '2026-11-25T04:00:01Z',
+    markIv: '2026-11-25T04:00:01Z',
   },
 };
 
