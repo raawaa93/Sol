@@ -194,6 +194,17 @@ export interface PaperTrade {
   fees: number;
   spotAtEntry: number;
   quoteAsset?: string;
+  /** Immutable-at-entry canonical snapshot; local storage is an audit record, never trusted for later calculations. */
+  contractEconomics?: ContractEconomics;
+  contractVenueAtEntry?: string;
+  contractAssetClassAtEntry?: AssetClass;
+  contractUnderlyingKindAtEntry?: UnderlyingKind;
+  contractUnitAtEntry?: number;
+  premiumMultiplierAtEntry?: number;
+  premiumAmountAtEntry?: number;
+  premiumCurrencyAtEntry?: string;
+  priceSourceAtEntry?: QuotePriceSource;
+  sourceTimestampsAtEntry?: OptionQuote['sourceTimestamps'];
   status: 'PAPER';
 }
 
