@@ -37,3 +37,30 @@ This is a scoped initial pass, not exhaustive review of papers, vendors, reposit
 - Dispersion/correlation trades and hedging costs.
 - Position sizing, drawdowns, margin/liquidation risk and capacity.
 - Open-source data/library licensing, freshness and reproducibility.
+
+## Second research pass — surface integrity, dispersion, execution and repositories
+
+### Surface construction and arbitrage checks
+- crollila/implied-vol-surface-svi: raw SVI fit and static arbitrage diagnostics described in README; author-reported metrics unverified. https://github.com/crollila/implied-vol-surface-svi
+- Arhayout/volatility-surface: SVI/SSVI/eSSVI and butterfly/calendar checks; candidate for audit. https://github.com/Arhayout/volatility-surface
+- amm-kej/ssvi_live: SSVI pipeline; review slice refitting penalties and verify whether no-arbitrage guarantees hold after refitting. https://github.com/amm-kej/ssvi_live
+
+### Dispersion
+- Marshall (2009), Global Finance Journal: compares component and index implied volatility during 2005-2007; discrepancies vary direction and transaction costs matter. https://www.sciencedirect.com/science/article/pii/S1044028309000593
+- Dispersion is correlation exposure; inferred correlation depends on weights, surfaces, execution and regime. Research only until realistic costs and component data are validated.
+
+### Execution and spreads
+- Pinder (2003): spreads related to option value, term, absolute hedge ratio and underlying volatility; trading activity relates inversely to spreads. https://www.sciencedirect.com/science/article/pii/S1057521903000632
+- Limit-order placement literature stresses execution probability vs adverse selection, and latency can erode predictive value. https://openurl.ebsco.com/contentitem/doi:10.1142/s2382626617500095
+- Capture spread, quote age, depth, trade size, fill assumptions and price impact. Mid-price backtests alone are not acceptable.
+
+### Additional repositories to audit, not reuse blindly
+- khayreali/OptionsBacktester: delta-hedged backtest and Greek attribution. https://github.com/khayreali/OptionsBacktester
+- Scott-Switzer/options-backtester: crossing bid/ask and commissions described; audit correctness/license. https://github.com/Scott-Switzer/options-backtester
+- gianni04/options-hedging-risk: risk/hedging example, author claims unverified. https://github.com/gianni04/options-hedging-risk
+- TheRealKwabena/vol-surface: inspect claimed numerical tests and arbitrage diagnostics. https://github.com/TheRealKwabena/vol-surface
+- FilipNowakowicz/option-vol-surface: educational IV/Greek attribution candidate. https://github.com/FilipNowakowicz/option-vol-surface
+- Aaaaarin/vol-surface-dispersion: implied-correlation and costed dispersion code, claims must be reproduced. https://github.com/Aaaaarin/vol-surface-dispersion
+- anthonymakarewicz/volatility-trading: claimed realistic-cost research pipeline; verify methodology and licensing. https://github.com/anthonymakarewicz/volatility-trading
+
+Recent repo performance claims may rely on synthetic, proxy or incomplete data. Treat them as research leads, not evidence of strategy profitability.
