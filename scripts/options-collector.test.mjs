@@ -1,14 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { ResumableOptionsArchive } from './options-archive.mjs';
+import { evaluateOptionsPointInTime, ResumableOptionsArchive } from './options-archive.mjs';
 import {
   buildPublicBinanceRestUrl,
   collectForwardOptionsEvents,
   createFakeOptionsTransport,
   OptionsCollectorError,
+  mapVerifiedBinanceContractSpec,
   parseBinancePublicStreamEvent,
   requestPublicBinanceRest,
 } from './options-collector.mjs';
@@ -23,6 +24,31 @@ async function makeArchive(t) {
   const archive = new ResumableOptionsArchive(root);
   await archive.initialize();
   return archive;
+}
+
+async function listFiles(root) {
+  const result = [];
+  for (const entry of await readdir(root, { withFileTypes: true })) {
+    const path = join(root, entry.name);
+    if (entry.isDirectory()) result.push(...await listFiles(path));
+    else result.push(path);
+  }
+  return result;
+}
+
+function exchangeInfoFixture() {
+  return {
+    serverTime: EVENT_MS,
+    optionContracts: [{
+      baseAsset: 'BTC', quoteAsset: 'USDT', underlying: 'BTCUSDT',
+      settleAsset: 'USDT', contractType: 'CRYPTO_OPTIONS', underlyingType: 'CRYPTO',
+    }],
+    optionSymbols: [{
+      symbol: SYMBOL, underlying: 'BTCUSDT', quoteAsset: 'USDT', side: 'CALL',
+      strikePrice: '100000', expiryDate: Date.parse('2026-12-25T08:00:00.000Z'),
+      unit: '100', contractType: 'CRYPTO_OPTIONS', underlyingType: 'CRYPTO',
+    }],
+  };
 }
 
 test('REST URL builder only exposes the public Options allowlist and rejects private/arbitrary parameters', () => {
@@ -48,6 +74,58 @@ test('HTTP 451/403 eligibility responses stop without retry or alternate egress'
     (error) => error instanceof OptionsCollectorError && error.code === 'ELIGIBILITY_BLOCKED',
   );
   assert.equal(calls, 1);
+});
+
+test('exchangeInfo maps only explicit Binance Crypto Options contract terms with separate premium and cash scales', () => {
+  const spec = mapVerifiedBinanceContractSpec(exchangeInfoFixture(), SYMBOL, RECEIVED);
+  assert.ok(spec);
+  assert.equal(spec.contractSpec.unit, 100);
+  assert.equal(spec.contractSpec.premiumUnit, 'PER_CONTRACT');
+  assert.equal(spec.contractSpec.cashSettlementMultiplier, 100);
+  assert.equal(spec.contractSpec.quoteAsset, 'USDT');
+  assert.equal(spec.contractSpec.settlementAsset, 'USDT');
+  assert.equal(spec.contractSpec.sourceEndpoint, 'REST_EXCHANGE_INFO');
+  assert.equal(spec.contractSpecObservedAt, new Date(EVENT_MS).toISOString());
+  assert.equal(spec.contractSpecAvailableAt, RECEIVED);
+  assert.equal(mapVerifiedBinanceContractSpec({
+    ...exchangeInfoFixture(),
+    optionContracts: [{ ...exchangeInfoFixture().optionContracts[0], underlyingType: 'EQUITY' }],
+  }, SYMBOL, RECEIVED), null);
+  assert.equal(mapVerifiedBinanceContractSpec({
+    ...exchangeInfoFixture(),
+    optionContracts: [{ ...exchangeInfoFixture().optionContracts[0], settleAsset: 'USDC' }],
+  }, SYMBOL, RECEIVED), null);
+});
+
+test('collector attaches the exchangeInfo snapshot to subsequent market records and PIT gate accepts only after availability', async (t) => {
+  const archive = await makeArchive(t);
+  const bookTicker = {
+    e: 'bookTicker', E: EVENT_MS, T: EVENT_MS - 5, u: 42, s: SYMBOL,
+    b: '1200.0', B: '2.0', a: '1210.0', A: '3.0',
+  };
+  const transport = createFakeOptionsTransport([
+    { type: 'exchangeInfo', payload: exchangeInfoFixture() },
+    { type: 'message', data: bookTicker },
+  ]);
+  await collectForwardOptionsEvents({
+    archive,
+    transport,
+    streams: ['btc-261225-100000-c@bookTicker'],
+    enabled: true,
+    now: () => RECEIVED,
+  });
+  const report = await archive.verify();
+  assert.equal(report.ok, true, report.errors.join('; '));
+  const records = [];
+  for (const path of await listFiles(join(archive.root, 'segments'))) {
+    for (const line of (await readFile(path, 'utf8')).trim().split('\n')) records.push(JSON.parse(line));
+  }
+  const quote = records.find((record) => record.kind === 'BOOK_TICKER');
+  assert.ok(quote?.contractSpec);
+  assert.equal(quote.contractSpec.unit, 100);
+  assert.equal(quote.contractSpecAvailableAt, RECEIVED);
+  assert.equal(evaluateOptionsPointInTime(quote, '2026-11-25T03:00:02.000Z', ['bid', 'ask']).eligible, true);
+  assert.ok(evaluateOptionsPointInTime(quote, '2026-11-25T03:00:00.500Z', ['bid', 'ask']).reasons.includes('CONTRACT_SPEC_LOOKAHEAD'));
 });
 
 test('book ticker parser preserves event and transaction times, raw fields, and crossed-book quality', () => {
