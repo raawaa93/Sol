@@ -255,6 +255,18 @@ function createEntry() {
   return result.trade;
 }
 
+function closeFailure(input: Parameters<typeof closeCanonicalPaperTrade>[0]): string {
+  const result = closeCanonicalPaperTrade(input);
+  assert.equal(result.ok, false);
+  return result.ok ? 'UNEXPECTED_SUCCESS' : result.reason;
+}
+
+function entryFailure(input: Parameters<typeof createCanonicalPaperTrade>[0]): string {
+  const result = createCanonicalPaperTrade(input);
+  assert.equal(result.ok, false);
+  return result.ok ? 'UNEXPECTED_SUCCESS' : result.reason;
+}
+
 function closeQuote(overrides: Partial<OptionQuote> = {}): OptionQuote {
   return {
     ...quote,
@@ -295,27 +307,31 @@ test('canonical PAPER close sells at fresh sized Bid, calculates exchange fee an
 test('canonical PAPER close rejects stale/future books, insufficient displayed size and expired contracts', () => {
   const trade = createEntry();
   const stale = closeQuote({ sourceReceivedAt: { bidAsk: '2026-11-25T03:00:00Z' } });
-  assert.equal(closeCanonicalPaperTrade({ trade, quote: stale, closedAt: '2026-11-25T03:10:02Z' }).reason, 'PAPER_CLOSE_MARKET_SNAPSHOT_STALE_OR_FUTURE');
+  assert.equal(closeFailure({ trade, quote: stale, closedAt: '2026-11-25T03:10:02Z' }), 'PAPER_CLOSE_MARKET_SNAPSHOT_STALE_OR_FUTURE');
 
   const future = closeQuote({
     sourceTimestamps: { ...closeQuote().sourceTimestamps, bookTicker: '2026-11-25T03:11:00Z' },
   });
-  assert.equal(closeCanonicalPaperTrade({ trade, quote: future, closedAt: '2026-11-25T03:10:02Z' }).reason, 'PAPER_CLOSE_MARKET_SNAPSHOT_STALE_OR_FUTURE');
+  assert.equal(closeFailure({ trade, quote: future, closedAt: '2026-11-25T03:10:02Z' }), 'PAPER_CLOSE_MARKET_SNAPSHOT_STALE_OR_FUTURE');
 
   const thin = closeQuote({ bidQuantity: 2 });
-  assert.equal(closeCanonicalPaperTrade({ trade, quote: thin, closedAt: '2026-11-25T03:10:02Z' }).reason, 'INSUFFICIENT_OR_INVALID_BID_FOR_PAPER_CLOSE');
+  assert.equal(closeFailure({ trade, quote: thin, closedAt: '2026-11-25T03:10:02Z' }), 'INSUFFICIENT_OR_INVALID_BID_FOR_PAPER_CLOSE');
 
+  const nearExpiryQuote = { ...quote, expiry: '2026-11-25T03:10:01Z' };
+  const nearExpiryEntry = createCanonicalPaperTrade({ ...input, quote: nearExpiryQuote });
+  assert.equal(nearExpiryEntry.ok, true);
+  if (!nearExpiryEntry.ok) return;
   const expired = closeQuote({ expiry: '2026-11-25T03:10:01Z' });
-  assert.equal(closeCanonicalPaperTrade({ trade, quote: expired, closedAt: '2026-11-25T03:10:02Z' }).reason, 'OPTION_EXPIRED_BEFORE_PAPER_CLOSE');
+  assert.equal(closeFailure({ trade: nearExpiryEntry.trade, quote: expired, closedAt: '2026-11-25T03:10:02Z' }), 'OPTION_EXPIRED_BEFORE_PAPER_CLOSE');
 });
 
 test('canonical PAPER close rejects a different contract and midpoint-only legacy entries', () => {
   const trade = createEntry();
   const mismatched = closeQuote({ strike: 101000 });
-  assert.equal(closeCanonicalPaperTrade({ trade, quote: mismatched, closedAt: '2026-11-25T03:10:02Z' }).reason, 'PAPER_CLOSE_CONTRACT_MISMATCH');
+  assert.equal(closeFailure({ trade, quote: mismatched, closedAt: '2026-11-25T03:10:02Z' }), 'PAPER_CLOSE_CONTRACT_MISMATCH');
 
   const legacy = { ...trade, priceSourceAtEntry: 'MID' as const };
-  assert.equal(closeCanonicalPaperTrade({ trade: legacy, quote: closeQuote(), closedAt: '2026-11-25T03:10:02Z' }).reason, 'LEGACY_OR_NON_EXECUTABLE_PAPER_ENTRY_CANNOT_BE_CLOSED');
+  assert.equal(closeFailure({ trade: legacy, quote: closeQuote(), closedAt: '2026-11-25T03:10:02Z' }), 'LEGACY_OR_NON_EXECUTABLE_PAPER_ENTRY_CANNOT_BE_CLOSED');
 });
 
 test('canonical PAPER close cannot be applied twice', () => {
@@ -323,12 +339,12 @@ test('canonical PAPER close cannot be applied twice', () => {
   const closed = closeCanonicalPaperTrade({ trade, quote: closeQuote(), closedAt: '2026-11-25T03:10:02Z' });
   assert.equal(closed.ok, true);
   if (!closed.ok) return;
-  assert.equal(closeCanonicalPaperTrade({ trade: closed.trade, quote: closeQuote(), closedAt: '2026-11-25T03:11:00Z' }).reason, 'PAPER_TRADE_ALREADY_CLOSED_OR_INVALID');
+  assert.equal(closeFailure({ trade: closed.trade, quote: closeQuote(), closedAt: '2026-11-25T03:11:00Z' }), 'PAPER_TRADE_ALREADY_CLOSED_OR_INVALID');
 });
 
 
 test('canonical PAPER entry requires Ask size to cover the full quantity and a receive timestamp', () => {
-  assert.equal(createCanonicalPaperTrade({ ...input, quantity: 11 }).reason, 'INSUFFICIENT_ASK_SIZE_FOR_PAPER_ENTRY');
+  assert.equal(entryFailure({ ...input, quantity: 11 }), 'INSUFFICIENT_ASK_SIZE_FOR_PAPER_ENTRY');
   assert.equal(canCreateCanonicalPaperTrade({ ...quote, askQuantity: 0 }, 'BINANCE'), false);
   const missingReceiveTime = { ...quote, sourceReceivedAt: undefined };
   const result = createCanonicalPaperTrade({ ...input, quote: missingReceiveTime });
