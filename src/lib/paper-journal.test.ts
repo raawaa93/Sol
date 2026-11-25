@@ -300,6 +300,9 @@ test('canonical PAPER close sells at timestamped Bid and calculates net realized
   assert.equal(result.ok, true);
   if (!result.ok) return;
   assert.equal(result.close.exitPriceSource, 'BID');
+  assert.equal(result.close.exitBidQuantity, 10);
+  assert.equal(result.close.exitBidSizeUnit, 'CONTRACTS');
+  assert.equal(result.close.exitFeeCurrency, 'USDT');
   assert.equal(result.close.exitPremium, 1.1);
   assert.ok(Math.abs(result.close.exitPremiumAmount - 3.3) < 1e-9);
   assert.ok(Math.abs(result.close.exitProceeds - 3.2) < 1e-9);
