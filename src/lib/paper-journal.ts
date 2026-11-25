@@ -270,9 +270,12 @@ export function createCanonicalPaperClose(input: CanonicalPaperCloseInput): Cano
     && Math.abs(entryDebit.value.amount - (trade.premiumDebitAtEntry ?? Number.NaN)) < 1e-8
     && Math.abs(entryDebit.value.premiumAmount - (trade.premiumAmountAtEntry ?? Number.NaN)) < 1e-8;
   if (!entrySnapshotValid) return { ok: false, reason: 'ENTRY_DEBIT_OR_SOURCE_SNAPSHOT_INVALID' };
-  const sameContract = quote.venue === trade.contractVenueAtEntry
-    && quote.assetClass === trade.contractAssetClassAtEntry
-    && quote.underlyingKind === trade.contractUnderlyingKindAtEntry
+  const sameContract = trade.contractVenueAtEntry === 'BINANCE'
+    && trade.contractAssetClassAtEntry === 'CRYPTO'
+    && trade.contractUnderlyingKindAtEntry === 'SPOT'
+    && quote.venue === 'BINANCE'
+    && quote.assetClass === 'CRYPTO'
+    && quote.underlyingKind === 'SPOT'
     && quote.exerciseStyle === economics.exercise.style
     && quote.settlementStyle === economics.exercise.settlement
     && quote.settlementAsset === economics.exercise.settlementCurrency
@@ -283,7 +286,6 @@ export function createCanonicalPaperClose(input: CanonicalPaperCloseInput): Cano
     && quote.strike === trade.strike
     && quote.unit === trade.contractUnitAtEntry
     && quote.quoteAsset === trade.premiumCurrencyAtEntry
-    && quote.unit === trade.contractUnitAtEntry
     && sameEconomics;
   if (!sameContract) return { ok: false, reason: 'EXIT_CONTRACT_IDENTITY_MISMATCH' };
 
