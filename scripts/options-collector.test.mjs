@@ -95,6 +95,11 @@ test('exchangeInfo maps only explicit Binance Crypto Options contract terms with
     ...exchangeInfoFixture(),
     optionContracts: [{ ...exchangeInfoFixture().optionContracts[0], settleAsset: 'USDC' }],
   }, SYMBOL, RECEIVED), null);
+  assert.equal(mapVerifiedBinanceContractSpec(exchangeInfoFixture(), SYMBOL, '2026-11-25T03:10:00.000Z'), null);
+  assert.equal(mapVerifiedBinanceContractSpec({
+    ...exchangeInfoFixture(),
+    optionSymbols: [{ ...exchangeInfoFixture().optionSymbols[0], underlying: 'ETHUSDT' }],
+  }, SYMBOL, RECEIVED), null);
 });
 
 test('collector attaches the exchangeInfo snapshot to subsequent market records and PIT gate accepts only after availability', async (t) => {
