@@ -45,3 +45,10 @@ No point-in-time dataset, historical BBO series, measured strategy edge, profita
 - PR #187 merged as `41a94cd2c08472e3c4d0d77e70e34782f9fc2200`. Binance 24-hour ticker event time and close time are now distinct from BBO/mark-price timestamps; REST `/eapi/v1/mark` values use their own local receive time rather than aggregate snapshot completion; stale mark-price events cannot overwrite a newer index; model Greeks and risk-neutral EV fail closed on stale or mismatched sources. The duplicate PR #188 was closed unmerged after its latest build failed TypeScript due to using optional `fetchedAt` instead of a dedicated mark receive timestamp. PR #187 passed CI, Lighthouse and Project Context Guard before merge.
 - Main commit `d67d5629c61369dc388e42216b768a6466a38b12` adds opt-in injected REST `exchangeInfo` refresh, durable raw snapshot append before publishing the new contract-spec map, rate limiting and lease renewal. CI and Project Context Guard passed. Lighthouse, GitHub Pages deployment and published-site smoke/Lighthouse subsequently passed on the mainline run set (45550879682, 45550879655).
 - No real Binance HTTP/WebSocket market-data capture, live account eligibility verification, cloud archive, or historical data collection is claimed.
+
+
+## Binance Clearing Procedures amendment provenance — 25 November 2026
+
+The canonical legal provenance and archived contract specification now include the official 21 May 2026 amendment notice (https://bin.bnbstatic.com/static/cms/cg08ou2ak0tn7mcplvfg/file/fa97cef498054d23290ba2a132eda63816395d84766af2db7b433d906432dd0b.pdf), its effective date, version 1.3, and `clearingProceduresConsolidatedTextVerified=false`. The canonical validator requires the exact amendment reference; missing or substituted provenance prevents exercise/settlement adapter readiness.
+
+This is provenance tracking only. The consolidated v1.3 text and its section-level impact on Crypto Options settlement remain unverified, and applicability to a specific account/entity remains UNVERIFIED.
