@@ -271,6 +271,7 @@ export async function refreshBinanceExchangeInfoSnapshot({
 
   if (Date.now() >= lease.expiresAt - 10_000) await archive.renewWriterLease(lease);
   const payload = await requestPublicBinanceRest('exchangeInfo', {}, restTransport);
+  if (Date.now() >= lease.expiresAt - 10_000) await archive.renewWriterLease(lease);
   const receivedAt = now();
   const receivedMs = Date.parse(receivedAt);
   if (!Number.isFinite(receivedMs)) throw new OptionsCollectorError('INVALID_RECEIVE_TIME', 'Local exchangeInfo receive clock is invalid.');
