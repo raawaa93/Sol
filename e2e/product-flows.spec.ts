@@ -553,7 +553,7 @@ test('Binance observed IV history warms honestly and exports a provenance-preser
   await expect(opportunities).toContainText('IV Rank · 365 يوم');
   await expect(opportunities).toContainText('IV Percentile · 365 يوم');
   await expect(opportunities).toContainText('يلزم 30 يوماً صالحاً');
-  await expect(opportunities.locator('.metric-card').filter({ hasText: 'IV Rank · 365 يوم' })).toContainText('غير متاح');
+  await expect(opportunities.locator('.opportunity-metric').filter({ hasText: 'IV Rank · 365 يوم' })).toContainText('غير متاح');
 
   await page.locator('.side-nav').getByRole('button', { name: 'الدفتر التجريبي' }).click();
   const downloadPromise = page.waitForEvent('download');
