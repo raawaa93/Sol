@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { replayLongOptionSnapshots } from './replay.ts';
+import { BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS } from './contract-economics.ts';
 import type { OptionQuote } from './types.ts';
 
 function quote(timestamp: string, overrides: Partial<OptionQuote> = {}): OptionQuote {
@@ -104,6 +105,8 @@ test('legacy replay blocks canonical contract terms instead of falling back to u
       provider: 'BINANCE',
       sourceRef: 'https://eapi.binance.com/eapi/v1/exchangeInfo',
       retrievedAt: '2026-11-24T10:00:00Z',
+      rawFields: { unit: 100, underlyingType: 'CRYPTO', contractType: 'CRYPTO_OPTIONS' },
+      legalTerms: { ...BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS },
     },
   };
   const result = replayLongOptionSnapshots([
