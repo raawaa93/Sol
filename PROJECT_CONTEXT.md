@@ -4,7 +4,7 @@
 **Canonical project:** Sol Financial and Investment Intelligence Assistant  
 **Repository:** https://github.com/raawaa93/Sol  
 **Default branch:** main  
-**Last verified:** 24 November 2026
+**Last verified:** 25 November 2026
 
 ## 1. Product identity and scope
 
@@ -104,6 +104,9 @@ No second execution venue for a Syrian resident has been verified for global lis
 
 - PR #192 merged: 8e97c76dea8646eec8a116b1116e2cf1e88dba72. Node-only public Binance Options WebSocket transport, opt-in, bounded, cancellable, reconnect/gap-aware. CI, Lighthouse and Project Context Guard passed. No live capture was performed.
 - PR #194 merged: 7183ab85eac7e9d7556cc3716b7d1790948c63d6. Source-bound 30-day ATM mark-IV extraction, IV Rank/Percentile, bounded local browser history and JSON export. CI run 45570010720 passed 293 tests, build, compressed bundle budget and Playwright; Lighthouse 45570010778 and Project Context Guard 45570010823 passed.
+- PR #196 merged: 26b82d63bdd533c96fba8a881a8036fcf7c0b470. Added a deterministic Playwright acceptance test for paired 20/40-DTE CALL/PUT quotes, observed 30-day IV extraction, honest insufficient-history state and provenance-preserving JSON export. CI 45570955327 passed 293 unit/property tests, build, bundle budget and 18/18 browser journeys; Lighthouse 45570955246 and Project Context Guard 45570955274 passed.
+- PR #200 merged: 670c2f42c643b0a0c04c7806b01a671430893144. Reconciled implementation plan, progress ledger and product/archive execution records.
+- PR #202 merged: 4e98aba21ad195c0224a01767c39fc3808173580. Reconciled AGENTS.md with Binance's official Syria FAQ, which lists general Options trading; this does not prove exact product-line/account permissions or local Syrian-law permission.
 - IV Rank/Percentile require 30 valid daily samples; only Binance REST Mark IV is eligible. They are descriptive historical context, not probabilities or directional forecasts. Data is local, unencrypted and only recorded when the Binance view is refreshed.
 - No scheduled collector, live WebSocket capture, cross-device archive, valid historical BBO corpus, or measured strategy edge exists.
 - The shared Supabase project remains untouched. A new free project is technically available at $0/month within the free-project allowance, but it auto-pauses after low activity over seven days and requires a user-selected organization plus a secure auth/RLS design. Do not use public unauthenticated writes.
