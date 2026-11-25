@@ -317,8 +317,8 @@ test('index and mark price stream arrays are parsed into independent raw archive
   assert.ok(indexRecords.every((record) => record.kind === 'INDEX_PRICE'));
 
   const markEvents = [{
-    e: 'optionMarkPrice', E: EVENT_MS, s: SYMBOL, mp: '1250.0', iv: '0.42',
-    delta: '0.55', theta: '-12', gamma: '0.0001', vega: '22',
+    e: 'optionMarkPrice', E: EVENT_MS, s: SYMBOL, mp: '1250.0', vo: '0.42',
+    d: '0.55', t: '-12', g: '0.0001', v: '22',
   }];
   const markRecords = parseBinancePublicStreamEvent(markEvents, RECEIVED);
   assert.equal(markRecords.length, 1);
