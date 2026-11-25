@@ -252,7 +252,7 @@ function canonicalBinanceRiskQuote(overrides: Partial<OptionQuote> = {}): Option
     markIvSource: 'REST_MARK',
     riskFreeRateSource: 'REST_MARK',
     sourceReceivedAt: { markIv: '2026-11-25T03:00:00.000Z', riskFreeRate: '2026-11-25T03:00:00.000Z' },
-    sourceTimestamps: { index: '2026-11-25T03:00:00.000Z', bookTicker: '2026-11-25T03:00:00.000Z', ticker: '2026-11-25T03:00:00.000Z' },
+    sourceTimestamps: { index: '2026-11-25T03:00:00.000Z', bookTicker: '2026-11-25T03:00:00.000Z', bidAsk: '2026-11-25T03:00:00.000Z', ticker: '2026-11-25T03:00:00.000Z' },
     contractEconomics: {
       premium: { multiplier: 1, quoteCurrency: 'USDT', priceUnit: 'PER_CONTRACT' },
       exercise: {
@@ -295,6 +295,7 @@ test('canonical risk-neutral EV accepts only a timestamped markPrice BBO source'
     sourceTimestamps: {
       index: '2026-11-25T03:00:00.000Z',
       markPrice: '2026-11-25T03:00:01.000Z',
+      bidAsk: '2026-11-25T03:00:01.000Z',
     },
   });
   assert.ok(calculateQuoteCashRiskNeutralMetrics(quote, 900, 0, riskNeutralNow));
@@ -309,12 +310,14 @@ test('canonical risk-neutral EV rejects stale or future bid ask event timestamps
     sourceTimestamps: {
       index: '2026-11-25T03:00:00.000Z',
       bookTicker: '2026-11-25T02:59:00.000Z',
+      bidAsk: '2026-11-25T02:59:00.000Z',
     },
   }), 900, 0, riskNeutralNow), null);
   assert.equal(calculateQuoteCashRiskNeutralMetrics(canonicalBinanceRiskQuote({
     sourceTimestamps: {
       index: '2026-11-25T03:00:00.000Z',
       bookTicker: '2026-11-25T03:01:00.000Z',
+      bidAsk: '2026-11-25T03:01:00.000Z',
     },
   }), 900, 0, riskNeutralNow), null);
 });
