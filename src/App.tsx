@@ -309,8 +309,7 @@ function App() {
   const [watchlist, setWatchlist] = useState<string[]>(loadWatchlist);
   const [quantity, setQuantity] = useState(0.01);
   const [riskBudget, setRiskBudget] = useState(PAPER_CAMPAIGN_PER_TRADE_CAP);
-  const [fees, setFees] = useState(0);
-  const [entryFeesKnown, setEntryFeesKnown] = useState(false);
+  const [fees, setFees] = useState('');
   const [paperJournalLoad, setPaperJournalLoad] = useState(() => loadPaperJournal<PaperTrade>(localStorage, isPaperTrade));
   const [trades, setTrades] = useState<PaperTrade[]>(paperJournalLoad.entries);
   const [paperExitFees, setPaperExitFees] = useState('');
@@ -469,6 +468,10 @@ function App() {
       ?? quotes[0]
       ?? DEMO_QUOTES[0];
   }, [assetQuotes, effectiveExpiry, filteredQuotes, quotes, scopedQuotes, selectedId, selectedType, underlying]);
+
+  useEffect(() => {
+    setFees('');
+  }, [selectedQuote.symbol]);
 
   useEffect(() => {
     if (dataMode !== 'BINANCE' || !optionMarkTarget) {
@@ -703,7 +706,9 @@ function App() {
   const quantityStep = getQuantityStep(selectedQuote);
   const minimumQuantity = selectedQuote.minQty ?? quantityStep;
   const safeQuantity = Number.isFinite(quantity) ? Math.max(0, quantity) : 0;
-  const safeFees = Number.isFinite(fees) ? Math.max(0, fees) : 0;
+  const parsedEntryFees = fees.trim() === '' ? Number.NaN : Number(fees);
+  const entryFeesKnown = Number.isFinite(parsedEntryFees) && parsedEntryFees >= 0;
+  const safeFees = entryFeesKnown ? parsedEntryFees : 0;
   const safeRiskBudget = Number.isFinite(riskBudget) ? Math.min(PAPER_CAMPAIGN_PER_TRADE_CAP, Math.max(0, riskBudget)) : 0;
   const contractScaleIssue = getContractScaleIssue(selectedQuote, dataMode);
   // Canonical terms must never fall back to legacy scalar calculations, even when unit=1.
@@ -1653,7 +1658,7 @@ function App() {
                 <div className="analysis-divider" />
                 <div className="input-grid">
                   <label><span>{dataMode === 'BINANCE' ? 'كمية العقود' : 'الكمية'} <small>{dataMode === 'BINANCE' ? 'حسب مواصفات Binance' : 'من الأصل'}</small></span><input type="number" min={dataMode === 'BINANCE' ? minimumQuantity : 0.01} step={dataMode === 'BINANCE' ? quantityStep : 0.01} max={dataMode === 'BINANCE' ? selectedQuote.maxQty : undefined} value={quantity} onChange={(event) => setQuantity(Math.max(0, Number(event.target.value)))} /></label>
-                  <label><span>رسوم الدخول الفعلية <small>{quoteAssetLabel ?? 'عملة غير محددة'} · اختياري</small></span><input type="number" min="0" step="any" value={fees} onChange={(event) => { setFees(Math.max(0, Number(event.target.value))); setEntryFeesKnown(true); }} /></label>
+                  <label><span>رسوم الدخول الفعلية <small>{quoteAssetLabel ?? 'عملة غير محددة'} · اختياري</small></span><input type="number" min="0" step="any" value={fees} onChange={(event) => setFees(event.target.value)} /></label>
                 </div>
                 {hasPremiumSizingCapability && <div className="budget-row"><label htmlFor="risk-budget">ميزانية المحاولة (حد أقصى 20)</label><div><input id="risk-budget" type="number" min="0" max={PAPER_CAMPAIGN_PER_TRADE_CAP} step="1" value={riskBudget} onChange={(event) => setRiskBudget(Math.min(PAPER_CAMPAIGN_PER_TRADE_CAP, Math.max(0, Number(event.target.value))))} /><span>{quoteAssetLabel ?? 'عملة غير محددة'}</span><button onClick={handleBudgetClick} title="احسب كمية لا تتجاوز الميزانية">احسب الكمية</button></div></div>}
                 <div className="risk-summary campaign-risk-summary">
