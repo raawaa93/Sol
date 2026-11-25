@@ -227,3 +227,12 @@ No cloud resource, subscription, credential, schedule or billing change was crea
 - Volar's 14-day sandbox is latest BTC chain only, 10 requests/minute, without bulk downloads or analytics; historical archive and L2 order book are paid tiers.
 - CryptoDataDownload's free OHLCV/trade-print data cannot substitute for executable BBO; its options-chain files are Plus+ gated and its Binance options IV/OI/klines datasets are premium. The public download license is CC BY-NC-SA 4.0.
 - No dataset was integrated or used for backtesting. The primary path remains forward-only capture with a permitted host and explicit storage rights. The Tardis sample route remains unverified pending exact file retrieval, metadata reconciliation and license review.
+## PAPER journal and entry execution hardening — PR #226
+
+- PR #226 merged to main as `5f48a42d54ccf44310464a00c251862c88f9c127`.
+- Local journal loading now preserves the exact raw source JSON before filtering invalid rows. The UI exposes a recovery JSON download; if recovery cannot be stored or an older distinct recovery snapshot would be overwritten, it blocks further journal writes and new PAPER entries.
+- Canonical Binance long-option PAPER entries now use the timestamped BOOK_TICKER Ask, not midpoint/mark/last. They require explicit contract-size units and sufficient displayed ask quantity for the requested number of contracts.
+- Canonical sizing, premium debit, break-even and expiry scenario calculations use the Ask-side entry price. The journal still records a PAPER snapshot, not a guaranteed fill.
+- Source price and index timestamps must be no later than entry and no older than five minutes; the contract must not be expired at entry.
+- PR-head CI 45582102300, Lighthouse 45582102062 and Project Context Guard 45582103626 passed.
+- Remaining lifecycle gap: there is no close/exit workflow, Bid-side exit size check, realized P&L, expiry settlement/assignment, or fee calculation from the current contract-specific Binance fee schedule. No risk-budget release is inferred; all debit remains reserved until export and explicit reset.
