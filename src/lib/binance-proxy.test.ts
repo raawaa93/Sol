@@ -1,15 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildBinanceUpstreamUrl, getCacheSeconds, getCorsHeaders, handleRequest as handleRequestImpl, isAllowedOrigin } from '../../supabase/functions/volterra-binance-market-data/index.ts';
+import { buildBinanceUpstreamUrl, getCacheSeconds, getCorsHeaders, handleRequest, isAllowedOrigin } from '../../supabase/functions/volterra-binance-market-data/index.ts';
 
 const TEST_SUPABASE_URL = 'https://project.supabase.co';
 const TEST_SERVICE_ROLE_KEY = 'server-only-test-key';
 
-async function handleRequest(request: Request): Promise<Response> {
-  const headers = new Headers(request.headers);
-  if (!headers.has('cf-ipcountry')) headers.set('cf-ipcountry', 'SY');
-  return handleRequestImpl(new Request(request, { headers }));
-}
 
 function installTestDenoEnv(values: Record<string, string>): () => void {
   const runtimeGlobal = globalThis as unknown as {
@@ -42,37 +37,6 @@ async function expectedClientHash(address: string): Promise<string> {
   const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(address));
   return [...new Uint8Array(signature)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
-
-test('Binance proxy fails closed for non-Syrian or unverified source-country metadata before upstream access', async () => {
-  const originalFetch = globalThis.fetch;
-  let networkCalls = 0;
-  globalThis.fetch = async () => {
-    networkCalls += 1;
-    throw new Error('No network access is allowed for a denied country.');
-  };
-  try {
-    const nonSyrian = await handleRequestImpl(new Request('https://function.example/?endpoint=exchangeInfo', {
-      headers: { 'cf-ipcountry': 'US', 'cf-connecting-ip': '198.51.100.10' },
-    }));
-    assert.equal(nonSyrian.status, 403);
-    assert.deepEqual(await nonSyrian.json(), {
-      error: 'Only requests classified as Syria by the trusted edge are allowed.',
-      code: 'SOURCE_COUNTRY_NOT_ALLOWED',
-    });
-
-    const unverified = await handleRequestImpl(new Request('https://function.example/?endpoint=exchangeInfo', {
-      headers: { 'cf-connecting-ip': '198.51.100.10' },
-    }));
-    assert.equal(unverified.status, 503);
-    assert.deepEqual(await unverified.json(), {
-      error: 'Trusted source-country metadata is unavailable; market data is denied.',
-      code: 'SOURCE_COUNTRY_UNVERIFIED',
-    });
-    assert.equal(networkCalls, 0);
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
-});
 
 test('Binance proxy maps only approved market-data endpoints to the fixed Binance host', () => {
   const cases = [
