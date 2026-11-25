@@ -151,6 +151,7 @@ export default function OpportunityReview({ quotes, market, underlying, dataMode
                 {modelMetrics && <small className="review-model-note">قياس محايد للمخاطر وفق {quote.pricingModel === 'BLACK_76' ? 'Black–76' : 'Black–Scholes مع Carry'} وبالمعدل والـCarry المسجلين في العقد، قبل الرسوم والانزلاق؛ ليس احتمالاً واقعياً ولا توقعاً للسوق.</small>}
                 {quote.pricingStatus === 'ASSUMED' && <small className="review-estimated">Greeks مبنية على افتراضات: {quote.pricingReason ?? 'تحقق من المعدل والـcarry قبل الاعتماد عليها.'}</small>}
                 {quote.pricingStatus === 'OBSERVED_ONLY' && <small className="review-estimated">لا يوجد نموذج تسعير موثّق لهذا العقد؛ لا تُستخدم Greeks لتوليد احتمال ربح.</small>}
+                {quote.contractEconomics && <small className="review-estimated">تم إيقاف EV المحايد لهذا العقد حتى ربط نموذج الاحتمال بمقياس القسط والتسوية الموثقين.</small>}
                 {estimated && <small className="review-estimated">حقول تقديرية: {estimated}</small>}
                 <span className="review-open">افتح العقد في الماسح</span>
               </button>
