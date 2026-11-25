@@ -45,3 +45,7 @@
 - فحص أن workflow لا يحتوي Binance polling أو استدعاء upstream.
 - اختبار من شبكة Syriatel الفعلية ومراجعة سجلات Cloudflare/Supabase مع التأكد من تصنيف المصدر SY، ونجاح Binance upstream HTTP 200.
 - إذا لم يثبت بلد المصدر أو فشل upstream، لا تُستخدم البيانات الحية ولا تُعرض كأنها متاحة.
+
+## Primary provider qualification
+
+The National Data Center's official VPS offer and technical requirements are documented in `docs/SYRIA_HOSTED_GATEWAY_PROVIDER_AUDIT_2026-11-25.md`. Provider qualification is tracked in GitHub issue #250. No email has been sent and no server has been purchased. Do not switch production until physical location, egress IP/ASN, current quote, capacity, and Binance public REST connectivity are independently verified.
