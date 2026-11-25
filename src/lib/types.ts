@@ -172,6 +172,7 @@ export interface OptionQuote {
   /** Independent exchange timestamps; absent means the endpoint did not publish a timestamp. */
   sourceTimestamps?: {
     ticker?: string;
+    bidAsk?: string;
     riskFreeRate?: string;
     venueVolatility?: string;
     optionTicker?: string;
