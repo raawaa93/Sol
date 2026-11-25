@@ -98,6 +98,7 @@ test('exchangeInfo maps only explicit Binance Crypto Options contract terms with
   assert.equal(spec.contractSpec.termsSource, 'BINANCE_OPTIONS_CONTRACT_SPECIFICATIONS_2026-01-05');
   assert.equal(spec.contractSpec.settlementTermsSource, 'BINANCE_CLEARING_PROCEDURES_126_130');
   assert.equal(spec.contractSpec.settlementTermsAmendmentNoticeSource, 'BINANCE_CLEARING_PROCEDURES_AMENDMENT_NOTICE_2026-05-21');
+  assert.equal(spec.contractSpec.settlementTermsAmendmentScope, 'BINANCE_RCH');
   assert.equal(spec.contractSpec.settlementTermsVersion, '1.3');
   assert.equal(spec.contractSpec.settlementTermsConsolidatedTextVerified, false);
   assert.equal(spec.contractSpec.settlementPriceMethod, 'INDEX_ARITHMETIC_MEAN');
