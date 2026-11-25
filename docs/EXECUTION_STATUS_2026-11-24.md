@@ -185,3 +185,13 @@ A remote branch search for `research/options-pit-archive-2026-11-24` returned no
 - CSV-origin or user-asserted provenance, model-derived prices, mismatched/missing source timestamps and invalid quantities/fees are rejected.
 - Existing legacy PAPER entries remain readable. Snapshot fields are exported for audit. No mark-to-market, exit P&L, Greeks, EV or replay are enabled by this entry-recording change.
 - PR #172 (rebased successor to #169): https://github.com/raawaa93/Sol/pull/172. Verification is pending; do not treat it as merged/deployed yet.
+
+
+## Canonical PAPER entry source consistency hardening — 25 November 2026
+
+- Reapplied the PAPER entry snapshot changes on top of current main after PR #169's original branch became non-mergeable following intervening canonical analytics merges.
+- Entry snapshots accept only provider-verified Binance Crypto Options economics and a timestamped observed price basis. The captured premium must exactly match the selected source basis within a tight numeric tolerance, and the captured underlying reference must match the timestamped index value.
+- Mixed BookTicker/OptionsTicker bid/ask pairs without a single coherent source are rejected; REST 24h ticker closeTime is not accepted as a bid/ask event timestamp.
+- Premium cash uses the canonical premium multiplier only; contract unit and cash settlement multiplier remain separate.
+- This remains an entry audit snapshot only. No mark-to-market, exits, realized P&L, Greeks, EV or replay are enabled. Local browser storage is not a durable server journal.
+- Follow-up PR #175: https://github.com/raawaa93/Sol/pull/175. Await CI before treating this hardening as delivered.

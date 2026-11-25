@@ -45,6 +45,7 @@
 - [x] Add canonical risk-neutral expiry EV for provider-verified Binance Crypto Options (PR #170; carry=0 assumption, EV shown before fees in Opportunity Review).
 - [ ] Complete canonical historical replay through the same validation result.
 - [x] Persist a canonical PAPER entry snapshot with the premium multiplier, contract unit and matching observed price/index timestamps (PR #172; entry record only, no P&L/exit valuation).
+- [ ] Harden journal ingestion by requiring the recorded premium and spot to equal their timestamped market/index inputs, and validate snapshot field consistency on reload (PR #175 pending).
 - [ ] Complete canonical PAPER lifecycle valuation (mark-to-market, exits and P&L).
 - [ ] Add invariants proving no component uses legacy unit/multiplier as a universal shortcut.
 
