@@ -70,3 +70,14 @@
 - Lighthouse baseline run 45570955246 passed.
 - Project Context Guard run 45570955274 passed.
 - This is test coverage only; it does not create a live Binance connection, background sampler, cloud archive, or empirical strategy result.
+
+
+## Follow-up — BBO-aware PAPER replay and cloud provisioning check — 25 November 2026, 08:14 UTC
+
+- PR #204 merged as `337e03fb26d44c906125318affc473030c165da4`.
+- Replay requires BBO source-event time, local receive time, explicit size unit and sufficient displayed Ask at entry/Bid at exit; stale/future/estimated/mark-only/missing-size/unknown-unit quotes fail closed.
+- Binance `bookTicker` is tagged as contract-count size; `optionTicker` 24-hour statistics are not BBO. CSV provenance remains user-asserted.
+- UI exposes source labels, source clocks, displayed size, fills, fees and slippage; zero fee/slippage is disclosed as unmodeled.
+- CI 45572889900 passed 303/303 unit/property tests, production build, compressed bundle budget (initial JS 96.985 KiB gzip-equivalent), and 18/18 Playwright journeys. Lighthouse 45572889852 passed (Performance 99, Accessibility 100, Best Practices 100, SEO 100; LCP 757 ms, TBT 120 ms, CLS 0). Project Context Guard 45572889839 passed.
+- Cloudflare plugin search returned no connector; Activepieces GitHub write action returned 403 when attempting private archive repository creation. No repo/flow was created. Supabase project creation requires explicit organization selection; no new project or production schema was created.
+- Remaining: legal/data-rights gate, dedicated private archive provisioning, historical BBO corpus, full depth/partial-fill/queue/latency/expiry-settlement/hedging simulation. No strategy profitability claim.
