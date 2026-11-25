@@ -160,7 +160,9 @@ The merged transport is a tested library component, not an operating collector. 
 - [x] Run full unit/property tests (293/293), production build, bundle budget, Playwright, Lighthouse and Project Context Guard.
 - [x] Fresh-review source provenance, local storage, data-quality and Syria legal gates; no production DB writes or live orders.
 - [x] Leave unresolved cloud, legal, live-capture and strategy-data blockers explicit.
-\n\n### Task 8: Apply and verify conservative PAPER risk sizing defaults
+
+
+### Task 8: Apply and verify conservative PAPER risk sizing defaults
 
 - [x] Default per-trade premium-plus-fees budget to 60 quote units, matching the stated maximum loss for a long-option PAPER trade.
 - [x] Label the field explicitly as premium plus fees; it is not total portfolio equity, aggregate open risk or a guarantee for other strategies.
