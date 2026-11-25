@@ -388,6 +388,7 @@ export class ResumableOptionsArchive {
       source: options.cursor ?? null,
       committedSegmentHashes: committed.map((segment) => segment.hash),
     };
+    await this.assertLease(options.lease);
     const cursor = await this.writeCursor(cursorValue);
     return { appended: pending.size, duplicates, segments: committed, cursor };
   }
@@ -439,29 +440,36 @@ export class ResumableOptionsArchive {
   }
 
   async exportTo(destination) {
-    const report = await this.verify();
-    if (!report.ok) throw new OptionsArchiveError('ARCHIVE_CORRUPT', report.errors.join('; '));
-    const target = resolve(destination);
-    if (target === this.root || target.startsWith(`${this.root}/`)) throw new OptionsArchiveError('EXPORT_INTO_SOURCE', 'Export destination cannot be inside the source archive.');
-    await mkdir(target, { recursive: false });
-    await cp(join(this.root, 'segments'), join(target, 'segments'), { recursive: true, errorOnExist: true, force: false });
-    try { await cp(join(this.root, 'cursor.json'), join(target, 'cursor.json'), { errorOnExist: true, force: false }); }
-    catch (error) { if (error.code !== 'ENOENT') throw error; }
-    const restored = new ResumableOptionsArchive(target, { maxBytes: this.maxBytes, leaseTtlMs: this.leaseTtlMs });
-    return restored.initialize();
+    const lease = await this.acquireWriterLease();
+    try {
+      const report = await this.verify();
+      if (!report.ok) throw new OptionsArchiveError('ARCHIVE_CORRUPT', report.errors.join('; '));
+      const target = resolve(destination);
+      if (target === this.root || target.startsWith(`${this.root}/`)) throw new OptionsArchiveError('EXPORT_INTO_SOURCE', 'Export destination cannot be inside the source archive.');
+      await mkdir(target, { recursive: false });
+      await cp(join(this.root, 'segments'), join(target, 'segments'), { recursive: true, errorOnExist: true, force: false });
+      try { await cp(join(this.root, 'cursor.json'), join(target, 'cursor.json'), { errorOnExist: true, force: false }); }
+      catch (error) { if (error.code !== 'ENOENT') throw error; }
+      const restored = new ResumableOptionsArchive(target, { maxBytes: this.maxBytes, leaseTtlMs: this.leaseTtlMs });
+      return await restored.initialize();
+    } finally { await this.releaseWriterLease(lease); }
   }
 
   static async restore(source, destination, options = {}) {
     const sourceArchive = new ResumableOptionsArchive(source, options);
-    const report = await sourceArchive.initialize();
-    if (!report.ok) throw new OptionsArchiveError('ARCHIVE_CORRUPT', report.errors.join('; '));
-    const target = resolve(destination);
-    if (target === sourceArchive.root || target.startsWith(`${sourceArchive.root}/`)) throw new OptionsArchiveError('RESTORE_INTO_SOURCE', 'Restore destination cannot be inside the source archive.');
-    await mkdir(target, { recursive: false });
-    await cp(join(sourceArchive.root, 'segments'), join(target, 'segments'), { recursive: true, errorOnExist: true, force: false });
-    try { await cp(join(sourceArchive.root, 'cursor.json'), join(target, 'cursor.json'), { errorOnExist: true, force: false }); }
-    catch (error) { if (error.code !== 'ENOENT') throw error; }
-    const restored = new ResumableOptionsArchive(target, options);
-    return restored.initialize();
+    await sourceArchive.initialize();
+    const lease = await sourceArchive.acquireWriterLease();
+    try {
+      const report = await sourceArchive.verify();
+      if (!report.ok) throw new OptionsArchiveError('ARCHIVE_CORRUPT', report.errors.join('; '));
+      const target = resolve(destination);
+      if (target === sourceArchive.root || target.startsWith(`${sourceArchive.root}/`)) throw new OptionsArchiveError('RESTORE_INTO_SOURCE', 'Restore destination cannot be inside the source archive.');
+      await mkdir(target, { recursive: false });
+      await cp(join(sourceArchive.root, 'segments'), join(target, 'segments'), { recursive: true, errorOnExist: true, force: false });
+      try { await cp(join(sourceArchive.root, 'cursor.json'), join(target, 'cursor.json'), { errorOnExist: true, force: false }); }
+      catch (error) { if (error.code !== 'ENOENT') throw error; }
+      const restored = new ResumableOptionsArchive(target, options);
+      return await restored.initialize();
+    } finally { await sourceArchive.releaseWriterLease(lease); }
   }
 }
