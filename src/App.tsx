@@ -32,7 +32,7 @@ import DeferredPayoffChart from './components/DeferredPayoffChart';
 
 import { DEMO_MARKETS, DEMO_QUOTES, getExpiryChoices } from './lib/demo';
 import { applyBinanceBookTicker, applyBinanceOptionMarkPrice, applyBinanceOptionTicker, BinanceMarketDataError, fetchBinanceDepth, fetchBinanceOptions, parseBinanceBookTickerMessage, parseBinanceOptionMarkPriceMessage, parseBinanceOptionTickerMessage } from './lib/binance';
-import type { BinanceDepthSnapshot, BinanceOptionsSnapshot } from './lib/binance';
+import type { BinanceDepthSnapshot } from './lib/binance';
 import { getAtmTermStructure } from './lib/analysis';
 import type { IVHistoryObservation, IVRankPercentileResult } from './lib/iv-history';
 import { getLatestQuotePerContract, getMarketSnapshotFromQuotes } from './lib/market';
