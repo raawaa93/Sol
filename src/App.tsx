@@ -1189,6 +1189,7 @@ function App() {
       return;
     }
     setTrades((current) => current.map((item) => item.id === trade.id ? result.trade : item));
+    setCloseFeesByCurrency((current) => ({ ...current, [result.currency]: '' }));
     notify(`أُغلقت محاكاة ${trade.symbol} عند Bid؛ صافي P&L ${formatMoney(result.realizedPnl, 4, result.currency)}. هذا تقدير PAPER وليس تعبئة فعلية.`);
   };
 
