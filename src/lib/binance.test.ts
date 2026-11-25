@@ -755,7 +755,7 @@ test('Binance Options optionMarkPrice parser handles combined event payloads', (
   const events = parseBinanceOptionMarkPriceMessage(JSON.stringify({
     stream: 'btc@markPrice',
     data: [{
-      e: 'markPrice', E: 1_800_000_001_000, s: 'BTC-261225-100000-C', mp: '5200',
+      e: 'markPrice', E: 1_800_000_001_000, s: 'BTC-261225-100000-C', mp: '5200', vo: '0.60',
     }],
   }));
   assert.equal(events.length, 1);
@@ -763,6 +763,7 @@ test('Binance Options optionMarkPrice parser handles combined event payloads', (
     symbol: 'BTC-261225-100000-C',
     eventTime: 1_800_000_001_000,
     markPrice: 5200,
+    venueVolatility: 0.6,
   });
   assert.deepEqual(parseBinanceOptionMarkPriceMessage('{bad-json'), []);
   assert.deepEqual(parseBinanceOptionMarkPriceMessage({ e: 'markPriceUpdate', s: 'BTC-TEST-C', E: 1, mp: 1 }), []);
@@ -787,6 +788,7 @@ test('Binance markPrice adapter updates only mark price and rejects stale events
   assert.equal(updated.priceSource, 'MARK');
   assert.deepEqual(updated.estimatedFields, ['iv', 'riskFreeRate', 'delta']);
   assert.equal(updated.sourceTimestamps?.markPrice, new Date(event.eventTime).toISOString());
+  assert.equal(updated.venueVolatility, undefined, 'markPrice event volatility is only stored when the event explicitly carries it');
   const stale = applyBinanceOptionMarkPrice(updated, { ...event, eventTime: event.eventTime - 1000, markPrice: 1 });
   assert.equal(stale, updated);
 });
@@ -813,7 +815,7 @@ test('Binance Options ticker-by-underlying parser reads best book, IV, mark, vol
     bestAskQuantity: 2.5,
     bidIv: 0.58,
     askIv: 0.62,
-    markIv: 0.60,
+    venueVolatility: 0.60,
     markPrice: 5200,
     volume: 12.5,
     volumeQuote: 65000,
@@ -840,14 +842,17 @@ test('Binance Options ticker fills missing sides but never overrides BookTicker 
   assert.equal(updated.bidQuantity, 1.25);
   assert.equal(updated.askQuantity, 2.5);
   assert.equal(updated.bidAskSource, 'OPTION_TICKER');
-  assert.equal(updated.iv, 0.60);
-  assert.equal(updated.ivStatus, 'OBSERVED');
+  assert.equal(updated.venueVolatility, 0.60);
+  assert.equal(updated.iv, 0.5, 'venue vo must not be relabelled as observed markIV');
+  assert.notEqual(updated.ivStatus, 'OBSERVED');
   assert.equal(updated.markPrice, 5200);
   assert.equal(updated.volume, 12.5);
   assert.equal(updated.volumeQuote, 65000);
   assert.equal(updated.unverifiedSourceGreeks?.delta, 0.99);
   assert.notEqual(updated.delta, 0.99);
   assert.equal(updated.sourceTimestamps?.optionTicker, new Date(event.transactionTime).toISOString());
+  assert.equal(updated.sourceTimestamps?.markIv, undefined);
+  assert.equal(updated.sourceTimestamps?.venueVolatility, new Date(event.transactionTime).toISOString());
 
   const bookQuote = {
     ...quote, bid: 5000, ask: 5400,
@@ -867,7 +872,7 @@ test('Binance Options ticker fills missing sides but never overrides BookTicker 
   assert.equal(refreshed.bid, 5100);
   assert.equal(refreshed.ask, 5300);
   assert.equal(refreshed.bidAskSource, 'OPTION_TICKER');
-  assert.equal(refreshed.sourceTimestamps?.markIv, new Date(event.transactionTime ?? event.eventTime).toISOString());
+  assert.equal(refreshed.sourceTimestamps?.markIv, undefined, 'vo is not a markIV source timestamp');
 
   const oneSidedTicker = applyBinanceOptionTicker(staleBookQuote, { ...event, bestAsk: undefined });
   assert.equal(oneSidedTicker.bid, 5100);
@@ -892,12 +897,12 @@ test('Binance live observed IV recalculates only previously assumed model Greeks
   };
   const event = {
     symbol: quote.symbol, eventTime: 1_800_000_001_000, transactionTime: 1_800_000_000_900,
-    markIv: 0.8,
+    venueVolatility: 0.8,
     sourceGreeks: { delta: 0.99, gamma: 0.00004, theta: -30, vega: 55 },
   };
   const updated = applyBinanceOptionTicker(quote, event);
-  assert.equal(updated.iv, 0.8);
-  assert.equal(updated.ivStatus, 'OBSERVED');
+  assert.equal(updated.iv, 0.5, 'venue vo does not replace observed IV');
+  assert.notEqual(updated.ivStatus, 'OBSERVED');
   assert.notEqual(updated.delta, quote.delta);
   assert.notEqual(updated.gamma, quote.gamma);
   assert.notEqual(updated.vega, quote.vega);
@@ -920,7 +925,7 @@ test('Binance live IV cannot retain stale model Greeks when updated inputs inval
     estimatedFields: ['delta', 'gamma', 'theta', 'vega', 'rho'],
   };
   const updated = applyBinanceOptionTicker(quote, {
-    symbol: quote.symbol, eventTime: 1_800_000_001_000, markIv: 0.8,
+    symbol: quote.symbol, eventTime: 1_800_000_001_000, venueVolatility: 0.8,
     sourceGreeks: {},
   });
   assert.equal(updated.pricingStatus, 'OBSERVED_ONLY');
