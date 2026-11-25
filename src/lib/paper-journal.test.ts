@@ -389,6 +389,7 @@ test('paper close event storage quarantines invalid rows before replacing the ac
   const storage = {
     getItem: (key: string) => values.get(key) ?? null,
     setItem: (key: string, value: string) => { values.set(key, value); },
+    removeItem: (key: string) => { values.delete(key); },
   };
   const loaded = loadPaperCloseEvents(storage);
   assert.equal(loaded.rejectedCount, 1);
