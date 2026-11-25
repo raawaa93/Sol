@@ -357,6 +357,7 @@ test('runtime close-event validation rejects tampered PnL and stale source chron
       bookTicker: '2026-11-25T03:01:30Z',
       index: '2026-11-25T03:01:30Z',
     },
+    sourceReceivedAt: { bidAsk: '2026-11-25T03:01:31Z' },
   };
   const result = createCanonicalPaperCloseEvent({
     trade: entry.trade,
@@ -390,6 +391,7 @@ test('paper close event storage appends once and rejects duplicate trade closure
       bookTicker: '2026-11-25T03:01:30Z',
       index: '2026-11-25T03:01:30Z',
     },
+    sourceReceivedAt: { bidAsk: '2026-11-25T03:01:31Z' },
   };
   const close = createCanonicalPaperCloseEvent({
     trade: entry.trade,
