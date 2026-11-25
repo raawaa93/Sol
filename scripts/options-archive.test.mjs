@@ -171,6 +171,28 @@ test('concurrent stale-lease recovery never removes a newly acquired writer leas
   await (attempts[0].status === 'fulfilled' ? archive : second).releaseWriterLease(lease);
 });
 
+test('recent partial recovery lock is treated as busy during concurrent stale-lease recovery', async (t) => {
+  const { root, archive } = await makeArchive(t);
+  const writerPath = join(root, '.writer.lock');
+  const recoveryPath = join(root, '.writer.recovery.lock');
+  const writer = {
+    token: 'expired-owner',
+    pid: 2_147_483_647,
+    host: process.env.HOSTNAME ?? 'local',
+    expiresAt: Date.now() - 10_000,
+  };
+  await writeFile(writerPath, JSON.stringify(writer), { mode: 0o600 });
+  // Simulate the short window after another process creates the recovery lock
+  // but before its JSON payload has been fully written and synced.
+  await writeFile(recoveryPath, '', { mode: 0o600 });
+  await assert.rejects(
+    archive.acquireWriterLease(),
+    (error) => error instanceof OptionsArchiveError && error.code === 'WRITER_LEASE_RECOVERY_BUSY',
+  );
+  assert.deepEqual(JSON.parse(await readFile(writerPath, 'utf8')), writer);
+  assert.equal(await readFile(recoveryPath, 'utf8'), '');
+});
+
 test('expired writer and abandoned recovery locks can be reclaimed without deleting a live recovery lock', async (t) => {
   const { root, archive } = await makeArchive(t);
   const writerPath = join(root, '.writer.lock');
