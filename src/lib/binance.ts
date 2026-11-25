@@ -188,13 +188,7 @@ export function parseBinanceBookTickerMessage(payload: unknown): BinanceBookTick
 /** Apply a provider event to the matching quote while preserving independent source timestamps. */
 export function applyBinanceBookTicker(quote: OptionQuote, event: BinanceBookTickerEvent): OptionQuote {
   const timestamp = event.transactionTime ?? event.eventTime;
-  const currentBboTimestamp = quote.bidAskSource === 'OPTION_TICKER'
-    ? Date.parse(quote.sourceTimestamps?.optionTicker ?? '')
-    : quote.bidAskSource === 'MARK_PRICE'
-      ? Date.parse(quote.sourceTimestamps?.markPrice ?? '')
-      : quote.bidAskSource === 'BOOK_TICKER'
-        ? Date.parse(quote.sourceTimestamps?.bookTicker ?? '')
-        : Number.NaN;
+  const currentBboTimestamp = Date.parse(quote.sourceTimestamps?.bidAsk ?? '');
   if (timestamp !== undefined && Number.isFinite(currentBboTimestamp) && timestamp < currentBboTimestamp) return quote;
   return {
     ...quote,
@@ -364,13 +358,7 @@ export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptio
     ? new Date(quote.sourceTimestamps.optionTicker).getTime()
     : 0;
   if (marketTimestamp < previousTimestamp) return quote;
-  const currentBboTimestamp = quote.bidAskSource === 'BOOK_TICKER'
-    ? Date.parse(quote.sourceTimestamps?.bookTicker ?? '')
-    : quote.bidAskSource === 'MARK_PRICE'
-      ? Date.parse(quote.sourceTimestamps?.markPrice ?? '')
-      : quote.bidAskSource === 'OPTION_TICKER'
-        ? Date.parse(quote.sourceTimestamps?.optionTicker ?? '')
-        : Number.NaN;
+  const currentBboTimestamp = Date.parse(quote.sourceTimestamps?.bidAsk ?? '');
   const updateBbo = !Number.isFinite(currentBboTimestamp) || marketTimestamp >= currentBboTimestamp;
   const currentMarkTimestamp = Date.parse(quote.sourceTimestamps?.markPrice ?? '');
   const updateMark = event.markPrice !== undefined
@@ -429,13 +417,7 @@ export function applyBinanceOptionMarkPrice(
     : 0;
   if (event.eventTime < previousTimestamp) return quote;
 
-  const currentBboTimestamp = quote.bidAskSource === 'BOOK_TICKER'
-    ? Date.parse(quote.sourceTimestamps?.bookTicker ?? '')
-    : quote.bidAskSource === 'OPTION_TICKER'
-      ? Date.parse(quote.sourceTimestamps?.optionTicker ?? '')
-      : quote.bidAskSource === 'MARK_PRICE'
-        ? Date.parse(quote.sourceTimestamps?.markPrice ?? '')
-        : Number.NaN;
+  const currentBboTimestamp = Date.parse(quote.sourceTimestamps?.bidAsk ?? '');
   const updateBbo = !Number.isFinite(currentBboTimestamp) || event.eventTime >= currentBboTimestamp;
   const useMarkBid = updateBbo && event.bestBid !== undefined;
   const useMarkAsk = updateBbo && event.bestAsk !== undefined;
