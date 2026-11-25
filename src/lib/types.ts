@@ -213,6 +213,7 @@ export interface PaperTradeClose {
   exitPremium: number;
   exitPremiumAmount: number;
   exitFees: number;
+  exitFeeCurrency: string;
   exitProceeds: number;
   exitCurrency: string;
   exitSpot: number;
