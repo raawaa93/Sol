@@ -40,11 +40,11 @@
 - computeIVRankPercentile(observations, current, asOf, lookbackDays=365, minimumSamples=30): nullable rank/percentile plus min/max, sample count, coverage and partial-history flag.
 - selectDailyIVObservations: one latest valid observation per UTC day and key.
 
-- [ ] Write failing tests for exact rank/percentile arithmetic, tie behavior, minimum sample count, flat range, separate underlying/venue/convention, duplicate-day selection, future/stale/invalid samples.
-- [ ] Run npm test -- src/lib/iv-history.test.ts; verify expected missing-module failures.
-- [ ] Implement the smallest pure analytics module; no UI, storage or dependencies.
-- [ ] Run targeted tests, then full npm test.
-- [ ] Commit as feat: add point-in-time IV rank and percentile analytics.
+- [x] Add deterministic tests for exact rank/percentile arithmetic, minimum sample count, flat range, separate underlying/venue/convention, duplicate-day selection, future/stale/invalid samples.
+- [ ] Verify the RED step in isolation (not captured as a separate successful CI run).
+- [x] Implement the pure analytics module without new dependencies.
+- [x] Full CI unit/property suite passed: run 45570010720 (293/293).
+- [x] Merge source-bound IV analytics as PR #194, commit 7183ab85eac7e9d7556cc3716b7d1790948c63d6.
 
 ### Task 2: Observed near-30-day ATM IV extraction
 
@@ -141,10 +141,10 @@ The merged transport is a tested library component, not an operating collector. 
 - Report sample size, coverage, drawdown, tail loss, profit factor, turnover and uncertainty; suppress unsupported statistics.
 - E1 volatility-risk-premium and E2 order-flow experiments remain BLOCKED until their data prerequisites are met.
 
-- [ ] Audit current replay for point-in-time and fill semantics; write gap tests first.
-- [ ] Implement only metrics supported by observed data.
-- [ ] Run deterministic synthetic fixtures for engine correctness, clearly marked non-empirical.
-- [ ] Do not publish strategy performance claims until a real PIT corpus and forward PAPER run pass the gates.
+- [x] Audit the existing replay and strategy-evaluation protocol. Current replay is a conservative one-leg fixed-hold PAPER baseline, not a signal strategy; it buys at Ask and exits at Bid but does not yet model depth/partial fills, queue position, latency, expiry settlement or hedging.
+- [ ] Extend replay only after a point-in-time BBO/size corpus and verified contract economics exist; no supported empirical dataset is currently available.
+- [ ] Add a separate deterministic synthetic strategy fixture suite only when a concrete replay defect or extension is selected; existing statistical tests are synthetic and do not establish a market edge.
+- [x] Keep strategy performance and cross-asset profitability ranking blocked until a real PIT corpus and forward PAPER run pass the gates.
 
 ### Task 7: Operational record and final verification
 
