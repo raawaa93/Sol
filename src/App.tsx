@@ -1125,6 +1125,7 @@ function App() {
       notify('لا يوجد سعر Ask موجب وموثوق لتسجيل القسط. حدّث دفتر السوق أو اختر عقداً آخر.');
       return;
     }
+    const { canAllocatePaperCampaignTrade } = await import('./lib/paper-campaign-budget');
     if (dataMode === 'BINANCE') {
       const stepCount = safeQuantity / quantityStep;
       if (safeQuantity + 1e-9 < minimumQuantity) {
