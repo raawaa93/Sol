@@ -148,9 +148,14 @@ test('collector attaches the exchangeInfo snapshot to subsequent market records 
     e: 'bookTicker', E: EVENT_MS, T: EVENT_MS - 5, u: 42, s: SYMBOL,
     b: '1200.0', B: '2.0', a: '1210.0', A: '3.0',
   };
+  const haltedSnapshot = exchangeInfoFixture();
+  haltedSnapshot.serverTime = EVENT_MS + 500;
+  haltedSnapshot.optionSymbols[0].status = 'HALT';
   const transport = createFakeOptionsTransport([
     { type: 'exchangeInfo', payload: exchangeInfoFixture() },
     { type: 'message', data: bookTicker },
+    { type: 'exchangeInfo', payload: haltedSnapshot },
+    { type: 'message', data: { ...bookTicker, E: EVENT_MS + 700, T: EVENT_MS + 699, u: 43 } },
   ]);
   await collectForwardOptionsEvents({
     archive,
@@ -165,12 +170,15 @@ test('collector attaches the exchangeInfo snapshot to subsequent market records 
   for (const path of await listFiles(join(archive.root, 'segments'))) {
     for (const line of (await readFile(path, 'utf8')).trim().split('\n')) records.push(JSON.parse(line));
   }
-  const quote = records.find((record) => record.kind === 'BOOK_TICKER');
+  const quotes = records.filter((record) => record.kind === 'BOOK_TICKER');
+  const quote = quotes[0];
+  assert.equal(quotes.length, 2);
   assert.ok(quote?.contractSpec);
   assert.equal(quote.contractSpec.unit, 100);
   assert.equal(quote.contractSpecAvailableAt, RECEIVED);
   assert.equal(evaluateOptionsPointInTime(quote, '2026-11-25T03:00:02.000Z', ['bid', 'ask']).eligible, true);
   assert.ok(evaluateOptionsPointInTime(quote, '2026-11-25T03:00:00.500Z', ['bid', 'ask']).reasons.includes('CONTRACT_SPEC_LOOKAHEAD'));
+  assert.equal(quotes[1].contractSpec, null, 'a halted contract must not retain terms from an earlier exchangeInfo snapshot');
 });
 
 test('collector refuses to attach an expired exchangeInfo snapshot to later market events', async (t) => {
