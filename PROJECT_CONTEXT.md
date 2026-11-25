@@ -111,3 +111,12 @@ No second execution venue for a Syrian resident has been verified for global lis
 - No scheduled collector, live WebSocket capture, cross-device archive, valid historical BBO corpus, or measured strategy edge exists.
 - The shared Supabase project remains untouched. A new free project is technically available at $0/month within the free-project allowance, but it auto-pauses after low activity over seven days and requires a user-selected organization plus a secure auth/RLS design. Do not use public unauthenticated writes.
 - Continue research/PAPER only. No private keys, order routes, live trading, funds movement or geographic circumvention. See docs/superpowers/specs/2026-11-25-options-research-engine-design.md and docs/OPTIONS_RESEARCH_ENGINE_EXECUTION_2026-11-25.md.
+
+
+## 10. تحديث 25 نوفمبر 2026 — BBO replay safeguards
+
+- PR #204 merged as `337e03fb26d44c906125318affc473030c165da4`: historical PAPER replay now requires explicit BBO provenance, exchange/source-event time, local receive time, non-estimated bid/ask, explicit displayed-size unit and sufficient size at both sides. It applies configurable adverse slippage and exposes fills/provenance in the UI.
+- The REST option-ticker BBO timestamp (`ticker`) is not the WebSocket `optionTicker` event clock; the latter is a separate 24-hour statistics/last-price stream. Keep these source clocks independent.
+- Verification: CI 45572889900 passed 303/303 tests, production build, compressed bundle budgets and 18/18 Playwright journeys; Lighthouse 45572889852 passed (99 Performance, 100 Accessibility/Best Practices/SEO); Project Context Guard 45572889839 passed.
+- CSV provenance remains user-asserted; tests use controlled fixtures and do not establish live market availability or authenticity.
+- Still blocked: live/forward capture, scheduled worker, durable cloud archive, PIT executable BBO corpus, strategy edge and any live trading. Continue research/PAPER only under the Syria legal gate.
