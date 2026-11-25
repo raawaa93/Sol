@@ -77,3 +77,22 @@ This is provenance tracking only. The notice is for Binance RCH and does not est
 - PR #196 merged as `26b82d63bdd533c96fba8a881a8036fcf7c0b470`, adding a deterministic browser journey for paired 20/40-DTE CALL/PUT quotes, insufficient-history disclosure and provenance-preserving JSON export.
 - CI 45570955327 passed 293 unit/property tests, production build, compressed bundle budget and 18 Playwright journeys. Lighthouse 45570955246 and Project Context Guard 45570955274 passed.
 - These are code/test results only. No live Binance request, scheduled capture, cloud archive, historical BBO corpus or strategy edge is claimed.
+
+
+## Follow-up — executable BBO replay evidence — 25 November 2026, 08:04 UTC
+
+PR #204 merged as `337e03fb26d44c906125318affc473030c165da4`.
+
+- Replay requires explicit BBO source, source-event time, local receive time, valid non-estimated bid/ask, explicit size unit and sufficient displayed size at both entry and exit.
+- Execution ordering uses receive/availability time; source event time remains separately recorded. REST option-ticker BBO clock is `ticker`; WebSocket `optionTicker` remains a separate 24-hour last-price/statistics stream.
+- Binance bookTicker adapter records event/transaction time, local receive time, displayed quantities and contract-count units.
+- CSV preserves the evidence fields but does not authenticate the user's source claims.
+- Replay applies configurable adverse per-side slippage and reports source, timestamps, displayed size, fills and slippage cost.
+
+Verification:
+- CI 45572889900: 303/303 tests passed; production build and compressed bundle budget passed; mocked age-encryption/backup tests passed; 18/18 Playwright journeys passed.
+- Bundle: initial JS 96.985/100 KiB, all JS 127.871/240 KiB, CSS 13.571/14 KiB.
+- Lighthouse 45572889852: 99/100 Performance, 100/100 Accessibility, Best Practices and SEO.
+- Project Context Guard 45572889839 passed.
+
+No live market capture, scheduled worker, cloud archive, PIT dataset, strategy edge or live order capability was added.
