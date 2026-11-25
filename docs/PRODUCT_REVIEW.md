@@ -275,7 +275,7 @@ FAQ Binance المنشور في 12 يونيو 2025 يثبت أن المقيمي�
 **الدليل الآلي:** CI 45570010720 نجح (293 اختباراً، صفر فشل، build، bundle budget، Playwright)، Lighthouse 45570010778 نجح، وProject Context Guard 45570010823 نجح. PR #192 اجتاز CI 45569786353 وLighthouse 45569786394 وProject Context Guard 45569786341.
 
 **ما لم يكتمل:**
-- لا يوجد live Binance capture أو scheduler أو worker دائم؛ WebSocket transport مجرد طبقة نقل opt-in ولم يُختبر على الشبكة الحية.
+- PR #216 أضاف مشغّل Node محلياً supervised وopt-in، لكنه غير منشور أو مجدول. لا يوجد live Binance capture أو أرشيف سحابي دائم؛ وطبقة WebSocket لم تُختبر على الشبكة الحية.
 - سجل IV محلي وغير مشفر، يُجمع فقط عند فتح/تحديث Binance، ولا يعمل في الخلفية ولا يتزامن بين الأجهزة.
 - لا يوجد durable cloud archive. المشروع Supabase الحالي مشترك ولا نكتب إليه. المشروع المجاني المنفصل يقتضي اختيار المنظمة ونموذج مصادقة؛ لا نفتح public write endpoint.
 - لا توجد point-in-time historical BBO quotes كافية ولا نتائج استراتيجية مثبتة. الاختبار التاريخي المتقدم وترتيب الفرص عبر الأصول يبقيان محجوبين حتى تكتمل البيانات.
