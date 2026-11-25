@@ -16,7 +16,7 @@ const RECEIVED = '2026-11-25T03:00:00.100Z';
 const AVAILABLE = '2026-11-25T03:00:00.200Z';
 const CONTRACT = {
   symbol: 'BTC-261225-100000-C', underlying: 'BTC', optionType: 'CALL', strike: 100_000,
-  expiryAt: '2026-12-25T08:00:00.000Z', unit: 100, premiumUnit: 'PER_CONTRACT',
+  expiryAt: '2026-12-25T08:00:00.000Z', unit: 100, premiumUnit: 'PER_CONTRACT', premiumMultiplier: 1,
   quoteAsset: 'USDT', settlementAsset: 'USDT', exerciseStyle: 'EUROPEAN', settlementStyle: 'CASH',
   cashSettlementMultiplier: 100, sourceEndpoint: 'REST_EXCHANGE_INFO', version: 'exchangeInfo-2026-11-25T03:00:00.000Z',
 };
