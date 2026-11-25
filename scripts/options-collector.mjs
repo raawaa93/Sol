@@ -93,6 +93,7 @@ async function* readWebSocketEvents(socket, signal, maxQueuedMessages) {
   const onError = () => {
     push({ type: 'error' });
     finished = true;
+    try { socket.close(1000, 'socket-error'); } catch {}
     if (wake) {
       const resume = wake;
       wake = null;
