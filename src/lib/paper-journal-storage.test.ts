@@ -104,12 +104,12 @@ test('valid journal loads preserve an existing recovery snapshot without blockin
 
 test('recoverable invalid rows keep their original risk entry while raw JSON is backed up', () => {
   const storage = new MemoryStorage();
-  const raw = JSON.stringify([{ id: 'good' }, { id: 'damaged-close' }]);
+  const raw = JSON.stringify([{ id: 'good' }, { id: 7, recoveryKey: 'damaged-close' }]);
   storage.setItem(PAPER_JOURNAL_STORAGE_KEY, raw);
   const result = loadPaperJournal(
     storage,
     isValid,
-    (value) => value && typeof value === 'object' && (value as { id?: unknown }).id === 'damaged-close'
+    (value) => value && typeof value === 'object' && (value as { recoveryKey?: unknown }).recoveryKey === 'damaged-close'
       ? { id: 'damaged-close', recoveredAsOpen: true }
       : undefined,
   );
