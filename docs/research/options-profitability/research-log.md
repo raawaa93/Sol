@@ -167,3 +167,32 @@ The author version describes Deribit Bitcoin option tick data spanning 2017–20
 The reported associations are market-, maturity-, moneyness- and time-dependent: ATM prices are mainly associated with volatility-motivated demand; directional effects are weaker at ATM and more evident in OTM/DOTM options; short/medium maturities show stronger volatility demand, while longer-dated OTM calls show more directional demand and longer-dated DOTM puts retain volatility effects. The authors also describe directional demand as strongest in Asian hours and volatility demand as strongest in European hours. They characterize the Bitcoin volatility risk premium in their historical sample as consistently negative and larger in magnitude than their S&P 500 comparison. These are sample-specific findings, not current Binance measurements, causal proof, or net-of-cost option returns.
 
 Keep this evidence separate from Muravyev's US equity-option order-flow research and from crypto cross-sectional studies that use option-implied-volatility exposure to explain underlying-asset returns. None identifies current Binance participants, reveals true dealer inventory, or establishes profitable option selling. The distinct forward-only mark-IV/realized-variance and signed-flow experiments are preregistered in the [PIT research report](../OPTIONS_PIT_ARCHIVE_AND_RESEARCH_2026-11-24.md); neither has been run because Sol has no captured timestamped mark-IV/index history.
+## External historical options-data alternatives — 25 November 2026
+
+A targeted review of free samples, paid vendors and public analytics did not identify a verified, sustainably free, complete Binance Options executable-BBO history within the project's $15/month ceiling.
+
+### Tardis.dev — promising sample route, not yet verified
+
+- Its downloadable-data overview says the first day of each month can be downloaded without an API key. It documents tick-level 'book_ticker', 'book_snapshot_5/25', and options-related datasets; the overview lists Binance European Options as supported for some book datasets, including 'book_snapshot_5/25', 'book_ticker', and 'incremental_book_L2'.
+- There is a material documentation inconsistency: the Tardis FAQ says historical options data is provided for Deribit and OKX Options, while the downloadable-data overview lists Binance European Options for some book datasets. No Binance European Options sample was successfully downloaded or schema-validated in this review. Do not assume the grouped OPTIONS file or the 'binance-european-options' exchange identifier is available until an exact sample is retrieved and reconciled with the vendor's current metadata.
+- The monthly first-day sample is sparse calendar coverage, not a continuous historical archive. It may be suitable as a parser/fixture candidate only after the exact file, data fields, source clocks, rights and symbol metadata are verified. It is not sufficient alone for walk-forward strategy evaluation.
+- Tardis pricing is subscription-based; the published page lists plans starting at hundreds of dollars per month. This is outside the current spend ceiling. No account, trial, key, purchase or integration was initiated.
+- Official references: https://docs.tardis.dev/downloadable-csv-files/overview ; https://docs.tardis.dev/downloadable-csv-files/api ; https://docs.tardis.dev/faq/data ; https://tardis.dev/
+
+### Volar — free trial does not solve archival coverage
+
+- The public sandbox is 14 days, BTC chain only, latest snapshot only, 10 requests/minute, and excludes analytics, surfaces and bulk Parquet downloads.
+- Its BTC dense archive is a paid Pro feature; the 100 ms BTC/ETH L2 order-book archive is listed for Enterprise customers. This does not fit the zero/near-zero recurring-cost policy.
+- Official reference: https://volardata.com/
+
+### CryptoDataDownload — OHLCV is not executable BBO
+
+- The general download page advertises free crypto OHLCV and states a CC BY-NC-SA 4.0 license. The Deribit options page lists options OHLCV by maturity but the displayed contract archives are marked as Plus+ gated. Its API catalog classifies Binance options IV, hourly/daily klines, OI summaries and block-trade data as premium datasets.
+- Even where free OHLCV/trade-print files are available, they do not reconstruct point-in-time bid/ask depth or executable fills. The non-commercial/share-alike license must be checked before any downstream use; do not mirror or redistribute these data in this public repository.
+- Official references: https://www.cryptodatadownload.com/data/ ; https://www.cryptodatadownload.com/data/deribit/ ; https://api.cryptodatadownload.com/
+
+### Decision
+
+- Do not replace Binance with OKX or another venue solely to obtain data; exchange eligibility, location restrictions and data-use rights remain separate gates.
+- Do not use mark, trade-print, OHLCV, daily IV/OI or modeled surfaces as substitutes for executable BBO.
+- Keep the supervised forward-only archive as the primary route. Treat Tardis' first-of-month sample as a possible parser fixture only after a real file and its licensing are verified. No vendor access, sample data, external dataset or live capture was used in strategy evaluation.
