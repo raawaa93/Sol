@@ -488,7 +488,10 @@ export function applyBinanceOptionMarkPrice(
     ? Date.parse(updated.sourceTimestamps?.riskFreeRate ?? '')
     : Date.parse(updated.sourceReceivedAt?.riskFreeRate ?? '');
   const rateFresh = Number.isFinite(rateReceivedAt) && nowMs >= rateReceivedAt && nowMs - rateReceivedAt <= 60_000;
-  const modelUpdate = markIvFresh && rateFresh && updated.ivStatus === 'OBSERVED'
+  const indexReceivedAt = Date.parse(updated.sourceTimestamps?.index ?? '');
+  const indexFresh = Number.isFinite(indexReceivedAt) && nowMs >= indexReceivedAt && nowMs - indexReceivedAt <= 15_000;
+  const rateSourceValid = updated.riskFreeRateSource === 'REST_MARK' || updated.riskFreeRateSource === 'MARK_PRICE';
+  const modelUpdate = markIvFresh && rateFresh && indexFresh && rateSourceValid && updated.ivStatus === 'OBSERVED'
     && !updated.estimatedFields?.includes('iv')
     && Number.isFinite(updated.riskFreeRate)
     ? priceOption({ ...updated, volatility: updated.iv, rate: updated.riskFreeRate! })
