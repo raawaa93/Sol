@@ -156,7 +156,7 @@ test('quota failure writes neither a segment nor a cursor', async (t) => {
       (error) => error instanceof OptionsArchiveError && error.code === 'ARCHIVE_QUOTA_EXCEEDED',
     );
   });
-  assert.equal(await readdir(join(root, 'segments', 'book_ticker')).then((items) => items.length), 0);
+  assert.equal(await archive.getArchiveBytes(), 0);
   await assert.rejects(readFile(join(root, 'cursor.json'), 'utf8'), (error) => error.code === 'ENOENT');
 });
 
