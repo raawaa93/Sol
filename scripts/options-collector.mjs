@@ -82,7 +82,7 @@ async function* readWebSocketEvents(socket, signal, maxQueuedMessages) {
   const onOpen = () => push({ type: 'open' });
   const onMessage = (event) => {
     if (queuedMessages >= maxQueuedMessages) {
-      push({ type: 'overflow' });
+      push({ type: 'overflow', code: 1000, reason: 'local-buffer-overflow' });
       finished = true;
       try { socket.close(1000, 'local-buffer-overflow'); } catch {}
       return;
@@ -205,6 +205,7 @@ export function createBinanceOptionsWebSocketTransport({
               socketError = true;
             } else if (event.type === 'overflow') {
               socketOverflow = true;
+              closeEvent = { code: event.code, reason: event.reason };
             } else if (event.type === 'close') {
               closeEvent = event;
               break;
