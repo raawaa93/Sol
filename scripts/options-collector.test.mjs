@@ -81,6 +81,7 @@ test('exchangeInfo maps only explicit Binance Crypto Options contract terms with
   assert.ok(spec);
   assert.equal(spec.contractSpec.unit, 100);
   assert.equal(spec.contractSpec.premiumUnit, 'PER_CONTRACT');
+  assert.equal(spec.contractSpec.premiumMultiplier, 1);
   assert.equal(spec.contractSpec.cashSettlementMultiplier, 100);
   assert.equal(spec.contractSpec.quoteAsset, 'USDT');
   assert.equal(spec.contractSpec.settlementAsset, 'USDT');
