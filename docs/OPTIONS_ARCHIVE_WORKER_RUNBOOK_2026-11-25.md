@@ -20,7 +20,7 @@
 | Heartbeat interval | 30 seconds | 5 minutes |
 | Unique streams | explicitly supplied | 200 |
 
-The worker validates these bounds at startup, including when invoked programmatically with an injected configuration object; duplicate or malformed injected stream lists and non-boolean refresh flags are rejected. Archive writes independently enforce the configured byte quota before publishing segments. A writer lease prevents a second process on the same filesystem host from writing to the same archive root. The collector renews this lease periodically even when streams are quiet; lease-renewal failure aborts the worker and is surfaced as a failure. Archive heartbeat read/quota failures also abort the transport, wait for collector cleanup and lease release, and fail the worker instead of continuing with an unhealthy archive. Heartbeat polling is stopped before final archive verification. Heartbeat archive-read/quota failures now abort the transport, wait for collector cleanup and lease release, and fail the worker instead of merely logging a health warning.
+The worker validates these bounds at startup, including when invoked programmatically with an injected configuration object; duplicate or malformed injected stream lists and non-boolean refresh flags are rejected. Archive writes independently enforce the configured byte quota before publishing segments. A writer lease prevents a second process on the same filesystem host from writing to the same archive root. The collector renews this lease periodically even when streams are quiet; lease-renewal failure aborts the worker and is surfaced as a failure. Archive heartbeat read/quota failures also abort the transport, wait for collector cleanup and lease release, and fail the worker instead of continuing with an unhealthy archive. Heartbeat polling is stopped before final archive verification.
 
 ## Start (only after eligibility and legal checks)
 
@@ -57,6 +57,8 @@ The archive API is implemented in `scripts/options-archive.mjs`:
 - `ResumableOptionsArchive.restore(source, destination)` restores to a new destination and verifies it before publication.
 
 These are library APIs, not a separately installed backup service. Keep exports on a different physical device or approved storage location if an off-device backup is required. Do not assume the same disk or same device copy is disaster recovery.
+
+**Recovery-lock safety:** the worker uses a separate `.writer.recovery.lock` while reclaiming an expired writer lease. If that file is malformed and older than the lease TTL, the archive now fails closed with `WRITER_LEASE_RECOVERY_CORRUPT`; it will not unlink a lock whose owner metadata cannot be verified. A recent/partially written recovery lock returns `WRITER_LEASE_RECOVERY_BUSY`. Do not delete either lock automatically. Stop all worker processes using that archive root, verify no process is alive on the same host, preserve a copy of the archive directory, inspect the lock files and their timestamps, then perform any manual stale-lock cleanup only after confirming the owner is gone. If ownership cannot be established, preserve the archive and restore/export to a new directory instead of forcing a lock takeover.
 
 ## Monitoring and failure handling
 
