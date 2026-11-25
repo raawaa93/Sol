@@ -130,6 +130,8 @@ export interface OptionQuote {
   askQuantity?: number;
   /** Provenance for the current bid/ask values; no inference from mere presence. */
   bidAskSource?: 'BOOK_TICKER' | 'OPTION_TICKER' | 'MARK_PRICE';
+  /** Explicit unit for bidQuantity/askQuantity; never inferred from the numeric value. */
+  bidAskSizeUnit?: 'CONTRACTS' | 'UNDERLYING_UNITS';
   markPrice: number;
   priceSource?: QuotePriceSource;
   /** Zero is the unavailable sentinel; ivStatus distinguishes it from a valid observed or modelled value. */
@@ -141,7 +143,7 @@ export interface OptionQuote {
   /** Venue `vo` field, preserved separately from mark IV. */
   venueVolatility?: number;
   /** Local receive time for fields from endpoints that do not publish event timestamps. */
-  sourceReceivedAt?: { markIv?: string; riskFreeRate?: string };
+  sourceReceivedAt?: { markIv?: string; riskFreeRate?: string; bidAsk?: string };
   /** Exchange-provided IV at the best bid, in annual decimal units. */
   bidIv?: number;
   /** Exchange-provided IV at the best ask, in annual decimal units. */
