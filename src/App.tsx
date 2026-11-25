@@ -38,6 +38,7 @@ import { DEMO_MARKETS, DEMO_QUOTES, getExpiryChoices } from './lib/demo';
 import { applyBinanceBookTicker, applyBinanceOptionMarkPrice, applyBinanceOptionTicker, BinanceMarketDataError, fetchBinanceDepth, fetchBinanceOptions, parseBinanceBookTickerMessage, parseBinanceOptionMarkPriceMessage, parseBinanceOptionTickerMessage } from './lib/binance';
 import type { BinanceDepthSnapshot, BinanceOptionsSnapshot } from './lib/binance';
 import { getAtmTermStructure } from './lib/analysis';
+import type { IVHistoryObservation, IVRankPercentileResult } from './lib/iv-history';
 import { getLatestQuotePerContract, getMarketSnapshotFromQuotes } from './lib/market';
 import { getQuoteDataCoverage } from './lib/quote-data-coverage';
 import { assessSnapshotFreshness, DEFAULT_SNAPSHOT_STALE_AFTER_MS, formatSourceTimestampAge } from './lib/market-data-health';
@@ -239,6 +240,10 @@ function App() {
   const [quotes, setQuotes] = useState<OptionQuote[]>(DEMO_QUOTES);
   const [dataMode, setDataMode] = useState<'DEMO' | 'CSV' | 'BINANCE'>('DEMO');
   const [binanceSnapshot, setBinanceSnapshot] = useState<BinanceOptionsSnapshot | null>(null);
+  const [ivHistory, setIvHistory] = useState<IVHistoryObservation[]>([]);
+  const [currentIVObservation, setCurrentIVObservation] = useState<IVHistoryObservation | null>(null);
+  const [ivRankMetrics, setIvRankMetrics] = useState<IVRankPercentileResult | null>(null);
+  const [ivHistoryNotice, setIvHistoryNotice] = useState('جارٍ تحميل سجل التقلب المحلي.');
   const [binanceLoading, setBinanceLoading] = useState(false);
   const [binanceError, setBinanceError] = useState('');
   const [binanceAccessRestricted, setBinanceAccessRestricted] = useState(false);
@@ -323,6 +328,85 @@ function App() {
   const assetChoices = useMemo(() => [...new Set(scopedQuotes.map((quote) => quote.underlying))]
     .sort((a, b) => a.localeCompare(b)), [scopedQuotes]);
   const market = useMemo(() => dataMode === 'DEMO' ? DEMO_MARKETS[underlying] : getMarketSnapshotFromQuotes(scopedQuotes, underlying), [dataMode, scopedQuotes, underlying]);
+
+
+  useEffect(() => {
+    let active = true;
+    void import('./lib/iv-history-store').then(({ loadIVHistory }) => {
+      if (!active) return;
+      const loaded = loadIVHistory(localStorage);
+      if (loaded.ok) {
+        setIvHistory(loaded.observations);
+        setIvHistoryNotice('السجل المحلي جاهز؛ تُحفظ عينات Binance على هذا الجهاز فقط.');
+      } else {
+        setIvHistoryNotice(loaded.reason);
+      }
+    }).catch(() => {
+      if (active) setIvHistoryNotice('STORAGE_UNAVAILABLE');
+    });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (dataMode !== 'BINANCE' || !binanceSnapshot) {
+      setCurrentIVObservation(null);
+      return;
+    }
+    let active = true;
+    const asOf = new Date(binanceSnapshot.fetchedAt).toISOString();
+    void import('./lib/iv-history').then(({ extractObservedAtm30DayIV }) => {
+      if (!active) return;
+      const result = extractObservedAtm30DayIV(
+        binanceSnapshot.quotes.filter((quote) => quote.underlying === underlying),
+        asOf,
+      );
+      if (!result.ok) {
+        setCurrentIVObservation(null);
+        setIvHistoryNotice(result.reason);
+      } else {
+        setCurrentIVObservation(result.observation);
+      }
+    }).catch(() => {
+      if (active) {
+        setCurrentIVObservation(null);
+        setIvHistoryNotice('تعذر تحميل محلل التقلب.');
+      }
+    });
+    return () => { active = false; };
+  }, [binanceSnapshot, dataMode, underlying]);
+
+  useEffect(() => {
+    if (dataMode !== 'BINANCE' || !currentIVObservation) return;
+    let active = true;
+    void import('./lib/iv-history-store').then(({ appendIVHistoryObservation, loadIVHistory }) => {
+      if (!active) return;
+      const saved = appendIVHistoryObservation(localStorage, currentIVObservation, currentIVObservation.capturedAt);
+      if (!saved.ok) {
+        setIvHistoryNotice(saved.reason);
+        return;
+      }
+      const loaded = loadIVHistory(localStorage);
+      if (loaded.ok) setIvHistory(loaded.observations);
+      setIvHistoryNotice('حُفظت عينة IV مرصودة محلياً؛ السجل لا يغادر هذا المتصفح.');
+    }).catch(() => {
+      if (active) setIvHistoryNotice('STORAGE_UNAVAILABLE');
+    });
+    return () => { active = false; };
+  }, [currentIVObservation, dataMode]);
+
+  useEffect(() => {
+    if (!currentIVObservation) {
+      setIvRankMetrics(null);
+      return;
+    }
+    let active = true;
+    void import('./lib/iv-history').then(({ computeIVRankPercentile }) => {
+      if (active) setIvRankMetrics(computeIVRankPercentile(ivHistory, currentIVObservation, currentIVObservation.capturedAt));
+    }).catch(() => {
+      if (active) setIvRankMetrics(null);
+    });
+    return () => { active = false; };
+  }, [currentIVObservation, ivHistory]);
   const filteredQuotes = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     return assetQuotes
@@ -973,6 +1057,23 @@ function App() {
     notify('أضيفت الصفقة إلى الدفتر التجريبي فقط.');
   };
 
+  const exportIVHistoryBackup = async () => {
+    const { exportIVHistory } = await import('./lib/iv-history-store');
+    const result = exportIVHistory(localStorage);
+    if (!result.ok) {
+      notify('تعذر تصدير سجل IV: ' + result.reason);
+      return;
+    }
+    const blob = new Blob([result.json], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'sol-iv-history-backup.json';
+    anchor.click();
+    URL.revokeObjectURL(url);
+    notify('تم تصدير ' + result.count + ' عينة IV محلية.');
+  };
+
   const exportTrades = () => {
     if (!trades.length) {
       notify('لا توجد صفقات تجريبية لتصديرها.');
@@ -1212,6 +1313,8 @@ function App() {
           <OpportunityReview
             quotes={assetQuotes}
             market={market ?? null}
+            ivRank={ivRankMetrics}
+            ivHistoryNotice={ivHistoryNotice}
             underlying={underlying}
             dataMode={dataMode}
             onReviewQuote={(quote) => {
@@ -1406,7 +1509,7 @@ function App() {
           </Suspense>
 
           <section className="section-anchor journal-section" id="journal">
-            <div className="section-title-row"><div><span className="section-kicker">PAPER WORKSPACE</span><h2>الدفتر التجريبي</h2><p>سجل الفرضية والكمية والقسط قبل أن تقيم جودة القرار.</p></div><div className="journal-actions"><button className="button button-ghost" onClick={exportTrades}><Download size={14} /> تصدير CSV</button><button className="button button-ghost danger-ghost" onClick={() => { setTrades([]); notify('تم مسح الدفتر المحلي.'); }} disabled={!trades.length}><Trash2 size={14} /> مسح الدفتر</button></div></div>
+            <div className="section-title-row"><div><span className="section-kicker">PAPER WORKSPACE</span><h2>الدفتر التجريبي</h2><p>سجل الفرضية والكمية والقسط قبل أن تقيم جودة القرار.</p></div><div className="journal-actions"><button className="button button-ghost" onClick={exportTrades}><Download size={14} /> تصدير CSV</button><button className="button button-ghost" onClick={exportIVHistoryBackup}><Download size={14} /> نسخة IV JSON</button><button className="button button-ghost danger-ghost" onClick={() => { setTrades([]); notify('تم مسح الدفتر المحلي.'); }} disabled={!trades.length}><Trash2 size={14} /> مسح الدفتر</button></div></div>
             <article className="panel journal-panel">
               <div className="journal-summary"><div className="journal-summary-icon"><WalletCards size={18} /></div><div><strong>{trades.length} <span>صفقة تجريبية</span></strong><small>محفوظة محلياً في هذا المتصفح فقط</small></div><div className="journal-metric"><span>وضع التنفيذ</span><strong><i /> PAPER ONLY</strong></div><div className="journal-metric"><span>مفاتيح تداول</span><strong className="safe-label"><LockKeyhole size={13} /> غير مطلوبة</strong></div></div>
               {trades.length ? <>
