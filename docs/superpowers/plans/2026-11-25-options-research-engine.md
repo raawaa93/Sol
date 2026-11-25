@@ -141,8 +141,9 @@ The merged transport is a tested library component, not an operating collector. 
 - Report sample size, coverage, drawdown, tail loss, profit factor, turnover and uncertainty; suppress unsupported statistics.
 - E1 volatility-risk-premium and E2 order-flow experiments remain BLOCKED until their data prerequisites are met.
 
-- [x] Audit the existing replay and strategy-evaluation protocol. Current replay is a conservative one-leg fixed-hold PAPER baseline, not a signal strategy; it buys at Ask and exits at Bid but does not yet model depth/partial fills, queue position, latency, expiry settlement or hedging.
-- [ ] Extend replay only after a point-in-time BBO/size corpus and verified contract economics exist; no supported empirical dataset is currently available.
+- [x] Audit the existing replay and strategy-evaluation protocol. Current replay is a conservative one-leg fixed-hold PAPER baseline, not a signal strategy. PR #204 now requires source-bound BBO event/receive clocks, top-of-book displayed size at Ask entry/Bid exit, rejects estimated/mark-only/stale data, and models configurable per-side slippage and fees. It still does not model partial fills, queue position, market impact beyond the slippage assumption, latency distribution, expiry/settlement payoffs or hedging.
+- [x] Hardened the existing replay baseline in PR #204 (337e03fb26d44c906125318affc473030c165da4): 303 tests, build, bundle budget, 18/18 Playwright, Lighthouse and Project Context Guard passed.
+- [ ] Extend into a strategy backtest only after a point-in-time BBO/size corpus and verified contract economics exist; no supported empirical dataset is currently available.
 - [ ] Add a separate deterministic synthetic strategy fixture suite only when a concrete replay defect or extension is selected; existing statistical tests are synthetic and do not establish a market edge.
 - [x] Keep strategy performance and cross-asset profitability ranking blocked until a real PIT corpus and forward PAPER run pass the gates.
 
@@ -155,6 +156,6 @@ The merged transport is a tested library component, not an operating collector. 
 - Create: docs/OPTIONS_RESEARCH_ENGINE_EXECUTION_2026-11-25.md
 
 - [x] Record implemented/tested/merged separately, with commit SHAs and workflow IDs in docs/OPTIONS_RESEARCH_ENGINE_EXECUTION_2026-11-25.md.
-- [x] Run full unit/property tests (293/293), production build, bundle budget, Playwright, Lighthouse and Project Context Guard.
+- [x] Run full unit/property tests (303/303), production build, bundle budget, 18/18 Playwright journeys, Lighthouse and Project Context Guard.
 - [x] Fresh-review source provenance, local storage, data-quality and Syria legal gates; no production DB writes or live orders.
 - [x] Leave unresolved cloud, legal, live-capture and strategy-data blockers explicit.
