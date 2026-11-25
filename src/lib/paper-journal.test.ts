@@ -408,3 +408,33 @@ test('canonical PAPER close requires an explicit non-negative exit fee and preve
   assert.equal(second.ok, false);
   if (!second.ok) assert.equal(second.reason, 'PAPER_TRADE_ALREADY_CLOSED');
 });
+
+
+test('canonical PAPER close revalidates the immutable entry debit and source snapshot', () => {
+  const trade = makeOpenCanonicalTrade();
+  const corruptedDebit = createCanonicalPaperClose({
+    trade: { ...trade, premiumDebitAtEntry: trade.premiumDebitAtEntry! + 1 },
+    quote: makeExitQuote(),
+    closedAt: '2026-11-25T03:03:00Z',
+    exitPremium: 1.1,
+    exitFees: 0.1,
+  });
+  assert.equal(corruptedDebit.ok, false);
+  if (!corruptedDebit.ok) assert.equal(corruptedDebit.reason, 'ENTRY_DEBIT_OR_SOURCE_SNAPSHOT_INVALID');
+
+  const staleEntry = createCanonicalPaperClose({
+    trade: {
+      ...trade,
+      sourceTimestampsAtEntry: {
+        ...trade.sourceTimestampsAtEntry,
+        bookTicker: '2026-11-25T02:00:00Z',
+      },
+    },
+    quote: makeExitQuote(),
+    closedAt: '2026-11-25T03:03:00Z',
+    exitPremium: 1.1,
+    exitFees: 0.1,
+  });
+  assert.equal(staleEntry.ok, false);
+  if (!staleEntry.ok) assert.equal(staleEntry.reason, 'ENTRY_DEBIT_OR_SOURCE_SNAPSHOT_INVALID');
+});
