@@ -1,6 +1,6 @@
 # Options archive implementation status — 25 November 2026
 
-**Merged:** PR #176, commit `8dcd251e2cc6c03dccf04b82c0cd48eb2ada59a2`. The follow-up source-provenance hardening is PR #187, merged as `41a94cd2c08472e3c4d0d77e70e34782f9fc2200`; opt-in REST exchangeInfo refresh is merged on main as `d67d5629c61369dc388e42216b768a6466a38b12`. CI and Project Context Guard passed on the latest main commit; Lighthouse and deployment were still running at the last check. This is a merged local foundation, not a live collector or cloud archive.
+**Merged:** PR #176, commit `8dcd251e2cc6c03dccf04b82c0cd48eb2ada59a2`. The follow-up source-provenance hardening is PR #187, merged as `41a94cd2c08472e3c4d0d77e70e34782f9fc2200`; opt-in REST exchangeInfo refresh is merged on main as `d67d5629c61369dc388e42216b768a6466a38b12`. CI and Project Context Guard passed on the latest main commit; the Lighthouse baseline, GitHub Pages build/deploy, and published-site smoke/Lighthouse also passed (runs 45550879596, 45550879632, 45550879682, 45550879655). This is a merged local foundation, not a live collector or cloud archive.
 
 
 ## Scope delivered in this branch
@@ -43,5 +43,5 @@ No point-in-time dataset, historical BBO series, measured strategy edge, profita
 ## Follow-up verification — 25 November 2026, 05:03 UTC
 
 - PR #187 merged as `41a94cd2c08472e3c4d0d77e70e34782f9fc2200`. Binance 24-hour ticker event time and close time are now distinct from BBO/mark-price timestamps; REST `/eapi/v1/mark` values use their own local receive time rather than aggregate snapshot completion; stale mark-price events cannot overwrite a newer index; model Greeks and risk-neutral EV fail closed on stale or mismatched sources. The duplicate PR #188 was closed unmerged after its latest build failed TypeScript due to using optional `fetchedAt` instead of a dedicated mark receive timestamp. PR #187 passed CI, Lighthouse and Project Context Guard before merge.
-- Main commit `d67d5629c61369dc388e42216b768a6466a38b12` adds opt-in injected REST `exchangeInfo` refresh, durable raw snapshot append before publishing the new contract-spec map, rate limiting and lease renewal. CI and Project Context Guard passed. Lighthouse and deployment were still running at the last verification.
+- Main commit `d67d5629c61369dc388e42216b768a6466a38b12` adds opt-in injected REST `exchangeInfo` refresh, durable raw snapshot append before publishing the new contract-spec map, rate limiting and lease renewal. CI and Project Context Guard passed. Lighthouse, GitHub Pages deployment and published-site smoke/Lighthouse subsequently passed on the mainline run set (45550879682, 45550879655).
 - No real Binance HTTP/WebSocket market-data capture, live account eligibility verification, cloud archive, or historical data collection is claimed.
