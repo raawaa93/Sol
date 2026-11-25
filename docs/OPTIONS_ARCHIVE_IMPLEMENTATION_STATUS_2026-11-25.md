@@ -279,11 +279,18 @@ No live orders, account credentials, payments, new cloud resources, or Binance-r
 - Added tests for missing fee provenance, zero-default behavior, fee-cap violations, persisted entry receive time and legacy close rejection.
 
 
-## Versioned local PAPER JSON backup and restore — PR #248 (verification pending)
+## Versioned local PAPER JSON backup and restore — PR #248 (merged to main)
 
 - Adds a versioned `SOL_PAPER_JOURNAL` JSON format (schema v1), with a 5 MiB and 10,000-entry limit.
 - Export validates every record and unique IDs before producing a downloadable backup. The file is created locally in the browser and is not uploaded.
 - Import validates format/version/timestamp/size, each record through the same runtime `isPaperTrade` validator, and duplicate IDs. It merges additively: identical records are skipped; same-ID/different-content conflicts reject the whole import; existing rows are never silently replaced.
 - Before writing, import checks that the stored journal still matches the in-memory journal, checks again before commit, enforces the merged 5 MiB limit, and verifies the stored bytes after write. Concurrent-tab or readback conflicts block further journal writes until reload/recovery rather than overwriting unseen edits.
 - The JSON file picker remains keyboard accessible; the browser-only localStorage boundary is explicit. This is not encrypted storage or cross-device backup.
-- PR #248: https://github.com/raawaa93/Sol/pull/248. CI, browser journeys, Lighthouse and Project Context Guard must pass before merge.
+- PR #248: https://github.com/raawaa93/Sol/pull/248 — merged as `d9cb466d52054c510375400da36ca8961446c4db`. PR-head CI, browser journeys, Lighthouse and Project Context Guard all passed.
+
+
+## Android local capture alternative
+
+- Added `docs/ANDROID_TERMUX_OPTIONS_ARCHIVE.md` and `scripts/options-archive-termux-start.sh` as an optional local path for Android devices.
+- The launcher requires an explicit eligibility/terms acknowledgement, explicit public stream list, Node.js >=22.6, and refuses proxy variables or Binance API credentials. It forces REST exchangeInfo refresh off and keeps the default one-hour/128 MiB limits.
+- This is not a 24/7 cloud service. Android may kill background processes; local storage is not off-device backup. Stop on 403/451 or rejected WebSocket upgrades; no alternate region, VPN, or proxy fallback.
