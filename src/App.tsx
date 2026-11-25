@@ -38,6 +38,9 @@ import { DEMO_MARKETS, DEMO_QUOTES, getExpiryChoices } from './lib/demo';
 import { applyBinanceBookTicker, applyBinanceOptionMarkPrice, applyBinanceOptionTicker, BinanceMarketDataError, fetchBinanceDepth, fetchBinanceOptions, parseBinanceBookTickerMessage, parseBinanceOptionMarkPriceMessage, parseBinanceOptionTickerMessage } from './lib/binance';
 import type { BinanceDepthSnapshot, BinanceOptionsSnapshot } from './lib/binance';
 import { getAtmTermStructure } from './lib/analysis';
+import { computeIVRankPercentile, extractObservedAtm30DayIV } from './lib/iv-history';
+import type { IVRankPercentileResult } from './lib/iv-history';
+import { appendIVHistoryObservation, exportIVHistory, loadIVHistory } from './lib/iv-history-store';
 import { getLatestQuotePerContract, getMarketSnapshotFromQuotes } from './lib/market';
 import { getQuoteDataCoverage } from './lib/quote-data-coverage';
 import { assessSnapshotFreshness, DEFAULT_SNAPSHOT_STALE_AFTER_MS, formatSourceTimestampAge } from './lib/market-data-health';
@@ -239,6 +242,8 @@ function App() {
   const [quotes, setQuotes] = useState<OptionQuote[]>(DEMO_QUOTES);
   const [dataMode, setDataMode] = useState<'DEMO' | 'CSV' | 'BINANCE'>('DEMO');
   const [binanceSnapshot, setBinanceSnapshot] = useState<BinanceOptionsSnapshot | null>(null);
+  const [ivHistoryState, setIvHistoryState] = useState(() => loadIVHistory(localStorage));
+  const [ivHistoryNotice, setIvHistoryNotice] = useState(() => ivHistoryState.ok ? '' : 'تعذر قراءة سجل التقلب المحلي؛ لم يتم استبدال البيانات التالفة.');
   const [binanceLoading, setBinanceLoading] = useState(false);
   const [binanceError, setBinanceError] = useState('');
   const [binanceAccessRestricted, setBinanceAccessRestricted] = useState(false);
@@ -292,6 +297,22 @@ function App() {
   }, [binanceSnapshot?.fetchedAt, dataMode]);
 
   useEffect(() => {
+    if (dataMode !== 'BINANCE' || !currentIVExtraction) return;
+    if (!currentIVExtraction.ok) {
+      setIvHistoryNotice(currentIVExtraction.reason);
+      return;
+    }
+    const captured = currentIVExtraction.observation;
+    const saved = appendIVHistoryObservation(localStorage, captured, captured.capturedAt);
+    if (!saved.ok) {
+      setIvHistoryNotice(saved.reason);
+      return;
+    }
+    setIvHistoryState(loadIVHistory(localStorage));
+    setIvHistoryNotice('حُفظت عينة IV مرصودة محلياً؛ السجل لا يغادر هذا المتصفح.');
+  }, [currentIVExtraction, dataMode]);
+
+  useEffect(() => {
     if (effectiveExpiry && effectiveExpiry !== selectedExpiry) setSelectedExpiry(effectiveExpiry);
   }, [effectiveExpiry, selectedExpiry]);
 
@@ -323,6 +344,14 @@ function App() {
   const assetChoices = useMemo(() => [...new Set(scopedQuotes.map((quote) => quote.underlying))]
     .sort((a, b) => a.localeCompare(b)), [scopedQuotes]);
   const market = useMemo(() => dataMode === 'DEMO' ? DEMO_MARKETS[underlying] : getMarketSnapshotFromQuotes(scopedQuotes, underlying), [dataMode, scopedQuotes, underlying]);
+  const ivHistory = ivHistoryState.ok ? ivHistoryState.observations : [];
+  const currentIVExtraction = useMemo(() => dataMode === 'BINANCE' && binanceSnapshot
+    ? extractObservedAtm30DayIV(binanceSnapshot.quotes, new Date(binanceSnapshot.fetchedAt).toISOString())
+    : null, [binanceSnapshot, dataMode]);
+  const currentIVObservation = currentIVExtraction?.ok ? currentIVExtraction.observation : null;
+  const ivRankMetrics: IVRankPercentileResult | null = useMemo(() => currentIVObservation
+    ? computeIVRankPercentile(ivHistory, currentIVObservation, currentIVObservation.capturedAt)
+    : null, [currentIVObservation, ivHistory]);
   const filteredQuotes = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     return assetQuotes
@@ -973,6 +1002,22 @@ function App() {
     notify('أضيفت الصفقة إلى الدفتر التجريبي فقط.');
   };
 
+  const exportIVHistoryBackup = () => {
+    const result = exportIVHistory(localStorage);
+    if (!result.ok) {
+      notify('تعذر تصدير سجل IV: ' + result.reason);
+      return;
+    }
+    const blob = new Blob([result.json], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'sol-iv-history-backup.json';
+    anchor.click();
+    URL.revokeObjectURL(url);
+    notify('تم تصدير ' + result.count + ' عينة IV محلية.');
+  };
+
   const exportTrades = () => {
     if (!trades.length) {
       notify('لا توجد صفقات تجريبية لتصديرها.');
@@ -1212,6 +1257,8 @@ function App() {
           <OpportunityReview
             quotes={assetQuotes}
             market={market ?? null}
+            ivRank={ivRankMetrics}
+            ivHistoryNotice={ivHistoryNotice}
             underlying={underlying}
             dataMode={dataMode}
             onReviewQuote={(quote) => {
@@ -1406,7 +1453,7 @@ function App() {
           </Suspense>
 
           <section className="section-anchor journal-section" id="journal">
-            <div className="section-title-row"><div><span className="section-kicker">PAPER WORKSPACE</span><h2>الدفتر التجريبي</h2><p>سجل الفرضية والكمية والقسط قبل أن تقيم جودة القرار.</p></div><div className="journal-actions"><button className="button button-ghost" onClick={exportTrades}><Download size={14} /> تصدير CSV</button><button className="button button-ghost danger-ghost" onClick={() => { setTrades([]); notify('تم مسح الدفتر المحلي.'); }} disabled={!trades.length}><Trash2 size={14} /> مسح الدفتر</button></div></div>
+            <div className="section-title-row"><div><span className="section-kicker">PAPER WORKSPACE</span><h2>الدفتر التجريبي</h2><p>سجل الفرضية والكمية والقسط قبل أن تقيم جودة القرار.</p></div><div className="journal-actions"><button className="button button-ghost" onClick={exportTrades}><Download size={14} /> تصدير CSV</button><button className="button button-ghost" onClick={exportIVHistoryBackup}><Download size={14} /> نسخة IV JSON</button><button className="button button-ghost danger-ghost" onClick={() => { setTrades([]); notify('تم مسح الدفتر المحلي.'); }} disabled={!trades.length}><Trash2 size={14} /> مسح الدفتر</button></div></div>
             <article className="panel journal-panel">
               <div className="journal-summary"><div className="journal-summary-icon"><WalletCards size={18} /></div><div><strong>{trades.length} <span>صفقة تجريبية</span></strong><small>محفوظة محلياً في هذا المتصفح فقط</small></div><div className="journal-metric"><span>وضع التنفيذ</span><strong><i /> PAPER ONLY</strong></div><div className="journal-metric"><span>مفاتيح تداول</span><strong className="safe-label"><LockKeyhole size={13} /> غير مطلوبة</strong></div></div>
               {trades.length ? <>
