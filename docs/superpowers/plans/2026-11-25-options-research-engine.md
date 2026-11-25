@@ -101,26 +101,34 @@
 - [x] Implement sourced IV Rank/Percentile UI with warming/partial/local-storage disclosures.
 - [x] Full CI unit/property tests, production build, bundle budget and Playwright passed in run 45570010720; Lighthouse passed in 45570010778.
 
-### Task 5: Review and complete the forward-only Binance collector
+### Task 5: Review and complete the forward-only Binance collector transport
 
 **Files:**
 - Existing: scripts/options-collector.mjs, scripts/options-archive.mjs.
 - Merged PR: #192 feat: add opt-in public Binance Options WebSocket transport.
-- Modify only after reviewing the PR branch and current main.
 
-**Acceptance:**
+**Transport acceptance (completed):**
 - Fixed documented public endpoint only; no credentials, private streams, orders, proxy or alternate egress.
-- Only documented normal connection rotations reconnect; abnormal close, error, 403/451, overflow and sequence gap stop or quarantine.
-- REST depth is a snapshot, never historical BBO. Depth deltas require a valid snapshot bridge and contiguous sequence.
-- Reconnect starts a new capture epoch and writes explicit GAP records; no interpolation.
+- Only normal connection rotations reconnect; abnormal close, socket error, overflow and sequence gaps fail closed or emit explicit gap records.
+- REST depth remains a snapshot, never historical BBO. Depth deltas require a valid snapshot bridge and contiguous sequence.
+- Reconnect emits a new connection/gap event; no interpolation across missing data.
 - Collection remains opt-in and disabled by default.
-- Writer lease, bounded queues, cursor ordering, restart, integrity and quota behavior are tested.
 
-- [ ] Review PR #192 source, tests and workflow checks; do not merge before all required CI/bundle/security gates pass.
-- [ ] Add failing tests for disconnect/gap persistence, abort during reconnect, buffer overflow, abnormal close and queue/cursor durability.
-- [ ] Verify RED, implement minimum fix, run npm test and npm run test:archive.
-- [ ] Run build, bundle budget, E2E, Lighthouse and Project Context Guard.
-- [ ] Merge only with fresh passing evidence; no real capture is implied.
+**Verified implementation and CI:**
+- [x] Review PR #192 source, tests and workflow checks; review caught and corrected the queue-overflow close-code mismatch.
+- [x] Add deterministic tests for disconnect/gap persistence, abort/reconnect behavior, buffer overflow, abnormal close and queue bounds.
+- [x] Full unit/property tests, production build, compressed bundle budget and Playwright passed in CI run 45569786353.
+- [x] Lighthouse run 45569786394 passed.
+- [x] Project Context Guard run 45569786341 passed.
+- [x] Merge PR #192 as 8e97c76dea8646eec8a116b1116e2cf1e88dba72.
+
+**Not implemented / not verified (separate future task):**
+- [ ] Supervised worker, scheduler, persistent runtime, cloud archive and monitoring.
+- [ ] Any live Binance WebSocket connection, HTTP capture or forward market-data collection.
+- [ ] Legal, licensing and exact account/product eligibility for live capture from the user's true residence.
+- [ ] Cross-process/cloud lease, durable restart recovery and end-to-end cloud backup/restore.
+
+The merged transport is a tested library component, not an operating collector. No live connectivity, historical BBO coverage or strategy edge is implied.
 
 ### Task 6: Research-grade strategy replay and evaluation
 
