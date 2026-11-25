@@ -24,6 +24,7 @@ export interface PaperJournalStorage {
 export function loadPaperJournal<T>(
   storage: PaperJournalStorage,
   isValid: (value: unknown) => value is T,
+  recover?: (value: unknown) => T | undefined,
 ): PaperJournalLoadResult<T> {
   let raw: string | null;
   try {
@@ -34,27 +35,38 @@ export function loadPaperJournal<T>(
   if (raw === null) {
     let backupAvailable = false;
     try { backupAvailable = storage.getItem(PAPER_JOURNAL_RECOVERY_KEY) !== null; } catch { /* read-only fallback */ }
-    return { entries: [], rejectedCount: 0, backupAvailable, persistenceBlocked: false, parseError: false };
+    return { entries: [], rejectedCount: 0, backupAvailable, persistenceBlocked: backupAvailable, parseError: false };
   }
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch {
-    return preserveRejectedJournal(storage, raw, 0, true);
+    return preserveRejectedJournal(storage, raw, 0, true, [], 1);
   }
   if (!Array.isArray(parsed)) {
-    return preserveRejectedJournal(storage, raw, 0, true);
+    return preserveRejectedJournal(storage, raw, 0, true, [], 1);
   }
 
-  const entries = parsed.filter(isValid);
-  const rejectedCount = parsed.length - entries.length;
+  const entries: T[] = [];
+  let rejectedCount = 0;
+  let unrecoveredCount = 0;
+  for (const value of parsed) {
+    if (isValid(value)) {
+      entries.push(value);
+      continue;
+    }
+    rejectedCount += 1;
+    const recovered = recover?.(value);
+    if (recovered !== undefined) entries.push(recovered);
+    else unrecoveredCount += 1;
+  }
   if (rejectedCount === 0) {
     let backupAvailable = false;
     try { backupAvailable = storage.getItem(PAPER_JOURNAL_RECOVERY_KEY) !== null; } catch { /* read-only fallback */ }
     return { entries, rejectedCount: 0, backupAvailable, persistenceBlocked: false, parseError: false };
   }
-  return preserveRejectedJournal(storage, raw, rejectedCount, false, entries);
+  return preserveRejectedJournal(storage, raw, rejectedCount, false, entries, unrecoveredCount);
 }
 
 function preserveRejectedJournal<T>(
@@ -63,12 +75,13 @@ function preserveRejectedJournal<T>(
   rejectedCount: number,
   parseError: boolean,
   entries: T[] = [],
+  unrecoveredCount = 0,
 ): PaperJournalLoadResult<T> {
   try {
     const existing = storage.getItem(PAPER_JOURNAL_RECOVERY_KEY);
     if (existing === null) {
       storage.setItem(PAPER_JOURNAL_RECOVERY_KEY, raw);
-      return { entries, rejectedCount, backupAvailable: true, persistenceBlocked: false, parseError };
+      return { entries, rejectedCount, backupAvailable: true, persistenceBlocked: parseError || unrecoveredCount > 0, parseError };
     }
     if (existing === raw) {
       return { entries, rejectedCount, backupAvailable: true, persistenceBlocked: false, parseError };
