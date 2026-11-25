@@ -25,6 +25,7 @@ export default function HistoricalReplayPanel({ quotes, dataMode, underlying }: 
   const [exitGraceMinutes, setExitGraceMinutes] = useState('15');
   const [maxSpreadPct, setMaxSpreadPct] = useState('8');
   const [feePercent, setFeePercent] = useState('0');
+  const [slippageBpsPerSide, setSlippageBpsPerSide] = useState('0');
 
   const replay = useMemo(() => {
     if (dataMode !== 'CSV') return null;
@@ -33,15 +34,25 @@ export default function HistoricalReplayPanel({ quotes, dataMode, underlying }: 
       maxExitDelayMs: Number(exitGraceMinutes) * 60_000,
       maxSpreadPct: Number(maxSpreadPct),
       feeRatePerSide: Number(feePercent) / 100,
+      slippageBpsPerSide: Number(slippageBpsPerSide),
       quantity: 1,
       maxTrades: 1_000,
       sourceMode: 'CSV',
     });
-  }, [quotes, dataMode, holdingMinutes, exitGraceMinutes, maxSpreadPct, feePercent]);
+  }, [quotes, dataMode, holdingMinutes, exitGraceMinutes, maxSpreadPct, feePercent, slippageBpsPerSide]);
 
   if (dataMode !== 'CSV') return null;
 
-  const timestampedRows = quotes.filter((quote) => quote.sourceTimestamp && Number.isFinite(Date.parse(quote.sourceTimestamp))).length;
+  const replayReadyRows = quotes.filter((quote) => {
+    const eventTime = quote.bidAskSource === 'BOOK_TICKER' ? quote.sourceTimestamps?.bookTicker
+      : quote.bidAskSource === 'OPTION_TICKER' ? quote.sourceTimestamps?.ticker : undefined;
+    return Boolean(eventTime && quote.sourceReceivedAt?.bidAsk
+      && Number.isFinite(Date.parse(eventTime)) && Number.isFinite(Date.parse(quote.sourceReceivedAt.bidAsk))
+      && (quote.bidAskSizeUnit === 'CONTRACTS' || quote.bidAskSizeUnit === 'UNDERLYING_UNITS')
+      && Number.isFinite(quote.bidQuantity) && Number.isFinite(quote.askQuantity)
+      && (quote.bidQuantity ?? 0) > 0 && (quote.askQuantity ?? 0) > 0
+      && !quote.estimatedFields?.includes('bid') && !quote.estimatedFields?.includes('ask'));
+  }).length;
   const totalTrades = replay?.trades.length ?? 0;
   const replayCurrencies = [...new Set(quotes.map((quote) => getQuoteCurrency(quote) ?? ''))];
   const replayCurrency = replayCurrencies.length === 1 ? replayCurrencies[0] || null : null;
@@ -52,9 +63,9 @@ export default function HistoricalReplayPanel({ quotes, dataMode, underlying }: 
         <div>
           <span className="section-kicker">HISTORICAL EXECUTION REPLAY · {underlying}</span>
           <h2 id="historical-replay-heading">إعادة تشغيل تاريخية محافظة</h2>
-          <p>شراء عند Ask ثم إغلاق عند Bid بعد مدة محددة، باستخدام الطوابع الزمنية الفعلية للملف.</p>
+          <p>شراء عند Ask ثم إغلاق عند Bid بعد مدة محددة، باستخدام وقت توفر BBO لا وقت آخر صفقة.</p>
         </div>
-        <span className="replay-status"><History size={13} /> {timestampedRows} لقطة مؤرخة</span>
+        <span className="replay-status"><History size={13} /> {replayReadyRows} لقطة مؤرخة</span>
       </div>
 
       <div className="panel replay-panel">
@@ -71,6 +82,9 @@ export default function HistoricalReplayPanel({ quotes, dataMode, underlying }: 
           <label>رسوم كل طرف (%)
             <input type="number" min="0" max="10" step="0.01" value={feePercent} onChange={(event) => setFeePercent(event.target.value)} />
           </label>
+          <label>انزلاق إضافي لكل طرف (bps)
+            <input type="number" min="0" max="5000" step="5" value={slippageBpsPerSide} onChange={(event) => setSlippageBpsPerSide(event.target.value)} />
+          </label>
         </div>
 
         {totalTrades > 0 ? <>
@@ -80,25 +94,30 @@ export default function HistoricalReplayPanel({ quotes, dataMode, underlying }: 
             <article><span>صافي P&amp;L</span><strong className={replay!.netPnl >= 0 ? 'replay-positive' : 'replay-negative'}>{formatPnl(replay!.netPnl, replayCurrency)}</strong></article>
             <article><span>Profit Factor</span><strong>{replay!.profitFactor === null ? 'غير محدد' : replay!.profitFactor.toFixed(2)}</strong></article>
             <article><span>أقصى تراجع</span><strong>{formatSmallAmount(replay!.maxDrawdown, replayCurrency)}</strong></article>
+            <article><span>تكلفة الانزلاق</span><strong>{formatSmallAmount(replay!.trades.reduce((sum, trade) => sum + trade.slippageCost, 0), replayCurrency)}</strong></article>
             <article><span>العائد على الأقساط</span><strong>{replay!.returnOnPremiumPct === null ? '—' : `${replay!.returnOnPremiumPct.toFixed(2)}%`}</strong></article>
           </div>
           <div className="replay-trades-wrap">
             <table className="replay-trades">
-              <thead><tr><th>العقد</th><th>الدخول UTC</th><th>الخروج UTC</th><th>Ask</th><th>Bid</th><th>صافي P&amp;L</th></tr></thead>
+              <thead><tr><th>العقد</th><th>الدخول UTC</th><th>الخروج UTC</th><th>مصدر BBO</th><th>وقت مصدر الدخول/الخروج UTC</th><th>Ask</th><th>Bid</th><th>Fill دخول</th><th>Fill خروج</th><th>حجم Ask/Bid</th><th>الانزلاق</th><th>صافي P&amp;L</th></tr></thead>
               <tbody>{replay!.trades.slice(-8).reverse().map((trade, index) => (
                 <tr key={`${trade.symbol}-${trade.entryTimestamp}-${index}`}>
                   <td>{trade.symbol}</td><td>{formatReplayTime(trade.entryTimestamp)}</td><td>{formatReplayTime(trade.exitTimestamp)}</td>
+                  <td>{trade.entryBidAskSource} / {trade.exitBidAskSource}</td><td>{formatReplayTime(trade.entrySourceTimestamp)} / {formatReplayTime(trade.exitSourceTimestamp)}</td>
                   <td>{formatOptionPrice(trade.entryAsk, undefined, replayCurrency)}</td><td>{formatOptionPrice(trade.exitBid, undefined, replayCurrency)}</td>
+                  <td>{formatOptionPrice(trade.entryFill, undefined, replayCurrency)}</td><td>{formatOptionPrice(trade.exitFill, undefined, replayCurrency)}</td>
+                  <td>{trade.entryDisplayedSize.toFixed(2)} / {trade.exitDisplayedSize.toFixed(2)} {trade.bidAskSizeUnit}</td>
+                  <td>{formatSmallAmount(trade.slippageCost, replayCurrency)}</td>
                   <td className={trade.netPnl >= 0 ? 'replay-positive' : 'replay-negative'}>{formatPnl(trade.netPnl, replayCurrency)}</td>
                 </tr>
               ))}</tbody>
             </table>
           </div>
-        </> : <div className="replay-empty"><strong>لا توجد صفقة قابلة لإعادة التشغيل بهذه الإعدادات</strong><span>يلزم وجود لقطتين مؤرختين على الأقل للعقد نفسه، مع Bid/Ask صالحين ضمن حد السبريد وفترة خروج مطابقة.</span></div>}
+        </> : <div className="replay-empty"><strong>لا توجد صفقة قابلة لإعادة التشغيل بهذه الإعدادات</strong><span>يلزم BBO معرّف المصدر ووقت الحدث والاستلام، وحجم معروض بوحدة صريحة يكفي الكمية، ولقطتان للعقد نفسه ضمن حد السبريد وفترة الخروج.</span></div>}
 
         <div className="replay-footnote"><AlertTriangle size={14} /><span>
-          هذا خط أساس لتنفيذ شراء/إغلاق، وليس اختبار استراتيجية ذات إشارة دخول. لا يستخدم Mark كسعر تنفيذ ولا يختلق وقتاً عند غياب timestamp. لا يشمل الرسوم إلا النسبة التي تدخلها، والتراجع محسوب من P&L المحقق فقط لا من تقييم المراكز المفتوحة، ولا يمثل نتائج مستقبلية.
-          {replay && ` تم استبعاد: وقت مفقود ${replay.skipped.missingTimestamp}، عرض غير صالح ${replay.skipped.invalidQuote}، وحدة غير صالحة ${replay.skipped.invalidUnit}، مقياس عقد غير متحقق ${replay.skipped.invalidContractScale}، Spread واسع ${replay.skipped.wideSpread}، بلا لقطة خروج ${replay.skipped.noExitSnapshot}.`}
+          هذا خط أساس لتنفيذ شراء/إغلاق، وليس اختبار استراتيجية ذات إشارة دخول. يستخدم وقت استلام BBO كساعة التنفيذ، ويرفض آخر صفقة كبديل لوقت العرض، والأسعار المقدّرة، والحجم غير الكافي أو مجهول الوحدة. في ملفات CSV، مصدر BBO والطوابع الزمنية والأحجام ادعاءات واردة من الملف ولا يتحقق المختبر مستقلاً من أصالتها. الانزلاق الإضافي والرسوم افتراضات تدخلها؛ والتراجع محسوب من P&L المحقق فقط، ولا يمثل نتائج مستقبلية. قيمة رسوم أو انزلاق تساوي صفراً تعني أن هذا المكوّن غير محسوب، وقد تجعل النتيجة متفائلة؛ لا تعتمد عليها قبل إدخال افتراضات ملائمة للمصدر.
+          {replay && ` تم استبعاد: وقت مفقود ${replay.skipped.missingTimestamp}، مصدر BBO غير صالح ${replay.skipped.invalidBidAskSource}، لقطة متأخرة ${replay.skipped.staleQuote}، سعر مقدّر ${replay.skipped.estimatedExecutionPrice}، حجم مفقود ${replay.skipped.missingDisplayedSize}، وحدة حجم غير معروفة ${replay.skipped.invalidSizeUnit}، حجم غير كافٍ ${replay.skipped.insufficientDisplayedSize}، عرض غير صالح ${replay.skipped.invalidQuote}، وحدة عقد غير صالحة ${replay.skipped.invalidUnit}، مقياس عقد غير متحقق ${replay.skipped.invalidContractScale}، Spread واسع ${replay.skipped.wideSpread}، بلا لقطة خروج ${replay.skipped.noExitSnapshot}.`}
         </span></div>
       </div>
     </section>
