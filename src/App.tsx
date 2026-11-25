@@ -648,6 +648,7 @@ function App() {
   }, [toast]);
 
   const selectedPremium = getMidPrice(selectedQuote);
+  const canonicalEntryPremium = selectedQuote.contractEconomics ? selectedQuote.ask : selectedPremium;
   const quantityStep = getQuantityStep(selectedQuote);
   const minimumQuantity = selectedQuote.minQty ?? quantityStep;
   const safeQuantity = Number.isFinite(quantity) ? Math.max(0, quantity) : 0;
@@ -659,15 +660,15 @@ function App() {
   const hasLegacyScalarCapability = hasLegacyScalarAnalyticsCapability(selectedQuote, dataMode);
   const hasExplicitConsistentContractScale = hasLegacyScalarCapability;
   const canonicalUnitPremium = selectedQuote.contractEconomics
-    ? calculatePremiumCash({ economics: selectedQuote.contractEconomics, premiumPrice: selectedPremium, contracts: 1 })
+    ? calculatePremiumCash({ economics: selectedQuote.contractEconomics, premiumPrice: canonicalEntryPremium, contracts: 1 })
     : undefined;
   const canonicalPremiumPerContract = canonicalUnitPremium?.ok ? canonicalUnitPremium.value.amount : undefined;
   const canonicalBreakEven = selectedQuote.contractEconomics
-    ? calculateQuoteCashBreakeven(selectedQuote, { premiumPrice: selectedPremium, contracts: safeQuantity, fees: safeFees })
+    ? calculateQuoteCashBreakeven(selectedQuote, { premiumPrice: canonicalEntryPremium, contracts: safeQuantity, fees: safeFees })
     : undefined;
   const canonicalBreakEvenPrice = canonicalBreakEven?.ok ? canonicalBreakEven.value.price : undefined;
   const canonicalMaxLossResult = selectedQuote.contractEconomics
-    ? calculateQuoteCashMaxLoss(selectedQuote, { premiumPrice: selectedPremium, contracts: safeQuantity, fees: safeFees })
+    ? calculateQuoteCashMaxLoss(selectedQuote, { premiumPrice: canonicalEntryPremium, contracts: safeQuantity, fees: safeFees })
     : undefined;
   const canonicalMaxLossAmount = canonicalMaxLossResult?.ok ? canonicalMaxLossResult.value.amount : undefined;
   const canCalculatePremiumCost = canonicalPremiumPerContract !== undefined || hasExplicitConsistentContractScale;
@@ -711,12 +712,12 @@ function App() {
   const expectedMove = hasModelGreeks ? getExpectedMove(underlyingReferencePrice, selectedQuote.iv, selectedQuote.daysToExpiry) : undefined;
   const scenarioSeries = useMemo(() => {
     if (selectedQuote.contractEconomics) {
-      return buildQuoteCashExpiryScenarioSeries(selectedQuote, selectedPremium, safeQuantity, safeFees) ?? [];
+      return buildQuoteCashExpiryScenarioSeries(selectedQuote, canonicalEntryPremium, safeQuantity, safeFees) ?? [];
     }
     return hasExplicitConsistentContractScale
       ? buildScenarioSeries(selectedQuote, selectedPremium, safeQuantity, safeFees)
       : [];
-  }, [hasExplicitConsistentContractScale, safeFees, safeQuantity, selectedPremium, selectedQuote]);
+  }, [hasExplicitConsistentContractScale, safeFees, safeQuantity, selectedPremium, canonicalEntryPremium, selectedQuote]);
   const effectiveRiskBudget = campaignBudget.canAllocate ? Math.min(safeRiskBudget, campaignBudget.remaining) : 0;
   const rawAffordableQty = hasPremiumSizingCapability && premiumCostPerContract > 0
     ? Math.floor(Math.max(0, effectiveRiskBudget - safeFees) / premiumCostPerContract / quantityStep + 1e-9) * quantityStep
@@ -1012,8 +1013,8 @@ function App() {
       notify('أدخل كمية أكبر من صفر للمحاكاة.');
       return;
     }
-    if (selectedPremium <= 0) {
-      notify('لا يوجد سعر عقد موجب وموثوق لتسجيل القسط. اختر عقداً آخر أو حدّث بيانات السوق.');
+    if ((selectedQuote.contractEconomics ? canonicalEntryPremium : selectedPremium) <= 0) {
+      notify('لا يوجد سعر Ask موجب وموثوق لتسجيل القسط. حدّث دفتر السوق أو اختر عقداً آخر.');
       return;
     }
     if (dataMode === 'BINANCE') {
@@ -1039,7 +1040,7 @@ function App() {
         id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`,
         createdAt: new Date().toISOString(),
         quantity: safeQuantity,
-        premiumPrice: selectedPremium,
+        premiumPrice: canonicalEntryPremium,
         fees: safeFees,
         spotAtEntry: underlyingReferencePrice,
       });
