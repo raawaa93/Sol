@@ -133,6 +133,39 @@ test('collector attaches the exchangeInfo snapshot to subsequent market records 
   assert.ok(evaluateOptionsPointInTime(quote, '2026-11-25T03:00:00.500Z', ['bid', 'ask']).reasons.includes('CONTRACT_SPEC_LOOKAHEAD'));
 });
 
+test('collector refuses to attach an expired exchangeInfo snapshot to later market events', async (t) => {
+  const archive = await makeArchive(t);
+  const staleBookTicker = {
+    e: 'bookTicker',
+    E: Date.parse('2026-11-25T03:06:00.000Z'),
+    T: Date.parse('2026-11-25T03:05:59.000Z'),
+    u: 43,
+    s: SYMBOL,
+    b: '1200.0', B: '2.0', a: '1210.0', A: '3.0',
+  };
+  const times = [RECEIVED, '2026-11-25T03:06:01.000Z'];
+  const transport = createFakeOptionsTransport([
+    { type: 'exchangeInfo', payload: exchangeInfoFixture() },
+    { type: 'message', data: staleBookTicker },
+  ]);
+  await collectForwardOptionsEvents({
+    archive,
+    transport,
+    streams: ['btc-261225-100000-c@bookTicker'],
+    enabled: true,
+    now: () => times.shift(),
+  });
+  const report = await archive.verify();
+  assert.equal(report.ok, true, report.errors.join('; '));
+  const records = [];
+  for (const path of await listFiles(join(archive.root, 'segments'))) {
+    for (const line of (await readFile(path, 'utf8')).trim().split('\\n')) records.push(JSON.parse(line));
+  }
+  const quote = records.find((record) => record.kind === 'BOOK_TICKER');
+  assert.equal(quote?.contractSpec, null);
+  assert.ok(evaluateOptionsPointInTime(quote, '2026-11-25T03:06:02.000Z', ['bid', 'ask']).reasons.includes('CONTRACT_SPEC_UNAVAILABLE'));
+});
+
 test('book ticker parser preserves event and transaction times, raw fields, and crossed-book quality', () => {
   const event = {
     e: 'bookTicker', E: EVENT_MS, T: EVENT_MS - 5, u: 42, s: SYMBOL,
