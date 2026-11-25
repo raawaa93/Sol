@@ -32,7 +32,8 @@ jobs:
           const base = 'https://oyoyozdugicmnkfhjovo.supabase.co/functions/v1/volterra-binance-market-data';
           const sleep = ms => new Promise(r => setTimeout(r, ms));
           async function get(path, params={}) {
-            const url = new URL(base + path);
+            const url = new URL(base);
+            url.searchParams.set('endpoint', path);
             for (const [k,v] of Object.entries(params)) url.searchParams.set(k, v);
             let last;
             for (let i=0;i<4;i++) {
