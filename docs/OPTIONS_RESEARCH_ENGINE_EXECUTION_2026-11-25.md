@@ -98,3 +98,16 @@ PR #196 merged as `26b82d63bdd533c96fba8a881a8036fcf7c0b470`. It adds an end-to-
 - Project Context Guard 45570955274: passed.
 
 This test does not change the operational limitations: there is still no live capture, scheduled worker, durable cloud archive or measured strategy edge.
+
+
+## Follow-up — BBO-backed PAPER replay — 25 November 2026, 08:14 UTC
+
+PR #204 merged as `337e03fb26d44c906125318affc473030c165da4`.
+
+The replay now requires a fresh BBO source-event clock plus local receive clock, explicit displayed-size unit and sufficient size on the entry Ask and exit Bid. It rejects mark-only, estimated, stale/future, missing-size and unknown-unit quotes. Binance `bookTicker` quantities are stored as contract counts; the 24-hour `optionTicker` feed is not an executable BBO source. CSV imports preserve the fields but their provenance remains user-asserted.
+
+The UI now shows BBO source and source times, displayed sizes, quote/fill prices, fees and slippage. Zero fees or zero slippage is explicitly described as unmodeled and potentially optimistic. The CSV template contains the required BBO fields.
+
+Verification: CI 45572889900 passed 303/303 unit/property tests, production build, bundle budget (96.985 KiB initial JS gzip-equivalent), and 18/18 Playwright journeys; Lighthouse 45572889852 passed (Performance 99, Accessibility 100, Best Practices 100, SEO 100); Project Context Guard 45572889839 passed.
+
+Still blocked: a real point-in-time BBO archive, full depth/queue/partial-fill/latency/expiry-settlement/hedging simulation, and any empirical strategy profitability claim.
