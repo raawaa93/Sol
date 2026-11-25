@@ -1,6 +1,6 @@
 import { calculatePremiumCash } from './contract-economics-calculations.ts';
 import { validateContractEconomics } from './contract-economics.ts';
-import type { OptionQuote, PaperTrade } from './types.ts';
+import type { ContractEconomics, OptionQuote, PaperTrade } from './types.ts';
 
 export type PaperJournalSourceMode = 'DEMO' | 'CSV' | 'BINANCE';
 
@@ -185,5 +185,177 @@ export function createCanonicalPaperTrade(
     trade,
     premiumDebit: debit.value.amount,
     premiumCurrency: debit.value.currency,
+  };
+}
+
+
+export interface CanonicalPaperCloseEvent {
+  schemaVersion: 1;
+  eventType: 'CLOSE';
+  id: string;
+  tradeId: string;
+  closedAt: string;
+  quantity: number;
+  exitPremium: number;
+  exitFees: number;
+  exitFeesSource: 'USER_ENTERED';
+  grossProceeds: number;
+  entryDebit: number;
+  netPnl: number;
+  currency: string;
+  spotAtExit: number;
+  bidAtExit: number;
+  askAtExit: number;
+  bidQuantityAtExit: number;
+  bidAskSizeUnitAtExit: 'CONTRACTS';
+  bidAskSourceAtExit: 'BOOK_TICKER';
+  sourceTimestampsAtExit: {
+    bookTicker: string;
+    index: string;
+  };
+  contractEconomicsAtExit: ContractEconomics;
+}
+
+export type CanonicalPaperCloseResult =
+  | { ok: true; event: CanonicalPaperCloseEvent }
+  | { ok: false; reason: string };
+
+const MAX_PAPER_CLOSE_SOURCE_AGE_MS = 5 * 60_000;
+
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${stableJson(record[key])}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function sameContractAtExit(trade: PaperTrade, quote: OptionQuote): boolean {
+  return trade.symbol === quote.symbol
+    && trade.underlying === quote.underlying
+    && trade.type === quote.type
+    && trade.expiry === quote.expiry
+    && trade.strike === quote.strike
+    && trade.contractVenueAtEntry === quote.venue
+    && trade.contractAssetClassAtEntry === quote.assetClass
+    && trade.contractUnderlyingKindAtEntry === quote.underlyingKind
+    && trade.contractUnitAtEntry === quote.unit
+    && trade.quoteAsset === quote.quoteAsset
+    && trade.contractEconomics !== undefined
+    && quote.contractEconomics !== undefined
+    && stableJson(trade.contractEconomics) === stableJson(quote.contractEconomics);
+}
+
+/**
+ * Creates an early-close PAPER event for a long Binance option. It uses the
+ * observed Bid and displayed contract size; it never treats Mark/Mid/Last as
+ * an executable exit. Fees are explicitly user-entered because account/VIP
+ * fee schedules are not guaranteed by the public quote snapshot.
+ */
+export function createCanonicalPaperCloseEvent(input: {
+  trade: PaperTrade;
+  quote: OptionQuote;
+  sourceMode: PaperJournalSourceMode;
+  id: string;
+  closedAt: string;
+  exitFees: number;
+  spotAtExit: number;
+}): CanonicalPaperCloseResult {
+  const { trade, quote, sourceMode, id, closedAt, exitFees, spotAtExit } = input;
+  if (sourceMode !== 'BINANCE' || quote.venue !== 'BINANCE'
+    || quote.bidAskSource !== 'BOOK_TICKER'
+    || quote.bidAskSizeUnit !== 'CONTRACTS'
+    || !Number.isFinite(quote.bid) || quote.bid <= 0
+    || !Number.isFinite(quote.ask) || quote.ask < quote.bid
+    || !Number.isFinite(quote.bidQuantity) || quote.bidQuantity! <= 0) {
+    return { ok: false, reason: 'CANONICAL_EXECUTABLE_BID_REQUIRED' };
+  }
+  if (!sameContractAtExit(trade, quote)) {
+    return { ok: false, reason: 'PAPER_CLOSE_CONTRACT_IDENTITY_MISMATCH' };
+  }
+  if (!id.trim() || !Number.isFinite(Date.parse(closedAt))
+    || !Number.isFinite(exitFees) || exitFees < 0
+    || !Number.isFinite(spotAtExit) || spotAtExit <= 0
+    || !Number.isFinite(trade.quantity) || trade.quantity <= 0
+    || trade.status !== 'PAPER') {
+    return { ok: false, reason: 'INVALID_PAPER_CLOSE_INPUT' };
+  }
+  const closedAtMs = Date.parse(closedAt);
+  const expiryMs = Date.parse(trade.expiry);
+  const bookTimestamp = Date.parse(quote.sourceTimestamps?.bookTicker ?? '');
+  const indexTimestamp = Date.parse(quote.sourceTimestamps?.index ?? '');
+  if (!Number.isFinite(expiryMs) || expiryMs <= closedAtMs) {
+    return { ok: false, reason: 'OPTION_EXPIRED_AT_PAPER_CLOSE' };
+  }
+  if (!Number.isFinite(bookTimestamp) || !Number.isFinite(indexTimestamp)
+    || bookTimestamp > closedAtMs || indexTimestamp > closedAtMs
+    || closedAtMs - bookTimestamp > MAX_PAPER_CLOSE_SOURCE_AGE_MS
+    || closedAtMs - indexTimestamp > MAX_PAPER_CLOSE_SOURCE_AGE_MS) {
+    return { ok: false, reason: 'PAPER_CLOSE_MARKET_SNAPSHOT_STALE_OR_FUTURE' };
+  }
+  if (quote.bidQuantity! + 1e-9 < trade.quantity) {
+    return { ok: false, reason: 'INSUFFICIENT_OBSERVED_BID_SIZE' };
+  }
+  if (Math.abs(spotAtExit - quote.spot) > Math.max(1e-8, quote.spot * 1e-8)) {
+    return { ok: false, reason: 'PAPER_CLOSE_SPOT_DOES_NOT_MATCH_INDEX' };
+  }
+
+  const economics = trade.contractEconomics!;
+  if (!validateContractEconomics(economics).adapterReady
+    || economics.provenance.status !== 'PROVIDER_VERIFIED'
+    || economics.provenance.provider !== 'BINANCE') {
+    return { ok: false, reason: 'PAPER_CLOSE_CONTRACT_ECONOMICS_NOT_VERIFIED' };
+  }
+  const entry = calculatePremiumCash({
+    economics,
+    premiumPrice: trade.entryPremium,
+    contracts: trade.quantity,
+    fees: trade.fees,
+  });
+  if (!entry.ok || !Number.isFinite(trade.premiumDebitAtEntry)
+    || Math.abs(entry.value.amount - trade.premiumDebitAtEntry!) > Math.max(1e-8, entry.value.amount * 1e-8)
+    || trade.premiumCurrencyAtEntry !== entry.value.currency
+    || trade.premiumMultiplierAtEntry !== entry.value.multiplier) {
+    return { ok: false, reason: 'PAPER_ENTRY_DEBIT_SNAPSHOT_INVALID' };
+  }
+  const proceeds = calculatePremiumCash({
+    economics,
+    premiumPrice: quote.bid,
+    contracts: trade.quantity,
+    fees: 0,
+  });
+  if (!proceeds.ok) return { ok: false, reason: proceeds.reason };
+  const netPnl = proceeds.value.premiumAmount - exitFees - entry.value.amount;
+  if (!Number.isFinite(netPnl)) return { ok: false, reason: 'INVALID_PAPER_CLOSE_PNL' };
+
+  return {
+    ok: true,
+    event: {
+      schemaVersion: 1,
+      eventType: 'CLOSE',
+      id,
+      tradeId: trade.id,
+      closedAt,
+      quantity: trade.quantity,
+      exitPremium: quote.bid,
+      exitFees,
+      exitFeesSource: 'USER_ENTERED',
+      grossProceeds: proceeds.value.premiumAmount,
+      entryDebit: entry.value.amount,
+      netPnl,
+      currency: proceeds.value.currency,
+      spotAtExit,
+      bidAtExit: quote.bid,
+      askAtExit: quote.ask,
+      bidQuantityAtExit: quote.bidQuantity!,
+      bidAskSizeUnitAtExit: 'CONTRACTS',
+      bidAskSourceAtExit: 'BOOK_TICKER',
+      sourceTimestampsAtExit: {
+        bookTicker: quote.sourceTimestamps!.bookTicker!,
+        index: quote.sourceTimestamps!.index!,
+      },
+      contractEconomicsAtExit: economics,
+    },
   };
 }
