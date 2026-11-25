@@ -1,7 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
-  ArrowUpLeft,
   BarChart3,
   BookOpen,
   Check,
@@ -16,14 +15,12 @@ import {
   Layers3,
   LineChart,
   ListFilter,
-  LockKeyhole,
   Plus,
   RefreshCw,
   Search,
   ShieldAlert,
   Star,
   Target,
-  Trash2,
   TrendingDown,
   TrendingUp,
   WalletCards,
@@ -57,6 +54,7 @@ const MarketDepthPanel = lazy(() => import('./components/MarketDepthPanel'));
 const OpportunityReview = lazy(() => import('./components/OpportunityReview'));
 const GreeksPanel = lazy(() => import('./components/GreeksPanel'));
 const FinancialCockpit = lazy(() => import('./components/FinancialCockpit'));
+const PaperJournalSection = lazy(() => import('./components/PaperJournalSection'));
 const HistoricalReplayPanel = lazy(() => import('./components/HistoricalReplayPanel'));
 
 const UNDERLYING_NAMES: Record<string, string> = {
@@ -175,6 +173,42 @@ function isPaperTrade(value: unknown): value is PaperTrade {
       && typeof trade.premiumDebitAtEntry === 'number' && Number.isFinite(trade.premiumDebitAtEntry) && trade.premiumDebitAtEntry >= trade.premiumAmountAtEntry
       && trade.premiumCurrencyAtEntry === trade.contractEconomics.premium.quoteCurrency
       && (trade.priceSourceAtEntry !== 'MID' || trade.bidAskSourceAtEntry === 'BOOK_TICKER' || trade.bidAskSourceAtEntry === 'OPTION_TICKER' || trade.bidAskSourceAtEntry === 'MARK_PRICE')))
+    && (trade.exit === undefined || (
+      trade.exit !== null && typeof trade.exit === 'object'
+      && typeof trade.exit.closedAt === 'string' && Number.isFinite(Date.parse(trade.exit.closedAt))
+      && typeof trade.exit.exitPremium === 'number' && Number.isFinite(trade.exit.exitPremium) && trade.exit.exitPremium > 0
+      && trade.exit.exitQuantity === trade.quantity
+      && (trade.exit.exitFees === undefined ? trade.exit.exitFeesSource === undefined : (typeof trade.exit.exitFees === 'number' && Number.isFinite(trade.exit.exitFees) && trade.exit.exitFees >= 0 && trade.exit.exitFeesSource === 'USER_ENTERED'))
+      && typeof trade.exit.exitPremiumAmount === 'number' && Number.isFinite(trade.exit.exitPremiumAmount) && trade.exit.exitPremiumAmount > 0
+      && (trade.exit.exitCreditAfterFees === undefined || (typeof trade.exit.exitCreditAfterFees === 'number' && Number.isFinite(trade.exit.exitCreditAfterFees)))
+      && typeof trade.exit.realizedGrossPnl === 'number' && Number.isFinite(trade.exit.realizedGrossPnl)
+      && (trade.exit.realizedNetPnl === undefined || (typeof trade.exit.realizedNetPnl === 'number' && Number.isFinite(trade.exit.realizedNetPnl)))
+      && typeof trade.exit.spotAtExit === 'number' && Number.isFinite(trade.exit.spotAtExit) && trade.exit.spotAtExit > 0
+      && typeof trade.exit.bidQuantityAtExit === 'number' && Number.isFinite(trade.exit.bidQuantityAtExit) && trade.exit.bidQuantityAtExit + 1e-9 >= trade.quantity
+      && trade.exit.priceSourceAtExit === 'BID'
+      && trade.exit.bidAskSourceAtExit === 'BOOK_TICKER'
+      && typeof trade.exit.sourceTimestampsAtExit?.bookTicker === 'string'
+      && Number.isFinite(Date.parse(trade.exit.sourceTimestampsAtExit.bookTicker))
+      && typeof trade.exit.sourceTimestampsAtExit?.index === 'string'
+      && Number.isFinite(Date.parse(trade.exit.sourceTimestampsAtExit.index))
+      && typeof trade.exit.sourceReceivedAtAtExit?.bidAsk === 'string'
+      && Number.isFinite(Date.parse(trade.exit.sourceReceivedAtAtExit.bidAsk))
+      && Date.parse(trade.exit.closedAt) > Date.parse(trade.createdAt)
+      && Date.parse(trade.exit.closedAt) < Date.parse(trade.expiry)
+      && Date.parse(trade.exit.sourceTimestampsAtExit.bookTicker) <= Date.parse(trade.exit.closedAt)
+      && Date.parse(trade.exit.sourceTimestampsAtExit.index) <= Date.parse(trade.exit.closedAt)
+      && Date.parse(trade.exit.sourceReceivedAtAtExit.bidAsk) <= Date.parse(trade.exit.closedAt)
+      && Date.parse(trade.exit.closedAt) - Date.parse(trade.exit.sourceTimestampsAtExit.bookTicker) <= 300_000
+      && Date.parse(trade.exit.closedAt) - Date.parse(trade.exit.sourceTimestampsAtExit.index) <= 300_000
+      && Date.parse(trade.exit.closedAt) - Date.parse(trade.exit.sourceReceivedAtAtExit.bidAsk) <= 300_000
+      && Math.abs(trade.exit.realizedGrossPnl - (trade.exit.exitPremiumAmount - (trade.premiumAmountAtEntry ?? 0))) <= Math.max(1e-8, Math.abs(trade.exit.realizedGrossPnl) * 1e-8)
+      && (trade.exit.exitFees === undefined
+        ? trade.exit.exitFeesSource === undefined && trade.exit.exitCreditAfterFees === undefined && trade.exit.realizedNetPnl === undefined
+        : trade.exit.exitFeesSource === 'USER_ENTERED'
+          && typeof trade.exit.exitCreditAfterFees === 'number'
+          && Math.abs(trade.exit.exitCreditAfterFees - (trade.exit.exitPremiumAmount - trade.exit.exitFees)) <= Math.max(1e-8, Math.abs(trade.exit.exitCreditAfterFees) * 1e-8)
+          && typeof trade.exit.realizedNetPnl === 'number'
+          && Math.abs(trade.exit.realizedNetPnl - (trade.exit.exitCreditAfterFees - (trade.premiumDebitAtEntry ?? 0))) <= Math.max(1e-8, Math.abs(trade.exit.realizedNetPnl) * 1e-8))))
     && trade.status === 'PAPER';
 }
 
@@ -263,6 +297,7 @@ function App() {
   const [fees, setFees] = useState(0);
   const [paperJournalLoad, setPaperJournalLoad] = useState(() => loadPaperJournal<PaperTrade>(localStorage, isPaperTrade));
   const [trades, setTrades] = useState<PaperTrade[]>(paperJournalLoad.entries);
+  const [paperExitFees, setPaperExitFees] = useState('');
   const [toast, setToast] = useState('');
   const [csvWarnings, setCsvWarnings] = useState<string[]>([]);
   const [showAllCsvWarnings, setShowAllCsvWarnings] = useState(false);
@@ -1103,6 +1138,34 @@ function App() {
     notify('أضيفت الصفقة إلى الدفتر التجريبي فقط.');
   };
 
+  const closePaperTrade = async (trade: PaperTrade) => {
+    if (paperJournalLoad.persistenceBlocked) {
+      notify('دفتر PAPER مقفل لحماية نسخة الاستعادة؛ لم يتم تسجيل الإغلاق.');
+      return;
+    }
+    if (selectedQuote.symbol !== trade.symbol) {
+      notify('اختر العقد نفسه من ماسح العقود أولاً؛ لا يمكن إغلاق صفقة بعقد مختلف.');
+      return;
+    }
+    const { closePaperTradeFromQuote } = await import('./lib/paper-journal-actions');
+    const feeValue = paperExitFees.trim() === '' ? undefined : Number(paperExitFees);
+    const result = closePaperTradeFromQuote({
+      trade,
+      quote: selectedQuote,
+      closedAt: new Date().toISOString(),
+      ...(feeValue !== undefined ? { exitFees: feeValue } : {}),
+    });
+    if (!result.ok) {
+      notify(result.message);
+      return;
+    }
+    setTrades((current) => current.map((item) => item.id === trade.id ? result.trade : item));
+    setPaperExitFees('');
+    notify(result.netPnl === undefined
+      ? `سُجل الإغلاق عند Bid. الربح/الخسارة الإجمالي ${formatMoney(result.grossPnl, 2, result.currency)}؛ الصافي غير متاح لأن رسوم الخروج غير محددة.`
+      : `سُجل الإغلاق عند Bid. صافي الربح/الخسارة ${formatMoney(result.netPnl, 2, result.currency)}.`);
+  };
+
   const exportIVHistoryBackup = async () => {
     const { exportIVHistory } = await import('./lib/iv-history-store');
     const result = exportIVHistory(localStorage);
@@ -1206,6 +1269,18 @@ function App() {
       bidAskSourceAtEntry: trade.bidAskSourceAtEntry ?? '',
       contractEconomicsJSON: trade.contractEconomics ? JSON.stringify(trade.contractEconomics) : '',
       sourceTimestampsAtEntryJSON: trade.sourceTimestampsAtEntry ? JSON.stringify(trade.sourceTimestampsAtEntry) : '',
+      closedAtUTC: trade.exit?.closedAt ?? '',
+      exitPremiumBid: trade.exit?.exitPremium ?? '',
+      exitQuantity: trade.exit?.exitQuantity ?? '',
+      exitFees: trade.exit?.exitFees ?? '',
+      exitFeesSource: trade.exit?.exitFeesSource ?? '',
+      exitPremiumAmount: trade.exit?.exitPremiumAmount ?? '',
+      realizedGrossPnl: trade.exit?.realizedGrossPnl ?? '',
+      realizedNetPnl: trade.exit?.realizedNetPnl ?? '',
+      spotAtExit: trade.exit?.spotAtExit ?? '',
+      exitBidQuantity: trade.exit?.bidQuantityAtExit ?? '',
+      exitSourceTimestampsJSON: trade.exit?.sourceTimestampsAtExit ? JSON.stringify(trade.exit.sourceTimestampsAtExit) : '',
+      exitSourceReceivedAtJSON: trade.exit?.sourceReceivedAtAtExit ? JSON.stringify(trade.exit.sourceReceivedAtAtExit) : '',
       mode: 'PAPER',
     })));
   };
@@ -1627,31 +1702,23 @@ function App() {
             <FinancialCockpit />
           </Suspense>
 
-          <section className="section-anchor journal-section" id="journal">
-            <div className="section-title-row"><div><span className="section-kicker">PAPER WORKSPACE</span><h2>الدفتر التجريبي</h2><p>سجل الفرضية والكمية والقسط قبل أن تقيم جودة القرار.</p></div><div className="journal-actions"><button className="button button-ghost" onClick={exportTrades}><Download size={14} /> تصدير CSV</button><button className="button button-ghost" onClick={exportIVHistoryBackup}><Download size={14} /> نسخة IV JSON</button><button className="button button-ghost danger-ghost" onClick={clearPaperJournal} disabled={!trades.length || paperJournalLoad.persistenceBlocked}><Trash2 size={14} /> مسح الدفتر</button></div></div>
-            <article className="panel journal-panel">
-              <div className="journal-summary"><div className="journal-summary-icon"><WalletCards size={18} /></div><div><strong>{trades.length} <span>صفقة تجريبية</span></strong><small>محفوظة محلياً في هذا المتصفح فقط</small></div><div className="journal-metric"><span>وضع التنفيذ</span><strong><i /> PAPER ONLY</strong></div><div className="journal-metric"><span>مفاتيح تداول</span><strong className="safe-label"><LockKeyhole size={13} /> غير مطلوبة</strong></div></div>
-              {(paperJournalLoad.backupAvailable || paperJournalLoad.persistenceBlocked) && <div className="journal-recovery-warning" role="alert"><strong>تنبيه سلامة دفتر PAPER</strong><p>{paperJournalLoad.persistenceBlocked ? 'أوقفنا أي كتابة جديدة حتى لا نفقد بيانات قديمة لم نستطع حفظ نسخة استعادتها بأمان.' : paperJournalLoad.parseError ? 'تعذر تحليل ملف الدفتر الأصلي؛ احتفظنا بنسخته الخام قبل استبعادها من العرض.' : paperJournalLoad.rejectedCount > 0 ? `تم عزل ${paperJournalLoad.rejectedCount} سجل غير صالح من العرض، مع الاحتفاظ بالملف الأصلي الخام للاستعادة.` : 'توجد نسخة استعادة سابقة محفوظة من دفتر PAPER؛ احتفظ بها خارج المتصفح قبل مسح بياناته.'} لا تمسح بيانات المتصفح قبل تنزيل النسخة.</p>{paperJournalLoad.backupAvailable && <button className="button button-ghost" onClick={exportPaperJournalRecovery}><Download size={14} /> تنزيل نسخة الاستعادة JSON</button>}{paperJournalLoad.persistenceBlocked && <button className="button button-ghost" onClick={exportPaperJournalOriginal}><Download size={14} /> تنزيل الملف الأصلي الحالي</button>}{paperJournalLoad.persistenceBlocked && <button className="button button-ghost" onClick={retryPaperJournalPersistence}>إعادة المحاولة بعد حفظ النسخ</button>}</div>}
-              {trades.length ? <>
-                <div className="journal-table-wrap"><table className="journal-table"><thead><tr><th>وقت التسجيل</th><th>العقد</th><th>Strike</th><th>كمية</th><th>قسط الدخول</th><th>السعر المرجعي وقتها</th><th>الحالة</th></tr></thead><tbody>{trades.map((trade) => <tr key={trade.id}><td>{formatDateTime(new Date(trade.createdAt))}</td><td><span className={`mini-type ${trade.type.toLowerCase()}`}>{trade.type}</span><strong>{trade.symbol}</strong>{trade.contractEconomics && <small>لقطة العقد: قسط ×{trade.premiumMultiplierAtEntry} · وحدة التسليم {trade.contractUnitAtEntry}</small>}</td><td>{formatAssetPrice(trade.strike, trade.spotAtEntry, trade.quoteAsset ?? null)}</td><td>{formatQuantity(trade.quantity, { quantityScale: trade.quantityPrecision })}</td><td>{formatOptionPrice(trade.entryPremium, { priceScale: trade.pricePrecision }, trade.quoteAsset ?? null)}{trade.premiumDebitAtEntry !== undefined && <small>القسط والرسوم: {formatMoney(trade.premiumDebitAtEntry, 2, trade.premiumCurrencyAtEntry ?? null)}</small>}</td><td>{formatAssetPrice(trade.spotAtEntry, trade.spotAtEntry, trade.quoteAsset ?? null)}</td><td><span className="paper-status"><i /> تجريبية</span></td></tr>)}</tbody></table></div>
-                <div className="journal-mobile-list" role="list" aria-label="سجل الصفقات التجريبية">
-                  {trades.map((trade) => <article className="journal-mobile-card" role="listitem" key={trade.id}>
-                    <div className="journal-mobile-card-head">
-                      <span><span className={`mini-type ${trade.type.toLowerCase()}`}>{trade.type}</span><strong dir="ltr">{trade.symbol}</strong>{trade.contractEconomics && <small>قسط ×{trade.premiumMultiplierAtEntry} · وحدة التسليم {trade.contractUnitAtEntry}</small>}</span>
-                      <small>{formatDateTime(new Date(trade.createdAt))}</small>
-                    </div>
-                    <div className="journal-mobile-values">
-                      <div><small>Strike</small><strong>{formatAssetPrice(trade.strike, trade.spotAtEntry, trade.quoteAsset ?? null)}</strong></div>
-                      <div><small>الكمية</small><strong>{formatQuantity(trade.quantity, { quantityScale: trade.quantityPrecision })}</strong></div>
-                      <div><small>قسط الدخول</small><strong>{formatOptionPrice(trade.entryPremium, { priceScale: trade.pricePrecision }, trade.quoteAsset ?? null)}</strong>{trade.premiumDebitAtEntry !== undefined && <small>القسط والرسوم: {formatMoney(trade.premiumDebitAtEntry, 2, trade.premiumCurrencyAtEntry ?? null)}</small>}</div>
-                      <div><small>السعر المرجعي</small><strong>{formatAssetPrice(trade.spotAtEntry, trade.spotAtEntry, trade.quoteAsset ?? null)}</strong></div>
-                    </div>
-                    <span className="paper-status"><i /> تجريبية · PAPER ONLY</span>
-                  </article>)}
-                </div>
-              </> : <div className="journal-empty"><div className="journal-empty-icon"><BookOpen size={20} /></div><strong>لا توجد صفقات مسجلة بعد</strong><span>اختر عقداً من الماسح ثم أضفه إلى الدفتر. لن يتم إرسال أي أمر إلى أي منصة.</span><button className="text-button" onClick={() => navigate('scanner')}>ابدأ بتحليل عقد <ArrowUpLeft size={14} /></button></div>}
-            </article>
-          </section>
+          <Suspense fallback={<div className="panel" role="status">جارٍ تحميل دفتر PAPER...</div>}>
+            <PaperJournalSection
+              trades={trades}
+              paperJournalLoad={paperJournalLoad}
+              selectedQuoteSymbol={selectedQuote.symbol}
+              paperExitFees={paperExitFees}
+              onExitFeesChange={setPaperExitFees}
+              onClose={closePaperTrade}
+              onExportTrades={exportTrades}
+              onExportIVHistory={exportIVHistoryBackup}
+              onClearJournal={clearPaperJournal}
+              onExportRecovery={exportPaperJournalRecovery}
+              onExportOriginal={exportPaperJournalOriginal}
+              onRetryPersistence={retryPaperJournalPersistence}
+              onNavigateToScanner={() => navigate('scanner')}
+            />
+          </Suspense>
 
           <footer className="app-footer"><div><span className="footer-brand-mark">V</span><span>VOLTERRA <small>DECISION LAB</small></span></div><p>أداة تحليل تعليمية ومحاكاة — ليست نصيحة مالية، ولا تنفّذ أوامر تداول.</p><div className="footer-links"><button onClick={downloadCsvTemplate}>قالب البيانات</button><a href="https://www.fca.org.uk/" target="_blank" rel="noreferrer">FCA <ExternalLink size={11} /></a></div></footer>
         </div>

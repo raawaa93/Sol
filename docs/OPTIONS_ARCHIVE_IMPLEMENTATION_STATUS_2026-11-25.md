@@ -214,12 +214,16 @@ No cloud resource, subscription, credential, schedule or billing change was crea
 - PR-head CI 45580783479, Lighthouse 45580783570 and Project Context Guard 45580783485 passed. Main post-merge verification is running on the merge SHA.
 - Remaining PAPER limitation: no close/realized-P&L workflow or risk-budget release exists yet; all recorded debit remains reserved until export and explicit reset. No automatic release or settlement is inferred.
 
-## PAPER execution realism — remaining gap
+## PAPER execution realism — status after PR #226 and close-lifecycle work
 
-- PR #225 only validates entry expiry and source timestamp age. It does **not** make the journal an executable-fill simulator: canonical entry currently records a timestamped midpoint when a two-sided quote is present, not an Ask-side buy fill.
-- There is still no close record, Bid-side exit, realized P&L, or budget release. Existing entries remain allocated until CSV export and explicit reset.
-- Binance's official Options fee FAQ (updated 22 October 2026) defines trading fee as `min(trading fee rate × Spot Index × contract unit, 10% × option traded price) × option traded size`; it also distinguishes exercise fees. The fee rate can vary by contract/promotion/VIP, so do not substitute a universal hard-coded rate. Source: https://www.binance.com/en-PH/support/faq/detail/5326e5de61c34fed98abe28d2f175a23
-- Next implementation must use Ask plus sufficient ask quantity for a long entry, Bid plus sufficient bid quantity for a close, source/event and receive clocks, same-contract identity, pre-expiry checks, and the documented fee formula using the correct contract unit and source index. If fee inputs or displayed size are missing, fail closed. A mid-price journal snapshot must not be described as a fill or realized return.
+- PR #226 corrected canonical long-option entries to use the timestamped Binance BOOK_TICKER Ask and sufficient displayed ask quantity. The older midpoint-based description above was superseded.
+- The current follow-up implements a simulated close at the timestamped BOOK_TICKER Bid, requiring sufficient displayed bid quantity, the same symbol/underlying/type/expiry/strike/settlement terms, valid contract provenance, a pre-expiry close time, and source plus local receive clocks no older than five minutes.
+- Gross P&L is exit premium amount minus entry premium amount. Net P&L is emitted only when the exact exit fee is explicitly supplied; otherwise the UI reports gross P&L and clearly marks net P&L unknown. No fee rate is silently assumed.
+- The close snapshot is still a PAPER simulation, not a guaranteed fill: displayed top-of-book quantity can disappear before a real order reaches the exchange. There is no live order placement.
+- No expiry settlement/assignment simulation is added. A contract at or past expiry cannot be closed through the market-Bid path; expiry outcomes remain unmodeled.
+- Closed trades continue to consume the campaign allocation cap. This is intentionally conservative: the system does not recycle allocation or imply a loss budget reset merely because a simulated close was recorded.
+- Binance's official fee FAQ says trading fees apply when opening and closing, are based on the Spot Index × contract unit, and are capped at 10% of the option traded price. Binance's fee table also shows different Crypto Options rates and a promotion limited by contract listing date. The app does not have verified account/contract-specific fee entitlement, so exact fees must be entered to calculate net PAPER P&L; otherwise net remains unknown.
+- Official references: https://developers.binance.info/en/docs/catalog/core-trading-derivatives-trading-options/api/ws-streams (bookTicker publishes best bid/ask prices, quantities, event and transaction times); https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-options/api/rest-api/market-data (contract unit and market-data schema); https://www.binance.com/en/support/faq/detail/5326e5de61c34fed98abe28d2f175a23 (fee formula, updated 22 October 2026); https://www.binance.com/en-NZ/fee/optionsTrading (published fee tiers and contract-listing promotion).
 ## External data-access review — 25 November 2026
 
 - Reviewed Tardis, Volar and CryptoDataDownload as alternatives to a self-hosted archive.
@@ -236,3 +240,14 @@ No cloud resource, subscription, credential, schedule or billing change was crea
 - Source price and index timestamps must be no later than entry and no older than five minutes; the contract must not be expired at entry.
 - PR-head CI 45582102300, Lighthouse 45582102062 and Project Context Guard 45582103626 passed.
 - Remaining lifecycle gap: there is no close/exit workflow, Bid-side exit size check, realized P&L, expiry settlement/assignment, or fee calculation from the current contract-specific Binance fee schedule. No risk-budget release is inferred; all debit remains reserved until export and explicit reset.
+
+
+## PAPER Bid-side close lifecycle — PR #227 (validation pending)
+
+- Added a canonical close constructor for open Binance long-option PAPER entries. It only accepts the identical contract and provider-verified contract terms, a positive BOOK_TICKER Bid, and displayed bid quantity at least equal to the recorded position.
+- Rejects repeated closes, invalid fee inputs, expired contracts, stale/future exchange timestamps, and stale/future local receive timestamps.
+- Captures Bid price/quantity, spot index, source timestamps and local receive time. Calculates gross P&L from premium cash amounts. Net P&L is deliberately absent unless the exact exit fee is supplied.
+- Added desktop/mobile close controls. The operator must select the same contract in the scanner; the button is disabled for other contracts and legacy entries without canonical terms. An optional exact fee input is in the contract currency.
+- CSV export includes exit price, quantity, fees, gross/net P&L, index, and source/receive clocks.
+- No automatic fee-rate inference, expiry settlement, live orders, or allocation release.
+- PR-head CI, browser journeys, Lighthouse and Project Context Guard must pass before merge.
