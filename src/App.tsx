@@ -172,6 +172,19 @@ function isPaperTrade(value: unknown): value is PaperTrade {
       && typeof trade.premiumAmountAtEntry === 'number' && Number.isFinite(trade.premiumAmountAtEntry) && trade.premiumAmountAtEntry >= 0
       && typeof trade.premiumDebitAtEntry === 'number' && Number.isFinite(trade.premiumDebitAtEntry) && trade.premiumDebitAtEntry >= trade.premiumAmountAtEntry
       && trade.premiumCurrencyAtEntry === trade.contractEconomics.premium.quoteCurrency
+      && (trade.entryFeesSource === undefined || (trade.entryFeesSource === 'USER_ENTERED' && trade.fees <= (trade.premiumAmountAtEntry ?? 0) * 0.1 + 1e-9))
+      && (trade.sourceReceivedAtAtEntry === undefined || (
+        typeof trade.sourceReceivedAtAtEntry.bidAsk === 'string'
+        && Number.isFinite(Date.parse(trade.sourceReceivedAtAtEntry.bidAsk))
+        && Date.parse(trade.sourceReceivedAtAtEntry.bidAsk) >= Date.parse(trade.sourceTimestampsAtEntry?.bookTicker ?? '')
+        && Date.parse(trade.sourceReceivedAtAtEntry.bidAsk) <= Date.parse(trade.createdAt)
+        && Date.parse(trade.createdAt) - Date.parse(trade.sourceReceivedAtAtEntry.bidAsk) <= 300_000))
+      && (typeof trade.sourceTimestampsAtEntry?.bookTicker === 'string' && Number.isFinite(Date.parse(trade.sourceTimestampsAtEntry.bookTicker)))
+      && (typeof trade.sourceTimestampsAtEntry?.index === 'string' && Number.isFinite(Date.parse(trade.sourceTimestampsAtEntry.index)))
+      && Date.parse(trade.sourceTimestampsAtEntry.bookTicker) <= Date.parse(trade.createdAt)
+      && Date.parse(trade.sourceTimestampsAtEntry.index) <= Date.parse(trade.createdAt)
+      && Date.parse(trade.createdAt) - Date.parse(trade.sourceTimestampsAtEntry.bookTicker) <= 300_000
+      && Date.parse(trade.createdAt) - Date.parse(trade.sourceTimestampsAtEntry.index) <= 300_000
       && (trade.priceSourceAtEntry !== 'MID' || trade.bidAskSourceAtEntry === 'BOOK_TICKER' || trade.bidAskSourceAtEntry === 'OPTION_TICKER' || trade.bidAskSourceAtEntry === 'MARK_PRICE')))
     && (trade.exit === undefined || (
       trade.exit !== null && typeof trade.exit === 'object'
@@ -205,10 +218,13 @@ function isPaperTrade(value: unknown): value is PaperTrade {
       && (trade.exit.exitFees === undefined
         ? trade.exit.exitFeesSource === undefined && trade.exit.exitCreditAfterFees === undefined && trade.exit.realizedNetPnl === undefined
         : trade.exit.exitFeesSource === 'USER_ENTERED'
+          && trade.exit.exitFees <= trade.exit.exitPremiumAmount * 0.1 + 1e-9
           && typeof trade.exit.exitCreditAfterFees === 'number'
           && Math.abs(trade.exit.exitCreditAfterFees - (trade.exit.exitPremiumAmount - trade.exit.exitFees)) <= Math.max(1e-8, Math.abs(trade.exit.exitCreditAfterFees) * 1e-8)
-          && typeof trade.exit.realizedNetPnl === 'number'
-          && Math.abs(trade.exit.realizedNetPnl - (trade.exit.exitCreditAfterFees - (trade.premiumDebitAtEntry ?? 0))) <= Math.max(1e-8, Math.abs(trade.exit.realizedNetPnl) * 1e-8))))
+          && (trade.entryFeesSource === 'USER_ENTERED'
+            ? typeof trade.exit.realizedNetPnl === 'number'
+              && Math.abs(trade.exit.realizedNetPnl - (trade.exit.exitCreditAfterFees - (trade.premiumDebitAtEntry ?? 0))) <= Math.max(1e-8, Math.abs(trade.exit.realizedNetPnl) * 1e-8)
+            : trade.exit.realizedNetPnl === undefined))))
     && trade.status === 'PAPER';
 }
 
@@ -294,7 +310,7 @@ function App() {
   const [watchlist, setWatchlist] = useState<string[]>(loadWatchlist);
   const [quantity, setQuantity] = useState(0.01);
   const [riskBudget, setRiskBudget] = useState(PAPER_CAMPAIGN_PER_TRADE_CAP);
-  const [fees, setFees] = useState(0);
+  const [fees, setFees] = useState('');
   const [paperJournalLoad, setPaperJournalLoad] = useState(() => loadPaperJournal<PaperTrade>(localStorage, isPaperTrade));
   const [trades, setTrades] = useState<PaperTrade[]>(paperJournalLoad.entries);
   const [paperExitFees, setPaperExitFees] = useState('');
@@ -453,6 +469,10 @@ function App() {
       ?? quotes[0]
       ?? DEMO_QUOTES[0];
   }, [assetQuotes, effectiveExpiry, filteredQuotes, quotes, scopedQuotes, selectedId, selectedType, underlying]);
+
+  useEffect(() => {
+    setFees('');
+  }, [selectedQuote.symbol]);
 
   useEffect(() => {
     if (dataMode !== 'BINANCE' || !optionMarkTarget) {
@@ -687,7 +707,9 @@ function App() {
   const quantityStep = getQuantityStep(selectedQuote);
   const minimumQuantity = selectedQuote.minQty ?? quantityStep;
   const safeQuantity = Number.isFinite(quantity) ? Math.max(0, quantity) : 0;
-  const safeFees = Number.isFinite(fees) ? Math.max(0, fees) : 0;
+  const parsedEntryFees = fees.trim() === '' ? Number.NaN : Number(fees);
+  const entryFeesKnown = Number.isFinite(parsedEntryFees) && parsedEntryFees >= 0;
+  const safeFees = entryFeesKnown ? parsedEntryFees : 0;
   const safeRiskBudget = Number.isFinite(riskBudget) ? Math.min(PAPER_CAMPAIGN_PER_TRADE_CAP, Math.max(0, riskBudget)) : 0;
   const contractScaleIssue = getContractScaleIssue(selectedQuote, dataMode);
   // Canonical terms must never fall back to legacy scalar calculations, even when unit=1.
@@ -1077,6 +1099,7 @@ function App() {
         quantity: safeQuantity,
         premiumPrice: canonicalEntryPremium,
         fees: safeFees,
+        ...(entryFeesKnown ? { entryFeesSource: 'USER_ENTERED' as const } : {}),
         spotAtEntry: underlyingReferencePrice,
       });
       if (!result.ok) {
@@ -1122,6 +1145,7 @@ function App() {
       entryPremium: selectedPremium,
       pricePrecision: getOptionPricePrecision(selectedPremium, selectedQuote),
       fees: safeFees,
+      ...(entryFeesKnown ? { entryFeesSource: 'USER_ENTERED' as const } : {}),
       spotAtEntry: underlyingReferencePrice,
       quoteAsset: quoteAssetLabel,
       contractVenueAtEntry: selectedQuote.venue,
@@ -1162,7 +1186,7 @@ function App() {
     setTrades((current) => current.map((item) => item.id === trade.id ? result.trade : item));
     setPaperExitFees('');
     notify(result.netPnl === undefined
-      ? `سُجل الإغلاق عند Bid. الربح/الخسارة الإجمالي ${formatMoney(result.grossPnl, 2, result.currency)}؛ الصافي غير متاح لأن رسوم الخروج غير محددة.`
+      ? `سُجل الإغلاق عند Bid. الربح/الخسارة الإجمالي ${formatMoney(result.grossPnl, 2, result.currency)}؛ الصافي غير متاح لأن رسوم الدخول أو الخروج غير معروفة بدقة.`
       : `سُجل الإغلاق عند Bid. صافي الربح/الخسارة ${formatMoney(result.netPnl, 2, result.currency)}.`);
   };
 
@@ -1225,7 +1249,7 @@ function App() {
       'sol-paper-journal-original.json',
       'تم تنزيل الملف الأصلي الحالي من دفتر PAPER',
     );
-  }
+  };
   
   const exportPaperJournalJson = async () => {
     const { downloadPaperJournalJsonBackup } = await import('./lib/paper-journal-backup-actions');
@@ -1233,7 +1257,7 @@ function App() {
     notify(result.ok
       ? `تم تنزيل نسخة PAPER JSON (${result.count} سجل)؛ البيانات لم تُرفع إلى أي خادم.`
       : result.message);
-  };;
+  };
 
   const importPaperJournalJson = async (raw: string) => {
     if (paperJournalLoad.persistenceBlocked) {
@@ -1251,9 +1275,9 @@ function App() {
       return;
     }
     setTrades(result.entries);
-    notify(`تم استيراد ${result.added} صفقة جديدة محلياً دون استبدال السجلات الموجودة.`);
-  };;
-;
+    notify(`تم استيراد ${result.added} صفقة جديدة دون استبدال السجلات الحالية.`);
+  };
+
 
   const retryPaperJournalPersistence = () => {
     if (!paperJournalLoad.persistenceBlocked) return;
@@ -1297,6 +1321,8 @@ function App() {
       bidAskSourceAtEntry: trade.bidAskSourceAtEntry ?? '',
       contractEconomicsJSON: trade.contractEconomics ? JSON.stringify(trade.contractEconomics) : '',
       sourceTimestampsAtEntryJSON: trade.sourceTimestampsAtEntry ? JSON.stringify(trade.sourceTimestampsAtEntry) : '',
+      sourceReceivedAtAtEntryJSON: trade.sourceReceivedAtAtEntry ? JSON.stringify(trade.sourceReceivedAtAtEntry) : '',
+      entryFeesSource: trade.entryFeesSource ?? '',
       closedAtUTC: trade.exit?.closedAt ?? '',
       exitPremiumBid: trade.exit?.exitPremium ?? '',
       exitQuantity: trade.exit?.exitQuantity ?? '',
@@ -1661,7 +1687,7 @@ function App() {
                 <div className="analysis-divider" />
                 <div className="input-grid">
                   <label><span>{dataMode === 'BINANCE' ? 'كمية العقود' : 'الكمية'} <small>{dataMode === 'BINANCE' ? 'حسب مواصفات Binance' : 'من الأصل'}</small></span><input type="number" min={dataMode === 'BINANCE' ? minimumQuantity : 0.01} step={dataMode === 'BINANCE' ? quantityStep : 0.01} max={dataMode === 'BINANCE' ? selectedQuote.maxQty : undefined} value={quantity} onChange={(event) => setQuantity(Math.max(0, Number(event.target.value)))} /></label>
-                  <label><span>الرسوم التقديرية <small>{quoteAssetLabel ?? 'عملة غير محددة'}</small></span><input type="number" min="0" step="0.1" value={fees} onChange={(event) => setFees(Math.max(0, Number(event.target.value)))} /></label>
+                  <label><span>رسوم الدخول الفعلية <small>{quoteAssetLabel ?? 'عملة غير محددة'} · اختياري</small></span><input type="number" min="0" step="any" value={fees} onChange={(event) => setFees(event.target.value)} /></label>
                 </div>
                 {hasPremiumSizingCapability && <div className="budget-row"><label htmlFor="risk-budget">ميزانية المحاولة (حد أقصى 20)</label><div><input id="risk-budget" type="number" min="0" max={PAPER_CAMPAIGN_PER_TRADE_CAP} step="1" value={riskBudget} onChange={(event) => setRiskBudget(Math.min(PAPER_CAMPAIGN_PER_TRADE_CAP, Math.max(0, Number(event.target.value))))} /><span>{quoteAssetLabel ?? 'عملة غير محددة'}</span><button onClick={handleBudgetClick} title="احسب كمية لا تتجاوز الميزانية">احسب الكمية</button></div></div>}
                 <div className="risk-summary campaign-risk-summary">
@@ -1723,7 +1749,7 @@ function App() {
 
           <section className="model-strip">
             <button className="model-toggle" onClick={() => setShowAssumptions((value) => !value)}><div className="model-icon"><Info size={16} /></div><div><strong>افتراضات النموذج وحدوده</strong><span>{dataMode === 'BINANCE' ? 'Crypto: BSM مع Carry مفترض · Commodity: بيانات مرصودة فقط' : dataMode === 'CSV' ? 'توجيه النموذج حسب مواصفات العقد · الافتراضات ظاهرة' : 'Black–76 للعقود الآجلة وBSM مع Carry للـSpot · بيانات اصطناعية'}</span></div><ChevronDown className={showAssumptions ? 'rotated' : ''} size={16} /></button>
-            {showAssumptions && <div className="model-details">{dataMode === 'BINANCE' ? <><p>تمر طلبات Binance عبر وسيط Supabase عام محدود بواجهات بيانات السوق للقراءة فقط لتوافق CORS؛ يطلب exchangeInfo لاكتشاف العقود النشطة وmark/ticker/index وopenInterest لبيانات السوق. لا يخزن الوسيط مفاتيح API ولا يقبل مسارات حساب أو تداول، ولا يتجاوز قيود Binance الجغرافية. ما يظهر لقطة REST عند آخر تحديث وليس بثاً لحظياً؛ وقد تتغير العقود أو تتأخر البيانات أو تُحجب حسب الشبكة والمنطقة.</p><p>تُعرض Mark/IV وBid/Ask والمؤشر والفائدة المفتوحة عند توفرها. خيارات الكريبتو المعروفة تُنمذج كخيارات أوروبية على مؤشر Spot باستخدام Black–Scholes مع Carry، مع افتراض carry=0 إذا لم يتوفر من المصدر؛ لذلك تظهر بحالة «افتراض معلن». تُحفظ Greeks الخام من Binance للتدقيق فقط ولا تُخلط مع Greeks المحسوبة. أما Commodity/TradFi Options المرتبطة بمؤشر Perpetual، وأي نوع أصل غير معروف، فتعرض بيانات السوق المرصودة فقط وتُحجب Greeks والحركة الضمنية إلى أن يتوفر نموذج مثبت. لا نستخدم Black–Scholes تلقائياً على الذهب أو العقود الدائمة. Rho لكل نقطة مئوية من معدل سنوي مركب باستمرار، ووحدة `riskFreeInterest` تحتاج تحققاً من المصدر.</p></> : <><p>{dataMode === 'DEMO' ? 'هذه نسخة محاكاة: بيانات الأسعار مولدة وليست متصلة بمنصة. تستخدم Black–76 لعقود CL/BZ الآجلة وBlack–Scholes مع Carry لبقية الأصول، مع افتراض معدل فائدة وCarry يساويان 0%. كل القيم اصطناعية.' : 'يستخدم CSV نموذج Black–76 للعقود الآجلة فقط عند توفر Forward ومعدل فائدة ومواصفات أوروبية وتسوية صريحة؛ ويستخدم Black–Scholes مع Carry لعقود Spot/Index/FX عند إدخال Spot والمعدل والـCarry. العقود الأمريكية أو الدائمة أو غير المكتملة تبقى بيانات مرصودة فقط. إذا غاب IV ولا تسمح مواصفات العقد بنموذج مدعوم، يُرفض الصف بدلاً من تخمين IV أو Greeks بنموذج عام. إذا توفر IV مرصود، تبقى الأسعار وIV قابلة للاستيراد مع حجب Greeks النموذجية. تحقّق من الوحدات والطوابع الزمنية.'}</p><p>لا يستخدم المختبر مصادر بديلة خفية ولا يخلط بيانات Demo ببيانات CSV أو Binance. لا تستخدم المحاكاة لاتخاذ قرار مالي مباشر.</p></>}</div>}
+            {showAssumptions && <div className="model-details">{dataMode === 'BINANCE' ? <><p>يمر جلب Binance عبر وسيط عام للقراءة فقط؛ لا يحفظ مفاتيح ولا يتيح الحساب أو التداول. البيانات لقطة REST وليست بثاً لحظياً، وقد تتأخر أو تُحجب حسب الشبكة والمنطقة.</p><p>نعرض بيانات السوق المرصودة ونفصلها عن مخرجات النماذج. تُنمذج خيارات الكريبتو الأوروبية على Spot بـBlack–Scholes مع Carry=0 عند غياب قيمة موثقة، ويُعلن هذا الافتراض. تبقى Greeks الخام من Binance منفصلة عن المحسوبة. Commodity/TradFi وPerpetual والأصول غير المعروفة تعرض بيانات مرصودة فقط؛ تُحجب Greeks ما لم يتوفر نموذج مثبت. لا نطبق Black–Scholes تلقائياً على الذهب أو العقود الدائمة.</p></> : <><p>{dataMode === 'DEMO' ? 'هذه نسخة محاكاة: بيانات الأسعار مولدة وليست متصلة بمنصة. تستخدم Black–76 لعقود CL/BZ الآجلة وBlack–Scholes مع Carry لبقية الأصول، مع افتراض معدل فائدة وCarry يساويان 0%. كل القيم اصطناعية.' : 'يستخدم CSV نموذج Black–76 للعقود الآجلة فقط عند توفر Forward ومعدل فائدة ومواصفات أوروبية وتسوية صريحة؛ ويستخدم Black–Scholes مع Carry لعقود Spot/Index/FX عند إدخال Spot والمعدل والـCarry. العقود الأمريكية أو الدائمة أو غير المكتملة تبقى بيانات مرصودة فقط. إذا غاب IV ولا تسمح مواصفات العقد بنموذج مدعوم، يُرفض الصف بدلاً من تخمين IV أو Greeks بنموذج عام. إذا توفر IV مرصود، تبقى الأسعار وIV قابلة للاستيراد مع حجب Greeks النموذجية. تحقّق من الوحدات والطوابع الزمنية.'}</p><p>لا يستخدم المختبر مصادر بديلة خفية ولا يخلط بيانات Demo ببيانات CSV أو Binance. لا تستخدم المحاكاة لاتخاذ قرار مالي مباشر.</p></>}</div>}
           </section>
 
           <Suspense fallback={<div className="panel" role="status">جارٍ تحميل المركز المالي...</div>}>
