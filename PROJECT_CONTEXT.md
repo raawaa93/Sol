@@ -111,3 +111,15 @@ No second execution venue for a Syrian resident has been verified for global lis
 - No scheduled collector, live WebSocket capture, cross-device archive, valid historical BBO corpus, or measured strategy edge exists.
 - The shared Supabase project remains untouched. A new free project is technically available at $0/month within the free-project allowance, but it auto-pauses after low activity over seven days and requires a user-selected organization plus a secure auth/RLS design. Do not use public unauthenticated writes.
 - Continue research/PAPER only. No private keys, order routes, live trading, funds movement or geographic circumvention. See docs/superpowers/specs/2026-11-25-options-research-engine-design.md and docs/OPTIONS_RESEARCH_ENGINE_EXECUTION_2026-11-25.md.
+
+
+## 10. تنفيذ 25 نوفمبر 2026 — BBO-aware replay
+
+- PR #204 merged as 337e03fb26d44c906125318affc473030c165da4.
+- Replay no longer uses generic last-trade `sourceTimestamp` as a bid/ask timestamp. It requires explicit BBO source, source event/snapshot time, local receive/availability time, non-estimated bid/ask, displayed-size unit and size.
+- The execution clock is the local receive time; source-to-receive delay is bounded to five minutes. Entry requires enough displayed Ask size; exit requires enough displayed Bid size. Mark-only quotes, estimated prices, missing/future clocks, unknown size units and undersized quotes are rejected.
+- Added adverse per-side slippage in basis points, with entry/exit fill prices, slippage cost, displayed size and source clocks in the replay output. Fees/slippage at zero are optimistic assumptions.
+- CSV template/import now accepts explicit `bidAskSource`, `bidAskTimestamp`, `bidAskReceivedAt`, `bidAskSizeUnit`, `bidQuantity` and `askQuantity`. Generic `timestamp` is not a BBO clock. CSV provenance remains user-supplied and unauthenticated.
+- Binance bookTicker adapter records event time and local receive time and labels displayed quantities as contracts/lots. The optionTicker 24-hour stream is not a BBO source; do not use its event time as a bid/ask clock.
+- Verification: CI 45572889900 passed 303/303 tests, build, bundle budget and 18/18 Playwright journeys; Lighthouse 45572889852 and Project Context Guard 45572889839 passed.
+- This is a conservative execution baseline only. No point-in-time BBO corpus, live capture, scheduled worker, durable cloud archive or measured strategy edge exists. Research/PAPER only.
