@@ -201,6 +201,10 @@ test('canonical Binance model Greek capability rejects missing provenance, times
   }, 'BINANCE'), false);
   assert.equal(hasCanonicalBinanceModelGreekCapability({
     ...canonicalGreekQuote,
+    markIvSource: 'MARK_PRICE',
+  }, 'BINANCE'), false);
+  assert.equal(hasCanonicalBinanceModelGreekCapability({
+    ...canonicalGreekQuote,
     unit: 10,
   }, 'BINANCE'), false);
   assert.equal(hasCanonicalBinanceModelGreekCapability({
