@@ -30,7 +30,7 @@ function makeRecord(overrides = {}) {
   };
   return createOptionsArchiveRecord({
     kind: 'BOOK_TICKER',
-    endpoint: 'wss://fstream.binance.com/public/ws/BTC-261225-100000-C@bookTicker',
+    endpoint: 'WS_BOOK_TICKER',
     symbol: 'BTC-261225-100000-C',
     idempotencyKey: 'bookTicker|BTC-261225-100000-C|update-42',
     rawPayload: { e: 'bookTicker', E: Date.parse(EVENT), u: 42, s: 'BTC-261225-100000-C', b: '1200' },
