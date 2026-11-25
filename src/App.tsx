@@ -1410,7 +1410,8 @@ function App() {
     notify(label + '؛ احتفظ بها خارج المتصفح.');
   };
 
-  const exportPaperJournalRecovery = () => {
+  const exportPaperJournalRecovery = async () => {
+    const { readPaperJournalRecovery } = await import('./lib/paper-journal-storage');
     downloadPaperJournalRaw(
       readPaperJournalRecovery(localStorage),
       'sol-paper-journal-recovery.json',
@@ -1418,7 +1419,8 @@ function App() {
     );
   };
 
-  const exportPaperJournalOriginal = () => {
+  const exportPaperJournalOriginal = async () => {
+    const { readPaperJournalPrimary } = await import('./lib/paper-journal-storage');
     downloadPaperJournalRaw(
       readPaperJournalPrimary(localStorage),
       'sol-paper-journal-original.json',
@@ -1426,34 +1428,34 @@ function App() {
     );
   };
 
-  const retryPaperJournalPersistence = () => {
-    if (!paperJournalLoad.backupAvailable && !paperJournalLoad.persistenceBlocked) return;
+  const retryPaperJournalPersistence = async () => {
+    if (!paperJournalReady || (!paperJournalLoad.backupAvailable && !paperJournalLoad.persistenceBlocked)) return;
     if (!window.confirm('بعد تنزيل كل النسخ الخام وحفظها خارج المتصفح، هل تريد اعتماد السجلات الصالحة فقط وإزالة قفل الاستعادة؟')) return;
-    if (paperJournalLoad.rejectedCount > 0 || paperJournalLoad.parseError) {
-      const original = readPaperJournalPrimary(localStorage);
-      if (original === null) {
-        notify('تعذر قراءة الملف الأصلي؛ لم نكتب فوقه ولم نزل قفل الاستعادة.');
+    try {
+      const storageModule = await import('./lib/paper-journal-storage');
+      if (paperJournalLoad.rejectedCount > 0 || paperJournalLoad.parseError) {
+        const original = storageModule.readPaperJournalPrimary(localStorage);
+        if (original === null) {
+          notify('تعذر قراءة الملف الأصلي؛ لم نكتب فوقه ولم نزل قفل الاستعادة.');
+          return;
+        }
+        const sanitized = JSON.stringify(paperJournalLoad.entries);
+        localStorage.setItem(storageModule.PAPER_JOURNAL_STORAGE_KEY, sanitized);
+        if (localStorage.getItem(storageModule.PAPER_JOURNAL_STORAGE_KEY) !== sanitized) throw new Error('write verification failed');
+      }
+      if (!storageModule.clearPaperJournalRecovery(localStorage)) {
+        notify('تعذر إزالة قفل الاستعادة؛ لم نكمل إعادة التهيئة.');
         return;
       }
-      const sanitized = JSON.stringify(paperJournalLoad.entries);
-      try {
-        localStorage.setItem(PAPER_JOURNAL_STORAGE_KEY, sanitized);
-        if (localStorage.getItem(PAPER_JOURNAL_STORAGE_KEY) !== sanitized) throw new Error('write verification failed');
-      } catch {
-        notify('تعذر اعتماد السجلات الصالحة؛ بقي الملف الأصلي دون تغيير قدر الإمكان.');
-        return;
-      }
+      const next = storageModule.loadPaperJournal<PaperTrade>(localStorage, isPaperTrade);
+      setPaperJournalLoad(next);
+      setTrades(next.entries);
+      notify(next.persistenceBlocked || next.backupAvailable
+        ? 'ما زالت الاستعادة غير مكتملة؛ بقيت الكتابة محجوبة لحماية النسخة الخام.'
+        : 'اكتملت الاستعادة بعد تأكيد حفظ النسخة خارج المتصفح؛ استؤنف دفتر PAPER.');
+    } catch {
+      notify('تعذر تحميل وحدة استعادة دفتر PAPER؛ لم نغيّر الملف الأصلي.');
     }
-    if (!clearPaperJournalRecovery(localStorage)) {
-      notify('تعذر إزالة قفل الاستعادة؛ لم نكمل إعادة التهيئة.');
-      return;
-    }
-    const next = loadPaperJournal<PaperTrade>(localStorage, isPaperTrade);
-    setPaperJournalLoad(next);
-    setTrades(next.entries);
-    notify(next.persistenceBlocked || next.backupAvailable
-      ? 'ما زالت الاستعادة غير مكتملة؛ بقيت الكتابة محجوبة لحماية النسخة الخام.'
-      : 'اكتملت الاستعادة بعد تأكيد حفظ النسخة خارج المتصفح؛ استؤنف دفتر PAPER.');
   };
 
   const exportTrades = () => {
