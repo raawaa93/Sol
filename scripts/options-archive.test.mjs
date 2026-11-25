@@ -202,6 +202,26 @@ test('orphaned temporary segments are removed under the writer lease before the 
   assert.equal((await archive.verify()).ok, true);
 });
 
+test('restart recovers orphan temp segments only after acquiring the exclusive writer lease', async (t) => {
+  const { root, archive } = await makeArchive(t);
+  const orphan = join(root, '.tmp', 'crash-before-link.ndjson.tmp');
+  await writeFile(orphan, 'partial-segment');
+  const restarted = new ResumableOptionsArchive(root);
+  const initialized = await restarted.initialize();
+  assert.equal(initialized.ok, true);
+  assert.ok(initialized.errors.some((error) => error.startsWith('ORPHAN_TEMP_FILE')));
+  const lease = await restarted.acquireWriterLease();
+  try {
+    await assert.rejects(readFile(orphan, 'utf8'), (error) => error.code === 'ENOENT');
+    await restarted.appendBatch([makeRecord()], { lease, cursor: { updateId: 42 } });
+  } finally {
+    await restarted.releaseWriterLease(lease);
+  }
+  const report = await restarted.verify();
+  assert.equal(report.ok, true, report.errors.join('; '));
+  assert.equal(report.index.length, 1);
+});
+
 test('quota failure writes neither a segment nor a cursor', async (t) => {
   const { root, archive } = await makeArchive(t, { maxBytes: 1 });
   await withLease(archive, async (lease) => {
