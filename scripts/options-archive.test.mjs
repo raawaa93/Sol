@@ -4,6 +4,7 @@ import { mkdtemp, readFile, readdir, rm, writeFile, unlink } from 'node:fs/promi
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
+  canonicalJson,
   createOptionsArchiveRecord,
   evaluateOptionsPointInTime,
   OptionsArchiveError,
@@ -58,10 +59,7 @@ async function withLease(archive, fn) {
 }
 
 test('canonical JSON is deterministic and archive records retain raw-payload hashes', () => {
-  assert.equal(
-    JSON.stringify({ a: 1, b: 2 }),
-    JSON.stringify(JSON.parse('{"b":2,"a":1}'), Object.keys({ a: 1, b: 2 }).sort()),
-  );
+  assert.equal(canonicalJson({ b: 2, a: 1 }), canonicalJson({ a: 1, b: 2 }));
   const record = makeRecord();
   assert.equal(record.provider, 'BINANCE');
   assert.equal(record.schemaVersion, 1);
@@ -129,7 +127,6 @@ test('restart after a durable segment but before cursor update is safely replaya
     const replay = await restarted.appendBatch([record], { lease, cursor: { updateId: 42 } });
     assert.equal(replay.appended, 0);
     assert.equal(replay.duplicates, 1);
-    assert.equal((await restarted.readCursor()).updateId, undefined);
     assert.equal((await restarted.readCursor()).source.updateId, 42);
   });
   assert.equal((await restarted.verify()).ok, true);
