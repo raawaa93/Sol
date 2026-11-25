@@ -115,18 +115,22 @@ function makeRecord({ kind, endpoint, symbol, rawPayload, eventAt, receivedAt, a
 export function mapVerifiedBinanceContractSpec(exchangeInfo, symbol, receivedAt) {
   const payload = unwrap(exchangeInfo);
   const serverTime = numeric(payload.serverTime);
-  if (!validSymbol(symbol) || serverTime === null || serverTime <= 0 || Date.parse(receivedAt) < serverTime
-    || Date.parse(receivedAt) - serverTime > 5 * 60 * 1000) return null;
-  const symbolInfo = Array.isArray(payload.optionSymbols)
-    ? payload.optionSymbols.find((item) => item?.symbol?.toUpperCase() === symbol)
-    : undefined;
-  if (!symbolInfo) return null;
+  const receivedMs = Date.parse(receivedAt);
+  if (!validSymbol(symbol) || serverTime === null || serverTime <= 0 || !Number.isFinite(receivedMs)
+    || receivedMs < serverTime || receivedMs - serverTime > 5 * 60 * 1000) return null;
+  const symbolMatches = Array.isArray(payload.optionSymbols)
+    ? payload.optionSymbols.filter((item) => item?.symbol?.toUpperCase() === symbol)
+    : [];
+  if (symbolMatches.length !== 1) return null;
+  const symbolInfo = symbolMatches[0];
   const underlying = typeof symbolInfo.underlying === 'string' ? symbolInfo.underlying.toUpperCase() : '';
   const baseAsset = symbol.split('-')[0];
   if (!underlying) return null;
-  const contractInfo = Array.isArray(payload.optionContracts)
-    ? payload.optionContracts.find((item) => item?.underlying?.toUpperCase() === underlying)
-    : undefined;
+  const contractMatches = Array.isArray(payload.optionContracts)
+    ? payload.optionContracts.filter((item) => item?.underlying?.toUpperCase() === underlying)
+    : [];
+  if (contractMatches.length !== 1) return null;
+  const contractInfo = contractMatches[0];
   if (!contractInfo
     || String(symbolInfo.underlyingType ?? '').toUpperCase() !== 'CRYPTO'
     || String(symbolInfo.contractType ?? '').toUpperCase() !== 'CRYPTO_OPTIONS') return null;
@@ -138,7 +142,8 @@ export function mapVerifiedBinanceContractSpec(exchangeInfo, symbol, receivedAt)
   const quoteAsset = String(symbolInfo.quoteAsset ?? contractInfo.quoteAsset ?? '').toUpperCase();
   const settlementAsset = String(contractInfo.settleAsset ?? '').toUpperCase();
   if (!['CALL', 'PUT'].includes(optionType) || strike === null || strike <= 0
-    || expiry === null || expiry <= serverTime || unit === null || unit <= 0
+    || expiry === null || !Number.isSafeInteger(expiry) || expiry <= serverTime
+    || unit === null || !Number.isSafeInteger(unit) || unit <= 0
     || !/^[A-Z][A-Z0-9]{1,11}$/.test(quoteAsset)
     || !/^[A-Z][A-Z0-9]{1,11}$/.test(settlementAsset)
     || quoteAsset !== settlementAsset
