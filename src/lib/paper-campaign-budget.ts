@@ -1,4 +1,5 @@
 import type { PaperTrade } from './types.ts';
+import { isCanonicalPaperCloseEventForTrade } from './paper-journal.ts';
 import type { CanonicalPaperCloseEvent } from './paper-journal.ts';
 
 export const PAPER_CAMPAIGN_CAPITAL = 200;
@@ -68,7 +69,8 @@ export function summarizePaperCampaignBudget(
   const closeByTradeId = new Map<string, CanonicalPaperCloseEvent>();
 
   for (const event of closeEvents) {
-    if (!tradesById.has(event.tradeId) || closeByTradeId.has(event.tradeId)) {
+    const trade = tradesById.get(event.tradeId);
+    if (!trade || closeByTradeId.has(event.tradeId) || !isCanonicalPaperCloseEventForTrade(event, trade)) {
       unknownEntries += 1;
       continue;
     }
