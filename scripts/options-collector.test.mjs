@@ -80,6 +80,8 @@ test('trade MARKET and BLOCK are separate; taker side is derived only from maker
   assert.equal(blockRecord.fields.find((field) => field.name === 'aggressorSide').value, 'BUY');
   assert.equal(marketRecord.fields.find((field) => field.name === 'tradeTime').value, new Date(EVENT_MS - 10).toISOString());
   assert.equal(marketRecord.rawPayload.T, EVENT_MS - 10);
+  const [withoutTransactionTime] = parseBinancePublicStreamEvent({ ...market, t: 104, T: undefined }, RECEIVED);
+  assert.equal(withoutTransactionTime.fields.some((field) => field.name === 'tradeTime'), false);
   const [unknown] = parseBinancePublicStreamEvent({ ...market, t: 103, X: 'UNKNOWN' }, RECEIVED);
   assert.equal(unknown.kind, 'GAP');
   assert.ok(unknown.quality.flags.includes('UNKNOWN_TRADE_TYPE'));
@@ -88,11 +90,11 @@ test('trade MARKET and BLOCK are separate; taker side is derived only from maker
 test('forming klines are ignored and closed candles are unavailable before their close time', () => {
   const forming = { e: 'kline', E: EVENT_MS, s: SYMBOL, k: { s: SYMBOL, i: '1m', t: EVENT_MS - 60_000, T: EVENT_MS, x: false, o: '1', h: '2', l: '1', c: '2', v: '3' } };
   assert.deepEqual(parseBinancePublicStreamEvent(forming, RECEIVED), []);
-  const closed = { ...forming, k: { ...forming.k, x: true } };
-  const [record] = parseBinancePublicStreamEvent(closed, '2026-11-25T03:00:00.500Z');
+  const closed = { ...forming, k: { ...forming.k, T: EVENT_MS + 5_000, x: true } };
+  const [record] = parseBinancePublicStreamEvent(closed, '2026-11-25T03:00:01.000Z');
   assert.equal(record.kind, 'KLINE_CLOSED');
-  assert.equal(record.clocks.availableAt, '2026-11-25T03:00:00.500Z');
-  assert.ok(record.fields.every((field) => field.availableAt >= '2026-11-25T03:00:00.500Z'));
+  assert.equal(record.clocks.availableAt, '2026-11-25T03:00:05.000Z');
+  assert.ok(record.fields.every((field) => field.availableAt >= '2026-11-25T03:00:05.000Z'));
 });
 
 test('depth diffs remain invalid until a snapshot bridge and sequence gaps are explicit', async (t) => {
@@ -110,7 +112,7 @@ test('depth diffs remain invalid until a snapshot bridge and sequence gaps are e
     snapshot,
     { type: 'message', data: diff(101, 102, 100) },
     { type: 'message', data: diff(103, 104, 102) },
-    { type: 'message', data: diff(110, 111, 104) },
+    { type: 'message', data: diff(110, 111, 103) },
     { type: 'disconnect', reason: 'network-close' },
     { type: 'reconnect' },
     { type: 'message', data: diff(112, 113, 111) },
