@@ -425,7 +425,14 @@ export function isCanonicalPaperCloseEventForTrade(
   trade: PaperTrade,
 ): boolean {
   const economics = trade.contractEconomics;
-  if (!economics || event.tradeId !== trade.id || event.quantity !== trade.quantity
+  const entrySourceTimestamp = Date.parse(trade.sourceTimestampsAtEntry?.bookTicker ?? '');
+  const entryReceivedTimestamp = Date.parse(trade.sourceReceivedAtAtEntry?.bidAsk ?? '');
+  const entryCreatedTimestamp = Date.parse(trade.createdAt);
+  if (!economics || !Number.isFinite(entrySourceTimestamp) || !Number.isFinite(entryReceivedTimestamp)
+    || !Number.isFinite(entryCreatedTimestamp) || entrySourceTimestamp > entryReceivedTimestamp
+    || entryReceivedTimestamp > entryCreatedTimestamp
+    || entryReceivedTimestamp - entrySourceTimestamp > MAX_PAPER_CLOSE_SOURCE_AGE_MS
+    || event.tradeId !== trade.id || event.quantity !== trade.quantity
     || event.entryDebit !== trade.premiumDebitAtEntry
     || event.currency !== (trade.premiumCurrencyAtEntry ?? trade.quoteAsset)
     || event.contractAtExit.symbol !== trade.symbol
