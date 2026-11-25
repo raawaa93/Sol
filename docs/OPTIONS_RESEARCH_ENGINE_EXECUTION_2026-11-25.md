@@ -63,6 +63,10 @@ The local runtime could not clone github.com, so no local npm test execution is 
 - Cloud writes require a secure authenticated design and row-level security. A public unauthenticated insert endpoint is rejected. No service-role secret or shared production credentials are stored in the repository.
 - Official references: https://supabase.com/docs/guides/platform/billing-on-supabase, https://supabase.com/docs/guides/platform/branching, https://supabase.com/docs/guides/platform/going-into-prod
 
+## Hosting decision
+
+The zero-cost hosting comparison and operational gates are recorded in [OPTIONS_COLLECTOR_HOSTING_DECISION_2026-11-25.md](./OPTIONS_COLLECTOR_HOSTING_DECISION_2026-11-25.md). Cloudflare Workers Free + R2 is a candidate for scheduled REST sampling, not a deployed service; Render cron/workflows have usage costs, and the connected Render workspace currently has no resources. No capture or deployment was started.
+
 ## Remaining work, ordered
 
 1. Choose the Supabase organization for a separate free Sol project and settle the authentication model. No payment or paid branch.
