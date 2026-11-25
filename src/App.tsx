@@ -293,6 +293,7 @@ function App() {
   const [quantity, setQuantity] = useState(0.01);
   const [riskBudget, setRiskBudget] = useState(PAPER_CAMPAIGN_PER_TRADE_CAP);
   const [fees, setFees] = useState(0);
+  const [closeFeesInput, setCloseFeesInput] = useState('');
   const [paperJournalLoad] = useState(() => loadPaperJournal<PaperTrade>(localStorage, isPaperTrade));
   const [trades, setTrades] = useState<PaperTrade[]>(paperJournalLoad.entries);
   const [toast, setToast] = useState('');
@@ -1133,6 +1134,52 @@ function App() {
     };
     setTrades((current) => [newTrade, ...current]);
     notify('أضيفت الصفقة إلى الدفتر التجريبي فقط.');
+  };
+
+  const closePaperTrade = async (trade: PaperTrade) => {
+    if (paperJournalLoad.persistenceBlocked) {
+      notify('توقفت الكتابة لحماية دفتر PAPER؛ نزّل نسخة الاستعادة أولاً.');
+      return;
+    }
+    if (!trade.contractEconomics || trade.close || trade.priceSourceAtEntry !== 'ASK') {
+      notify('هذا الإدخال لا يملك لقطة دخول Ask موثقة قابلة للإغلاق الآلي.');
+      return;
+    }
+    if (dataMode !== 'BINANCE') {
+      notify('حوّل مصدر البيانات إلى Binance وحدّث دفتر السوق قبل الإغلاق.');
+      return;
+    }
+    if (!closeFeesInput.trim() || !Number.isFinite(Number(closeFeesInput)) || Number(closeFeesInput) < 0) {
+      notify('أدخل رسوم الإغلاق الفعلية بعملة القسط؛ لا نفترض رسوماً صفرية.');
+      return;
+    }
+    const exitQuote = quotes.find((quote) => quote.symbol === trade.symbol && quote.venue === 'BINANCE');
+    if (!exitQuote) {
+      notify('لا توجد لقطة Binance حالية لهذا العقد. حدّث السلسلة وانتظر BOOK_TICKER.');
+      return;
+    }
+    const { createCanonicalPaperClose } = await import('./lib/paper-journal');
+    const result = createCanonicalPaperClose({
+      trade,
+      quote: exitQuote,
+      closedAt: new Date().toISOString(),
+      exitPremium: exitQuote.bid,
+      exitFees: Number(closeFeesInput),
+    });
+    if (!result.ok) {
+      const messages: Record<string, string> = {
+        INSUFFICIENT_OBSERVED_BID_SIZE: 'حجم Bid المعروض أقل من كمية الصفقة أو مصدر الحجم غير موثّق.',
+        EXIT_MARKET_SNAPSHOT_STALE_OR_FUTURE: 'لقطة Bid أو المؤشر قديمة أو مستقبلية؛ انتظر تحديثاً جديداً.',
+        EXIT_CONTRACT_IDENTITY_MISMATCH: 'العقد الحالي لا يطابق لقطة الدخول الأصلية.',
+        EXIT_MUST_BE_BEFORE_EXPIRY_AND_AFTER_ENTRY: 'لا يمكن إغلاق العقد بعد الانتهاء أو قبل وقت الدخول.',
+        ENTRY_DEBIT_OR_SOURCE_SNAPSHOT_INVALID: 'لقطة الدخول أو تكلفة القسط المخزنة غير متسقة؛ لا نحسب P&L.',
+        EXIT_FEES_OR_ENTRY_DEBIT_UNVERIFIED: 'تعذر التحقق من رسوم الخروج أو تكلفة الدخول.',
+      };
+      notify(messages[result.reason] ?? `تعذر إغلاق صفقة PAPER: ${result.reason}`);
+      return;
+    }
+    setTrades((current) => current.map((item) => item.id === trade.id ? result.trade : item));
+    notify(`أُغلقت محاكاة ${trade.symbol} عند Bid؛ صافي P&L ${formatMoney(result.realizedPnl, 4, result.currency)}. هذا تقدير PAPER وليس تعبئة فعلية.`);
   };
 
   const exportIVHistoryBackup = async () => {
