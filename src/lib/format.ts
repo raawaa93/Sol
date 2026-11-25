@@ -1,6 +1,6 @@
 import type { OptionFilter, OptionQuote } from './types';
 
-const formatters = new Map<string, Intl.NumberFormat>();
+const formatters = new Map<number, Intl.NumberFormat>();
 
 type PrecisionSource = Pick<OptionQuote, 'priceScale' | 'quantityScale' | 'filters'>;
 
@@ -8,10 +8,10 @@ function clampPrecision(value: number): number {
   return Math.max(0, Math.min(8, Math.trunc(value)));
 }
 
-function getFormatter(precision: number, minimumFractionDigits = precision): Intl.NumberFormat {
+export function getFormatter(precision: number, minimumFractionDigits = precision): Intl.NumberFormat {
   const maximum = clampPrecision(precision);
   const minimum = Math.min(maximum, clampPrecision(minimumFractionDigits));
-  const key = `${minimum}:${maximum}`;
+  const key = minimum * 10 + maximum;
   let formatter = formatters.get(key);
   if (!formatter) {
     formatter = new Intl.NumberFormat('en-US', {
@@ -56,9 +56,9 @@ export function getAdaptivePrecision(value: number): number {
 
 export function getAssetPricePrecision(referencePrice: number): number {
   const magnitude = Math.abs(referencePrice);
-  if (Number.isFinite(magnitude) && magnitude >= 10_000) return 0;
-  if (Number.isFinite(magnitude) && magnitude >= 100) return 2;
-  return getAdaptivePrecision(referencePrice);
+  return Number.isFinite(magnitude) && magnitude >= 100
+    ? magnitude >= 10_000 ? 0 : 2
+    : getAdaptivePrecision(referencePrice);
 }
 
 function getFilterPrecision(

@@ -9,10 +9,11 @@ import {
   YAxis,
 } from 'recharts';
 import { buildScenarioSeries } from '../lib/options';
-import { formatAssetPrice, formatSmallAmount, getQuoteCurrency } from '../lib/format';
+import { formatAssetPrice, getFormatter, formatSmallAmount, getQuoteCurrency } from '../lib/format';
 import type { OptionQuote } from '../lib/types';
 
-const numberFormat = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 });
+const numberFormat = getFormatter(2, 0);
+
 type ScenarioPoint = ReturnType<typeof buildScenarioSeries>[number];
 
 export interface PayoffChartViewProps {

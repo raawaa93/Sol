@@ -10,11 +10,12 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { formatAssetPrice, getQuoteCurrency } from '../lib/format';
+import { formatAssetPrice, getFormatter, getQuoteCurrency } from '../lib/format';
 import { getUnderlyingReferencePrice } from '../lib/options';
 import type { OptionQuote, OptionSide } from '../lib/types';
 
-const numberFormat = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 });
+const numberFormat = getFormatter(2, 0);
+
 
 interface SmilePoint {
   strike: number;

@@ -50,7 +50,16 @@ const results = [
 console.log('Gzip-equivalent bundle budget (compressed bytes; not a Core Web Vitals measurement)');
 for (const [label, actual, limit] of results) {
   const status = actual <= limit ? 'PASS' : 'FAIL';
-  console.log(`${status} ${label}: ${actual.toFixed(2)} KiB / ${limit.toFixed(0)} KiB`);
+  const actualBytes = Math.round(actual * 1024);
+  const limitBytes = limit * 1024;
+  console.log(`${status} ${label}: ${actual.toFixed(3)} KiB (${actualBytes} bytes) / ${limit.toFixed(0)} KiB (${limitBytes} bytes)`);
+}
+console.log('Largest compressed JavaScript chunks:');
+for (const file of jsFiles
+  .map((name) => ({ name, bytes: gzipBytes(name) }))
+  .sort((left, right) => right.bytes - left.bytes)
+  .slice(0, 10)) {
+  console.log(`  ${file.name}: ${file.bytes} bytes (${(file.bytes / 1024).toFixed(2)} KiB)`);
 }
 
 const exceeded = results.filter(([, actual, limit]) => actual > limit);

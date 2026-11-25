@@ -49,12 +49,11 @@ import { downloadCsv, downloadCsvTemplate, MAX_CSV_FILE_BYTES, parseOptionsCsv }
 import type { CsvTimestampRange } from './lib/csv';
 import { buildScenarioSeries, getBreakeven, getExpectedMove, getMaxLoss, getMidPrice, getSpreadPct, getUnderlyingReferencePrice } from './lib/options';
 import { buildQuoteCashExpiryScenarioSeries } from './lib/quote-economics';
-import { formatAssetPrice, formatOptionPrice, formatQuantity, formatSmallNumber, getOptionPricePrecision, getQuantityPrecision, getQuoteCurrency } from './lib/format';
+import { formatAssetPrice, formatNumber, formatOptionPrice, formatQuantity, formatSmallNumber, getOptionPricePrecision, getQuantityPrecision, getQuoteCurrency } from './lib/format';
 import type { AssetClass, OptionQuote, OptionSide, PaperTrade, Underlying } from './lib/types';
 import { ASSET_CLASS_LABELS } from './lib/asset-class';
 const FinancialCockpit = lazy(() => import('./components/FinancialCockpit'));
 
-const integerFormat = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 const UNDERLYING_NAMES: Record<string, string> = {
   BTC: 'Bitcoin',
   ETH: 'Ethereum',
@@ -72,10 +71,8 @@ function getUnderlyingName(underlying: string): string {
   return UNDERLYING_NAMES[underlying] ?? 'Underlying asset';
 }
 
-function formatMoney(value: number, digits = 2, currency: string | null = 'USDT'): string {
-  if (!Number.isFinite(value)) return '—';
-  const formatted = new Intl.NumberFormat('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value);
-  return formatted + (currency ? ' ' + currency : '');
+function formatMoney(value: number, digits: number, currency: string | null): string {
+  return formatNumber(value, digits) + (Number.isFinite(value) && currency ? ' ' + currency : '');
 }
 
 function formatCompact(value: number, currency: string | null): string {
@@ -115,8 +112,8 @@ function formatSourceAge(sourceTimeRange: CsvTimestampRange | null, now = Date.n
 function formatTimestampAge(timestamp: number, now = Date.now()): string {
   const ageMs = now - timestamp;
   if (!Number.isFinite(ageMs)) return 'وقت الجلب غير صالح';
-  if (assessSnapshotFreshness(timestamp, now) === 'future') return 'وقت الاستلام مستقبلي؛ تحقّق';
-  return formatAge(Math.max(0, ageMs), 'عمر الاستلام');
+  if (ageMs < -5_000) return 'وقت الاستلام مستقبلي؛ تحقّق';
+  return formatAge(ageMs, 'عمر الاستلام');
 }
 
 function formatPercent(value: number, digits = 1): string {
@@ -719,7 +716,7 @@ function App() {
         setQuantity(defaultQuote.minQty ?? getQuantityStep(defaultQuote));
       }
       setSearchQuery('');
-      notify(usedDirectConnection ? `تم تحميل ${integerFormat.format(snapshot.quotes.length)} عقد من Binance مباشرة عبر شبكة جهازك.` : `تم تحميل بيانات ${integerFormat.format(snapshot.quotes.length)} من أصل ${integerFormat.format(snapshot.activeSymbols)} عقد نشط من Binance.`);
+      notify(usedDirectConnection ? `تم تحميل ${formatNumber(snapshot.quotes.length, 0)} عقد من Binance مباشرة عبر شبكة جهازك.` : `تم تحميل بيانات ${formatNumber(snapshot.quotes.length, 0)} من أصل ${formatNumber(snapshot.activeSymbols, 0)} عقد نشط من Binance.`);
     } catch (error) {
       if (requestId !== binanceRequestId.current) return;
       if (error instanceof BinanceMarketDataError && error.status === 451) {
@@ -828,7 +825,7 @@ function App() {
       setSelectedType(first.type);
       setSelectedId(first.id);
       setSearchQuery('');
-      notify(`تم استيراد ${integerFormat.format(result.quotes.length)} عقد محلياً.`);
+      notify(`تم استيراد ${formatNumber(result.quotes.length, 0)} عقد محلياً.`);
     };
     reader.onerror = () => notify('تعذر قراءة الملف. جرّب ملف CSV آخر.');
     reader.readAsText(file);
@@ -1079,7 +1076,7 @@ function App() {
           )}
 
           <section className="market-summary section-anchor" id="overview-metrics">
-            <div className="section-title-row compact-title"><div><span className="section-kicker">MARKET SNAPSHOT</span><h2>لقطة السوق</h2></div><div className="snapshot-meta"><span className="live-hollow" />{dataMode === 'DEMO' ? 'قيم توضيحية مولّدة' : dataMode === 'CSV' ? 'مصدر الملف الذي استوردته' : `Binance REST · ${integerFormat.format(binanceSnapshot?.activeSymbols ?? 0)} عقد نشط / ${integerFormat.format(binanceSnapshot?.quotes.length ?? 0)} محلل`}<span className="meta-separator">·</span><span>{underlying}{quoteAssetLabel ? `/${quoteAssetLabel}` : ''}</span></div></div>
+            <div className="section-title-row compact-title"><div><span className="section-kicker">MARKET SNAPSHOT</span><h2>لقطة السوق</h2></div><div className="snapshot-meta"><span className="live-hollow" />{dataMode === 'DEMO' ? 'قيم توضيحية مولّدة' : dataMode === 'CSV' ? 'مصدر الملف الذي استوردته' : `Binance REST · ${formatNumber(binanceSnapshot?.activeSymbols ?? 0, 0)} عقد نشط / ${formatNumber(binanceSnapshot?.quotes.length ?? 0, 0)} محلل`}<span className="meta-separator">·</span><span>{underlying}{quoteAssetLabel ? `/${quoteAssetLabel}` : ''}</span></div></div>
             {market ? <div className="stats-grid">
               <StatCard label={`السعر المرجعي · ${underlying}`} value={formatAssetPrice(market.spot, market.spot, quoteAssetLabel ?? null)} change={dataMode === 'DEMO' ? formatSignedPercent(DEMO_MARKETS[underlying].dayChangePct) : undefined} tone={dataMode === 'DEMO' ? (DEMO_MARKETS[underlying].dayChangePct >= 0 ? 'positive' : 'negative') : 'neutral'} footnote={dataMode === 'DEMO' ? 'قيمة محاكاة — ليست سعر Binance' : dataMode === 'BINANCE' ? 'مؤشر الأصل من Binance Options REST' : 'وسيط الأسعار الواردة في CSV'} icon={<span className="asset-symbol">{underlying === 'BTC' ? '₿' : underlying === 'ETH' ? 'Ξ' : underlying.slice(0, 3)}</span>} />
               <StatCard label="التقلب الضمني · 30 يوم" value={market.iv30 === null ? 'غير متاح' : formatPercent(market.iv30)} change={market.iv30 === null ? 'لا يوجد IV صالح' : dataMode === 'DEMO' ? 'قيمة مولّدة' : dataMode === 'BINANCE' ? 'سلسلة الخيارات' : 'تقريب من السلسلة'} tone={market.iv30 === null ? 'neutral' : 'accent'} footnote={market.iv30 === null ? 'لا يتوفر IV وأجل 20–40 يوماً غير معلّمين كتقديريين' : dataMode === 'DEMO' ? 'بيانات محاكاة وليست حية' : dataMode === 'BINANCE' ? 'وسيط IV غير المعلّم كتقديري لعقود 20–40 يوماً' : 'وسيط IV غير المعلّم كتقديري لصفوف 20–40 يوماً بوقت صالح'} icon={<Activity size={17} />} />
@@ -1096,7 +1093,7 @@ function App() {
                 <div>
                   <span className="section-kicker">DATA COVERAGE</span>
                   <h2 id="data-coverage-title">اكتمال بيانات العقود</h2>
-                  <p>{underlying} · {integerFormat.format(quoteDataCoverage.contracts)} عقداً فريداً بعد إزالة تكرار الملاحظات</p>
+                  <p>{underlying} · {formatNumber(quoteDataCoverage.contracts, 0)} عقداً فريداً بعد إزالة تكرار الملاحظات</p>
                 </div>
                 <span className="data-coverage-source">{dataMode === 'BINANCE' ? `BookTicker · ${bookTickerStatus === 'connected' ? 'متصل' : bookTickerStatus === 'connecting' ? 'جارٍ الاتصال' : bookTickerStatus === 'reconnecting' ? 'إعادة اتصال' : 'غير نشط'}` : 'ملف CSV محلي'}</span>
               </div>
@@ -1121,15 +1118,15 @@ function App() {
                   ['Ask IV متاح', quoteDataCoverage.askIvAvailable],
                 ].map(([label, count]) => (
                   <div className="data-coverage-item" key={label}>
-                    <strong>{integerFormat.format(Number(count))}<small> / {integerFormat.format(quoteDataCoverage.contracts)}</small></strong>
+                    <strong>{formatNumber(Number(count), 0)}<small> / {formatNumber(quoteDataCoverage.contracts, 0)}</small></strong>
                     <span>{label}</span>
                     <i><b style={{ width: `${quoteDataCoverage.contracts ? Math.min(100, Number(count) / quoteDataCoverage.contracts * 100) : 0}%` }} /></i>
                   </div>
                 ))}
               </div>
               <p className="data-coverage-note">الأصفار في OI والحجم تُحسب قيماً متاحة، لا حقولاً مفقودة. لا تُستبدل الأسعار أو IV الناقصة بقيم مخمّنة. وجود Bid وAsk لا يضمن التنفيذ أو حداثة السعر.</p>
-              {dataMode === 'BINANCE' && <p className="data-coverage-note">BookTicker: {bookTickerStatus === 'connected' ? 'متصل' : bookTickerStatus === 'connecting' ? 'جارٍ الاتصال' : bookTickerStatus === 'reconnecting' ? 'يعيد الاتصال تلقائياً' : 'غير نشط'} · الاشتراك في {integerFormat.format(bookTickerTargets.length)} من {integerFormat.format(bookTickerCandidates.length)} عقد ناقص، بحد أقصى 180 رمزاً · {integerFormat.format(bookTickerUpdates)} تحديثاً مستلماً. إذا لم ينشر المزود تحديثاً، يبقى الحقل ناقصاً.</p>}
-              {dataMode === 'BINANCE' && <p className="data-coverage-note">Option Mark Price + Ticker: {optionMarkStatus === 'connected' ? 'متصل' : optionMarkStatus === 'connecting' ? 'جارٍ الاتصال' : optionMarkStatus === 'reconnecting' ? 'إعادة اتصال' : 'غير نشط'} · {optionMarkTarget}@markPrice + {integerFormat.format(optionTickerTargets.length)} قنوات انتهاء · {integerFormat.format(optionMarkUpdates)} أحداث سوق مستلمة. توقيت الحدث من Binance، ولا تُستخدم Greeks المصدرية مباشرة في حسابات النموذج.</p>}
+              {dataMode === 'BINANCE' && <p className="data-coverage-note">BookTicker: {bookTickerStatus === 'connected' ? 'متصل' : bookTickerStatus === 'connecting' ? 'جارٍ الاتصال' : bookTickerStatus === 'reconnecting' ? 'يعيد الاتصال تلقائياً' : 'غير نشط'} · الاشتراك في {formatNumber(bookTickerTargets.length, 0)} من {formatNumber(bookTickerCandidates.length, 0)} عقد ناقص، بحد أقصى 180 رمزاً · {formatNumber(bookTickerUpdates, 0)} تحديثاً مستلماً. إذا لم ينشر المزود تحديثاً، يبقى الحقل ناقصاً.</p>}
+              {dataMode === 'BINANCE' && <p className="data-coverage-note">Option Mark Price + Ticker: {optionMarkStatus === 'connected' ? 'متصل' : optionMarkStatus === 'connecting' ? 'جارٍ الاتصال' : optionMarkStatus === 'reconnecting' ? 'إعادة اتصال' : 'غير نشط'} · {optionMarkTarget}@markPrice + {formatNumber(optionTickerTargets.length, 0)} قنوات انتهاء · {formatNumber(optionMarkUpdates, 0)} أحداث سوق مستلمة. توقيت الحدث من Binance، ولا تُستخدم Greeks المصدرية مباشرة في حسابات النموذج.</p>}
             </section>
           )}
 
@@ -1240,7 +1237,7 @@ function App() {
                   </div>
                   {!filteredQuotes.length && <EmptyState title="لا توجد عقود مطابقة" note="غيّر نوع العقد أو تاريخ الانتهاء أو ابحث برمز مختلف." />}
                 </div>
-                <div className="table-footer"><span>عرض {integerFormat.format(filteredQuotes.length)} عقد من أصل {integerFormat.format(assetQuotes.filter((quote) => quote.expiry === effectiveExpiry && quote.type === selectedType).length)} في هذه السلسلة</span><span><span className={`table-dot ${dataMode === 'BINANCE' ? 'binance-dot' : ''}`} />{dataMode === 'DEMO' ? 'بيانات محاكاة' : dataMode === 'CSV' ? 'بيانات CSV محلية' : 'لقطة سوق عامة من Binance · ليست بثاً لحظياً'}</span></div>
+                <div className="table-footer"><span>عرض {formatNumber(filteredQuotes.length, 0)} عقد من أصل {formatNumber(assetQuotes.filter((quote) => quote.expiry === effectiveExpiry && quote.type === selectedType).length, 0)} في هذه السلسلة</span><span><span className={`table-dot ${dataMode === 'BINANCE' ? 'binance-dot' : ''}`} />{dataMode === 'DEMO' ? 'بيانات محاكاة' : dataMode === 'CSV' ? 'بيانات CSV محلية' : 'لقطة سوق عامة من Binance · ليست بثاً لحظياً'}</span></div>
               </article>
 
               <aside className="panel quick-analysis" id="trade-lab">

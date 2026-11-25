@@ -866,3 +866,59 @@ test('Binance Options ticker fills missing sides but never overrides BookTicker 
   assert.equal(refreshed.ask, 5300);
   assert.equal(refreshed.bidAskSource, 'OPTION_TICKER');
 });
+
+
+
+test('Binance live observed IV recalculates only previously assumed model Greeks', () => {
+  const quote = {
+    id: 'BTC-261225-100000-C', symbol: 'BTC-261225-100000-C', underlying: 'BTC',
+    expiry: '2026-12-25T08:00:00.000Z', daysToExpiry: 30, strike: 100000, type: 'CALL' as const,
+    bid: 4900, ask: 5100, markPrice: 5000,
+    iv: 0.5, ivStatus: 'ESTIMATED' as const, bidIv: 0.48, askIv: 0.52,
+    delta: 0.5, gamma: 0.00003, theta: -20, vega: 45, rho: 0,
+    openInterest: 10, volume: 2, spot: 100000, unit: 1, riskFreeRate: 0.02, carryYield: 0,
+    underlyingKind: 'SPOT' as const, exerciseStyle: 'EUROPEAN' as const, settlementStyle: 'CASH' as const,
+    pricingStatus: 'ASSUMED' as const, pricingModel: 'BLACK_SCHOLES_CARRY' as const,
+    sourceTimestamps: { markPrice: '2026-11-24T10:00:00.000Z' },
+    estimatedFields: ['iv', 'delta', 'gamma', 'theta', 'vega', 'rho'],
+  };
+  const event = {
+    symbol: quote.symbol, eventTime: 1_800_000_001_000, transactionTime: 1_800_000_000_900,
+    markIv: 0.8,
+    sourceGreeks: { delta: 0.99, gamma: 0.00004, theta: -30, vega: 55 },
+  };
+  const updated = applyBinanceOptionTicker(quote, event);
+  assert.equal(updated.iv, 0.8);
+  assert.equal(updated.ivStatus, 'OBSERVED');
+  assert.notEqual(updated.delta, quote.delta);
+  assert.notEqual(updated.gamma, quote.gamma);
+  assert.notEqual(updated.vega, quote.vega);
+  assert.notEqual(updated.delta, event.sourceGreeks.delta);
+  assert.deepEqual(updated.estimatedFields, []);
+  assert.equal(updated.pricingStatus, 'ASSUMED');
+  assert.equal(updated.pricingModel, quote.pricingModel);
+  assert.equal(updated.unverifiedSourceGreeks?.delta, 0.99);
+});
+
+test('Binance live IV cannot retain stale model Greeks when updated inputs invalidate pricing', () => {
+  const quote = {
+    id: 'BTC-261225-100000-C', symbol: 'BTC-261225-100000-C', underlying: 'BTC',
+    expiry: '2026-12-25T08:00:00.000Z', daysToExpiry: 30, strike: 100000, type: 'CALL' as const,
+    bid: 4900, ask: 5100, markPrice: 5000, iv: 0.5, ivStatus: 'ESTIMATED' as const,
+    delta: 0.5, gamma: 0.00003, theta: -20, vega: 45, rho: 0,
+    openInterest: 10, volume: 2, spot: 100000, unit: 1, riskFreeRate: 0.02,
+    underlyingKind: 'UNKNOWN' as const, exerciseStyle: 'EUROPEAN' as const, settlementStyle: 'CASH' as const,
+    pricingStatus: 'ASSUMED' as const, pricingModel: 'BLACK_SCHOLES_CARRY' as const,
+    estimatedFields: ['delta', 'gamma', 'theta', 'vega', 'rho'],
+  };
+  const updated = applyBinanceOptionTicker(quote, {
+    symbol: quote.symbol, eventTime: 1_800_000_001_000, markIv: 0.8,
+    sourceGreeks: {},
+  });
+  assert.equal(updated.pricingStatus, 'OBSERVED_ONLY');
+  assert.equal(updated.delta, 0);
+  assert.equal(updated.gamma, 0);
+  assert.equal(updated.vega, 0);
+  assert.deepEqual(updated.estimatedFields, []);
+  assert.match(updated.pricingReason ?? '', /underlying mechanics/i);
+});

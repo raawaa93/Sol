@@ -278,8 +278,7 @@ export function parseBinanceOptionTickerMessage(payload: unknown): BinanceOption
       theta: finiteNumber(data.t as string | number | undefined),
       vega: finiteNumber(data.v as string | number | undefined),
     };
-    if ([bestBid, bestAsk, bidIv, askIv, markIv, markPrice, volume, volumeQuote, ...Object.values(sourceGreeks)]
-      .every((value) => value === undefined)) return [];
+    if (![bestBid, bestAsk, bidIv, askIv, markIv, markPrice, volume, volumeQuote, ...Object.values(sourceGreeks)].some(Number.isFinite)) return [];
     return [{
       symbol: data.s,
       eventTime,
@@ -314,16 +313,21 @@ export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptio
     && eventTimestamp - bookTickerTimestamp <= 5_000;
   const useTickerBid = !bookTickerFresh && event.bestBid !== undefined;
   const useTickerAsk = !bookTickerFresh && event.bestAsk !== undefined;
-  const sourceHasGreeks = Object.values(event.sourceGreeks).some((value) => value !== undefined);
-  const observedFields = [
-    ...(event.markIv !== undefined ? ['iv'] : []),
-    ...(event.bidIv !== undefined ? ['bidIv'] : []),
-    ...(event.askIv !== undefined ? ['askIv'] : []),
-    ...(event.markPrice !== undefined ? ['markPrice'] : []),
-  ];
-  return {
+  const sourceHasGreeks = Object.values(event.sourceGreeks).some(Number.isFinite);
+  const modelUpdate = event.markIv !== undefined && quote.pricingStatus === 'ASSUMED' && quote.pricingModel
+    ? priceOption({ ...quote, volatility: event.markIv, rate: quote.riskFreeRate ?? Number.NaN })
+    : undefined;
+  const updated: OptionQuote = {
     ...quote,
-    ...(quote.estimatedFields ? { estimatedFields: quote.estimatedFields.filter((field) => !observedFields.includes(field)) } : {}),
+    ...(quote.estimatedFields ? {
+      estimatedFields: quote.estimatedFields.filter((field) => !(
+        (field === 'iv' && event.markIv !== undefined)
+        || (field === 'bidIv' && event.bidIv !== undefined)
+        || (field === 'askIv' && event.askIv !== undefined)
+        || (field === 'markPrice' && event.markPrice !== undefined)
+        || (modelUpdate && 'delta gamma theta vega rho'.includes(field))
+      )),
+    } : {}),
     ...(useTickerBid ? { bid: event.bestBid, ...(event.bestBidQuantity !== undefined ? { bidQuantity: event.bestBidQuantity } : {}) } : {}),
     ...(useTickerAsk ? { ask: event.bestAsk, ...(event.bestAskQuantity !== undefined ? { askQuantity: event.bestAskQuantity } : {}) } : {}),
     ...(useTickerBid || useTickerAsk ? { bidAskSource: 'OPTION_TICKER' as const } : {}),
@@ -339,6 +343,10 @@ export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptio
       optionTicker: new Date(eventTimestamp).toISOString(),
     },
   };
+  if (modelUpdate) Object.assign(updated, modelUpdate.status === 'SUPPORTED'
+    ? { delta: modelUpdate.greeks.delta, gamma: modelUpdate.greeks.gamma, theta: modelUpdate.greeks.thetaPerDay, vega: modelUpdate.greeks.vegaPerVolPoint, rho: modelUpdate.greeks.rhoPerRatePoint }
+    : { delta: 0, gamma: 0, theta: 0, vega: 0, rho: 0, pricingStatus: 'OBSERVED_ONLY', pricingModel: undefined, pricingReason: modelUpdate.reason });
+  return updated;
 }
 
 /** Apply only fields explicitly present in the venue event; keep source Greeks auditable and model Greeks model-derived. */
@@ -473,7 +481,7 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       theta: finiteNumber(mark?.theta),
       vega: finiteNumber(mark?.vega),
     };
-    const hasSourceGreeks = Object.values(sourceGreeks).some((value) => value !== undefined);
+    const hasSourceGreeks = Object.values(sourceGreeks).some(Number.isFinite);
     const observedRiskFreeRate = finiteNumber(mark?.riskFreeInterest);
     const riskFreeRate = observedRiskFreeRate ?? 0;
     const referencePrice = twoSidedMid ?? observedMark ?? lastPrice ?? oneSidedQuote;
