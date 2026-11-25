@@ -159,6 +159,14 @@ test('canonical PAPER entry requires the timestamp for the actual observed price
   }, 'BINANCE'), false);
 });
 
+test('canonical PAPER entry requires a source-to-receive clock pair for observed BBO', () => {
+  assert.equal(canCreateCanonicalPaperTrade({ ...quote, sourceReceivedAt: undefined }, 'BINANCE'), false);
+  assert.equal(canCreateCanonicalPaperTrade({
+    ...quote,
+    sourceReceivedAt: { bidAsk: '2026-11-25T02:59:59Z' },
+  }, 'BINANCE'), false);
+});
+
 test('canonical PAPER entry rejects markPrice BBO because it has no verified displayed execution size', () => {
   const markQuote = {
     ...quote,
@@ -264,6 +272,31 @@ test('canonical PAPER long entry requires sufficient displayed ask size in contr
   if (!missingSizeUnit.ok) assert.equal(missingSizeUnit.reason, 'CANONICAL_PROVIDER_VERIFIED_OBSERVED_PRICE_REQUIRED');
 });
 
+
+test('canonical PAPER close rejects legacy entries without an entry receive clock', () => {
+  const legacy = createCanonicalPaperTrade(input);
+  assert.equal(legacy.ok, true);
+  if (!legacy.ok) return;
+  const result = createCanonicalPaperCloseEvent({
+    trade: { ...legacy.trade, sourceReceivedAtAtEntry: undefined },
+    quote: {
+      ...quote,
+      sourceTimestamps: {
+        ...quote.sourceTimestamps,
+        bookTicker: '2026-11-25T03:01:30Z',
+        index: '2026-11-25T03:01:30Z',
+      },
+      sourceReceivedAt: { bidAsk: '2026-11-25T03:01:31Z' },
+    },
+    sourceMode: 'BINANCE',
+    id: 'close-legacy-entry',
+    closedAt: '2026-11-25T03:02:00Z',
+    exitFees: 0,
+    spotAtExit: quote.spot,
+  });
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.reason, 'PAPER_ENTRY_RECEIVE_TIMESTAMP_MISSING_OR_INVALID');
+});
 
 test('canonical PAPER close uses fresh executable Bid and sufficient displayed contract size', () => {
   const entry = createCanonicalPaperTrade(input);
