@@ -341,6 +341,7 @@ export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptio
     sourceTimestamps: {
       ...quote.sourceTimestamps,
       optionTicker: new Date(eventTimestamp).toISOString(),
+      ...(event.markIv !== undefined ? { markIv: new Date(eventTimestamp).toISOString() } : {}),
     },
   };
   if (modelUpdate) Object.assign(updated, modelUpdate.status === 'SUPPORTED'
