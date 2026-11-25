@@ -188,6 +188,46 @@ test('collector attaches the exchangeInfo snapshot to subsequent market records 
   assert.equal(haltedQuote?.contractSpec, null, 'a halted contract must not retain terms from an earlier exchangeInfo snapshot');
 });
 
+test('collector refreshes exchangeInfo through injected public REST before market events', async (t) => {
+  const archive = await makeArchive(t);
+  const restCalls = [];
+  const restTransport = {
+    async fetch(url, init) {
+      restCalls.push({ url, init });
+      return { status: 200, ok: true, json: async () => exchangeInfoFixture() };
+    },
+  };
+  const bookTicker = {
+    e: 'bookTicker', E: EVENT_MS, T: EVENT_MS - 5, u: 44, s: SYMBOL,
+    b: '1200.0', B: '2.0', a: '1210.0', A: '3.0',
+  };
+  const transport = createFakeOptionsTransport([{ type: 'message', data: bookTicker }]);
+  const result = await collectForwardOptionsEvents({
+    archive,
+    transport,
+    restTransport,
+    refreshExchangeInfo: true,
+    streams: ['btc-261225-100000-c@bookTicker'],
+    enabled: true,
+    now: () => RECEIVED,
+  });
+
+  assert.equal(restCalls.length, 1);
+  assert.equal(restCalls[0].url, 'https://eapi.binance.com/eapi/v1/exchangeInfo');
+  assert.equal(restCalls[0].init.method, 'GET');
+  assert.deepEqual(result, { processed: 1, archived: 2, gaps: 0, exchangeInfoRefreshes: 1 });
+  const report = await archive.verify();
+  assert.equal(report.ok, true, report.errors.join('; '));
+  const records = [];
+  for (const path of await listFiles(join(archive.root, 'segments'))) {
+    for (const line of (await readFile(path, 'utf8')).trim().split('\\n')) records.push(JSON.parse(line));
+  }
+  assert.equal(records.filter((record) => record.kind === 'EXCHANGE_INFO').length, 1);
+  const quote = records.find((record) => record.kind === 'BOOK_TICKER');
+  assert.equal(quote?.contractSpec?.unit, 100);
+  assert.equal(quote?.contractSpecAvailableAt, RECEIVED);
+});
+
 test('collector refuses to attach an expired exchangeInfo snapshot to later market events', async (t) => {
   const archive = await makeArchive(t);
   const staleBookTicker = {
@@ -382,7 +422,7 @@ test('forward collection accepts the documented public Options stream names', as
     'btc-261225-100000-c@depth10@500ms',
   ];
   const result = await collectForwardOptionsEvents({ archive, transport, streams, enabled: true });
-  assert.deepEqual(result, { processed: 0, archived: 0, gaps: 0 });
+  assert.deepEqual(result, { processed: 0, archived: 0, gaps: 0, exchangeInfoRefreshes: 0 });
 });
 
 test('forward collection is disabled by default and rejects private stream names', async () => {
