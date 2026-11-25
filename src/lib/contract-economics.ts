@@ -27,7 +27,8 @@ export type ContractEconomicsUnsupportedReason =
   | 'SYNTHETIC_DEMO_ONLY'
   | 'UNKNOWN_PROVENANCE'
   | 'CROSS_CURRENCY_TOTALS_REQUIRE_FX'
-  | 'DELIVERABLE_CURRENCY_UNKNOWN';
+  | 'DELIVERABLE_CURRENCY_UNKNOWN'
+  | 'MISSING_LEGAL_TERMS_PROVENANCE';
 
 export const BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS = {
   contractSpecificationRef: 'https://bin.bnbstatic.com/static/cms/cg08ou2ak0tn7mcplvfg/file/443bcc67fde7274898ff8e3f7af23c7d89e654c5e609d250772e0ddaa96409be.pdf',
@@ -200,9 +201,9 @@ export function validateContractEconomics(economics: unknown): ContractEconomics
     unsupportedReasons.push('UNKNOWN_PROVENANCE');
   }
 
-  if (provenance?.provider === 'BINANCE'
-    && provenance.rawFields?.contractType === 'CRYPTO_OPTIONS') {
-    const legal = provenance.legalTerms;
+  const rawProviderFields = isRecord(provenance?.rawFields) ? provenance.rawFields : null;
+  if (provenance?.provider === 'BINANCE' && rawProviderFields?.contractType === 'CRYPTO_OPTIONS') {
+    const legal = isRecord(provenance.legalTerms) ? provenance.legalTerms : null;
     if (!legal
       || legal.contractSpecificationRef !== BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS.contractSpecificationRef
       || legal.clearingProceduresRef !== BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS.clearingProceduresRef
