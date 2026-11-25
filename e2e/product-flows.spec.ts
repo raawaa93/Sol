@@ -494,7 +494,7 @@ test('Binance observed IV history warms honestly and exports a provenance-preser
     { expiry: long, side: 'CALL', strike: '100000' },
     { expiry: long, side: 'PUT', strike: '100000' },
   ].map((item) => ({
-    symbol: \`BTC-\${item.expiry.code}-\${item.strike}-\${item.side === 'CALL' ? 'C' : 'P'}\`,
+    symbol: `BTC-${item.expiry.code}-${item.strike}-${item.side === 'CALL' ? 'C' : 'P'}`,
     underlying: 'BTCUSDT',
     quoteAsset: 'USDT',
     side: item.side,
@@ -508,7 +508,7 @@ test('Binance observed IV history warms honestly and exports a provenance-preser
     status: 'TRADING',
   }));
 
-  await page.route(\`\${PROXY_ORIGIN}/**\`, async (route) => {
+  await page.route(`${PROXY_ORIGIN}/**`, async (route) => {
     const url = new URL(route.request().url());
     const endpoint = url.searchParams.get('endpoint');
     let payload: unknown;
@@ -543,7 +543,7 @@ test('Binance observed IV history warms honestly and exports a provenance-preser
     } else if (endpoint === 'depth') {
       payload = { lastUpdateId: 42, T: now, bids: [['4.9', '2']], asks: [['5.1', '2']] };
     } else {
-      throw new Error(\`Unexpected mocked market-data endpoint: \${endpoint ?? '(missing)'}\`);
+      throw new Error(`Unexpected mocked market-data endpoint: ${endpoint ?? '(missing)'}`);
     }
     await route.fulfill({ status: 200, headers: proxyHeaders, body: JSON.stringify(payload) });
   });
