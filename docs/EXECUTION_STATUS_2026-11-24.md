@@ -185,3 +185,10 @@ A remote branch search for `research/options-pit-archive-2026-11-24` returned no
 - CSV-origin or user-asserted provenance, model-derived prices, mismatched/missing source timestamps and invalid quantities/fees are rejected.
 - Existing legacy PAPER entries remain readable. Snapshot fields are exported for audit. No mark-to-market, exit P&L, Greeks, EV or replay are enabled by this entry-recording change.
 - PR #172 (rebased successor to #169): https://github.com/raawaa93/Sol/pull/172. Verification is pending; do not treat it as merged/deployed yet.
+
+
+## PAPER entry source-integrity follow-up — 25 November 2026
+
+- PR #172 merged as `8ed00109bc6a265e463bab7f0c7a1809884a1594`; CI, bundle budget, Playwright, Project Context Guard, Lighthouse, deployment and published-site smoke test passed.
+- Follow-up audit found the constructor validated that a source timestamp existed, but did not yet prove the stored premium and spot values equaled the timestamped bid/ask midpoint or index value. It also relied on selected provenance fields rather than running the full contract-economics validator.
+- Follow-up branch `fix/paper-journal-source-integrity` now rejects price/spot mismatches and invalid economics, with regression tests. Pending CI; not merged yet.
