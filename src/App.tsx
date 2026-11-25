@@ -1509,12 +1509,13 @@ function App() {
                 </div>
                 {hasPremiumSizingCapability && <div className="budget-row"><label htmlFor="risk-budget">ميزانية المحاولة (حد أقصى 20)</label><div><input id="risk-budget" type="number" min="0" max={PAPER_CAMPAIGN_PER_TRADE_CAP} step="1" value={riskBudget} onChange={(event) => setRiskBudget(Math.min(PAPER_CAMPAIGN_PER_TRADE_CAP, Math.max(0, Number(event.target.value))))} /><span>{quoteAssetLabel ?? 'عملة غير محددة'}</span><button onClick={handleBudgetClick} title="احسب كمية لا تتجاوز الميزانية">احسب الكمية</button></div></div>}
                 <div className="risk-summary campaign-risk-summary">
-                  <div><span>رأس مال الحملة</span><strong>{formatMoney(PAPER_CAMPAIGN_CAPITAL, 0, 'USD')}</strong></div>
-                  <div><span>سقف الخسارة الكلي</span><strong>{formatMoney(PAPER_CAMPAIGN_MAX_LOSS, 0, quoteAssetLabel ?? 'USDT')}</strong></div>
+                  <div><span>رأس المال المفترض</span><strong>{formatMoney(PAPER_CAMPAIGN_CAPITAL, 0, 'USD')}</strong></div>
+                  <div><span>سقف الخسارة الكلي</span><strong>{campaignBudget.supportedCurrency ? formatMoney(PAPER_CAMPAIGN_MAX_LOSS, 0, campaignBudget.currency) : 'غير متاح'}</strong></div>
                   <div><span>المخصص في الدفتر</span><strong>{campaignBudget.unknownEntries || campaignBudget.currencyMismatchEntries ? 'غير محسوب' : formatMoney(campaignBudget.used, 2, campaignBudget.currency || null)}</strong></div>
                   <div><span>المتبقي للحملة</span><strong>{campaignBudgetBlockMessage ? 'محجوب' : formatMoney(campaignBudget.remaining, 2, campaignBudget.currency || null)}</strong></div>
-                  <div><span>احتياطي خارج التداول</span><strong>{formatMoney(PAPER_CAMPAIGN_CAPITAL - PAPER_CAMPAIGN_MAX_LOSS, 0, 'USD')}</strong></div>
+                  <div><span>خارج سقف المخاطرة</span><strong>{formatMoney(PAPER_CAMPAIGN_CAPITAL - PAPER_CAMPAIGN_MAX_LOSS, 0, 'USD')}</strong></div>
                 </div>
+                <div className="analysis-footnote"><Info size={13} /><span>هذه أرقام مفترضة لحملة PAPER محلية؛ لا تمثل رصيداً مقروءاً من حسابك ولا تفرض حداً على أوامر تداول حقيقية.</span></div>
                 {campaignBudgetBlockMessage && <div className="analysis-footnote"><ShieldAlert size={13} /><span>{campaignBudgetBlockMessage} يُحسب كل إدخال PAPER ضمن سقف الحملة حتى إعادة ضبط الدفتر؛ لا يدعم الدفتر حالياً تسجيل إغلاق الصفقات.</span></div>}
                 <div className="risk-summary">
                   <div><span>تكلفة القسط + الرسوم</span><strong>{canCalculatePremiumCost ? formatMoney(totalCost, 2, quoteAssetLabel ?? null) : 'غير متاح'}</strong></div>
