@@ -82,7 +82,7 @@ async function* readWebSocketEvents(socket, signal, maxQueuedMessages) {
   const onOpen = () => push({ type: 'open' });
   const onMessage = (event) => {
     if (queuedMessages >= maxQueuedMessages) {
-      push({ type: 'overflow', code: 1000, reason: 'local-buffer-overflow' });
+      push({ type: 'overflow', code: 1006, reason: 'local-buffer-overflow' });
       finished = true;
       try { socket.close(1000, 'local-buffer-overflow'); } catch {}
       return;
