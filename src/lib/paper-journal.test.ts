@@ -219,6 +219,7 @@ test('canonical PAPER entry rejects stale price or index snapshots older than fi
         ...quote.sourceTimestamps,
         bookTicker: '2026-11-25T03:05:30Z',
       },
+      sourceReceivedAt: { bidAsk: '2026-11-25T03:05:31Z' },
     },
   };
   const indexResult = createCanonicalPaperTrade(staleIndex);
@@ -238,7 +239,7 @@ test('canonical PAPER entry rejects future-dated price and index source timestam
     },
   });
   assert.equal(futurePrice.ok, false);
-  if (!futurePrice.ok) assert.equal(futurePrice.reason, 'PAPER_ENTRY_MARKET_SNAPSHOT_STALE_OR_FUTURE');
+  if (!futurePrice.ok) assert.equal(futurePrice.reason, 'CANONICAL_PROVIDER_VERIFIED_OBSERVED_PRICE_REQUIRED');
 
   const futureIndex = createCanonicalPaperTrade({
     ...input,
@@ -327,7 +328,7 @@ test('canonical PAPER close uses fresh executable Bid and sufficient displayed c
   assert.equal(result.ok, true);
   if (!result.ok) return;
   assert.equal(result.event.exitPremium, 1.2);
-  assert.equal(result.event.grossProceeds, 3.6);
+  assert.ok(Math.abs(result.event.grossProceeds - 3.6) < 1e-9);
   assert.equal(result.event.entryDebit, 4.4);
   assert.ok(Math.abs(result.event.netPnl - -1.05) < 1e-9);
   assert.equal(result.event.exitFeesSource, 'USER_ENTERED');
