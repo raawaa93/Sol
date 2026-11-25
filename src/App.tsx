@@ -159,7 +159,9 @@ function isPaperTradeClose(value: unknown, trade: Partial<PaperTrade>): boolean 
     && typeof close.exitPremiumAmount === 'number' && Number.isFinite(close.exitPremiumAmount) && close.exitPremiumAmount >= 0
     && Math.abs(close.exitPremiumAmount - expectedAmount) < 1e-8
     && typeof close.exitFees === 'number' && Number.isFinite(close.exitFees) && close.exitFees >= 0
-    && typeof close.exitProceeds === 'number' && Number.isFinite(close.exitProceeds)
+    && close.exitFeeCurrency === close.exitCurrency
+    && close.exitFees <= close.exitPremiumAmount
+    && typeof close.exitProceeds === 'number' && Number.isFinite(close.exitProceeds) && close.exitProceeds >= 0
     && Math.abs(close.exitProceeds - (close.exitPremiumAmount - close.exitFees)) < 1e-8
     && close.exitCurrency === trade.premiumCurrencyAtEntry
     && typeof close.exitSpot === 'number' && Number.isFinite(close.exitSpot) && close.exitSpot > 0
@@ -1274,6 +1276,7 @@ function App() {
       closedAtUTC: trade.close?.closedAt ?? '',
       exitPremiumBid: trade.close?.exitPremium ?? '',
       exitFees: trade.close?.exitFees ?? '',
+      exitFeeCurrency: trade.close?.exitFeeCurrency ?? '',
       exitProceeds: trade.close?.exitProceeds ?? '',
       realizedPnl: trade.close?.realizedPnl ?? '',
       realizedPnlCurrency: trade.close?.realizedPnlCurrency ?? '',
