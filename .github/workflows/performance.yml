@@ -82,7 +82,6 @@ jobs:
       contents: read
     env:
       PUBLISHED_URL: https://raawaa93.github.io/Sol
-      BINANCE_PROXY_URL: https://oyoyozdugicmnkfhjovo.supabase.co/functions/v1/volterra-binance-market-data
     steps:
       - name: Check out source
         uses: actions/checkout@v7
