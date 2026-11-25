@@ -207,6 +207,7 @@ export function evaluateOptionsPointInTime(record, decisionAt, requiredFields) {
     const field = record.fields.find((item) => item.name === name);
     if (!field) { reasons.push(`FIELD_MISSING:${name}`); continue; }
     if (field.provenance !== 'OBSERVED') reasons.push(`FIELD_NOT_OBSERVED:${name}`);
+    if (record.contractSpecObservedAt && field.exchangeEventAt && Date.parse(record.contractSpecObservedAt) > Date.parse(field.exchangeEventAt)) reasons.push(`CONTRACT_SPEC_AFTER_FIELD:${name}`);
     if (!field.exchangeEventAt) reasons.push(`EVENT_TIME_MISSING:${name}`);
     if (Date.parse(field.receivedAt) > decision || Date.parse(field.availableAt) > decision) reasons.push(`FIELD_NOT_AVAILABLE:${name}`);
     if (field.staleAfterMs === null || !field.exchangeEventAt
