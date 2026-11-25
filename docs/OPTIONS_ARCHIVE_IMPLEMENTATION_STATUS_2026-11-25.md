@@ -51,4 +51,4 @@ No point-in-time dataset, historical BBO series, measured strategy edge, profita
 
 The canonical legal provenance and archived contract specification now include the official 21 May 2026 amendment notice (https://bin.bnbstatic.com/static/cms/cg08ou2ak0tn7mcplvfg/file/fa97cef498054d23290ba2a132eda63816395d84766af2db7b433d906432dd0b.pdf), its effective date, version 1.3, and `clearingProceduresConsolidatedTextVerified=false`. The canonical validator requires the exact amendment reference; missing or substituted provenance prevents exercise/settlement adapter readiness.
 
-This is provenance tracking only. The consolidated v1.3 text and its section-level impact on Crypto Options settlement remain unverified, and applicability to a specific account/entity remains UNVERIFIED.
+This is provenance tracking only. The notice is for Binance RCH and does not establish applicability to Binance RIE or any specific account/entity. The consolidated v1.3 text and its section-level impact on Crypto Options settlement remain unverified.
