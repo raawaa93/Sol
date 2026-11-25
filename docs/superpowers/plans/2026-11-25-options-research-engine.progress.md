@@ -70,3 +70,4 @@
 - Lighthouse baseline run 45570955246 passed.
 - Project Context Guard run 45570955274 passed.
 - This is test coverage only; it does not create a live Binance connection, background sampler, cloud archive, or empirical strategy result.
+\n\n## Follow-up — PAPER risk sizing default (25 November 2026, 08:09 UTC)\n- PR #205 merged as `b4c014131be9de4d610740ef30c4ad48308c5c6b`. The per-trade premium-plus-fees budget defaults to 60 quote units; the field label states its scope.\n- Added a Playwright regression assertion for the value and label.\n- CI 45573552188 passed 303/303 tests, build, bundle and 18/18 Playwright journeys. Lighthouse 45573547735 and Project Context Guard 45573547738 passed.\n- Total bankroll, available cash and aggregate open risk are not yet modeled. This does not enable live trading.\n
