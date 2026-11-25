@@ -180,3 +180,44 @@ An independent recursive Git-tree audit of `main` at `82312ae958f548375c395550bb
 Accordingly, the executive statement that this sprint “adds” the archive primitive and PIT checks describes the isolated work claimed in the original worktree report, **not a delivered mainline capability**. Treat archive durability, cross-process writer locking, crash recovery, export/restore, PIT history, and collector readiness as **NOT DELIVERED / NOT VERIFIED ON MAIN** until a reviewed code PR lands with exact source paths, tests, and passing unchanged bundle gates.
 
 No collector, forward market-data capture, production archive, or historical BBO series is available. No strategy result or profitability claim follows from this report. The first implementation gate remains the unchanged bundle budget in [#161](https://github.com/raawaa93/Sol/issues/161); storage integrity gates in [#159](https://github.com/raawaa93/Sol/issues/159) come after it. No merge, deployment, live capture, or production write is authorized by this status correction.
+
+
+## Superseding mainline status — 25 November 2026
+
+This update supersedes the earlier 24 November statement that archive/PIT code was not delivered on main and that the bundle budget remained blocking. Those statements were correct for the historical snapshot at the time but are no longer current.
+
+### Delivered on main
+
+- **Bundle budget:** PR #165 removed the chart-vendor excess and restored the existing compressed budgets without relaxing thresholds. PR #186 further deferred Binance market depth. Mainline CI, bundle budget, Playwright, Lighthouse, Project Context Guard and deployment have passed on subsequent verified commits.
+- **Canonical analytics:** PR #167 routes premium debit and cash-settlement payoff through canonical independent scales; #168 blocks legacy scalar fallback for canonical quotes; #170 adds narrow risk-neutral EV; #172/#175 add source-bound PAPER entry snapshots; #177 enables narrowly gated model position Greeks; #180/#187 harden IV, ticker, mark, BBO and timestamp provenance; #182 discloses the 30-minute averaging settlement approximation; #185 records RIE/RCH legal provenance with account applicability UNVERIFIED.
+- **Local archive foundation:** PR #176 is merged as 8dcd251e2cc6c03dccf04b82c0cd48eb2ada59a2. Main contains scripts/options-archive.mjs, scripts/options-collector.mjs, their tests, append-only content-addressed segments, hashes, deterministic idempotency, durable cursor ordering, same-host writer lease, quota, integrity checks, local export/restore and PIT gates.
+- **Opt-in REST contract-spec refresh:** main commit d67d5629c61369dc388e42216b768a6466a38b12 adds a separately injected public REST exchangeInfo refresh, five-minute default throttle, durable raw snapshot append before spec publication, and fake-transport tests. It remains OFF by default and has not been tested against Binance live.
+
+### Still not delivered or not verified
+
+- No default WebSocket transport, supervised collector worker, scheduled capture, real HTTP/WebSocket market capture, historical BBO/depth archive, cloud archive, or live dataset.
+- The archive writer's lease is same-host/local-filesystem only; it is not a distributed lock.
+- Local export/restore is not an offsite backup.
+- E1/E2 remain unrun: no eligible forward-captured PIT dataset or verified vo units/semantics. The synthetic PBO/DSR tests are mathematical guard tests only, not evidence of market performance.
+- No strategy profitability, expected edge, ranking calibration, dealer inventory, institutional identity or live-trading capability is claimed.
+- Binance RIE/RCH legal settlement terms are not verified as applicable to the user's exact account/entity. The project remains read-only/PAPER-only under the Syria legal gate.
+
+### Current experiment gates
+
+| Experiment | Current state | Minimum evidence before running |
+|---|---|---|
+| E1: venue-reported volatility vs realized variance | Blocked | Verified vo definition/unit; forward event capture; complete timestamped index series; PIT eligibility and no-gap coverage |
+| E2: signed option flow and market response | Blocked | Forward MARKET/BLOCK trade events, maker flag m, exact quote/index joins at or before trade completion time, durable gap markers |
+| Historical surface/skew/term structure | Blocked | Synchronized multi-expiry BBO and IV observations with source/receive clocks, contract-spec versions and licensed retention |
+| Executable strategy replay | Blocked | Point-in-time BBO/depth, displayed size, fee schedule, settlement model, conservative fills and walk-forward splits |
+| Portfolio risk and correlation | Unavailable | Position book plus synchronized returns/exposures with consistent currencies, multipliers and timestamps |
+
+### Verification evidence
+
+- Main CI on d67d5629c61369dc388e42216b768a6466a38b12: success (run 45550879596).
+- Project Context Guard: success (run 45550879632).
+- Lighthouse baseline: success (run 45550879682).
+- GitHub Pages build/deploy and published-site smoke/Lighthouse: success (run 45550879655).
+- The current execution record is maintained in docs/EXECUTION_STATUS_2026-11-24.md, and archive-specific limits are maintained in docs/OPTIONS_ARCHIVE_IMPLEMENTATION_STATUS_2026-11-25.md.
+
+No live capture, production database write, paid service, account credential, live order or funds movement was used in these changes.
