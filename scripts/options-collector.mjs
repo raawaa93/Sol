@@ -64,7 +64,7 @@ export function buildPublicBinanceRestUrl(endpoint, params = {}) {
   }
   if (params.symbol !== undefined && !validSymbol(params.symbol)) throw new OptionsCollectorError('INVALID_SYMBOL', 'Invalid Binance Options symbol.');
   if (params.underlying !== undefined && !/^[A-Z0-9]{3,16}$/.test(params.underlying)) throw new OptionsCollectorError('INVALID_UNDERLYING', 'Invalid underlying.');
-  if (params.underlyingAsset !== undefined && !/^[A-Z0-9]{2,10}(\\/[A-Z0-9]{2,10})?$/.test(params.underlyingAsset)) throw new OptionsCollectorError('INVALID_UNDERLYING', 'Invalid underlying asset.');
+  if (params.underlyingAsset !== undefined && !/^[A-Z0-9]{2,10}(\/[A-Z0-9]{2,10})?$/.test(params.underlyingAsset)) throw new OptionsCollectorError('INVALID_UNDERLYING', 'Invalid underlying asset.');
   if (params.expiration !== undefined && !/^\d{6}$/.test(String(params.expiration))) throw new OptionsCollectorError('INVALID_EXPIRATION', 'Expiration must be YYMMDD.');
   if (params.interval !== undefined && !/^(1m|3m|5m|15m|30m|1h|2h|4h|6h|12h|1d|3d|1w|1M)$/.test(params.interval)) throw new OptionsCollectorError('INVALID_INTERVAL', 'Unsupported kline interval.');
   for (const key of ['startTime', 'endTime', 'limit']) {
