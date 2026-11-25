@@ -170,3 +170,10 @@ A remote branch search for `research/options-pit-archive-2026-11-24` returned no
 - Binance per-underlying model price/Greeks normalize to per-contract only through verified canonical cash scale (premium multiplier 1). Unknown products remain blocked.
 - CI, Project Context Guard and Lighthouse passed. Published-site smoke test skipped by workflow conditions. No strategy profitability or historical edge claim.
 - Remaining canonical work: model-aware position Greeks/shock P&L, PAPER lifecycle valuation and replay. PR #169 entry-only PAPER snapshot is under verification.
+
+## Canonical PAPER entry snapshot — PR #169 under verification
+
+- Added a PAPER-only entry snapshot with provider/source identity, canonical terms, independent premium multiplier and contract unit, premium debit, exact observed price basis and matching source timestamp.
+- CSV-origin or user-asserted provenance, model-derived prices, mismatched/missing source timestamps and invalid quantities/fees are rejected.
+- Existing legacy PAPER entries remain readable. Snapshot fields are exported for audit. No mark-to-market, exit P&L, Greeks, EV or replay are enabled by this entry-recording change.
+- PR: https://github.com/raawaa93/Sol/pull/169. Verification is pending; do not treat it as merged/deployed yet.
