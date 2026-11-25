@@ -59,6 +59,8 @@ test('PAPER-only journal records and exports a local single-option scenario', as
   await page.locator('.side-nav').getByRole('button', { name: 'الدفتر التجريبي' }).click();
   await expect(page.locator('#journal tbody tr')).toHaveCount(1);
   await expect(page.locator('#journal')).toContainText('PAPER ONLY');
+  const remainingBudget = page.locator('.campaign-risk-summary > div').filter({ hasText: 'المتبقي للحملة' });
+  await expect(remainingBudget).not.toContainText('60');
 
   const downloadPromise = page.waitForEvent('download');
   await page.locator('#journal').getByRole('button', { name: 'تصدير CSV' }).click();
@@ -72,7 +74,7 @@ test('PAPER-only journal records and exports a local single-option scenario', as
   page.once('dialog', (dialog) => dialog.accept());
   await page.locator('#journal').getByRole('button', { name: 'مسح الدفتر' }).click();
   await expect(page.locator('#journal tbody tr')).toHaveCount(0);
-  await expect(page.locator('.campaign-risk-summary')).toContainText('60');
+  await expect(page.locator('.campaign-risk-summary > div').filter({ hasText: 'المتبقي للحملة' })).toContainText('60');
 });
 
 test('CSV asset-class and venue filters isolate traditional listed option contracts', async ({ page }) => {
