@@ -124,7 +124,7 @@ export function computeIVRankPercentile(
     status, rank: null, percentile: null, currentIV: isValidIVHistoryObservation(current) ? current.iv : null,
     minimumIV: null, maximumIV: null, sampleCount: 0, minimumSamples, lookbackDays,
     coverageDays: 0, isPartialHistory: true,
-    lookbackStart: asOfMs === null ? '' : new Date(asOfMs - lookbackDays * 86_400_000).toISOString(),
+    lookbackStart: asOfMs === null ? '' : new Date(asOfMs - safeLookbackDays * 86_400_000).toISOString(),
     lookbackEnd: asOfMs === null ? '' : new Date(asOfMs).toISOString(),
   });
   if (invalid) return empty('INVALID_CURRENT');
@@ -167,6 +167,7 @@ export function computeIVRankPercentile(
 interface AtmExpiryPoint {
   daysToExpiry: number;
   iv: number;
+  moneyness: number;
   capturedAt: number;
   contractCount: number;
   expiry: string;
@@ -234,6 +235,7 @@ export function extractObservedAtm30DayIV(
     const point: AtmExpiryPoint = {
       daysToExpiry: (call.daysToExpiry + put.daysToExpiry) / 2,
       iv: (call.iv + put.iv) / 2,
+      moneyness,
       capturedAt: Math.max(callReceived, putReceived),
       contractCount: 2,
       expiry: call.expiry,
@@ -243,7 +245,7 @@ export function extractObservedAtm30DayIV(
     pointsByExpiry.set(call.expiry, rows);
   }
 
-  const points = [...pointsByExpiry.values()].map((rows) => rows.sort((a, b) => a.daysToExpiry - b.daysToExpiry)[0])
+  const points = [...pointsByExpiry.values()].map((rows) => rows.sort((a, b) => a.moneyness - b.moneyness || b.capturedAt - a.capturedAt)[0])
     .filter((point): point is AtmExpiryPoint => Boolean(point))
     .sort((a, b) => a.daysToExpiry - b.daysToExpiry);
   if (!points.length) return { ok: false, reason: 'NO_ATM_CALL_PUT_PAIRS' };
