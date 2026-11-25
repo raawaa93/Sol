@@ -114,7 +114,7 @@ export function validateOptionsArchiveRecord(record) {
   if (record.contractSpec !== null && record.contractSpec !== undefined) {
     assertObject(record.contractSpec, 'contractSpec');
     const spec = record.contractSpec;
-    const requiredText = ['symbol', 'underlying', 'optionType', 'quoteAsset', 'settlementAsset', 'premiumUnit', 'exerciseStyle', 'settlementStyle', 'sourceEndpoint', 'version'];
+    const requiredText = ['symbol', 'underlying', 'optionType', 'quoteAsset', 'settlementAsset', 'premiumUnit', 'exerciseStyle', 'settlementStyle', 'sourceEndpoint', 'termsSource', 'settlementTermsSource', 'version'];
     if (requiredText.some((key) => typeof spec[key] !== 'string' || !spec[key].trim())
       || spec.symbol !== record.symbol
       || !['CALL', 'PUT'].includes(spec.optionType)
