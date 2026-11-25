@@ -45,12 +45,23 @@ export function canCreateCanonicalPaperTrade(
 ): boolean {
   const economics = quote.contractEconomics;
   if (sourceMode !== 'BINANCE' || quote.venue !== 'BINANCE' || !economics) return false;
+  if (quote.assetClass !== 'CRYPTO' || quote.underlyingKind !== 'SPOT'
+    || quote.exerciseStyle !== 'EUROPEAN' || quote.settlementStyle !== 'CASH'
+    || !Number.isFinite(quote.unit) || quote.unit <= 0
+    || !Number.isFinite(quote.strike) || quote.strike <= 0
+    || !Number.isFinite(Date.parse(quote.expiry))) return false;
   if (economics.provenance.status !== 'PROVIDER_VERIFIED'
     || economics.provenance.provider !== 'BINANCE'
     || economics.provenance.sourceRef !== 'https://eapi.binance.com/eapi/v1/exchangeInfo') return false;
+  if (economics.premium.priceUnit !== 'PER_CONTRACT'
+    || economics.exercise.style !== 'EUROPEAN'
+    || economics.exercise.settlement !== 'CASH'
+    || economics.exercise.cashSettlement?.reference !== 'INDEX'
+    || economics.exercise.cashSettlement.currency !== quote.settlementAsset
+    || economics.exercise.settlementCurrency !== quote.settlementAsset) return false;
   const entryPriceSource = getPaperEntryPriceSource(quote);
   if (!entryPriceSource || quote.estimatedFields?.includes('markPrice') && entryPriceSource === 'MARK') return false;
-  if (!hasObservedPriceTimestamp(quote, entryPriceSource)) return false;
+  if (!hasObservedPriceTimestamp(quote, entryPriceSource) || !quote.sourceTimestamps?.index) return false;
   if (!quote.quoteAsset || quote.quoteAsset !== economics.premium.quoteCurrency) return false;
   return calculatePremiumCash({ economics, premiumPrice: 1, contracts: 1 }).ok;
 }
