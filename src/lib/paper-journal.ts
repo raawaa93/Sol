@@ -310,6 +310,7 @@ export function createCanonicalPaperClose(input: CanonicalPaperCloseInput): Cano
 
   const proceeds = calculatePremiumCash({ economics, premiumPrice: quote.bid, contracts: trade.quantity });
   if (!proceeds.ok) return { ok: false, reason: proceeds.reason };
+  if (exitFees > proceeds.value.premiumAmount) return { ok: false, reason: 'EXIT_FEES_OR_ENTRY_DEBIT_UNVERIFIED' };
   const realizedPnl = proceeds.value.premiumAmount - exitFees - trade.premiumDebitAtEntry!;
   if (!Number.isFinite(realizedPnl)) return { ok: false, reason: 'INVALID_REALIZED_PNL' };
 
@@ -318,6 +319,7 @@ export function createCanonicalPaperClose(input: CanonicalPaperCloseInput): Cano
     exitPremium: quote.bid,
     exitPremiumAmount: proceeds.value.premiumAmount,
     exitFees,
+    exitFeeCurrency: proceeds.value.currency,
     exitProceeds: proceeds.value.premiumAmount - exitFees,
     exitCurrency: proceeds.value.currency,
     exitSpot: quote.spot,
