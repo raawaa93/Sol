@@ -170,3 +170,13 @@ A remote branch search for `research/options-pit-archive-2026-11-24` returned no
 - Binance per-underlying model price/Greeks normalize to per-contract only through verified canonical cash scale (premium multiplier 1). Unknown products remain blocked.
 - CI, Project Context Guard and Lighthouse passed. Published-site smoke test skipped by workflow conditions. No strategy profitability or historical edge claim.
 - Remaining canonical work: model-aware position Greeks/shock P&L, PAPER lifecycle valuation and replay. PR #169 entry-only PAPER snapshot is under verification.
+
+
+## Canonical PAPER entry snapshot — synchronized with current main — 25 November 2026
+
+- Reapplied the PAPER entry snapshot changes on top of current main after PR #169's original branch became non-mergeable following intervening canonical analytics merges.
+- Entry snapshots accept only provider-verified Binance Crypto Options economics and a timestamped observed price basis. The captured premium must exactly match the selected source basis within a tight numeric tolerance, and the captured underlying reference must match the timestamped index value.
+- Mixed BookTicker/OptionsTicker bid/ask pairs without a single coherent source are rejected; REST 24h ticker closeTime is not accepted as a bid/ask event timestamp.
+- Premium cash uses the canonical premium multiplier only; contract unit and cash settlement multiplier remain separate.
+- This remains an entry audit snapshot only. No mark-to-market, exits, realized P&L, Greeks, EV or replay are enabled. Local browser storage is not a durable server journal.
+- New synchronized PR will be verified against current main before merge.
