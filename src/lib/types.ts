@@ -223,6 +223,7 @@ export interface PaperTradeClose {
   sourceTimestamps: { bookTicker: string; index: string };
   sourceReceivedAt: string;
   bidQuantity: number;
+  takerFeeRateAtExit: number;
   bidAskSizeUnit: 'CONTRACTS';
 }
 
