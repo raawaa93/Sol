@@ -133,9 +133,18 @@ export function calculateQuoteCashRiskNeutralMetrics(
   quote: OptionQuote,
   entryPremiumPerContract: number,
   feesPerContract = 0,
+  nowMs = Date.now(),
 ): QuoteCashRiskNeutralMetrics | null {
   const economics = supportedCashEconomics(quote);
   const cashSettlement = economics?.exercise.cashSettlement;
+  const markIvReceivedAt = Date.parse(quote.sourceReceivedAt?.markIv ?? '');
+  const riskFreeReceivedAt = quote.riskFreeRateSource === 'MARK_PRICE'
+    ? Date.parse(quote.sourceTimestamps?.riskFreeRate ?? '')
+    : Date.parse(quote.sourceReceivedAt?.riskFreeRate ?? '');
+  const indexTimestamp = Date.parse(quote.sourceTimestamps?.index ?? '');
+  const markIvFresh = Number.isFinite(markIvReceivedAt) && nowMs >= markIvReceivedAt && nowMs - markIvReceivedAt <= 60_000;
+  const riskFreeFresh = Number.isFinite(riskFreeReceivedAt) && nowMs >= riskFreeReceivedAt && nowMs - riskFreeReceivedAt <= 60_000;
+  const indexFresh = Number.isFinite(indexTimestamp) && nowMs >= indexTimestamp && nowMs - indexTimestamp <= 15_000;
   if (!economics || !cashSettlement || economics.provenance.status !== 'PROVIDER_VERIFIED'
     || economics.provenance.provider !== 'BINANCE'
     || economics.exercise.style !== 'EUROPEAN'
@@ -158,12 +167,17 @@ export function calculateQuoteCashRiskNeutralMetrics(
       ? !quote.sourceTimestamps?.bookTicker || !Number.isFinite(Date.parse(quote.sourceTimestamps.bookTicker))
       : quote.bidAskSource === 'OPTION_TICKER'
         ? !quote.sourceTimestamps?.optionTicker || !Number.isFinite(Date.parse(quote.sourceTimestamps.optionTicker))
-        : true)
+        : quote.bidAskSource === 'MARK_PRICE'
+          ? !quote.sourceTimestamps?.markPrice || !Number.isFinite(Date.parse(quote.sourceTimestamps.markPrice))
+          : true)
     || !quote.sourceTimestamps?.index
     || !Number.isFinite(Date.parse(quote.sourceTimestamps.index))
     || quote.pricingModel !== 'BLACK_SCHOLES_CARRY'
     || !['SUPPORTED', 'ASSUMED'].includes(quote.pricingStatus ?? '')
     || quote.ivStatus !== 'OBSERVED'
+    || quote.markIvSource !== 'REST_MARK'
+    || (quote.riskFreeRateSource !== 'REST_MARK' && quote.riskFreeRateSource !== 'MARK_PRICE')
+    || !markIvFresh || !riskFreeFresh || !indexFresh
     || quote.estimatedFields?.some((field) => ['iv', 'spot', 'riskFreeRate', 'daysToExpiry'].includes(field))
     || !Number.isFinite(quote.riskFreeRate)
     || !Number.isFinite(quote.carryYield)
