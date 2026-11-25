@@ -166,7 +166,7 @@ function isPaperTradeClose(value: unknown, trade: Partial<PaperTrade>): boolean 
     && close.bidAskSizeUnit === 'CONTRACTS';
 }
 
-function isPaperTrade(value: unknown): value is PaperTrade {
+function isPaperTradeBase(value: unknown): value is PaperTrade {
   if (!value || typeof value !== 'object') return false;
   const trade = value as Partial<PaperTrade>;
   const isOptionalPrecision = (precision: number | undefined) => precision === undefined
@@ -201,11 +201,6 @@ function isPaperTrade(value: unknown): value is PaperTrade {
       && typeof trade.premiumDebitAtEntry === 'number' && Number.isFinite(trade.premiumDebitAtEntry) && trade.premiumDebitAtEntry >= trade.premiumAmountAtEntry
       && trade.premiumCurrencyAtEntry === trade.contractEconomics.premium.quoteCurrency
       && (trade.priceSourceAtEntry !== 'ASK' || trade.bidAskSourceAtEntry === 'BOOK_TICKER')))
-    && ((trade.exchangeFeeAtEntry === undefined && trade.additionalFeesAtEntry === undefined)
-      || (Number.isFinite(trade.exchangeFeeAtEntry) && trade.exchangeFeeAtEntry! >= 0
-        && Number.isFinite(trade.additionalFeesAtEntry) && trade.additionalFeesAtEntry! >= 0
-        && Math.abs(trade.fees! - trade.exchangeFeeAtEntry! - trade.additionalFeesAtEntry!) <= 1e-8))
-    && (trade.close === undefined || isPaperTradeClose(trade.close, trade))
     && trade.status === 'PAPER';
 }
 
@@ -219,12 +214,30 @@ function loadWatchlist(): string[] {
   }
 }
 
+function normalizePaperTrade(value: unknown): PaperTrade | undefined {
+  if (!isPaperTradeBase(value)) return undefined;
+  const trade = value as PaperTrade;
+  const normalized: PaperTrade = { ...trade };
+  if (trade.close !== undefined && !isPaperTradeClose(trade.close, trade)) {
+    normalized.close = undefined;
+    normalized.integrityWarning = 'CLOSE_RECORD_INVALID';
+  }
+  const feeBreakdownValid = Number.isFinite(trade.exchangeFeeAtEntry) && trade.exchangeFeeAtEntry! >= 0
+    && Number.isFinite(trade.additionalFeesAtEntry) && trade.additionalFeesAtEntry! >= 0
+    && Math.abs(trade.fees - trade.exchangeFeeAtEntry! - trade.additionalFeesAtEntry!) <= 1e-8;
+  if (!feeBreakdownValid) {
+    delete normalized.exchangeFeeAtEntry;
+    delete normalized.additionalFeesAtEntry;
+  }
+  return normalized;
+}
+
 function loadPaperTrades(): PaperTrade[] {
   try {
     const value = localStorage.getItem('volterra-paper-trades-v1');
     if (!value) return [];
     const parsed: unknown = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed.filter(isPaperTrade) : [];
+    return Array.isArray(parsed) ? parsed.map(normalizePaperTrade).filter((trade): trade is PaperTrade => Boolean(trade)) : [];
   } catch {
     return [];
   }
