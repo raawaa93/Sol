@@ -120,7 +120,9 @@ No second execution venue for a Syrian resident has been verified for global lis
 - Verification: CI 45572889900 passed 303/303 tests, production build, compressed bundle budgets and 18/18 Playwright journeys; Lighthouse 45572889852 passed (99 Performance, 100 Accessibility/Best Practices/SEO); Project Context Guard 45572889839 passed.
 - CSV provenance remains user-asserted; tests use controlled fixtures and do not establish live market availability or authenticity.
 - Still blocked: live/forward capture, scheduled worker, durable cloud archive, PIT executable BBO corpus, strategy edge and any live trading. Continue research/PAPER only under the Syria legal gate.
-\n\n## 11. Verified BBO replay and risk sizing update — 25 November 2026
+
+
+## 11. Verified BBO replay and risk sizing update — 25 November 2026
 
 - PR #204 merged as `337e03fb26d44c906125318affc473030c165da4`. Replay now requires explicit BBO source, source event/snapshot time, local receive time, non-estimated two-sided prices, explicit displayed-size unit and enough Ask size at entry/Bid size at exit.
 - Binance `bookTicker` is the executable BBO source; `optionTicker` 24-hour statistics are not BBO. REST `OPTION_TICKER` BBO uses the `ticker` source clock. CSV provenance is user-asserted, not provider-authenticated.
