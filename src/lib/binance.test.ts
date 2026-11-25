@@ -790,6 +790,7 @@ test('Binance bookTicker updates only BBO fields and records its own source time
   assert.equal(updated.sourceTimestamps?.ticker, quote.sourceTimestamps.ticker);
   assert.equal(updated.sourceTimestamps?.bookTicker, new Date(event.transactionTime).toISOString());
   assert.equal(updated.sourceReceivedAt?.bidAsk, new Date(receivedAtMs).toISOString());
+  assert.equal(updated.bidAskSizeUnit, 'CONTRACTS');
 });
 
 test('new bookTicker BBO is not blocked by a later optionTicker last-price event', () => {
