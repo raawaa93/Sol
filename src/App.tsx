@@ -324,27 +324,35 @@ function App() {
           || quote.bidAskSizeUnit !== 'CONTRACTS' || !Number.isFinite(quote.bidQuantity) || !Number.isFinite(quote.askQuantity)))
       .sort((a, b) => Math.abs(a.strike - getUnderlyingReferencePrice(a)) - Math.abs(b.strike - getUnderlyingReferencePrice(b)))
     : [], [binanceSnapshot, dataMode, effectiveExpiry, selectedType, underlying]);
-  const journalBookTickerSymbols = useMemo(() => dataMode === 'BINANCE'
+  const journalOpenTrades = useMemo(() => dataMode === 'BINANCE'
     ? trades.filter((trade) => !trade.close && trade.contractVenueAtEntry === 'BINANCE'
       && trade.priceSourceAtEntry === 'ASK' && trade.bidAskSourceAtEntry === 'BOOK_TICKER'
       && trade.integrityWarning !== 'ENTRY_EXECUTION_EVIDENCE_INVALID')
-      .map((trade) => trade.symbol)
     : [], [dataMode, trades]);
+  const journalBookTickerSymbols = useMemo(() => journalOpenTrades.map((trade) => trade.symbol), [journalOpenTrades]);
   const bookTickerTargets = useMemo(() => [...new Set([
     ...journalBookTickerSymbols,
     ...bookTickerCandidates.slice(0, 180).map((quote) => quote.symbol),
   ])].slice(0, 200), [bookTickerCandidates, journalBookTickerSymbols]);
-  const optionMarkTarget = useMemo(() => (
-    dataMode === 'BINANCE' && binanceSnapshot ? underlying.toLowerCase() : ''
-  ), [binanceSnapshot, dataMode, underlying]);
+  const optionMarkTargets = useMemo(() => [...new Set([
+    ...(dataMode === 'BINANCE' && binanceSnapshot ? [underlying.toLowerCase()] : []),
+    ...journalOpenTrades.map((trade) => trade.underlying.toLowerCase()),
+  ])].slice(0, 20), [binanceSnapshot, dataMode, journalOpenTrades, underlying]);
   const optionTickerTargets = useMemo(() => {
     if (dataMode !== 'BINANCE' || !binanceSnapshot) return [];
-    const expiries = new Set(binanceSnapshot.quotes
+    const selectedTargets = binanceSnapshot.quotes
       .filter((quote) => quote.underlying === underlying)
-      .map((quote) => quote.symbol.split('-')[1])
-      .filter((expiry): expiry is string => Boolean(expiry && /^\d{6}$/.test(expiry))));
-    return [...expiries].sort().map((expiry) => `${underlying.toLowerCase()}@ticker@${expiry}`);
-  }, [binanceSnapshot, dataMode, underlying]);
+      .map((quote) => {
+        const expiry = quote.symbol.split('-')[1];
+        return expiry && /^\d{6}$/.test(expiry) ? `${underlying.toLowerCase()}@ticker@${expiry}` : undefined;
+      })
+      .filter((target): target is string => Boolean(target));
+    const journalTargets = journalOpenTrades.map((trade) => {
+      const expiry = trade.symbol.split('-')[1];
+      return expiry && /^\d{6}$/.test(expiry) ? `${trade.underlying.toLowerCase()}@ticker@${expiry}` : undefined;
+    }).filter((target): target is string => Boolean(target));
+    return [...new Set([...selectedTargets, ...journalTargets])].slice(0, 200);
+  }, [binanceSnapshot, dataMode, journalOpenTrades, underlying]);
   const assetChoices = useMemo(() => [...new Set(scopedQuotes.map((quote) => quote.underlying))]
     .sort((a, b) => a.localeCompare(b)), [scopedQuotes]);
   const market = useMemo(() => dataMode === 'DEMO' ? DEMO_MARKETS[underlying] : getMarketSnapshotFromQuotes(scopedQuotes, underlying), [dataMode, scopedQuotes, underlying]);
@@ -447,7 +455,7 @@ function App() {
   }, [assetQuotes, effectiveExpiry, filteredQuotes, quotes, scopedQuotes, selectedId, selectedType, underlying]);
 
   useEffect(() => {
-    if (dataMode !== 'BINANCE' || !optionMarkTarget) {
+    if (dataMode !== 'BINANCE' || !optionMarkTargets.length) {
       setOptionMarkStatus('idle');
       return;
     }
@@ -481,7 +489,7 @@ function App() {
         if (!active) return;
         connection.send(JSON.stringify({
           method: 'SUBSCRIBE',
-          params: [`${optionMarkTarget}@markPrice`, ...optionTickerTargets],
+          params: [...optionMarkTargets.map((target) => `${target}@markPrice`), ...optionTickerTargets],
           id: subscriptionId,
         }));
       };
@@ -1528,7 +1536,7 @@ function App() {
               </div>
               <p className="data-coverage-note">الأصفار في OI والحجم تُحسب قيماً متاحة، لا حقولاً مفقودة. لا تُستبدل الأسعار أو IV الناقصة بقيم مخمّنة. وجود Bid وAsk لا يضمن التنفيذ أو حداثة السعر.</p>
               {dataMode === 'BINANCE' && <p className="data-coverage-note">BookTicker: {bookTickerStatus === 'connected' ? 'متصل' : bookTickerStatus === 'connecting' ? 'جارٍ الاتصال' : bookTickerStatus === 'reconnecting' ? 'يعيد الاتصال تلقائياً' : 'غير نشط'} · الاشتراك في {formatNumber(bookTickerTargets.length, 0)} من {formatNumber(bookTickerCandidates.length, 0)} عقد ناقص، بحد أقصى 180 رمزاً · {formatNumber(bookTickerUpdates, 0)} تحديثاً مستلماً. إذا لم ينشر المزود تحديثاً، يبقى الحقل ناقصاً.</p>}
-              {dataMode === 'BINANCE' && <p className="data-coverage-note">Option Mark Price + Ticker: {optionMarkStatus === 'connected' ? 'متصل' : optionMarkStatus === 'connecting' ? 'جارٍ الاتصال' : optionMarkStatus === 'reconnecting' ? 'إعادة اتصال' : 'غير نشط'} · {optionMarkTarget}@markPrice + {formatNumber(optionTickerTargets.length, 0)} قنوات انتهاء · {formatNumber(optionMarkUpdates, 0)} أحداث سوق مستلمة. توقيت الحدث من Binance، ولا تُستخدم Greeks المصدرية مباشرة في حسابات النموذج.</p>}
+              {dataMode === 'BINANCE' && <p className="data-coverage-note">Option Mark Price + Ticker: {optionMarkStatus === 'connected' ? 'متصل' : optionMarkStatus === 'connecting' ? 'جارٍ الاتصال' : optionMarkStatus === 'reconnecting' ? 'إعادة اتصال' : 'غير نشط'} · {optionMarkTargets.join(', ')}@markPrice + {formatNumber(optionTickerTargets.length, 0)} قنوات انتهاء · {formatNumber(optionMarkUpdates, 0)} أحداث سوق مستلمة. توقيت الحدث من Binance، ولا تُستخدم Greeks المصدرية مباشرة في حسابات النموذج.</p>}
             </section>
           )}
 
