@@ -1,7 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
-  ArrowUpLeft,
   BarChart3,
   BookOpen,
   Check,
@@ -16,14 +15,12 @@ import {
   Layers3,
   LineChart,
   ListFilter,
-  LockKeyhole,
   Plus,
   RefreshCw,
   Search,
   ShieldAlert,
   Star,
   Target,
-  Trash2,
   TrendingDown,
   TrendingUp,
   WalletCards,
