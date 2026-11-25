@@ -194,7 +194,7 @@ A remote branch search for `research/options-pit-archive-2026-11-24` returned no
 - PR #177 merged as `3bb464ca3bb0f998e8f538c244d49e855232b006`: https://github.com/raawaa93/Sol/pull/177
 - Enables position Greeks and local Greek shock estimates only for provider-verified Binance European Crypto Options cash-settled to INDEX, with premium multiplier=1, cash multiplier=unit, observed IV, model metadata, and exact index/mark-IV timestamps.
 - Outputs are model sensitivities under explicit Black–Scholes/Carry assumptions, not observed Greeks, forecasts or trading signals. Unsupported products and incomplete/stale inputs remain blocked.
-- CI, Project Context Guard and Lighthouse passed. The published-site deployment triggered from the latest mainline commit is being checked separately.
+- CI, Project Context Guard and Lighthouse passed. GitHub Pages deployment and published-site smoke test also passed on merge commit `3bb464ca3bb0f998e8f538c244d49e855232b006` (run 45546747830): https://github.com/raawaa93/Sol/actions/runs/45546747830.
 
 ## Canonical PAPER entry source consistency hardening — 25 November 2026
 
@@ -213,3 +213,10 @@ A remote branch search for `research/options-pit-archive-2026-11-24` returned no
 - During review, serialized stale writer-lease recovery and added regression coverage for concurrent stale-lock recovery; orphaned temporary segments are cleaned only while holding the writer lease.
 - The latest PR head is still running CI, Project Context Guard and Lighthouse. Do not merge until all gates pass.
 - No real Binance HTTP/WebSocket transport, exchangeInfo contract-spec mapper, cloud archive, or market capture is delivered. No historical edge or profitability claim.
+
+
+## Binance mark-IV source provenance correction — PR #180 under verification
+
+- Follow-up audit found that the Binance Options `vo` field had been treated as observed `markIV` in the ticker stream parser.
+- PR #180 separates `venueVolatility` from explicit `markIV`, and requires `markIvSource=OPTION_TICKER` with matching event timestamps before position Greeks are enabled: https://github.com/raawaa93/Sol/pull/180.
+- Until this correction is merged, treat the current mainline position-Greek adapter as subject to this provenance issue; no live trading is enabled.
