@@ -566,3 +566,40 @@ test('WebSocket transport bounds pending messages and emits an explicit gap befo
     (error) => error instanceof OptionsCollectorError && error.code === 'WEBSOCKET_BUFFER_OVERFLOW',
   );
 });
+
+
+test('WebSocket transport closes a failed socket and never retries an unknown handshake error', async () => {
+  class FakeWebSocket {
+    static instances = [];
+    constructor(url) {
+      this.url = url;
+      this.listeners = new Map();
+      this.closed = false;
+      FakeWebSocket.instances.push(this);
+      queueMicrotask(() => this.emit('open', {}));
+    }
+    addEventListener(type, callback) {
+      if (!this.listeners.has(type)) this.listeners.set(type, new Set());
+      this.listeners.get(type).add(callback);
+    }
+    removeEventListener(type, callback) { this.listeners.get(type)?.delete(callback); }
+    emit(type, event) {
+      for (const callback of this.listeners.get(type) ?? []) callback(event);
+    }
+    close(code = 1000, reason = '') {
+      this.closed = true;
+      this.emit('close', { code, reason });
+    }
+  }
+  const transport = createBinanceOptionsWebSocketTransport({ WebSocketImpl: FakeWebSocket });
+  const iterator = (await transport.subscribe(['btcusdt@bookTicker']))[Symbol.asyncIterator]();
+  assert.equal((await iterator.next()).value.type, 'connect');
+  FakeWebSocket.instances[0].emit('error', {});
+  assert.equal((await iterator.next()).value.type, 'disconnect');
+  await assert.rejects(
+    iterator.next(),
+    (error) => error.code === 'WEBSOCKET_CONNECTION_BLOCKED_OR_FAILED',
+  );
+  assert.equal(FakeWebSocket.instances.length, 1);
+  assert.equal(FakeWebSocket.instances[0].closed, true);
+});
