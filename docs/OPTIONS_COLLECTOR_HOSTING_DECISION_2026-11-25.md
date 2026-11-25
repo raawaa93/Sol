@@ -82,3 +82,25 @@ For an always-on WebSocket collector with durable storage, no verified zero-cost
 - Binance network request or capture: none.
 - Live eligibility/legal approval: not verified.
 - Paid services: none created.
+## R2 archive design refinement — 25 November 2026
+
+Cloudflare's current Standard R2 free allowance is 10 GB-month storage, 1 million Class A operations and 10 million Class B operations per billing month, with free internet egress. Above those included quotas, Standard storage and request operations are billable. The allowance is account-wide/monthly and is not a hard spend cap. Therefore R2 is a free-tier candidate, not a guaranteed $0 service. Do not create a bucket or enable billing until the account owner has reviewed the billing model and usage controls.
+
+If later authorized and provisioned, use the S3-compatible endpoint with a narrowly scoped, short-lived R2 credential where available. R2 supports conditional PutObject with If-None-Match: *; use this to prevent manifest overwrite. Proposed object layout:
+
+- immutable segment objects keyed by SHA-256, not by mutable filenames;
+- a per-capture manifest listing relative paths, byte lengths, SHA-256 values, schema version, segment count, record count, cursor checksum and archive verification result;
+- publish the manifest last, using create-only conditional write; the manifest is the commit marker;
+- verify object metadata and content hashes before marking a capture export complete;
+- restore only into a new destination, verify every object and the archive cursor, then atomically publish the restored directory;
+- bounded retries, explicit maximum object/total bytes, and no delete/overwrite API in the uploader.
+
+A future deployment must also have account-level budget/usage monitoring and an operational kill switch. Application-level 8 GB/800k Class A/8m Class B warning thresholds would be only local guardrails; they cannot guarantee no account-wide overage if other R2 buckets consume the same allowance. No hard spending cap or billing alert is assumed to exist.
+
+Official references:
+- R2 pricing: https://developers.cloudflare.com/r2/pricing/
+- Conditional S3 writes: https://developers.cloudflare.com/r2/api/s3/conditional-operations/
+- Temporary credentials: https://developers.cloudflare.com/r2/api/s3/temporary-credentials/
+- S3 authentication: https://developers.cloudflare.com/r2/examples/authenticate-r2-auth-tokens/
+
+**Current state remains unchanged:** no R2 account/bucket/credential has been connected or provisioned, no upload code is deployed, and no remote archive/restore has been tested.
