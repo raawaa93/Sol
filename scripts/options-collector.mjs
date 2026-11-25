@@ -66,7 +66,7 @@ export function buildPublicBinanceRestUrl(endpoint, params = {}) {
   if (params.underlying !== undefined && !/^[A-Z0-9]{3,16}$/.test(params.underlying)) throw new OptionsCollectorError('INVALID_UNDERLYING', 'Invalid underlying.');
   if (params.underlyingAsset !== undefined && !/^[A-Z0-9]{2,10}(\/[A-Z0-9]{2,10})?$/.test(params.underlyingAsset)) throw new OptionsCollectorError('INVALID_UNDERLYING', 'Invalid underlying asset.');
   if (params.expiration !== undefined && !/^\d{6}$/.test(String(params.expiration))) throw new OptionsCollectorError('INVALID_EXPIRATION', 'Expiration must be YYMMDD.');
-  if (params.interval !== undefined && !/^(1m|3m|5m|15m|30m|1h|2h|4h|6h|12h|1d|3d|1w|1M)$/.test(params.interval)) throw new OptionsCollectorError('INVALID_INTERVAL', 'Unsupported kline interval.');
+  if (params.interval !== undefined && !/^(1m|3m|5m|15m|30m|1h|2h|4h|6h|8h|12h|1d|3d|1w|1M)$/.test(params.interval)) throw new OptionsCollectorError('INVALID_INTERVAL', 'Unsupported kline interval.');
   for (const key of ['startTime', 'endTime', 'limit']) {
     if (params[key] !== undefined && !validPositiveInteger(params[key])) throw new OptionsCollectorError('INVALID_NUMERIC_PARAM', `${key} must be a positive integer.`);
   }
@@ -479,7 +479,7 @@ export async function collectForwardOptionsEvents({ archive, transport, streams,
     throw new OptionsCollectorError('TRANSPORT_REQUIRED', 'An archive and injected async-iterable transport are required.');
   }
   const isSupportedPublicStream = (stream) => typeof stream === 'string' && (
-    /^[a-z0-9-]+@(bookTicker|optionTrade|optionTicker\d{6}?|optionTicker|kline_(1m|3m|5m|15m|30m|1h|2h|4h|6h|12h|1d)|depth@(100ms|500ms)|depth(5|10|20)@(100ms|500ms))$/i.test(stream)
+    /^[a-z0-9-]+@(bookTicker|optionTrade|optionTicker\d{6}?|optionTicker|kline_(1m|3m|5m|15m|30m|1h|2h|4h|6h|8h|12h|1d|3d|1w|1M)|depth@(100ms|500ms)|depth(5|10|20)@(100ms|500ms))$/i.test(stream)
     || /^[a-z0-9]+@(optionMarkPrice|markPrice)$/i.test(stream)
     || stream === '!index@arr'
   );
