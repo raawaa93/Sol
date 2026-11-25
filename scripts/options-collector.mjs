@@ -90,7 +90,7 @@ export async function requestPublicBinanceRest(endpoint, params, transport) {
   return response.json();
 }
 
-function makeRecord({ kind, endpoint, symbol, rawPayload, eventAt, receivedAt, fields, id, quality = 'VALID', flags = [], historicalBackfill = false }) {
+function makeRecord({ kind, endpoint, symbol, rawPayload, eventAt, receivedAt, availableAt = receivedAt, fields, id, quality = 'VALID', flags = [], historicalBackfill = false }) {
   const normalizedSymbol = typeof symbol === 'string' && symbol ? symbol.toUpperCase() : 'UNKNOWN';
   const key = id ?? sha256(typeof rawPayload === 'string' ? rawPayload : canonicalJson(rawPayload));
   return createOptionsArchiveRecord({
@@ -102,7 +102,7 @@ function makeRecord({ kind, endpoint, symbol, rawPayload, eventAt, receivedAt, f
     clocks: {
       exchangeEventAt: eventAt,
       receivedAt,
-      availableAt: receivedAt,
+      availableAt,
     },
     contractSpec: null,
     fields: fields.filter(Boolean),
@@ -185,19 +185,19 @@ function parseKline(event, rawPayload, receivedAt) {
     ? new Date(Math.max(receivedMs, Date.parse(closeAt))).toISOString()
     : receivedAt;
   const fields = [
-    observedField('openTime', iso(candle.t), 'ISO_TIMESTAMP', 'k.t', closeAt, receivedAt, availableAt, null),
-    observedField('closeTime', closeAt, 'ISO_TIMESTAMP', 'k.T', closeAt, receivedAt, availableAt, null),
-    observedField('open', numeric(candle.o), 'VENUE_REPORTED_PRICE_UNIT', 'k.o', closeAt, receivedAt, availableAt, null),
-    observedField('high', numeric(candle.h), 'VENUE_REPORTED_PRICE_UNIT', 'k.h', closeAt, receivedAt, availableAt, null),
-    observedField('low', numeric(candle.l), 'VENUE_REPORTED_PRICE_UNIT', 'k.l', closeAt, receivedAt, availableAt, null),
-    observedField('close', numeric(candle.c), 'VENUE_REPORTED_PRICE_UNIT', 'k.c', closeAt, receivedAt, availableAt, null),
-    observedField('volume', numeric(candle.v), 'VENUE_REPORTED_SIZE_UNIT', 'k.v', closeAt, receivedAt, availableAt, null),
+    observedField('openTime', iso(candle.t), 'ISO_TIMESTAMP', 'k.t', eventAt, receivedAt, availableAt, null),
+    observedField('closeTime', closeAt, 'ISO_TIMESTAMP', 'k.T', eventAt, receivedAt, availableAt, null),
+    observedField('open', numeric(candle.o), 'VENUE_REPORTED_PRICE_UNIT', 'k.o', eventAt, receivedAt, availableAt, null),
+    observedField('high', numeric(candle.h), 'VENUE_REPORTED_PRICE_UNIT', 'k.h', eventAt, receivedAt, availableAt, null),
+    observedField('low', numeric(candle.l), 'VENUE_REPORTED_PRICE_UNIT', 'k.l', eventAt, receivedAt, availableAt, null),
+    observedField('close', numeric(candle.c), 'VENUE_REPORTED_PRICE_UNIT', 'k.c', eventAt, receivedAt, availableAt, null),
+    observedField('volume', numeric(candle.v), 'VENUE_REPORTED_SIZE_UNIT', 'k.v', eventAt, receivedAt, availableAt, null),
   ];
   return makeRecord({
     kind: 'KLINE_CLOSED', endpoint: 'WS_KLINE', symbol: candle.s ?? event.s, rawPayload,
-    eventAt, receivedAt, fields, id: `kline:${candle.i}:${candle.t}`,
-    quality: closeAt ? 'VALID' : 'DEGRADED',
-    flags: closeAt ? [] : ['KLINE_CLOSE_TIME_MISSING'],
+    eventAt, receivedAt, availableAt, fields, id: `kline:${candle.i}:${candle.t}`,
+    quality: closeAt && eventAt ? 'VALID' : 'DEGRADED',
+    flags: closeAt && eventAt ? [] : ['KLINE_TIME_MISSING'],
   });
 }
 
