@@ -1,5 +1,8 @@
 # Options archive implementation status — 25 November 2026
 
+**Merged:** PR #176, commit `8dcd251e2cc6c03dccf04b82c0cd48eb2ada59a2`. CI, Project Context Guard, Lighthouse, deployment and published-site smoke test passed (runs 45548127457, 45548127433, 45548127475 and 45548127461). This is a merged local foundation, not a live collector or cloud archive.
+
+
 ## Scope delivered in this branch
 
 This is a Node-only local archive foundation. It is deliberately outside the browser bundle and does not open a network connection by itself.
@@ -27,11 +30,11 @@ The project is shared with other applications. The safe path is to keep the curr
 
 ## Next gates
 
-1. Complete CI, unchanged bundle budgets, Playwright, Project Context Guard and Lighthouse on the latest PR head.
-2. Add explicit fault-injection coverage for a process crash between individual segment publications and for failed export/restore after target creation; current tests cover restart replay, checksum corruption, corrupt-source restore rejection and atomic target creation.
-3. Implement an opt-in, injected REST refresh for `exchangeInfo` with rate limiting, age checks and exact snapshot retention; the pure mapper and fake-transport attachment path are already implemented.
+1. Add explicit fault-injection coverage for a process crash between individual segment publications and for failed export/restore after target creation; current tests cover restart replay, checksum corruption, corrupt-source restore rejection, atomic target creation and destination no-overwrite.
+2. Implement an opt-in, injected REST refresh for `exchangeInfo` with rate limiting, age checks and exact snapshot retention; the pure mapper and fake-transport attachment path are already implemented.
+3. Verify the Binance RIE/RCH legal terms applicability to the specific service/account entity before treating those exercise and settlement assumptions as account-specific.
 4. Review Binance's current eligibility, terms and permitted use before any real capture. Stop on HTTP 403/451 or legal/licensing uncertainty; do not route around regional restrictions.
-5. Decide on a durable Sol-specific backend. Prefer an existing free resource only if ownership, RLS, quota, backup and restore are proven. Do not write to the shared production database or provision new paid resources as part of this branch.
+5. Decide on a durable Sol-specific backend. Prefer an existing free resource only if ownership, RLS, quota, backup and restore are proven. Do not write to the shared production database or provision new paid resources without the required authorization.
 6. Only then implement a real WebSocket transport and a supervised scheduled worker with restart/gap handling, resource caps and monitoring.
 
 No point-in-time dataset, historical BBO series, measured strategy edge, profitability, or live-trading capability is claimed.
