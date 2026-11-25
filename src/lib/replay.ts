@@ -235,7 +235,7 @@ export function replayLongOptionSnapshots(
       .map(([timestamp, row]) => ({ timestamp, quote: row.quote, sourceTimestamp: row.sourceTimestamp, expiryTimestamp: row.expiryTimestamp }))
       .sort((a, b) => a.timestamp - b.timestamp);
     let index = 0;
-    while (index < uniqueRows.length - 1 && trades.length < maxTrades) {
+    while (index < uniqueRows.length && trades.length < maxTrades) {
       const entry = uniqueRows[index];
       const targetExitTime = entry.timestamp + config.holdingPeriodMs;
       // The replay has no expiry-settlement/assignment model. Never carry a
@@ -245,6 +245,9 @@ export function replayLongOptionSnapshots(
         index += 1;
         continue;
       }
+      // The final snapshot can still be a would-be entry even when no later
+      // quote exists; inspect its expiry boundary before leaving the loop.
+      if (index === uniqueRows.length - 1) break;
       let exitIndex = index + 1;
       while (exitIndex < uniqueRows.length
         && uniqueRows[exitIndex].timestamp < targetExitTime) exitIndex += 1;
