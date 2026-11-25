@@ -684,16 +684,15 @@ test('Binance keeps contracts with a valid market price when implied volatility 
         underlyingType: 'CRYPTO', contractType: 'CRYPTO_OPTIONS',
       }],
     },
-    marks: [{ symbol, markPrice: 3 }],
-    tickers: [{ symbol, bidPrice: 2.8, askPrice: 3.2, volume: 0, amount: 0, closeTime: now }],
+    marks: [{ symbol, markPrice: 1_000_001 }],
     indices: [{ requestedUnderlying: 'BTCUSDT', item: { indexPrice: 100000, time: now } }],
   });
 
   assert.equal(snapshot.quotes.length, 1);
   const quote = snapshot.quotes[0];
-  assert.equal(quote.markPrice, 3);
-  assert.equal(quote.bid, 2.8);
-  assert.equal(quote.ask, 3.2);
+  assert.equal(quote.markPrice, 1_000_001);
+  assert.equal(quote.bid, 0);
+  assert.equal(quote.ask, 0);
   assert.equal(quote.iv, 0);
   assert.equal(quote.ivStatus, 'UNAVAILABLE');
   assert.equal(quote.pricingStatus, 'OBSERVED_ONLY');
