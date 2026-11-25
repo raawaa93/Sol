@@ -182,7 +182,7 @@ PR #167 merged to main as `acd5efcdbec53c2fbcee27a0a4e198a85454eb64`.
 - Legacy scalar calculations are not used when canonical terms exist, even when unit=1. Subsequent PRs add separate canonical capabilities for risk-neutral EV (#170), position Greeks (#177) and PAPER entry snapshots (#172/#175); legacy replay and PAPER lifecycle valuation remain gated.
 - PR verification passed CI, including unit/property tests, mocked backup orchestration, production build, bundle budgets and Playwright browser journeys; Project Context Guard and Lighthouse passed. A later mainline deployment and published-site smoke test succeeded after PR #172 and again after PR #177.
 
-Remaining Phase 4 work: canonical PAPER lifecycle valuation (mark-to-market, amendments, exits and simulated P&L) and point-in-time replay. Binance position Greeks (PR #177), risk-neutral EV (PR #170), and the PAPER entry snapshot/hardening (PR #172/#175) are merged. CSV v2 remains USER_ASSERTED on import and cannot grant provider provenance.
+Remaining Phase 4 work: canonical PAPER lifecycle valuation (mark-to-market, amendments, exits and simulated P&L) and point-in-time replay. Binance position Greeks (PR #177), risk-neutral EV (PR #170), PAPER entry snapshot/hardening (PR #172/#175), explicit mark-IV provenance (PR #180), and legal terms provenance (PR #185) are merged. CSV v2 remains USER_ASSERTED on import and cannot grant provider provenance.
 
 
 ### Canonical cash-settled risk-neutral EV — PR #170 merged 25 November 2026
@@ -196,7 +196,7 @@ Merged to main as `71a8a027659e880f22aa3b998b0c075c1a071bd3`.
 - Binance model Greeks/price normalization now uses canonical cash scale only when premium multiplier is 1 and the verified adapter maps the product. Unsupported products and unknown scales remain blocked.
 - CI, Project Context Guard and Lighthouse passed on PR head `d93a9a9bacae6edc1ecc98bbb00a82a43680a0c5`. Published-site smoke test was skipped by workflow conditions.
 
-Remaining: canonical PAPER lifecycle valuation (mark-to-market, amendments, exits, simulated P&L) and point-in-time replay. Position Greek aggregation/shock P&L is merged through PR #177, subject to the source-provenance correction in PR #180. Entry-only PAPER snapshots and source consistency are merged through PRs #172 and #175.
+Remaining: canonical PAPER lifecycle valuation (mark-to-market, amendments, exits, simulated P&L) and point-in-time replay. Position Greek aggregation/shock P&L is merged through PR #177 with explicit mark-IV provenance from PR #180 and legal terms provenance from PR #185. Entry-only PAPER snapshots and source consistency are merged through PRs #172 and #175.
 
 
 ### Legacy Greek/EV bypass closure — 25 November 2026
@@ -219,3 +219,14 @@ This is entry capture only. It does not implement mark-to-market, amendments, ex
 ### Binance mark-IV source provenance — PR #180 merged 25 November 2026
 
 PR #180 merged as `762918f8e95c958e8013512a623341d83946e20a`. Binance `vo` is preserved as venue-reported volatility, not mark IV. The adapter accepts observed mark IV only from the explicit `markIV` field and records `markIvSource=OPTION_TICKER` with the exact event timestamp. The canonical position-Greek gate requires that source and matching timestamps; it remains closed when the explicit mark-IV event is unavailable.
+
+
+### Binance legal terms provenance — PR #185 merged 25 November 2026
+
+PR #185 merged as `96b9050fe430d2574b0927195996c62e1baa3ca7`.
+
+- Binance Crypto Options canonical economics now retain the published Contract Specifications and Clearing Procedures references separately from `eapi/v1/exchangeInfo`.
+- The legal source scope is recorded as Binance RIE/RCH; account-specific applicability is explicitly UNVERIFIED and disclosed in Opportunity Review and GreeksPanel.
+- Exercise/settlement-dependent adapter readiness fails closed when the exact exchangeInfo source, product-family fields or legal references are missing/mismatched.
+- Premium debit/affordability remains independently calculable when its exchange-verified per-contract premium scale is valid; missing legal settlement provenance does not invalidate that separate arithmetic.
+- Main CI, Project Context Guard, local Lighthouse, deployment, published app/market-data-proxy smoke test and published-site Lighthouse passed on the merged mainline commit.
