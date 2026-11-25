@@ -333,6 +333,42 @@ test('canonical PAPER close uses fresh executable Bid and sufficient displayed c
   assert.ok(Math.abs(result.event.netPnl - -1.05) < 1e-9);
   assert.equal(result.event.exitFeesSource, 'USER_ENTERED');
   assert.equal(isCanonicalPaperCloseEvent(result.event), true);
+
+  const invalidEntryDepth = createCanonicalPaperCloseEvent({
+    trade: { ...entry.trade, askQuantityAtEntry: 1 },
+    quote: closeQuote,
+    sourceMode: 'BINANCE',
+    id: 'close-invalid-entry-depth',
+    closedAt: '2026-11-25T03:02:00Z',
+    exitFees: 0.25,
+    spotAtExit: closeQuote.spot,
+  });
+  assert.equal(invalidEntryDepth.ok, false);
+  if (!invalidEntryDepth.ok) assert.equal(invalidEntryDepth.reason, 'PAPER_ENTRY_ASK_DEPTH_SNAPSHOT_INVALID');
+
+  const beforeEntry = createCanonicalPaperCloseEvent({
+    trade: entry.trade,
+    quote: closeQuote,
+    sourceMode: 'BINANCE',
+    id: 'close-before-entry',
+    closedAt: '2026-11-25T03:00:00Z',
+    exitFees: 0.25,
+    spotAtExit: closeQuote.spot,
+  });
+  assert.equal(beforeEntry.ok, false);
+  if (!beforeEntry.ok) assert.equal(beforeEntry.reason, 'PAPER_ENTRY_RECEIVE_TIMESTAMP_MISSING_OR_INVALID');
+
+  const impossibleFee = createCanonicalPaperCloseEvent({
+    trade: entry.trade,
+    quote: closeQuote,
+    sourceMode: 'BINANCE',
+    id: 'close-impossible-fee',
+    closedAt: '2026-11-25T03:02:00Z',
+    exitFees: 10,
+    spotAtExit: closeQuote.spot,
+  });
+  assert.equal(impossibleFee.ok, false);
+  if (!impossibleFee.ok) assert.equal(impossibleFee.reason, 'EXIT_FEES_EXCEED_GROSS_PROCEEDS');
 });
 
 test('canonical PAPER close rejects insufficient Bid size, wrong contract and stale/future source clocks', () => {
