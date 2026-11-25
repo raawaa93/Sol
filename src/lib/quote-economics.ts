@@ -145,7 +145,7 @@ export function calculateQuoteCashRiskNeutralMetrics(
     || cashSettlement.formula !== 'INTRINSIC_VALUE'
     || cashSettlement.reference !== 'INDEX'
     || economics.premium.priceUnit !== 'PER_CONTRACT'
-    || economics.premium.quoteCurrency !== economics.exercise.cashSettlement.currency
+    || economics.premium.quoteCurrency !== cashSettlement.currency
     || quote.underlyingKind !== 'SPOT'
     || !quote.sourceTimestamps?.index
     || !Number.isFinite(Date.parse(quote.sourceTimestamps.index))
@@ -207,7 +207,7 @@ export function calculateQuoteCashRiskNeutralMetrics(
   const probabilityInTheMoney = quote.type === 'CALL' ? normalCdf(d2Strike) : normalCdf(-d2Strike);
 
   let probabilityOfProfit = 0;
-  if (quote.type === 'CALL' ? breakevenPrice > 0 : breakevenPrice > 0) {
+  if (breakevenPrice > 0) {
     const d2BreakEven = (Math.log(quote.spot / breakevenPrice) + drift * time) / sigmaRootTime;
     probabilityOfProfit = quote.type === 'CALL' ? normalCdf(d2BreakEven) : normalCdf(-d2BreakEven);
   }
