@@ -1,5 +1,4 @@
 import type { PaperTrade } from './types.ts';
-import { isCanonicalPaperCloseEventForTrade } from './paper-journal.ts';
 import type { CanonicalPaperCloseEvent } from './paper-journal.ts';
 
 export const PAPER_CAMPAIGN_CAPITAL = 200;
@@ -19,6 +18,64 @@ export interface PaperCampaignBudgetSummary {
 
 function getTradeCurrency(trade: PaperTrade): string {
   return (trade.premiumCurrencyAtEntry ?? trade.quoteAsset ?? '').trim().toUpperCase();
+}
+
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${stableJson(record[key])}`).join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'null';
+}
+
+/** Lightweight, synchronous reconciliation for the initial UI budget view. */
+export function isCanonicalPaperCloseEventForTrade(
+  event: CanonicalPaperCloseEvent,
+  trade: PaperTrade,
+): boolean {
+  const debit = getTradeDebit(trade);
+  const economics = trade.contractEconomics;
+  const sourceAtEntry = Date.parse(trade.sourceTimestampsAtEntry?.bookTicker ?? '');
+  const receiveAtEntry = Date.parse(trade.sourceReceivedAtAtEntry?.bidAsk ?? '');
+  const indexAtEntry = Date.parse(trade.sourceTimestampsAtEntry?.index ?? '');
+  const createdAt = Date.parse(trade.createdAt);
+  const closedAt = Date.parse(event.closedAt);
+  const expiry = Date.parse(trade.expiry);
+  return Boolean(economics)
+    && trade.status === 'PAPER'
+    && trade.contractVenueAtEntry === 'BINANCE'
+    && trade.contractAssetClassAtEntry === 'CRYPTO'
+    && trade.contractUnderlyingKindAtEntry === 'SPOT'
+    && trade.priceSourceAtEntry === 'ASK'
+    && trade.bidAskSourceAtEntry === 'BOOK_TICKER'
+    && trade.askSizeUnitAtEntry === 'CONTRACTS'
+    && Number.isFinite(trade.askQuantityAtEntry)
+    && trade.askQuantityAtEntry! + 1e-9 >= trade.quantity
+    && Number.isFinite(sourceAtEntry) && Number.isFinite(receiveAtEntry)
+    && Number.isFinite(indexAtEntry) && Number.isFinite(createdAt)
+    && sourceAtEntry <= receiveAtEntry && receiveAtEntry <= createdAt
+    && indexAtEntry <= createdAt
+    && createdAt - sourceAtEntry <= 5 * 60_000
+    && createdAt - receiveAtEntry <= 5 * 60_000
+    && createdAt - indexAtEntry <= 5 * 60_000
+    && Number.isFinite(closedAt) && Number.isFinite(expiry)
+    && closedAt > createdAt && closedAt < expiry
+    && event.tradeId === trade.id
+    && event.quantity === trade.quantity
+    && debit !== undefined && event.entryDebit === debit
+    && event.currency === getTradeCurrency(trade)
+    && event.contractAtExit.symbol === trade.symbol
+    && event.contractAtExit.underlying === trade.underlying
+    && event.contractAtExit.type === trade.type
+    && event.contractAtExit.expiry === trade.expiry
+    && event.contractAtExit.strike === trade.strike
+    && event.contractAtExit.venue === trade.contractVenueAtEntry
+    && event.contractAtExit.assetClass === trade.contractAssetClassAtEntry
+    && event.contractAtExit.underlyingKind === trade.contractUnderlyingKindAtEntry
+    && event.contractAtExit.unit === trade.contractUnitAtEntry
+    && event.contractAtExit.quoteAsset === trade.quoteAsset
+    && stableJson(event.contractEconomicsAtExit) === stableJson(economics);
 }
 
 function getTradeDebit(trade: PaperTrade): number | undefined {
