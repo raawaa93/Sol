@@ -756,7 +756,7 @@ test('Binance markPrice parser keeps venue vo separate from markIV', () => {
     stream: 'btc@markPrice',
     data: [{
       e: 'markPrice', E: 1_800_000_001_000, s: 'BTC-261225-100000-C',
-      mp: '5200', i: '100500', vo: '0.60', rf: '0.02',
+      mp: '5200', i: '100500', bo: '5100', ao: '5300', bq: '1.25', aq: '2.5', b: '0.58', a: '0.62', vo: '0.60', rf: '0.02',
       d: '0.51', g: '0.00003', t: '-20', v: '45',
     }],
   }));
@@ -766,6 +766,12 @@ test('Binance markPrice parser keeps venue vo separate from markIV', () => {
     eventTime: 1_800_000_001_000,
     markPrice: 5200,
     indexPrice: 100500,
+    bestBid: 5100,
+    bestAsk: 5300,
+    bestBidQuantity: 1.25,
+    bestAskQuantity: 2.5,
+    bidIv: 0.58,
+    askIv: 0.62,
     venueVolatility: 0.6,
     riskFreeRate: 0.02,
     sourceGreeks: { delta: 0.51, gamma: 0.00003, theta: -20, vega: 45 },
@@ -793,7 +799,8 @@ test('Binance markPrice adapter refreshes index/rate and keeps venue vo out of m
   };
   const event = {
     symbol: quote.symbol, eventTime, markPrice: 5200, indexPrice: 100500,
-    venueVolatility: 0.6, riskFreeRate: 0.02,
+    bestBid: 5100, bestAsk: 5300, bestBidQuantity: 1.25, bestAskQuantity: 2.5,
+    bidIv: 0.58, askIv: 0.62, venueVolatility: 0.6, riskFreeRate: 0.02,
     sourceGreeks: { delta: 0.99, gamma: 0.00004, theta: -30, vega: 55 },
   };
   const updated = applyBinanceOptionMarkPrice(quote, event, eventTime);
@@ -803,12 +810,19 @@ test('Binance markPrice adapter refreshes index/rate and keeps venue vo out of m
   assert.equal(updated.riskFreeRate, 0.02);
   assert.equal(updated.riskFreeRateSource, 'MARK_PRICE');
   assert.equal(updated.venueVolatility, 0.6);
+  assert.equal(updated.bid, 5100);
+  assert.equal(updated.ask, 5300);
+  assert.equal(updated.bidAskSource, 'MARK_PRICE');
+  assert.equal(updated.bidIv, 0.58);
+  assert.equal(updated.askIv, 0.62);
   assert.equal(updated.iv, 0.5, 'venue vo must not be relabelled as observed markIV');
   assert.equal(updated.markIvSource, 'REST_MARK');
   assert.equal(updated.sourceTimestamps?.markPrice, new Date(eventTime).toISOString());
   assert.equal(updated.sourceTimestamps?.index, new Date(eventTime).toISOString());
   assert.equal(updated.sourceTimestamps?.riskFreeRate, new Date(eventTime).toISOString());
   assert.equal(updated.sourceTimestamps?.venueVolatility, new Date(eventTime).toISOString());
+  assert.equal(updated.sourceTimestamps?.bidIv, new Date(eventTime).toISOString());
+  assert.equal(updated.sourceTimestamps?.askIv, new Date(eventTime).toISOString());
   assert.equal(updated.unverifiedSourceGreeks?.delta, 0.99);
   assert.notEqual(updated.delta, 0.99);
   assert.equal(updated.pricingStatus, 'ASSUMED');
