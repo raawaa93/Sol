@@ -228,7 +228,7 @@ function stableJson(value: unknown): string {
     const record = value as Record<string, unknown>;
     return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${stableJson(record[key])}`).join(',')}}`;
   }
-  return JSON.stringify(value);
+  return JSON.stringify(value) ?? 'null';
 }
 
 function sameContractAtExit(trade: PaperTrade, quote: OptionQuote): boolean {
@@ -304,7 +304,8 @@ export function createCanonicalPaperCloseEvent(input: {
   const economics = trade.contractEconomics!;
   if (!validateContractEconomics(economics).adapterReady
     || economics.provenance.status !== 'PROVIDER_VERIFIED'
-    || economics.provenance.provider !== 'BINANCE') {
+    || economics.provenance.provider !== 'BINANCE'
+    || economics.provenance.sourceRef !== 'https://eapi.binance.com/eapi/v1/exchangeInfo') {
     return { ok: false, reason: 'PAPER_CLOSE_CONTRACT_ECONOMICS_NOT_VERIFIED' };
   }
   const entry = calculatePremiumCash({
