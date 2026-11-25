@@ -65,6 +65,13 @@ test('replay buys at ask and exits at bid after the configured hold period', () 
   assert.equal(result.trades[0].exitBid, 13);
   assert.equal(result.trades[0].netPnl, 3);
   assert.equal(result.trades[0].holdingMs, 62 * 60_000);
+  assert.equal(result.trades[0].entryBidAskSource, 'BOOK_TICKER');
+  assert.equal(result.trades[0].exitBidAskSource, 'BOOK_TICKER');
+  assert.equal(result.trades[0].entrySourceTimestamp, '2026-11-24T10:00:00.000Z');
+  assert.equal(result.trades[0].exitSourceTimestamp, '2026-11-24T11:02:00.000Z');
+  assert.equal(result.trades[0].entryDisplayedSize, 100);
+  assert.equal(result.trades[0].exitDisplayedSize, 100);
+  assert.equal(result.trades[0].bidAskSizeUnit, 'CONTRACTS');
   assert.equal(result.winRate, 1);
 });
 
