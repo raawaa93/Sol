@@ -20,7 +20,7 @@
 | Heartbeat interval | 30 seconds | 5 minutes |
 | Unique streams | explicitly supplied | 200 |
 
-The worker validates these bounds at startup. Archive writes independently enforce the configured byte quota before publishing segments. A writer lease prevents a second process on the same filesystem host from writing to the same archive root. The collector renews this lease periodically even when streams are quiet; lease-renewal failure aborts the worker and is surfaced as a failure.
+The worker validates these bounds at startup, including when invoked programmatically with an injected configuration object. Archive writes independently enforce the configured byte quota before publishing segments. A writer lease prevents a second process on the same filesystem host from writing to the same archive root. The collector renews this lease periodically even when streams are quiet; lease-renewal failure aborts the worker and is surfaced as a failure.
 
 ## Start (only after eligibility and legal checks)
 
