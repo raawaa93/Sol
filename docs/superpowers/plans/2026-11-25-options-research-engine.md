@@ -43,7 +43,7 @@
 - [x] Add deterministic tests for exact rank/percentile arithmetic, minimum sample count, flat range, separate underlying/venue/convention, duplicate-day selection, future/stale/invalid samples.
 - [ ] Verify the RED step in isolation (not captured as a separate successful CI run).
 - [x] Implement the pure analytics module without new dependencies.
-- [x] Full CI unit/property suite passed: run 45570010720 (293/293).
+- [x] Full CI unit/property suite passed: run 45570010720 (303/303).
 - [x] Merge source-bound IV analytics as PR #194, commit 7183ab85eac7e9d7556cc3716b7d1790948c63d6.
 
 ### Task 2: Observed near-30-day ATM IV extraction
@@ -141,8 +141,10 @@ The merged transport is a tested library component, not an operating collector. 
 - Report sample size, coverage, drawdown, tail loss, profit factor, turnover and uncertainty; suppress unsupported statistics.
 - E1 volatility-risk-premium and E2 order-flow experiments remain BLOCKED until their data prerequisites are met.
 
-- [x] Audit the existing replay and strategy-evaluation protocol. Current replay is a conservative one-leg fixed-hold PAPER baseline, not a signal strategy; it buys at Ask and exits at Bid but does not yet model depth/partial fills, queue position, latency, expiry settlement or hedging.
-- [ ] Extend replay only after a point-in-time BBO/size corpus and verified contract economics exist; no supported empirical dataset is currently available.
+- [x] Audit the existing replay and strategy-evaluation protocol. It remains a conservative one-leg fixed-hold PAPER execution baseline, not a signal strategy.
+- [x] Require source-bound BBO event time plus local receive/availability time, explicit source type and size unit, non-estimated two-sided prices, and sufficient displayed Ask/Bid size at entry/exit. Preserve CSV provenance as user-asserted only.
+- [x] Apply configurable adverse per-side slippage and expose fills, displayed size, source clocks, fees and slippage in replay output/UI. PR #204 merged as 337e03fb26d44c906125318affc473030c165da4.
+- [ ] Extend replay with depth/partial fills, queue position, latency, expiry/settlement, assignment and hedging only after a permitted point-in-time corpus and verified contract economics exist; no supported empirical dataset is currently available.
 - [ ] Add a separate deterministic synthetic strategy fixture suite only when a concrete replay defect or extension is selected; existing statistical tests are synthetic and do not establish a market edge.
 - [x] Keep strategy performance and cross-asset profitability ranking blocked until a real PIT corpus and forward PAPER run pass the gates.
 
