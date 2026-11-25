@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { PaperTrade } from './types.ts';
+import { BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS } from './contract-economics.ts';
 import {
   PAPER_CAMPAIGN_CAPITAL,
   PAPER_CAMPAIGN_MAX_LOSS,
@@ -8,6 +9,52 @@ import {
   canAllocatePaperCampaignTrade,
   summarizePaperCampaignBudget,
 } from './paper-campaign-budget.ts';
+
+const canonicalEconomics: NonNullable<PaperTrade['contractEconomics']> = {
+  premium: { multiplier: 1, quoteCurrency: 'USDT', priceUnit: 'PER_CONTRACT' },
+  exercise: {
+    style: 'EUROPEAN',
+    settlement: 'CASH',
+    settlementCurrency: 'USDT',
+    deliverables: [],
+    cashSettlement: { formula: 'INTRINSIC_VALUE', reference: 'INDEX', currency: 'USDT', multiplier: 1 },
+  },
+  provenance: {
+    status: 'PROVIDER_VERIFIED',
+    provider: 'BINANCE',
+    sourceRef: 'https://eapi.binance.com/eapi/v1/exchangeInfo',
+    retrievedAt: '2026-11-25T07:00:00.000Z',
+    rawFields: { unit: 1, underlyingType: 'CRYPTO', contractType: 'CRYPTO_OPTIONS', quoteAsset: 'USDT', settleAsset: 'USDT' },
+    legalTerms: { ...BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS },
+  },
+};
+
+function canonicalTrade(overrides: Partial<PaperTrade> = {}): PaperTrade {
+  return trade({
+    createdAt: '2026-11-25T07:00:00.200Z',
+    fees: 0.1,
+    premiumDebitAtEntry: 20.1,
+    contractEconomics: canonicalEconomics,
+    contractVenueAtEntry: 'BINANCE',
+    contractAssetClassAtEntry: 'CRYPTO',
+    contractUnderlyingKindAtEntry: 'SPOT',
+    contractUnitAtEntry: 1,
+    premiumMultiplierAtEntry: 1,
+    premiumAmountAtEntry: 20,
+    premiumCurrencyAtEntry: 'USDT',
+    priceSourceAtEntry: 'ASK',
+    bidAskSourceAtEntry: 'BOOK_TICKER',
+    sourceTimestampsAtEntry: { bookTicker: '2026-11-25T07:00:00.000Z', index: '2026-11-25T07:00:00.000Z' },
+    sourceReceivedAtAtEntry: { bidAsk: '2026-11-25T07:00:00.100Z' },
+    bidQuantityAtEntry: 1,
+    askQuantityAtEntry: 1,
+    bidAskSizeUnitAtEntry: 'CONTRACTS',
+    takerFeeRateAtEntry: 0.000001,
+    exchangeFeeAtEntry: 0.1,
+    additionalFeesAtEntry: 0,
+    ...overrides,
+  });
+}
 
 function trade(overrides: Partial<PaperTrade> = {}): PaperTrade {
   return {
@@ -142,4 +189,54 @@ test('inconsistent used and remaining values in a campaign summary fail closed',
     canAllocatePaperCampaignTrade({ ...summary, used: 55, remaining: 10 }, 5, 'USDT').reason,
     'INVALID_CAMPAIGN_BUDGET',
   );
+});
+
+
+function closeRecord(realizedPnl: number, overrides: Partial<NonNullable<PaperTrade['close']>> = {}): NonNullable<PaperTrade['close']> {
+  const exitNetProceeds = 20.1 + realizedPnl;
+  const exitExchangeFee = 0.1;
+  const exitGrossProceeds = exitNetProceeds + exitExchangeFee;
+  return {
+    closedAt: '2026-11-25T08:00:00.000Z',
+    exitPremium: exitGrossProceeds,
+    exitFees: exitExchangeFee,
+    exitExchangeFee,
+    exitAdditionalFees: 0,
+    exitGrossProceeds,
+    exitNetProceeds,
+    realizedPnl,
+    currency: 'USDT',
+    spotAtExit: 100000,
+    bidAskSource: 'BOOK_TICKER',
+    sourceTimestamps: { bookTicker: '2026-11-25T07:59:59.000Z', index: '2026-11-25T07:59:59.000Z' },
+    sourceReceivedAt: '2026-11-25T07:59:59.100Z',
+    bidQuantity: 1,
+    takerFeeRateAtExit: 0.000001,
+    bidAskSizeUnit: 'CONTRACTS',
+    ...overrides,
+  };
+}
+
+test('closed PAPER trades reserve realized losses, not their released original debit', () => {
+  const loss = canonicalTrade({ close: closeRecord(-5) });
+  const gain = canonicalTrade({ id: 'paper-gain', close: closeRecord(8) });
+  const summary = summarizePaperCampaignBudget([loss, gain], 'USDT');
+  assert.equal(summary.used, 5);
+  assert.equal(summary.remaining, 55);
+  assert.equal(summary.canAllocate, true);
+});
+
+test('open debit plus realized losses share the same cumulative campaign cap', () => {
+  const open = trade({ premiumDebitAtEntry: 20 });
+  const closedLoss = canonicalTrade({ id: 'paper-loss', close: closeRecord(-7) });
+  const summary = summarizePaperCampaignBudget([open, closedLoss], 'USDT');
+  assert.equal(summary.used, 27);
+  assert.equal(summary.remaining, 33);
+});
+
+test('malformed PAPER close records block allocation instead of releasing risk', () => {
+  const malformed = canonicalTrade({ close: closeRecord(-5, { realizedPnl: -3 }) });
+  const summary = summarizePaperCampaignBudget([malformed], 'USDT');
+  assert.equal(summary.unknownEntries, 1);
+  assert.equal(summary.canAllocate, false);
 });
