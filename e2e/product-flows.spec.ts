@@ -474,3 +474,99 @@ test('local portfolio tracks holdings, updates net worth, persists and exports a
   await expect(page.locator('#finance .portfolio-panel')).toContainText('لا توجد مراكز استثمارية مسجلة');
   await expect(page.locator('#finance .finance-metrics article').first()).toContainText('0 USD');
 });
+
+
+test('Binance observed IV history warms honestly and exports a provenance-preserving backup', async ({ page }) => {
+  const now = Date.now();
+  await page.clock.install({ time: now });
+  const makeExpiry = (days: number) => {
+    const expiry = new Date(now + days * 86_400_000);
+    return {
+      timestamp: expiry.getTime(),
+      code: expiry.toISOString().slice(2, 10).replaceAll('-', ''),
+    };
+  };
+  const short = makeExpiry(20);
+  const long = makeExpiry(40);
+  const contracts = [
+    { expiry: short, side: 'CALL', strike: '100000' },
+    { expiry: short, side: 'PUT', strike: '100000' },
+    { expiry: long, side: 'CALL', strike: '100000' },
+    { expiry: long, side: 'PUT', strike: '100000' },
+  ].map((item) => ({
+    symbol: `BTC-${item.expiry.code}-${item.strike}-${item.side === 'CALL' ? 'C' : 'P'}`,
+    underlying: 'BTCUSDT',
+    quoteAsset: 'USDT',
+    side: item.side,
+    strikePrice: item.strike,
+    expiryDate: item.expiry.timestamp,
+    unit: '1',
+    minQty: '0.01',
+    maxQty: '10',
+    priceScale: 2,
+    quantityScale: 2,
+    status: 'TRADING',
+  }));
+
+  await page.route(`${PROXY_ORIGIN}/**`, async (route) => {
+    const url = new URL(route.request().url());
+    const endpoint = url.searchParams.get('endpoint');
+    let payload: unknown;
+    if (endpoint === 'exchangeInfo') {
+      payload = {
+        serverTime: now,
+        optionContracts: [{ baseAsset: 'BTC', quoteAsset: 'USDT', underlying: 'BTCUSDT' }],
+        optionSymbols: contracts,
+      };
+    } else if (endpoint === 'mark') {
+      payload = contracts.map((contract) => ({
+        symbol: contract.symbol,
+        markPrice: '5000',
+        bidIV: '0.52',
+        askIV: '0.58',
+        markIV: contract.symbol.includes(short.code) ? '0.55' : '0.60',
+      }));
+    } else if (endpoint === 'ticker') {
+      payload = contracts.map((contract) => ({
+        symbol: contract.symbol,
+        bidPrice: '4.9',
+        askPrice: '5.1',
+        lastPrice: '5.0',
+        volume: '12',
+        amount: '60',
+        closeTime: now,
+      }));
+    } else if (endpoint === 'index') {
+      payload = [{ underlying: 'BTCUSDT', indexPrice: '100000', time: now }];
+    } else if (endpoint === 'openInterest') {
+      payload = [];
+    } else if (endpoint === 'depth') {
+      payload = { lastUpdateId: 42, T: now, bids: [['4.9', '2']], asks: [['5.1', '2']] };
+    } else {
+      throw new Error(`Unexpected mocked market-data endpoint: ${endpoint ?? '(missing)'}`);
+    }
+    await route.fulfill({ status: 200, headers: proxyHeaders, body: JSON.stringify(payload) });
+  });
+
+  await page.getByRole('button', { name: 'تحميل Binance' }).click();
+  const opportunities = page.locator('#opportunities');
+  await expect(opportunities).toContainText('IV Rank · 365 يوم');
+  await expect(opportunities).toContainText('IV Percentile · 365 يوم');
+  await expect(opportunities).toContainText('يلزم 30 يوماً صالحاً');
+  await expect(opportunities.locator('.opportunity-metric').filter({ hasText: 'IV Rank · 365 يوم' })).toContainText('غير متاح');
+
+  await page.locator('.side-nav').getByRole('button', { name: 'الدفتر التجريبي' }).click();
+  const downloadPromise = page.waitForEvent('download');
+  await page.locator('#journal').getByRole('button', { name: 'نسخة IV JSON' }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe('sol-iv-history-backup.json');
+  const stream = await download.createReadStream();
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
+  const backup = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  expect(backup.schemaVersion).toBe(1);
+  expect(backup.observations).toHaveLength(1);
+  expect(backup.observations[0].source).toBe('BINANCE_REST_MARK');
+  expect(backup.observations[0].underlying).toBe('BTC');
+  expect(backup.observations[0].tenorDays).toBe(30);
+});
