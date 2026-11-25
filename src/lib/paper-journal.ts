@@ -81,10 +81,10 @@ export function estimateBinanceOptionsTradingFee(
     || !Number.isFinite(quote.unit) || quote.unit <= 0
     || !Number.isFinite(optionPrice) || optionPrice <= 0
     || !Number.isFinite(contracts) || contracts <= 0) return undefined;
-  const feePerContract = Math.min(
-    quote.takerFeeRate! * quote.spot * quote.unit,
-    MAX_BINANCE_OPTION_TRADING_FEE_CAP * optionPrice,
-  );
+  const indexBasedFee = quote.takerFeeRate! * quote.spot * quote.unit;
+  const premiumCap = MAX_BINANCE_OPTION_TRADING_FEE_CAP * optionPrice;
+  if (!Number.isFinite(indexBasedFee) || !Number.isFinite(premiumCap)) return undefined;
+  const feePerContract = Math.min(indexBasedFee, premiumCap);
   const fee = feePerContract * contracts;
   return Number.isFinite(fee) && fee >= 0 ? fee : undefined;
 }
@@ -222,6 +222,8 @@ function hasSameCanonicalContract(trade: PaperTrade, quote: OptionQuote): boolea
     && quote.venue === trade.contractVenueAtEntry
     && quote.assetClass === trade.contractAssetClassAtEntry
     && quote.underlyingKind === trade.contractUnderlyingKindAtEntry
+    && quote.exerciseStyle === 'EUROPEAN'
+    && quote.settlementStyle === 'CASH'
     && quote.underlying === trade.underlying
     && quote.type === trade.type
     && quote.expiry === trade.expiry
@@ -235,6 +237,7 @@ function hasSameCanonicalContract(trade: PaperTrade, quote: OptionQuote): boolea
     && currentEconomics.premium.priceUnit === entryEconomics.premium.priceUnit
     && currentEconomics.exercise.style === entryEconomics.exercise.style
     && currentEconomics.exercise.settlement === entryEconomics.exercise.settlement
+    && currentEconomics.exercise.cashSettlement?.formula === entryEconomics.exercise.cashSettlement?.formula
     && currentEconomics.exercise.cashSettlement?.reference === entryEconomics.exercise.cashSettlement?.reference
     && currentEconomics.exercise.cashSettlement?.currency === entryEconomics.exercise.cashSettlement?.currency
     && currentEconomics.exercise.cashSettlement?.multiplier === entryEconomics.exercise.cashSettlement?.multiplier
