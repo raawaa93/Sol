@@ -171,6 +171,10 @@ export function mapVerifiedBinanceContractSpec(exchangeInfo, symbol, receivedAt)
 function attachContractSpec(record, state) {
   const spec = state.contractSpecs?.get(record.symbol);
   if (!spec) return record;
+  const receivedAt = Date.parse(record.clocks.receivedAt);
+  const specAvailableAt = Date.parse(spec.contractSpecAvailableAt);
+  if (!Number.isFinite(receivedAt) || !Number.isFinite(specAvailableAt)
+    || receivedAt < specAvailableAt || receivedAt - specAvailableAt > 5 * 60 * 1000) return record;
   return createOptionsArchiveRecord({
     ...record,
     contractSpec: spec.contractSpec,
@@ -482,7 +486,8 @@ export async function collectForwardOptionsEvents({ archive, transport, streams,
         gaps += 1;
       } else {
         const raw = item?.type === 'message' ? item.data : item;
-        records = parseBinancePublicStreamEvent(raw, receivedAt, state);
+        records = parseBinancePublicStreamEvent(raw, receivedAt, state)
+          .map((record) => attachContractSpec(record, state));
         if (records.some((record) => record.kind === 'GAP')) gaps += 1;
       }
       processed += 1;
