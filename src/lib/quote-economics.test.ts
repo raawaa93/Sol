@@ -304,6 +304,21 @@ test('canonical risk-neutral EV accepts only a timestamped markPrice BBO source'
   }, 900, 0, riskNeutralNow), null);
 });
 
+test('canonical risk-neutral EV rejects stale or future bid ask event timestamps', () => {
+  assert.equal(calculateQuoteCashRiskNeutralMetrics(canonicalBinanceRiskQuote({
+    sourceTimestamps: {
+      index: '2026-11-25T03:00:00.000Z',
+      bookTicker: '2026-11-25T02:59:00.000Z',
+    },
+  }), 900, 0, riskNeutralNow), null);
+  assert.equal(calculateQuoteCashRiskNeutralMetrics(canonicalBinanceRiskQuote({
+    sourceTimestamps: {
+      index: '2026-11-25T03:00:00.000Z',
+      bookTicker: '2026-11-25T03:01:00.000Z',
+    },
+  }), 900, 0, riskNeutralNow), null);
+});
+
 test('canonical put risk-neutral probability uses cash-settlement multiplier and fees in break-even', () => {
   const quote = canonicalBinanceRiskQuote({ type: 'PUT', strike: 110 });
   const metrics = calculateQuoteCashRiskNeutralMetrics(quote, 900, 3, riskNeutralNow);
