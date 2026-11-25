@@ -19,6 +19,9 @@ interface PaperJournalSectionProps {
   onClose: (trade: PaperTrade) => void | Promise<void>;
   onExportTrades: () => void;
   onExportIVHistory: () => void | Promise<void>;
+  onExportJson: () => void | Promise<void>;
+  onImportBackup: (raw: string) => void | Promise<void>;
+  onImportBackupError: (message: string) => void;
   onClearJournal: () => void;
   onExportRecovery: () => void;
   onExportOriginal: () => void;
@@ -35,6 +38,9 @@ export default function PaperJournalSection({
   onClose,
   onExportTrades,
   onExportIVHistory,
+  onExportJson,
+  onImportBackup,
+  onImportBackupError,
   onClearJournal,
   onExportRecovery,
   onExportOriginal,
@@ -48,13 +54,28 @@ export default function PaperJournalSection({
         <div className="journal-actions">
           <button className="button button-ghost" onClick={onExportTrades}><Download size={14} /> تصدير CSV</button>
           <button className="button button-ghost" onClick={onExportIVHistory}><Download size={14} /> نسخة IV JSON</button>
+          <button className="button button-ghost" onClick={onExportJson} disabled={!trades.length}><Download size={14} /> نسخة الدفتر JSON</button>
+          <label className="button button-ghost journal-import-button">استيراد نسخة JSON
+            <input aria-label="استيراد نسخة دفتر PAPER JSON" type="file" accept="application/json,.json" disabled={paperJournalLoad.persistenceBlocked} onChange={async (event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              if (file.size > 5 * 1024 * 1024) {
+                onImportBackupError('النسخة أكبر من الحد المسموح 5 MiB.');
+                event.target.value = '';
+                return;
+              }
+              try { await onImportBackup(await file.text()); }
+              catch { onImportBackupError('تعذر قراءة ملف النسخة الاحتياطية.'); }
+              event.target.value = '';
+            }} />
+          </label>
           <button className="button button-ghost danger-ghost" onClick={onClearJournal} disabled={!trades.length || paperJournalLoad.persistenceBlocked}><Trash2 size={14} /> مسح الدفتر</button>
         </div>
       </div>
       <article className="panel journal-panel">
         <div className="journal-summary">
           <div className="journal-summary-icon"><WalletCards size={18} /></div>
-          <div><strong>{trades.length} <span>صفقة تجريبية</span></strong><small>محفوظة محلياً في هذا المتصفح فقط</small></div>
+          <div><strong>{trades.length} <span>صفقة تجريبية</span></strong><small>محفوظة محلياً في هذا المتصفح فقط · التخزين المحلي غير مشفر</small></div>
           <div className="journal-metric"><span>وضع التنفيذ</span><strong><i /> PAPER ONLY</strong></div>
           <div className="journal-metric"><span>مفاتيح تداول</span><strong className="safe-label"><LockKeyhole size={13} /> غير مطلوبة</strong></div>
         </div>
