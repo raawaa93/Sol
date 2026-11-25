@@ -53,7 +53,7 @@ import type { AssetClass, OptionQuote, OptionSide, PaperTrade, Underlying } from
 import { ASSET_CLASS_LABELS } from './lib/asset-class';
 import { PAPER_CAMPAIGN_CAPITAL, PAPER_CAMPAIGN_MAX_LOSS, PAPER_CAMPAIGN_PER_TRADE_CAP, canAllocatePaperCampaignTrade, summarizePaperCampaignBudget } from './lib/paper-campaign-budget';
 import { clearPaperJournalRecovery, loadPaperJournal, readPaperJournalPrimary, readPaperJournalRecovery } from './lib/paper-journal-storage';
-import { appendPaperCloseEvent, clearPaperCloseEventsRecovery, loadPaperCloseEvents, readPaperCloseEventsPrimary, readPaperCloseEventsRecovery } from './lib/paper-journal-events';
+import { appendPaperCloseEvent, clearPaperCloseEvents, clearPaperCloseEventsRecovery, loadPaperCloseEvents, readPaperCloseEventsPrimary, readPaperCloseEventsRecovery } from './lib/paper-journal-events';
 import { createCanonicalPaperCloseEvent } from './lib/paper-journal';
 const MarketDepthPanel = lazy(() => import('./components/MarketDepthPanel'));
 const OpportunityReview = lazy(() => import('./components/OpportunityReview'));
@@ -1212,14 +1212,19 @@ function App() {
   };
 
   const clearPaperJournal = () => {
-    if (paperJournalLoad.persistenceBlocked) {
-      notify('لا يمكن مسح دفتر PAPER ما دامت سلامة نسخة الاستعادة غير مؤكدة. نزّل النسخة الخام أولاً.');
+    if (paperJournalLoad.persistenceBlocked || paperCloseEventsLoad.persistenceBlocked) {
+      notify('لا يمكن مسح دفتر PAPER ما دامت سلامة نسخة الاستعادة غير مؤكدة. نزّل النسخ الخام أولاً.');
       return;
     }
     if (!trades.length) return;
-    if (!window.confirm('سيتم حذف إدخالات PAPER المحلية وتحرير ميزانية الحملة. صدّر CSV أولاً إذا أردت الاحتفاظ بالسجل. لا يؤثر هذا على أي أموال أو أوامر حقيقية. هل تريد المتابعة؟')) return;
+    if (!window.confirm('سيتم حذف إدخالات PAPER وأحداث الإغلاق المحلية وتحرير ميزانية الحملة. صدّر CSV وأحداث الإغلاق JSON أولاً إذا أردت الاحتفاظ بالسجل. ستبقى نسخ الاستعادة السابقة محفوظة. لا يؤثر هذا على أي أموال أو أوامر حقيقية. هل تريد المتابعة؟')) return;
+    if (!clearPaperCloseEvents(localStorage)) {
+      notify('تعذر تصفير أحداث الإغلاق؛ لم نمسح إدخالات PAPER.');
+      return;
+    }
     setTrades([]);
-    notify('تم تصفير حملة PAPER المحلية فقط؛ لم يتغير أي حساب أو أمر حقيقي.');
+    setPaperCloseEvents([]);
+    notify('تم تصفير حملة PAPER المحلية فقط؛ بقيت نسخ الاستعادة السابقة محفوظة.');
   };
 
   const downloadPaperJournalRaw = (raw: string | null, filename: string, label: string) => {
@@ -1660,7 +1665,7 @@ function App() {
                   <div><span>المتبقي للحملة</span><strong>{campaignBudgetBlockMessage ? 'محجوب' : formatMoney(campaignBudget.remaining, 2, campaignBudget.currency || null)}</strong></div>
                   <div><span>احتياطي خارج التداول</span><strong>{formatMoney(PAPER_CAMPAIGN_CAPITAL - PAPER_CAMPAIGN_MAX_LOSS, 0, 'USD')}</strong></div>
                 </div>
-                {campaignBudgetBlockMessage && <div className="analysis-footnote"><ShieldAlert size={13} /><span>{campaignBudgetBlockMessage} يُحسب كل إدخال PAPER ضمن سقف الحملة حتى إعادة ضبط الدفتر؛ لا يدعم الدفتر حالياً تسجيل إغلاق الصفقات.</span></div>}
+                {campaignBudgetBlockMessage && <div className="analysis-footnote"><ShieldAlert size={13} /><span>{campaignBudgetBlockMessage} يحتسب السقف تكلفة المراكز المفتوحة والخسائر المحققة في صفقات PAPER المغلقة؛ الأرباح المحققة تخفض خسارة الحملة المحسوبة، ولا تُعد أرباحاً فعلية.</span></div>}
                 <div className="risk-summary">
                   <div><span>تكلفة القسط + الرسوم</span><strong>{canCalculatePremiumCost ? formatMoney(totalCost, 2, quoteAssetLabel ?? null) : 'غير متاح'}</strong></div>
                   <div><span>نقطة التعادل عند الانتهاء</span><strong>{canCalculateBreakEven ? formatMoney(breakEven, 0, quoteAssetLabel ?? null) : 'غير متاح'}</strong></div>
@@ -1720,7 +1725,7 @@ function App() {
           </Suspense>
 
           <section className="section-anchor journal-section" id="journal">
-            <div className="section-title-row"><div><span className="section-kicker">PAPER WORKSPACE</span><h2>الدفتر التجريبي</h2><p>سجل الفرضية والكمية والقسط قبل أن تقيم جودة القرار.</p></div><div className="journal-actions"><button className="button button-ghost" onClick={exportTrades}><Download size={14} /> تصدير CSV</button>{paperCloseEvents.length > 0 && <button className="button button-ghost" onClick={() => exportPaperCloseEvents(JSON.stringify(paperCloseEvents, null, 2), 'sol-paper-close-events.json')}><Download size={14} /> أحداث الإغلاق JSON</button>}<button className="button button-ghost" onClick={exportIVHistoryBackup}><Download size={14} /> نسخة IV JSON</button><button className="button button-ghost danger-ghost" onClick={clearPaperJournal} disabled={!trades.length || paperJournalLoad.persistenceBlocked}><Trash2 size={14} /> مسح الدفتر</button></div></div>
+            <div className="section-title-row"><div><span className="section-kicker">PAPER WORKSPACE</span><h2>الدفتر التجريبي</h2><p>سجل الفرضية والكمية والقسط قبل أن تقيم جودة القرار.</p></div><div className="journal-actions"><button className="button button-ghost" onClick={exportTrades}><Download size={14} /> تصدير CSV</button>{paperCloseEvents.length > 0 && <button className="button button-ghost" onClick={() => exportPaperCloseEvents(JSON.stringify(paperCloseEvents, null, 2), 'sol-paper-close-events.json')}><Download size={14} /> أحداث الإغلاق JSON</button>}<button className="button button-ghost" onClick={exportIVHistoryBackup}><Download size={14} /> نسخة IV JSON</button><button className="button button-ghost danger-ghost" onClick={clearPaperJournal} disabled={!trades.length || paperJournalLoad.persistenceBlocked || paperCloseEventsLoad.persistenceBlocked}><Trash2 size={14} /> مسح الدفتر</button></div></div>
             <article className="panel journal-panel">
               <div className="journal-summary"><div className="journal-summary-icon"><WalletCards size={18} /></div><div><strong>{trades.length} <span>صفقة تجريبية</span></strong><small>محفوظة محلياً في هذا المتصفح فقط</small></div><div className="journal-metric"><span>وضع التنفيذ</span><strong><i /> PAPER ONLY</strong></div><div className="journal-metric"><span>مفاتيح تداول</span><strong className="safe-label"><LockKeyhole size={13} /> غير مطلوبة</strong></div></div>
               {(paperJournalLoad.backupAvailable || paperJournalLoad.persistenceBlocked) && <div className="journal-recovery-warning" role="alert"><strong>تنبيه سلامة دفتر PAPER</strong><p>{paperJournalLoad.persistenceBlocked ? 'أوقفنا أي كتابة جديدة حتى لا نفقد بيانات قديمة لم نستطع حفظ نسخة استعادتها بأمان.' : paperJournalLoad.parseError ? 'تعذر تحليل ملف الدفتر الأصلي؛ احتفظنا بنسخته الخام قبل استبعادها من العرض.' : paperJournalLoad.rejectedCount > 0 ? `تم عزل ${paperJournalLoad.rejectedCount} سجل غير صالح من العرض، مع الاحتفاظ بالملف الأصلي الخام للاستعادة.` : 'توجد نسخة استعادة سابقة محفوظة من دفتر PAPER؛ احتفظ بها خارج المتصفح قبل مسح بياناته.'} لا تمسح بيانات المتصفح قبل تنزيل النسخة.</p>{paperJournalLoad.backupAvailable && <button className="button button-ghost" onClick={exportPaperJournalRecovery}><Download size={14} /> تنزيل نسخة الاستعادة JSON</button>}{paperJournalLoad.persistenceBlocked && <button className="button button-ghost" onClick={exportPaperJournalOriginal}><Download size={14} /> تنزيل الملف الأصلي الحالي</button>}{paperJournalLoad.persistenceBlocked && <button className="button button-ghost" onClick={retryPaperJournalPersistence}>إعادة المحاولة بعد حفظ النسخ</button>}</div>}
