@@ -173,3 +173,11 @@ No cloud resource, subscription, credential, schedule or billing change was crea
 - Heartbeat polling is stopped before final archive verification, preventing a timer race from misclassifying a final verification error as an operator stop.
 - CI 45579436891, Lighthouse 45579436842 and Project Context Guard 45579436903 passed on the PR head.
 - This remains local, opt-in and undeployed. No schedule, remote storage, real market capture or trading was enabled.
+
+## Historical options data availability research — 25 November 2026
+
+- Binance's official Options REST market-data catalog includes historical trades, klines, historical exercise records, mark/Greeks, ticker, index and open-interest endpoints. It does **not** expose a historical time-series endpoint for BBO/bookTicker or depth replay. The live WebSocket @bookTicker and depth streams provide forward observations only. Official catalog: https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-options/api/rest-api/market-data and https://developers.binance.info/en/docs/catalog/core-trading-derivatives-trading-options/api/ws-streams
+- The Binance Data Vision archive does not currently provide a verified options BBO archive. Do not substitute spot/perpetual order books for option-contract BBO.
+- ByKaranteli publishes a free CC0-style options-chain daily snapshot with per-instrument open interest, mark IV and underlying price. This is useful for coarse context, not executable quote reconstruction. Its deeper options OI history and recorded Deribit options tape are pay-per-call x402 endpoints; no paid calls were made. Sources: https://bykaranteli.com/data and https://bykaranteli.com/developers
+- Tardis/CryptoStruct and other tick vendors advertise options order-book history, but access is paid or limited to samples; they are outside the current zero-spend policy. Do not use sample days as evidence of full-history coverage.
+- **Conclusion:** no verified, free, historical Binance Options executable-BBO corpus was found. Historical trade prints or hourly/daily IV/OI snapshots cannot reconstruct the bid/ask available at each trade timestamp. The defensible choices are (a) forward-only BBO/depth capture on a permitted host, or (b) an explicitly authorized licensed dataset. Until one exists, no fill-quality backtest or strategy-edge claim is valid.
