@@ -105,3 +105,25 @@ Do not close #91 until all canonical consumers are migrated and independently te
 Do not close #106/#33 until an encrypted production backup exists and an isolated restore drill succeeds.
 Do not close #113 until branch protection is verified from GitHub.
 Do not claim Binance live-data readiness until the published app is tested from the intended end-user network.
+
+## Execution continuation — 25 November 2026, 03:32–03:35 UTC
+
+### Merged and verified
+
+- PR #165 merged to main as 4df6c5b9690f4cd2759b5fc10f1dbc48f98657c1 (squash). Issue #161 closed automatically. It replaces Recharts/D3 charts with lightweight accessible SVG, lazy-loads historical replay, removes the unused Recharts dependency and preserves existing bundle thresholds. PR-head evidence: 209/209 tests, build, 17/17 E2E, bundle budgets (Initial JS 97.210/100 KiB; All JS 111.525/240 KiB; CSS 13.571/14 KiB), Project Context Guard and production dependency audit (0 vulnerabilities). PR-head Lighthouse run succeeded; published-site smoke was skipped.
+- PR #164 merged to main as 33d7da6dca885b3aab0b5903acc998fda4c58c95 (squash). It corrects Binance Options stream attribution and explicitly marks archive/PIT modules, durable storage, collector and historical quote history as NOT DELIVERED / NOT VERIFIED on main. Project Context Guard succeeded on PR head 9c29abdaede73d1648b2a2ebd2b48ac205a02fb9.
+
+### Post-merge regression requiring repair
+
+The post-merge main CI run 45540686865 on 4df6c5b9690f4cd2759b5fc10f1dbc48f98657c1 failed: 208/209 tests passed. The failing test is src/lib/csv.test.ts:114, “missing IV is solved only when explicit European spot contract mechanics are supplied”; the expected inferred IV near 0.4 was not produced. The GitHub Pages build/deploy run 45540686881 was blocked by the same test failure. Do not treat the deploy as successful. Project Context Guard passed on the subsequent docs merge. Lighthouse run 45540687041 was still in progress at the time of this record.
+
+### Delegated active work
+
+- A detailed continuation task was posted to Copilot on issue #91: repair the regression first, then continue Phase 3/4/5 canonical economics routing with fail-closed behavior and full tests.
+- A separate continuation task was posted to Copilot on issue #159, explicitly preserving the existing isolated archive worktree. The old bundle gate is now fixed; Copilot must rebase carefully, verify the updated budget, and continue archive/collector work with fake transport first and no production writes/live capture.
+- Issue #106 was updated: Actions secret values cannot be inspected; no production backup or restore is claimed. The connector exposes no workflow-dispatch action in this session.
+- Issue #113 was updated: the connected GitHub integration exposes branch-protection/ruleset reads only; no write action is available. main remains unprotected until configured in GitHub settings. Public repositories can use branch protection on Free.
+
+### Safety boundary retained
+
+No production database connection/dump, migration, data deletion, credential read/write, live order, paid service, new cloud resource, live market capture, or regional-policy bypass was performed. No backup/restore success is claimed. Current main SHA at record time: 33d7da6dca885b3aab0b5903acc998fda4c58c95.
