@@ -116,7 +116,6 @@ The papers below inform hypotheses and data design; they do not establish that t
 - **Liquidity and inventory:** model spread, displayed size, turnover, stale-feed gaps and time-of-day as separate explanatory variables. Since true participant inventory is not observed in the public feed, describe inventory effects as hypotheses, not facts about named market makers.
 - **Events and regimes:** pre-register maturity, moneyness, time-of-day and event-window slices; purge overlapping labels; limit the number of tested hypotheses and report every attempted model. A regime association is not causal event attribution.
 - **Portfolio risk:** normalize currency and multiplier before aggregation; scenario-test spot/forward, volatility surface, rates, basis and correlation shocks. If the position book or synchronized history is absent, mark portfolio exposure unavailable rather than zero.
-
 No new research or pricing package is adopted. The existing comparison remains: QuantLib is a model cross-check, not data; NautilusTrader/LEAN require suitable licensed historical inputs and their execution assumptions still need validation. Open-source code does not supply a licensed, point-in-time options archive.
 
 ### Ranked experiments and go/no-go protocol
@@ -165,3 +164,19 @@ Snapshot metrics below were queried from GitHub on 24 November 2026. Test counts
 3. Review current Binance public-data terms and any intended private/public display or redistribution rights before collection or publication.
 4. Start forward-only, public, local capture only after legal/terms and connection-policy review; treat historical backfill separately from PIT evidence.
 5. Acquire or generate a legally usable, timestamped, size-aware options quote sample before running walk-forward, stress, PBO/DSR, strategy ranking, or opportunity-efficacy studies.
+
+## Mainline delivery-status correction — 25 November 2026
+
+This section supersedes any wording above that could be read as saying the archive and point-in-time implementation has shipped on `main`.
+
+An independent recursive Git-tree audit of `main` at `82312ae958f548375c395550bb2e96fb5dc13cfa` found:
+
+- `src/lib/options-archive.ts`, `src/lib/research-validation.ts`, their corresponding tests, `ResumableOptionsArchive`, and `evaluatePointInTime` are **not present in that mainline tree**.
+- The existing `src/components/HistoricalReplayPanel.tsx` and `src/lib/replay.ts` are the CSV execution-replay implementation; they are not the archive/PIT runtime.
+- The archive/research files previously reported by the isolated coding worktree were **LOCAL / UNCOMMITTED**, not merged or delivered. Their current existence and status must be re-confirmed by the coding agent before they are relied on.
+- The reported 210/210 and later 219/219 test results belong to that isolated worktree. They do not establish that archive/PIT code exists or passes tests on `main`.
+- Mainline verification at the cited SHA covers the code actually committed there. It does not verify the missing archive implementation. The mainline bundle had only 3 bytes of total-JavaScript headroom in the reported passing CI measurement; the isolated feature worktree exceeded both unchanged JavaScript budgets.
+
+Accordingly, the executive statement that this sprint “adds” the archive primitive and PIT checks describes the isolated work claimed in the original worktree report, **not a delivered mainline capability**. Treat archive durability, cross-process writer locking, crash recovery, export/restore, PIT history, and collector readiness as **NOT DELIVERED / NOT VERIFIED ON MAIN** until a reviewed code PR lands with exact source paths, tests, and passing unchanged bundle gates.
+
+No collector, forward market-data capture, production archive, or historical BBO series is available. No strategy result or profitability claim follows from this report. The first implementation gate remains the unchanged bundle budget in [#161](https://github.com/raawaa93/Sol/issues/161); storage integrity gates in [#159](https://github.com/raawaa93/Sol/issues/159) come after it. No merge, deployment, live capture, or production write is authorized by this status correction.
