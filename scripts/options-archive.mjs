@@ -114,7 +114,7 @@ export function validateOptionsArchiveRecord(record) {
   if (record.contractSpec !== null && record.contractSpec !== undefined) {
     assertObject(record.contractSpec, 'contractSpec');
     const spec = record.contractSpec;
-    const requiredText = ['symbol', 'underlying', 'optionType', 'quoteAsset', 'settlementAsset', 'premiumUnit', 'exerciseStyle', 'settlementStyle', 'sourceEndpoint', 'termsSource', 'settlementTermsSource', 'version'];
+    const requiredText = ['symbol', 'underlying', 'optionType', 'quoteAsset', 'settlementAsset', 'premiumUnit', 'exerciseStyle', 'settlementStyle', 'settlementPriceMethod', 'sourceEndpoint', 'termsSource', 'settlementTermsSource', 'version'];
     if (requiredText.some((key) => typeof spec[key] !== 'string' || !spec[key].trim())
       || spec.symbol !== record.symbol
       || !['CALL', 'PUT'].includes(spec.optionType)
@@ -128,7 +128,8 @@ export function validateOptionsArchiveRecord(record) {
       || !Number.isFinite(Date.parse(spec.expiryAt))) {
       throw new OptionsArchiveError('CONTRACT_SPEC_INCOMPLETE', 'Contract specification is missing verified symbol, unit, premium, currency, exercise, settlement, strike or expiry terms.');
     }
-    if (spec.settlementStyle === 'CASH' && (!Number.isFinite(spec.cashSettlementMultiplier) || spec.cashSettlementMultiplier <= 0)) {
+    if (spec.settlementStyle === 'CASH' && (!Number.isFinite(spec.cashSettlementMultiplier) || spec.cashSettlementMultiplier <= 0
+      || spec.settlementPriceMethod !== 'INDEX_ARITHMETIC_MEAN' || spec.settlementWindowMs !== 30 * 60 * 1000)) {
       throw new OptionsArchiveError('CONTRACT_SPEC_INCOMPLETE', 'Cash-settled contracts require an explicit positive settlement multiplier.');
     }
     if (spec.settlementStyle === 'PHYSICAL' && (!Array.isArray(spec.deliverables) || spec.deliverables.length === 0)) {
