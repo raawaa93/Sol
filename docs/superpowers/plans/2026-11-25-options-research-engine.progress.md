@@ -85,3 +85,9 @@
 - Added a Playwright regression assertion for the value and label.
 - CI 45573552188 passed 303/303 tests, build, bundle and 18/18 Playwright journeys. Lighthouse 45573547735 and Project Context Guard 45573547738 passed.
 - Total bankroll, available cash and aggregate open risk are not yet modeled. This does not enable live trading.
+
+### Replay expiry guard — PR #221
+- [x] Reject missing/malformed expiry and snapshots at/after expiry.
+- [x] Skip fixed-hold replay trades when planned exit reaches/crosses expiry; count final would-be entries blocked by expiry.
+- [x] Regression tests and CI/build/browser/Lighthouse/Project Context Guard passed; merged as `c0a954200206f66649211af18a2ab4ab44a963f5`.
+- [ ] Implement a separately validated expiry settlement/assignment model before allowing expiry-crossing backtests.
