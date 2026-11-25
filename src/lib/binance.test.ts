@@ -16,6 +16,7 @@ test('Binance time to expiry uses exchange server time rather than the browser c
   const symbol = `BTC-${compactDate(expiry)}-100000-C`;
   const snapshot = normalizeBinanceSnapshot({
     fetchedAt: localFetchTime,
+    marksReceivedAt: localFetchTime,
     exchangeInfo: {
       serverTime,
       optionContracts: [{ baseAsset: 'BTC', quoteAsset: 'USDT', underlying: 'BTCUSDT' }],
@@ -46,6 +47,7 @@ test('Binance snapshot normalizer merges the active option universe and public m
   const symbol = `BTC-${code}-100000-C`;
   const snapshot = normalizeBinanceSnapshot({
     fetchedAt: now,
+    marksReceivedAt: now,
     exchangeInfo: {
       serverTime: now,
       optionContracts: [{ baseAsset: 'BTC', quoteAsset: 'USDT', underlying: 'BTCUSDT', settleAsset: 'USDT' }],
@@ -111,6 +113,7 @@ test('Binance snapshot keeps every active crypto and commodity underlying return
   }));
   const snapshot = normalizeBinanceSnapshot({
     fetchedAt: now,
+    marksReceivedAt: now,
     exchangeInfo: { serverTime: now, optionContracts: contracts, optionSymbols },
     marks: optionSymbols.map(({ symbol }) => ({ symbol, markPrice: '10', markIV: '0.5' })),
     indices: underlyings.map(([, underlying], index) => ({
@@ -153,6 +156,7 @@ test('Binance preserves explicit crypto, commodity, and unknown contract metadat
   }));
   const snapshot = normalizeBinanceSnapshot({
     fetchedAt: now,
+    marksReceivedAt: now,
     exchangeInfo: {
       serverTime: now,
       optionContracts: instruments.map(({ baseAsset, underlying, underlyingType, contractType }) => ({
@@ -210,6 +214,7 @@ test('Binance normalizer avoids crossed bid/ask midpoints and preserves last-pri
   const symbol = `ETH-${code}-4000-P`;
   const snapshot = normalizeBinanceSnapshot({
     fetchedAt: now,
+    marksReceivedAt: now,
     exchangeInfo: {
       serverTime: now,
       optionContracts: [{ baseAsset: 'ETH', quoteAsset: 'USDT', underlying: 'ETHUSDT' }],
@@ -244,6 +249,7 @@ test('Binance keeps ticker, index, and open-interest source timestamps separate'
   const openInterestTime = now - 60_000;
   const snapshot = normalizeBinanceSnapshot({
     fetchedAt: now,
+    marksReceivedAt: now,
     exchangeInfo: {
       serverTime: now,
       optionContracts: [{ baseAsset: 'BTC', quoteAsset: 'USDT', underlying: 'BTCUSDT' }],
@@ -274,6 +280,7 @@ test('Binance does not substitute index time for a missing ticker timestamp', ()
   const indexTime = now - 2_000;
   const snapshot = normalizeBinanceSnapshot({
     fetchedAt: now,
+    marksReceivedAt: now,
     exchangeInfo: {
       serverTime: now,
       optionContracts: [{ baseAsset: 'BTC', quoteAsset: 'USDT', underlying: 'BTCUSDT' }],
@@ -303,6 +310,7 @@ test('Binance quote diagnostics distinguish missing bid, ask, and both sides', (
   ];
   const snapshot = normalizeBinanceSnapshot({
     fetchedAt: now,
+    marksReceivedAt: now,
     exchangeInfo: {
       serverTime: now,
       optionContracts: [{ baseAsset: 'BTC', quoteAsset: 'USDT', underlying: 'BTCUSDT' }],
@@ -501,6 +509,7 @@ test('Binance normalizer models a reference price only when IV is observed and n
   const symbol = `BTC-${compactDate(expiry)}-100000-C`;
   const snapshot = normalizeBinanceSnapshot({
     fetchedAt: now,
+    marksReceivedAt: now,
     exchangeInfo: {
       serverTime: now,
       optionContracts: [{ baseAsset: 'BTC', quoteAsset: 'USDT', underlying: 'BTCUSDT' }],
@@ -522,6 +531,7 @@ test('Binance commodity options preserve perpetual-index mechanics and do not re
   const symbol = `XAU-${code}-4000-C`;
   const snapshot = normalizeBinanceSnapshot({
     fetchedAt: now,
+    marksReceivedAt: now,
     exchangeInfo: {
       serverTime: now,
       optionContracts: [{ baseAsset: 'XAU', quoteAsset: 'USDT', underlying: 'XAUUSDT', settleAsset: 'USDT', contractType: 'TRADFI_OPTIONS', underlyingType: 'COMMODITY' }],
@@ -559,6 +569,7 @@ test('Binance normalizer excludes contracts with unknown contract unit instead o
   const missingUnitSymbol = `BTC-${code}-100000-P`;
   const snapshot = normalizeBinanceSnapshot({
     fetchedAt: now,
+    marksReceivedAt: now,
     exchangeInfo: {
       serverTime: now,
       optionContracts: [{ baseAsset: 'BTC', quoteAsset: 'USDT', underlying: 'BTCUSDT', settleAsset: 'USDT', contractType: 'CRYPTO_OPTIONS', underlyingType: 'CRYPTO' }],
@@ -589,6 +600,7 @@ test('Binance contract metadata classifies newly listed crypto assets and leaves
   const equitySymbol = `NVDA-${code}-100-C`;
   const snapshot = normalizeBinanceSnapshot({
     fetchedAt: now,
+    marksReceivedAt: now,
     exchangeInfo: {
       serverTime: now,
       optionContracts: [
@@ -646,6 +658,7 @@ test('Binance explicit underlyingType overrides legacy base-asset heuristics', (
   const symbol = `BTC-${compactDate(expiry)}-100-C`;
   const snapshot = normalizeBinanceSnapshot({
     fetchedAt: now,
+    marksReceivedAt: now,
     exchangeInfo: {
       serverTime: now,
       optionContracts: [{
@@ -678,6 +691,7 @@ test('Binance keeps contracts with a valid market price when implied volatility 
   const symbol = `BTC-${compactDate(expiry)}-100000-C`;
   const snapshot = normalizeBinanceSnapshot({
     fetchedAt: now,
+    marksReceivedAt: now,
     exchangeInfo: {
       serverTime: now,
       optionContracts: [{
