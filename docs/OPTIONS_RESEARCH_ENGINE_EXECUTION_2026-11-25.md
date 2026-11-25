@@ -118,7 +118,7 @@ PR #204 merged to main as `337e03fb26d44c906125318affc473030c165da4` (PR merge c
 - Project Context Guard run 45572889839: passed.
 - PR #201 was closed unmerged as a superseded duplicate; PR #204 is the merged implementation.
 
-**Remaining limits are unchanged:** no live Binance capture, no scheduled/supervised worker, no cloud archive, no historical executable BBO corpus, no walk-forward evidence or measured strategy edge, and no live trading. The replay is a PAPER execution baseline, not a signal strategy or proof of profitability.
+**Remaining limits:** PR #216 has added and merged an opt-in supervised local worker, but it is not deployed or scheduled. There is still no live Binance capture, durable cloud archive, historical executable BBO corpus, walk-forward evidence or measured strategy edge, and no live trading. The replay is a PAPER execution baseline, not a signal strategy or proof of profitability.
 
 
 ## Follow-up — PR #204 BBO replay and PR #205 risk budget — 25 November 2026
