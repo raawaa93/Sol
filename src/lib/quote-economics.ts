@@ -142,9 +142,17 @@ export function calculateQuoteCashRiskNeutralMetrics(
     ? Date.parse(quote.sourceTimestamps?.riskFreeRate ?? '')
     : Date.parse(quote.sourceReceivedAt?.riskFreeRate ?? '');
   const indexTimestamp = Date.parse(quote.sourceTimestamps?.index ?? '');
+  const bboTimestamp = quote.bidAskSource === 'BOOK_TICKER'
+    ? Date.parse(quote.sourceTimestamps?.bookTicker ?? '')
+    : quote.bidAskSource === 'OPTION_TICKER'
+      ? Date.parse(quote.sourceTimestamps?.optionTicker ?? '')
+      : quote.bidAskSource === 'MARK_PRICE'
+        ? Date.parse(quote.sourceTimestamps?.markPrice ?? '')
+        : Number.NaN;
   const markIvFresh = Number.isFinite(markIvReceivedAt) && nowMs >= markIvReceivedAt && nowMs - markIvReceivedAt <= 60_000;
   const riskFreeFresh = Number.isFinite(riskFreeReceivedAt) && nowMs >= riskFreeReceivedAt && nowMs - riskFreeReceivedAt <= 60_000;
   const indexFresh = Number.isFinite(indexTimestamp) && nowMs >= indexTimestamp && nowMs - indexTimestamp <= 15_000;
+  const bboFresh = Number.isFinite(bboTimestamp) && nowMs >= bboTimestamp && nowMs - bboTimestamp <= 15_000;
   if (!economics || !cashSettlement || economics.provenance.status !== 'PROVIDER_VERIFIED'
     || economics.provenance.provider !== 'BINANCE'
     || economics.exercise.style !== 'EUROPEAN'
@@ -177,7 +185,7 @@ export function calculateQuoteCashRiskNeutralMetrics(
     || quote.ivStatus !== 'OBSERVED'
     || quote.markIvSource !== 'REST_MARK'
     || (quote.riskFreeRateSource !== 'REST_MARK' && quote.riskFreeRateSource !== 'MARK_PRICE')
-    || !markIvFresh || !riskFreeFresh || !indexFresh
+    || !markIvFresh || !riskFreeFresh || !indexFresh || !bboFresh
     || quote.estimatedFields?.some((field) => ['iv', 'spot', 'riskFreeRate', 'daysToExpiry'].includes(field))
     || !Number.isFinite(quote.riskFreeRate)
     || !Number.isFinite(quote.carryYield)
