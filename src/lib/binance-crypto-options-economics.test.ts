@@ -37,6 +37,12 @@ test('Binance crypto adapter keeps premium and underlying delivery scales indepe
   assert.ok(missingLegalValidation.unsupportedReasons.includes('MISSING_LEGAL_TERMS_PROVENANCE'));
   const premiumOnly = calculatePremiumCash({ economics: missingLegalTerms, premiumPrice: 12, contracts: 3 });
   assert.equal(premiumOnly.ok, true, 'premium scale is independently sourced from exchangeInfo');
+  const missingProductFields = structuredClone(economics);
+  delete missingProductFields.provenance.rawFields;
+  assert.equal(validateContractEconomics(missingProductFields).adapterReady, false);
+  const wrongProductFamily = structuredClone(economics);
+  wrongProductFamily.provenance.rawFields!.contractType = 'TRADFI_OPTIONS';
+  assert.equal(validateContractEconomics(wrongProductFamily).adapterReady, false);
 
   const premium = calculatePremiumCash({ economics, premiumPrice: 12, contracts: 3 });
   assert.deepEqual(premium, {
