@@ -190,6 +190,15 @@ test('point-in-time gate rejects future, stale, backfilled and modelled observat
   assert.ok(evaluateOptionsPointInTime(noEventTime, '2026-11-25T03:00:01.000Z', ['bid']).reasons.includes('EVENT_TIME_MISSING:bid'));
 });
 
+test('incomplete or not-yet-available contract terms cannot authorize PIT eligibility', () => {
+  assert.throws(
+    () => makeRecord({ contractSpec: { symbol: CONTRACT.symbol, unit: 100 } }),
+    (error) => error instanceof OptionsArchiveError && error.code === 'CONTRACT_SPEC_INCOMPLETE',
+  );
+  const lateSpec = makeRecord({ contractSpecAvailableAt: '2026-11-25T03:00:02.000Z' });
+  assert.ok(evaluateOptionsPointInTime(lateSpec, '2026-11-25T03:00:01.000Z', ['bid']).reasons.includes('CONTRACT_SPEC_LOOKAHEAD'));
+});
+
 test('future source events and malformed source timestamps are rejected at ingestion', () => {
   assert.throws(
     () => makeRecord({ clocks: { exchangeEventAt: '2026-11-25T03:01:00Z', receivedAt: RECEIVED, availableAt: AVAILABLE } }),
