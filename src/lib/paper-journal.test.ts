@@ -488,3 +488,25 @@ test('canonical PAPER entry rejects a non-zero entry fee without explicit fee pr
   assert.equal(result.ok, false);
   if (!result.ok) assert.equal(result.reason, 'PAPER_ENTRY_FEE_PROVENANCE_REQUIRED');
 });
+
+
+test('canonical PAPER close rejects a timestamp before entry and an impossible entry receive order', () => {
+  const beforeEntry = closeCanonicalPaperTrade({
+    trade: canonicalEntry.trade,
+    quote: exitQuote,
+    closedAt: '2026-11-25T03:00:59Z',
+  });
+  assert.equal(beforeEntry.ok, false);
+  if (!beforeEntry.ok) assert.equal(beforeEntry.reason, 'PAPER_EXIT_TIME_NOT_AFTER_ENTRY');
+
+  const impossibleReceive = closeCanonicalPaperTrade({
+    trade: {
+      ...canonicalEntry.trade,
+      sourceReceivedAtAtEntry: { bidAsk: '2026-11-25T02:59:59Z' },
+    },
+    quote: exitQuote,
+    closedAt: '2026-11-25T03:02:01Z',
+  });
+  assert.equal(impossibleReceive.ok, false);
+  if (!impossibleReceive.ok) assert.equal(impossibleReceive.reason, 'PAPER_ENTRY_SNAPSHOT_NOT_CANONICAL');
+});
