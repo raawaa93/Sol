@@ -4,6 +4,7 @@ const REST_ENDPOINTS = Object.freeze({
   exchangeInfo: { path: '/eapi/v1/exchangeInfo', required: [], optional: [] },
   klines: { path: '/eapi/v1/klines', required: ['symbol', 'interval'], optional: ['startTime', 'endTime', 'limit'] },
   recentTrades: { path: '/eapi/v1/trades', required: ['symbol'], optional: ['limit'] },
+  blockTrades: { path: '/eapi/v1/blockTrades', required: [], optional: ['symbol', 'limit'] },
   depth: { path: '/eapi/v1/depth', required: ['symbol'], optional: ['limit'] },
   ticker: { path: '/eapi/v1/ticker', required: [], optional: ['symbol'] },
   mark: { path: '/eapi/v1/mark', required: [], optional: ['symbol'] },
@@ -15,6 +16,7 @@ const REST_ENDPOINT_ID = Object.freeze({
   exchangeInfo: 'REST_EXCHANGE_INFO',
   klines: 'REST_KLINES',
   recentTrades: 'REST_RECENT_TRADES',
+  blockTrades: 'REST_BLOCK_TRADES',
   depth: 'REST_DEPTH',
   ticker: 'REST_TICKER',
   mark: 'REST_MARK',
@@ -62,13 +64,17 @@ export function buildPublicBinanceRestUrl(endpoint, params = {}) {
   }
   if (params.symbol !== undefined && !validSymbol(params.symbol)) throw new OptionsCollectorError('INVALID_SYMBOL', 'Invalid Binance Options symbol.');
   if (params.underlying !== undefined && !/^[A-Z0-9]{3,16}$/.test(params.underlying)) throw new OptionsCollectorError('INVALID_UNDERLYING', 'Invalid underlying.');
-  if (params.underlyingAsset !== undefined && !/^[A-Z0-9]{2,10}$/.test(params.underlyingAsset)) throw new OptionsCollectorError('INVALID_UNDERLYING', 'Invalid underlying asset.');
+  if (params.underlyingAsset !== undefined && !/^[A-Z0-9]{2,10}(\\/[A-Z0-9]{2,10})?$/.test(params.underlyingAsset)) throw new OptionsCollectorError('INVALID_UNDERLYING', 'Invalid underlying asset.');
   if (params.expiration !== undefined && !/^\d{6}$/.test(String(params.expiration))) throw new OptionsCollectorError('INVALID_EXPIRATION', 'Expiration must be YYMMDD.');
-  if (params.interval !== undefined && !/^(1m|3m|5m|15m|30m|1h|2h|4h|6h|12h|1d)$/.test(params.interval)) throw new OptionsCollectorError('INVALID_INTERVAL', 'Unsupported kline interval.');
+  if (params.interval !== undefined && !/^(1m|3m|5m|15m|30m|1h|2h|4h|6h|12h|1d|3d|1w|1M)$/.test(params.interval)) throw new OptionsCollectorError('INVALID_INTERVAL', 'Unsupported kline interval.');
   for (const key of ['startTime', 'endTime', 'limit']) {
     if (params[key] !== undefined && !validPositiveInteger(params[key])) throw new OptionsCollectorError('INVALID_NUMERIC_PARAM', `${key} must be a positive integer.`);
   }
-  if (params.limit !== undefined && Number(params.limit) > 1000) throw new OptionsCollectorError('LIMIT_TOO_LARGE', 'REST limit cannot exceed 1000.');
+  const maxLimit = endpoint === 'klines' ? 1500 : ['recentTrades', 'blockTrades'].includes(endpoint) ? 500 : 1000;
+  if (params.limit !== undefined && Number(params.limit) > maxLimit) throw new OptionsCollectorError('LIMIT_TOO_LARGE', 'REST limit exceeds the published endpoint maximum.');
+  if (endpoint === 'depth' && params.limit !== undefined && ![10, 20, 50, 100, 500, 1000].includes(Number(params.limit))) {
+    throw new OptionsCollectorError('INVALID_DEPTH_LIMIT', 'Depth limit must be one of Binance published levels: 10, 20, 50, 100, 500 or 1000.');
+  }
   const url = new URL(definition.path, 'https://eapi.binance.com');
   for (const key of [...definition.required, ...definition.optional]) {
     if (params[key] !== undefined) url.searchParams.set(key, String(params[key]));
@@ -375,21 +381,22 @@ function parseDepthSnapshot(item, receivedAt, state) {
   const symbol = item.symbol ?? item.data?.symbol;
   const lastUpdateId = numeric(item.lastUpdateId ?? item.data?.lastUpdateId);
   const payload = item.payload ?? item.data?.payload ?? item;
+  const snapshotTime = iso(payload.T ?? item.T ?? item.data?.T);
   if (!validSymbol(symbol) || !validPositiveInteger(lastUpdateId)) {
     throw new OptionsCollectorError('INVALID_DEPTH_SNAPSHOT', 'Depth snapshot needs a symbol and positive lastUpdateId.');
   }
   state.depth.set(symbol, { lastUpdateId, synced: false });
   return makeRecord({
     kind: 'DEPTH_SNAPSHOT', endpoint: 'REST_DEPTH', symbol, rawPayload: payload,
-    eventAt: null, receivedAt,
+    eventAt: snapshotTime, receivedAt,
     fields: [
-      observedField('lastUpdateId', lastUpdateId, 'UPDATE_ID', 'lastUpdateId', null, receivedAt, receivedAt, null),
-      observedField('bids', item.bids ?? item.data?.bids, 'PRICE_SIZE_LEVELS', 'bids', null, receivedAt, receivedAt, null),
-      observedField('asks', item.asks ?? item.data?.asks, 'PRICE_SIZE_LEVELS', 'asks', null, receivedAt, receivedAt, null),
+      observedField('lastUpdateId', lastUpdateId, 'UPDATE_ID', 'lastUpdateId', snapshotTime, receivedAt, receivedAt, null),
+      observedField('bids', item.bids ?? item.data?.bids ?? payload.bids, 'PRICE_SIZE_LEVELS', 'bids', snapshotTime, receivedAt, receivedAt, 1_000),
+      observedField('asks', item.asks ?? item.data?.asks ?? payload.asks, 'PRICE_SIZE_LEVELS', 'asks', snapshotTime, receivedAt, receivedAt, 1_000),
     ],
-    id: `depth-snapshot:${lastUpdateId}`,
-    quality: 'DEGRADED',
-    flags: ['REST_SNAPSHOT_HAS_NO_EXCHANGE_EVENT_TIME'],
+    id: 'depth-snapshot:' + lastUpdateId,
+    quality: snapshotTime ? 'VALID' : 'DEGRADED',
+    flags: snapshotTime ? [] : ['REST_SNAPSHOT_HAS_NO_EXCHANGE_EVENT_TIME'],
   });
 }
 
