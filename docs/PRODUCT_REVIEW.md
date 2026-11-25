@@ -299,3 +299,18 @@ FAQ Binance المنشور في 12 يونيو 2025 يثبت أن المقيمي�
 
 **ما زال مانع القرار الاستثماري قائماً:** لا يوجد PIT BBO corpus مرخص أو جمع مجدول أو cloud archive أو forward PAPER track record؛ لذلك لا يوجد تصنيف موثوق لـ«أفضل عقد/أصل ربحية» ولا إثبات edge أو احتمالات ربح واقعية. لا تزال سورية legal gate تمنع تفعيل التداول الحقيقي أو التوصية بتمويل حساب قبل توضيح قانوني محلي مكتوب. يبقى المنتج research/PAPER فقط.
 \n\n## BBO-aware PAPER execution baseline — 25 November 2026\n\nPR #204 closes the prior replay defect that treated generic quote timestamps as executable BBO evidence. The replay now requires explicit BBO source, source-event/snapshot time, local receive time, non-estimated bid/ask, size unit and sufficient displayed Ask/Bid size for entry/exit. It applies configurable adverse per-side slippage and exposes fills, clocks, sizes, fees and slippage. CSV provenance is still user-asserted and unauthenticated.\n\nPR #205 sets the default per-trade premium-plus-fees sizing cap to 60 quote units for PAPER analysis. It is not a portfolio equity or total-bankroll model.\n\nVerification: PR #204 CI 45572889900 (303/303 tests, build, bundle, 18/18 Playwright), Lighthouse 45572889852 (99/100 performance, 100 accessibility/best-practices/SEO), Project Context Guard 45572889839. PR #205 CI 45573552188 (303/303 tests, build, bundle, 18/18 Playwright), Lighthouse 45573547735 (98/100 performance, 100 accessibility/best-practices/SEO), Project Context Guard 45573547738.\n\nRemaining: no historical BBO corpus, scheduled collector, cloud archive, full depth/queue/partial-fill/latency/expiry-settlement/hedging model, measured strategy edge or live trading.\n
+
+## تحديث 25 نوفمبر 2026 — سقف المخاطرة للحملة
+
+**PR #209 مُدمج:** f413ba8a5453a730fe4649d90c648f27390499b1.
+
+- رأس مال الحملة الافتراضي 200 USD.
+- سقف إجمالي صارم 60 USD/USDT من الأقساط والرسوم المسجلة في دفتر PAPER.
+- سقف كل محاولة 20، والحاسبة تستخدم الرصيد المتبقي من سقف الحملة؛ ومسار الحفظ يعيد التحقق حتى إذا غيّر المستخدم الكمية يدوياً.
+- كل إدخال PAPER يبقى محجوزاً حتى تصدير الدفتر وإعادة ضبطه صراحةً؛ لا توجد حالياً آلية لإغلاق صفقة افتراضية وتسجيل P&L محقق.
+- الإدخالات القديمة ذات التكلفة غير المعروفة أو العملات المختلطة توقف الإضافة بدلاً من افتراض وحدة/سعر صرف. USD وUSDT حملتان منفصلتان بلا FX ضمني.
+- إعادة ضبط الدفتر تتطلب تأكيداً وتحذّر من ضرورة التصدير أولاً.
+
+**التحقق:** CI 45574730769 نجح: 309/309 اختباراً، البناء الإنتاجي، حد الحزمة، و18/18 اختبار Playwright؛ Lighthouse 45574730886 وProject Context Guard 45574730851 نجحا.
+
+هذا حد ميزانية داخل دفتر PAPER المحلي فقط، وليس ضابط خسارة على حساب Binance ولا ضماناً للخسارة الفعلية في التداول الحي.
