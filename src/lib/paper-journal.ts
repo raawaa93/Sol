@@ -206,6 +206,7 @@ export interface CanonicalPaperCloseEvent {
   quantity: number;
   exitPremium: number;
   exitFees: number;
+  exitFeesCurrency: string;
   exitFeesSource: 'USER_ENTERED';
   grossProceeds: number;
   entryDebit: number;
@@ -419,6 +420,7 @@ export function createCanonicalPaperCloseEvent(input: {
       quantity: trade.quantity,
       exitPremium: quote.bid,
       exitFees,
+      exitFeesCurrency: proceeds.value.currency,
       exitFeesSource: 'USER_ENTERED',
       grossProceeds: proceeds.value.premiumAmount,
       entryDebit: entry.value.amount,
