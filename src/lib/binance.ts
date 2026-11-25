@@ -195,7 +195,7 @@ export function applyBinanceBookTicker(
 ): OptionQuote {
   const timestamp = event.transactionTime ?? event.eventTime;
   const currentBboTimestamp = quote.bidAskSource === 'OPTION_TICKER'
-    ? Date.parse(quote.sourceTimestamps?.optionTicker ?? '')
+    ? Date.parse(quote.sourceTimestamps?.ticker ?? '')
     : quote.bidAskSource === 'MARK_PRICE'
       ? Date.parse(quote.sourceTimestamps?.markPrice ?? '')
       : quote.bidAskSource === 'BOOK_TICKER'
@@ -369,7 +369,7 @@ export function applyBinanceOptionMarkPrice(
   const currentBboTimestamp = quote.bidAskSource === 'BOOK_TICKER'
     ? Date.parse(quote.sourceTimestamps?.bookTicker ?? '')
     : quote.bidAskSource === 'OPTION_TICKER'
-      ? Date.parse(quote.sourceTimestamps?.optionTicker ?? '')
+      ? Date.parse(quote.sourceTimestamps?.ticker ?? '')
       : quote.bidAskSource === 'MARK_PRICE'
         ? Date.parse(quote.sourceTimestamps?.markPrice ?? '')
         : Number.NaN;
