@@ -240,6 +240,32 @@ export function createCanonicalPaperClose(input: CanonicalPaperCloseInput): Cano
     && economics.exercise.cashSettlement?.currency === currentEconomics.exercise.cashSettlement?.currency
     && economics.exercise.cashSettlement?.multiplier === currentEconomics.exercise.cashSettlement?.multiplier
     && economics.provenance.rawFields?.unit === currentEconomics.provenance.rawFields?.unit;
+  const entryAtMs = Date.parse(trade.createdAt);
+  const entryBookTimestamp = Date.parse(trade.sourceTimestampsAtEntry?.bookTicker ?? '');
+  const entryIndexTimestamp = Date.parse(trade.sourceTimestampsAtEntry?.index ?? '');
+  const entryDebit = calculatePremiumCash({
+    economics,
+    premiumPrice: trade.entryPremium,
+    contracts: trade.quantity,
+    fees: trade.fees,
+  });
+  const entrySnapshotValid = trade.priceSourceAtEntry === 'ASK'
+    && trade.bidAskSourceAtEntry === 'BOOK_TICKER'
+    && Number.isFinite(entryAtMs)
+    && Number.isFinite(entryBookTimestamp)
+    && Number.isFinite(entryIndexTimestamp)
+    && entryBookTimestamp <= entryAtMs
+    && entryIndexTimestamp <= entryAtMs
+    && entryAtMs - entryBookTimestamp <= MAX_PAPER_ENTRY_SOURCE_AGE_MS
+    && entryAtMs - entryIndexTimestamp <= MAX_PAPER_ENTRY_SOURCE_AGE_MS
+    && trade.expiry > trade.createdAt
+    && trade.contractUnitAtEntry === economics.provenance.rawFields?.unit
+    && trade.premiumMultiplierAtEntry === economics.premium.multiplier
+    && trade.premiumCurrencyAtEntry === economics.premium.quoteCurrency
+    && entryDebit.ok
+    && Math.abs(entryDebit.value.amount - (trade.premiumDebitAtEntry ?? Number.NaN)) < 1e-8
+    && Math.abs(entryDebit.value.premiumAmount - (trade.premiumAmountAtEntry ?? Number.NaN)) < 1e-8;
+  if (!entrySnapshotValid) return { ok: false, reason: 'ENTRY_DEBIT_OR_SOURCE_SNAPSHOT_INVALID' };
   const sameContract = quote.venue === trade.contractVenueAtEntry
     && quote.assetClass === trade.contractAssetClassAtEntry
     && quote.underlyingKind === trade.contractUnderlyingKindAtEntry
@@ -250,6 +276,7 @@ export function createCanonicalPaperClose(input: CanonicalPaperCloseInput): Cano
     && quote.strike === trade.strike
     && quote.unit === trade.contractUnitAtEntry
     && quote.quoteAsset === trade.premiumCurrencyAtEntry
+    && quote.unit === trade.contractUnitAtEntry
     && sameEconomics;
   if (!sameContract) return { ok: false, reason: 'EXIT_CONTRACT_IDENTITY_MISMATCH' };
 
