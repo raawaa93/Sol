@@ -254,3 +254,22 @@ test('underlying-unit displayed size is compared against contracts times contrac
   assert.equal(result.trades.length, 0);
   assert.equal(result.skipped.insufficientDisplayedSize, 1);
 });
+
+
+test('OPTION_TICKER BBO provenance uses the optionTicker event clock, not the 24-hour ticker clock', () => {
+  const result = replayLongOptionSnapshots([
+    quote('2026-11-24T10:00:00.100Z', {
+      bidAskSource: 'OPTION_TICKER',
+      sourceTimestamps: { optionTicker: '2026-11-24T10:00:00.000Z', ticker: '2026-11-24T08:00:00.000Z' },
+      sourceReceivedAt: { bidAsk: '2026-11-24T10:00:00.100Z' },
+    }),
+    quote('2026-11-24T11:00:00.100Z', {
+      bidAskSource: 'OPTION_TICKER',
+      sourceTimestamps: { optionTicker: '2026-11-24T11:00:00.000Z', ticker: '2026-11-24T08:00:00.000Z' },
+      sourceReceivedAt: { bidAsk: '2026-11-24T11:00:00.100Z' },
+    }),
+  ], config);
+  assert.equal(result.trades.length, 1);
+  assert.equal(result.trades[0].entrySourceTimestamp, '2026-11-24T10:00:00.000Z');
+  assert.equal(result.trades[0].exitSourceTimestamp, '2026-11-24T11:00:00.000Z');
+});
