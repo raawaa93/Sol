@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { cp, link, mkdir, open, readFile, readdir, rename, stat, unlink } from 'node:fs/promises';
+import { cp, link, lstat, mkdir, open, readFile, readdir, rename, stat, unlink } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 
 export const OPTIONS_ARCHIVE_SCHEMA_VERSION = 1;
@@ -235,7 +235,24 @@ async function writeDurable(path, content, tempDirectory = dirname(path)) {
   if (tempDirectory !== dirname(path)) await fsyncDirectory(tempDirectory);
 }
 
+async function assertRealDirectory(path) {
+  let info;
+  try { info = await lstat(path); }
+  catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+    await mkdir(path, { recursive: false });
+    info = await lstat(path);
+  }
+  if (info.isSymbolicLink() || !info.isDirectory()) {
+    throw new OptionsArchiveError('SYMLINK_NOT_ALLOWED', `Archive directory must be a real directory: ${path}`);
+  }
+}
+
 async function walkFiles(root) {
+  const rootInfo = await lstat(root);
+  if (rootInfo.isSymbolicLink() || !rootInfo.isDirectory()) {
+    throw new OptionsArchiveError('SYMLINK_NOT_ALLOWED', `Archive path must be a real directory: ${root}`);
+  }
   const found = [];
   const entries = await readdir(root, { withFileTypes: true });
   for (const entry of entries) {
@@ -288,8 +305,10 @@ export class ResumableOptionsArchive {
   }
 
   async initialize() {
-    await mkdir(join(this.root, 'segments'), { recursive: true });
-    await mkdir(join(this.root, '.tmp'), { recursive: true });
+    await mkdir(dirname(this.root), { recursive: true });
+    await assertRealDirectory(this.root);
+    await assertRealDirectory(join(this.root, 'segments'));
+    await assertRealDirectory(join(this.root, '.tmp'));
     const report = await this.verify();
     const fatalErrors = report.errors.filter((error) => !error.startsWith('ORPHAN_TEMP_FILE:'));
     if (fatalErrors.length) throw new OptionsArchiveError('ARCHIVE_CORRUPT', fatalErrors.join('; '));
