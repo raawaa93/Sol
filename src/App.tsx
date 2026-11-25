@@ -743,6 +743,7 @@ function App() {
   }, [filteredQuotes, selectedId]);
 
   useEffect(() => {
+    if (!paperJournalReady) return;
     if (paperJournalLoad.persistenceBlocked) {
       setToast('توقفت الكتابة إلى دفتر PAPER لحماية نسخة بيانات سابقة لم يمكن حفظها بأمان. صدّر نسخة الاستعادة قبل المتابعة.');
       return;
@@ -752,7 +753,7 @@ function App() {
     } catch {
       setToast('تعذر حفظ الدفتر محلياً؛ قد يكون التخزين معطلاً أو ممتلئاً.');
     }
-  }, [trades, paperJournalLoad.persistenceBlocked]);
+  }, [trades, paperJournalLoad.persistenceBlocked, paperJournalReady]);
 
   useEffect(() => {
     if (!toast) return;
@@ -821,8 +822,8 @@ function App() {
     }
     return paperBudgetModule.summarizePaperCampaignBudget(trades, quoteAssetLabel ?? '', undefined, paperCloseEvents);
   }, [paperBudgetModule, trades, quoteAssetLabel, paperCloseEvents]);
-  const campaignBudgetBlockMessage = !paperCloseEventsReady
-    ? 'جارٍ تحميل سجل إغلاقات PAPER والتحقق منه؛ الإدخالات والإغلاقات محجوبة مؤقتاً.'
+  const campaignBudgetBlockMessage = !paperJournalReady || !paperCloseEventsReady || !paperBudgetModule
+    ? 'جارٍ تحميل سجلات PAPER وحساب الميزانية والتحقق منها؛ الإدخالات والإغلاقات محجوبة مؤقتاً.'
     : paperJournalLoad.backupAvailable || paperJournalLoad.persistenceBlocked
       || paperCloseEventsLoad.backupAvailable || paperCloseEventsLoad.persistenceBlocked
       ? 'توجد نسخة استعادة محلية لم يتم تأكيد حفظها خارج المتصفح؛ نزّل النسخ الخام وأكّد الاستعادة قبل أي إدخال أو إغلاق جديد.'
@@ -1130,7 +1131,7 @@ function App() {
   };
 
   const savePaperTrade = async () => {
-    if (paperJournalLoad.persistenceBlocked || paperJournalLoad.backupAvailable) {
+    if (!paperJournalReady || paperJournalLoad.persistenceBlocked || paperJournalLoad.backupAvailable) {
       notify('تم إيقاف تسجيل صفقات PAPER حتى تنزيل نسخة الاستعادة خارج المتصفح وتأكيدها.');
       return;
     }
@@ -1234,7 +1235,7 @@ function App() {
   };
 
   const closePaperTrade = async (trade: PaperTrade) => {
-    if (!paperCloseEventsReady || paperJournalLoad.persistenceBlocked || paperJournalLoad.backupAvailable || paperCloseEventsLoad.persistenceBlocked || paperCloseEventsLoad.backupAvailable) {
+    if (!paperJournalReady || !paperCloseEventsReady || paperJournalLoad.persistenceBlocked || paperJournalLoad.backupAvailable || paperCloseEventsLoad.persistenceBlocked || paperCloseEventsLoad.backupAvailable) {
       notify('إغلاق PAPER متوقف حتى تنزيل نسخ الاستعادة خارج المتصفح وتأكيدها.');
       return;
     }
@@ -1372,7 +1373,7 @@ function App() {
   };
 
   const clearPaperJournal = async () => {
-    if (!paperCloseEventsReady || paperJournalLoad.persistenceBlocked || paperJournalLoad.backupAvailable || paperCloseEventsLoad.persistenceBlocked || paperCloseEventsLoad.backupAvailable) {
+    if (!paperJournalReady || !paperCloseEventsReady || paperJournalLoad.persistenceBlocked || paperJournalLoad.backupAvailable || paperCloseEventsLoad.persistenceBlocked || paperCloseEventsLoad.backupAvailable) {
       notify('لا يمكن مسح دفتر PAPER قبل تنزيل نسخ الاستعادة وتأكيدها.');
       return;
     }
