@@ -202,7 +202,7 @@ export function applyBinanceBookTicker(quote: OptionQuote, event: BinanceBookTic
     ask: event.askPrice,
     sourceTimestamps: {
       ...quote.sourceTimestamps,
-      ...(timestamp !== undefined && timestamp > 0 ? { bookTicker: new Date(timestamp).toISOString() } : {}),
+      ...(timestamp !== undefined && timestamp > 0 ? { bookTicker: new Date(timestamp).toISOString(), bidAsk: new Date(timestamp).toISOString() } : {}),
     },
     bidQuantity: event.bidQuantity,
     askQuantity: event.askQuantity,
@@ -408,6 +408,7 @@ export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptio
     sourceTimestamps: {
       ...quote.sourceTimestamps,
       optionTicker: new Date(marketTimestamp).toISOString(),
+      ...(useTickerBid || useTickerAsk ? { bidAsk: new Date(marketTimestamp).toISOString() } : {}),
       ...(event.closeTime !== undefined ? { ticker: new Date(event.closeTime).toISOString() } : {}),
       ...(updateMark ? { markPrice: new Date(marketTimestamp).toISOString() } : {}),
       ...(event.venueVolatility !== undefined ? { venueVolatility: new Date(marketTimestamp).toISOString() } : {}),
@@ -471,6 +472,7 @@ export function applyBinanceOptionMarkPrice(
     sourceTimestamps: {
       ...quote.sourceTimestamps,
       markPrice: new Date(event.eventTime).toISOString(),
+      ...(useMarkBid || useMarkAsk ? { bidAsk: new Date(event.eventTime).toISOString() } : {}),
       ...(event.indexPrice !== undefined ? { index: new Date(event.eventTime).toISOString() } : {}),
       ...(event.venueVolatility !== undefined ? { venueVolatility: new Date(event.eventTime).toISOString() } : {}),
       ...(event.bidIv !== undefined ? { bidIv: new Date(event.eventTime).toISOString() } : {}),
