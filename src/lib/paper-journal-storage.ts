@@ -82,3 +82,7 @@ function preserveRejectedJournal<T>(
 export function readPaperJournalRecovery(storage: PaperJournalStorage): string | null {
   try { return storage.getItem(PAPER_JOURNAL_RECOVERY_KEY); } catch { return null; }
 }
+
+export function readPaperJournalPrimary(storage: PaperJournalStorage): string | null {
+  try { return storage.getItem(PAPER_JOURNAL_STORAGE_KEY); } catch { return null; }
+}
