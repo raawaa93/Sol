@@ -29,7 +29,7 @@ jobs:
           mkdir -p artifacts
           node <<'NODE'
           import fs from 'node:fs';
-          const base = 'https://eapi.binance.com';
+          const base = 'https://oyoyozdugicmnkfhjovo.supabase.co/functions/v1/volterra-binance-market-data';
           const sleep = ms => new Promise(r => setTimeout(r, ms));
           async function get(path, params={}) {
             const url = new URL(base + path);
@@ -47,10 +47,10 @@ jobs:
           }
           const now = Date.now();
           const [info, marks, tickers, index] = await Promise.all([
-            get('/eapi/v1/exchangeInfo'),
-            get('/eapi/v1/mark'),
-            get('/eapi/v1/ticker'),
-            get('/eapi/v1/index',{underlying:'SOLUSDT'})
+            get('exchangeInfo'),
+            get('mark'),
+            get('ticker'),
+            get('index',{underlying:'SOLUSDT'})
           ]);
           const contracts = (info.optionSymbols||[]).filter(x =>
             x.underlying === 'SOLUSDT' && x.status === 'TRADING' && Number(x.expiryDate)>now
@@ -62,7 +62,7 @@ jobs:
           for (const expMs of [...new Set(contracts.map(x=>x.expiryDate))]) {
             const d = new Date(Number(expMs));
             const ymd = String(d.getUTCFullYear()).slice(-2)+String(d.getUTCMonth()+1).padStart(2,'0')+String(d.getUTCDate()).padStart(2,'0');
-            try { oiByExpiry[ymd] = await get('/eapi/v1/openInterest',{underlyingAsset:'SOL',expiration:ymd}); }
+            try { oiByExpiry[ymd] = await get('openInterest',{underlyingAsset:'SOL',expiration:ymd}); }
             catch(e) { oiByExpiry[ymd] = {error:String(e)}; }
           }
           const oiMap = new Map();
