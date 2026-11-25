@@ -1171,7 +1171,7 @@ function App() {
       `إغلاق PAPER على Bid ${formatOptionPrice(close.exitPremium, liveQuote)}\n`
       + `صافي العائد بعد الرسوم: ${formatMoney(close.exitNetProceeds, 2, close.currency)}\n`
       + `النتيجة المحققة: ${pnlLabel}\n\n`
-      + 'سيتم تحديث دفتر PAPER المحلي فقط. لن يُرسل أي أمر إلى Binance.',
+      + 'الرسوم تقديرية بمعدل taker العام، دون خصومات VIP/BNB أو رسوم إضافية خاصة بالحساب. سيُحدّث دفتر PAPER المحلي فقط؛ لن يُرسل أي أمر إلى Binance.',
     )) return;
     setTrades((current) => current.map((item) => item.id === trade.id ? result.trade : item));
     notify(`أُغلق سجل PAPER على Bid. النتيجة المحققة: ${pnlLabel}. لم يُرسل أي أمر حقيقي.`);
