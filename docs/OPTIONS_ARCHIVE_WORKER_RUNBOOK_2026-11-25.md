@@ -1,6 +1,6 @@
 # Supervised Options Archive Worker — Operator Runbook
 
-**Status:** merged to main in PR #216 (`50dfed865c75556f96aadcda12a2f8845af3fe07`); CI, Project Context Guard, and Lighthouse passed on the PR head. Not deployed, not scheduled, and not live-market verified.
+**Status:** PR #216 and reliability hardening PR #219 are merged to main (`50dfed865c75556f96aadcda12a2f8845af3fe07`, `39ca0c7e8525d4ee1b72366d89a80c3a694e77a0`); CI, Project Context Guard, and Lighthouse passed on both PR heads. Not deployed, not scheduled, and not live-market verified.
 
 ## Safety boundary
 
@@ -20,7 +20,7 @@
 | Heartbeat interval | 30 seconds | 5 minutes |
 | Unique streams | explicitly supplied | 200 |
 
-The worker validates these bounds at startup, including when invoked programmatically with an injected configuration object; duplicate or malformed injected stream lists are rejected. Archive writes independently enforce the configured byte quota before publishing segments. A writer lease prevents a second process on the same filesystem host from writing to the same archive root. The collector renews this lease periodically even when streams are quiet; lease-renewal failure aborts the worker and is surfaced as a failure. Heartbeat archive-read/quota failures now abort the transport, wait for collector cleanup and lease release, and fail the worker instead of merely logging a health warning.
+The worker validates these bounds at startup, including when invoked programmatically with an injected configuration object; duplicate or malformed injected stream lists and non-boolean refresh flags are rejected. Archive writes independently enforce the configured byte quota before publishing segments. A writer lease prevents a second process on the same filesystem host from writing to the same archive root. The collector renews this lease periodically even when streams are quiet; lease-renewal failure aborts the worker and is surfaced as a failure. Archive heartbeat read/quota failures also abort the transport, wait for collector cleanup and lease release, and fail the worker instead of continuing with an unhealthy archive. Heartbeat polling is stopped before final archive verification. Heartbeat archive-read/quota failures now abort the transport, wait for collector cleanup and lease release, and fail the worker instead of merely logging a health warning.
 
 ## Start (only after eligibility and legal checks)
 
