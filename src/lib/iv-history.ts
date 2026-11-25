@@ -71,8 +71,8 @@ export function isValidIVHistoryObservation(value: unknown): value is IVHistoryO
     && typeof item.receivedAt === 'string' && parseTime(item.receivedAt) !== null
     && item.source === 'BINANCE_REST_MARK'
     && item.sourceRef === BINANCE_MARK_IV_SOURCE
-    && Number.isSafeInteger(item.contractCount) && item.contractCount > 0
-    && Number.isSafeInteger(item.expiryCount) && item.expiryCount > 0;
+    && typeof item.contractCount === 'number' && Number.isSafeInteger(item.contractCount) && item.contractCount > 0
+    && typeof item.expiryCount === 'number' && Number.isSafeInteger(item.expiryCount) && item.expiryCount > 0;
 }
 
 function observationKey(item: IVHistoryObservation): string {
