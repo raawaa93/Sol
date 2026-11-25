@@ -162,6 +162,7 @@ function isPaperTrade(value: unknown): value is PaperTrade {
       && typeof trade.contractUnitAtEntry === 'number' && Number.isFinite(trade.contractUnitAtEntry) && trade.contractUnitAtEntry > 0
       && typeof trade.premiumMultiplierAtEntry === 'number' && Number.isFinite(trade.premiumMultiplierAtEntry) && trade.premiumMultiplierAtEntry > 0
       && typeof trade.premiumAmountAtEntry === 'number' && Number.isFinite(trade.premiumAmountAtEntry) && trade.premiumAmountAtEntry >= 0
+      && typeof trade.premiumDebitAtEntry === 'number' && Number.isFinite(trade.premiumDebitAtEntry) && trade.premiumDebitAtEntry >= 0
       && typeof trade.premiumCurrencyAtEntry === 'string' && /^[A-Z0-9]{2,12}$/.test(trade.premiumCurrencyAtEntry)))
     && trade.status === 'PAPER';
 }
@@ -984,6 +985,7 @@ function App() {
       contractUnitAtEntry: trade.contractUnitAtEntry ?? '',
       premiumMultiplierAtEntry: trade.premiumMultiplierAtEntry ?? '',
       premiumAmountAtEntry: trade.premiumAmountAtEntry ?? '',
+      premiumDebitAtEntry: trade.premiumDebitAtEntry ?? '',
       premiumCurrencyAtEntry: trade.premiumCurrencyAtEntry ?? '',
       priceSourceAtEntry: trade.priceSourceAtEntry ?? '',
       contractEconomicsJSON: trade.contractEconomics ? JSON.stringify(trade.contractEconomics) : '',
@@ -1392,11 +1394,11 @@ function App() {
             <article className="panel journal-panel">
               <div className="journal-summary"><div className="journal-summary-icon"><WalletCards size={18} /></div><div><strong>{trades.length} <span>صفقة تجريبية</span></strong><small>محفوظة محلياً في هذا المتصفح فقط</small></div><div className="journal-metric"><span>وضع التنفيذ</span><strong><i /> PAPER ONLY</strong></div><div className="journal-metric"><span>مفاتيح تداول</span><strong className="safe-label"><LockKeyhole size={13} /> غير مطلوبة</strong></div></div>
               {trades.length ? <>
-                <div className="journal-table-wrap"><table className="journal-table"><thead><tr><th>وقت التسجيل</th><th>العقد</th><th>Strike</th><th>كمية</th><th>قسط الدخول</th><th>السعر المرجعي وقتها</th><th>الحالة</th></tr></thead><tbody>{trades.map((trade) => <tr key={trade.id}><td>{formatDateTime(new Date(trade.createdAt))}</td><td><span className={`mini-type ${trade.type.toLowerCase()}`}>{trade.type}</span><strong>{trade.symbol}</strong></td><td>{formatAssetPrice(trade.strike, trade.spotAtEntry, trade.quoteAsset ?? null)}</td><td>{formatQuantity(trade.quantity, { quantityScale: trade.quantityPrecision })}</td><td>{formatOptionPrice(trade.entryPremium, { priceScale: trade.pricePrecision }, trade.quoteAsset ?? null)}</td><td>{formatAssetPrice(trade.spotAtEntry, trade.spotAtEntry, trade.quoteAsset ?? null)}</td><td><span className="paper-status"><i /> تجريبية</span></td></tr>)}</tbody></table></div>
+                <div className="journal-table-wrap"><table className="journal-table"><thead><tr><th>وقت التسجيل</th><th>العقد</th><th>Strike</th><th>كمية</th><th>قسط الدخول</th><th>السعر المرجعي وقتها</th><th>الحالة</th></tr></thead><tbody>{trades.map((trade) => <tr key={trade.id}><td>{formatDateTime(new Date(trade.createdAt))}</td><td><span className={`mini-type ${trade.type.toLowerCase()}`}>{trade.type}</span><strong>{trade.symbol}</strong>{trade.contractEconomics && <small>لقطة العقد: قسط ×{trade.premiumMultiplierAtEntry} · وحدة التسليم {trade.contractUnitAtEntry}</small>}</td><td>{formatAssetPrice(trade.strike, trade.spotAtEntry, trade.quoteAsset ?? null)}</td><td>{formatQuantity(trade.quantity, { quantityScale: trade.quantityPrecision })}</td><td>{formatOptionPrice(trade.entryPremium, { priceScale: trade.pricePrecision }, trade.quoteAsset ?? null)}</td><td>{formatAssetPrice(trade.spotAtEntry, trade.spotAtEntry, trade.quoteAsset ?? null)}</td><td><span className="paper-status"><i /> تجريبية</span></td></tr>)}</tbody></table></div>
                 <div className="journal-mobile-list" role="list" aria-label="سجل الصفقات التجريبية">
                   {trades.map((trade) => <article className="journal-mobile-card" role="listitem" key={trade.id}>
                     <div className="journal-mobile-card-head">
-                      <span><span className={`mini-type ${trade.type.toLowerCase()}`}>{trade.type}</span><strong dir="ltr">{trade.symbol}</strong></span>
+                      <span><span className={`mini-type ${trade.type.toLowerCase()}`}>{trade.type}</span><strong dir="ltr">{trade.symbol}</strong>{trade.contractEconomics && <small>قسط ×{trade.premiumMultiplierAtEntry} · وحدة التسليم {trade.contractUnitAtEntry}</small>}</span>
                       <small>{formatDateTime(new Date(trade.createdAt))}</small>
                     </div>
                     <div className="journal-mobile-values">
