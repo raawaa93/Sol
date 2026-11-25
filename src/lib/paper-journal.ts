@@ -203,6 +203,8 @@ export function createCanonicalPaperTrade(
     priceSourceAtEntry: 'ASK',
     bidAskSourceAtEntry: 'BOOK_TICKER',
     sourceTimestampsAtEntry: quote.sourceTimestamps ? { ...quote.sourceTimestamps } : undefined,
+    sourceReceivedAtAtEntry: quote.sourceReceivedAt ? { ...quote.sourceReceivedAt } : undefined,
+    takerFeeRateAtEntry: quote.takerFeeRate!,
     exchangeFeeAtEntry: exchangeFee,
     additionalFeesAtEntry: fees,
     status: 'PAPER',
