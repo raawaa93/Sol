@@ -19,9 +19,10 @@ interface PaperJournalSectionProps {
   onClose: (trade: PaperTrade) => void | Promise<void>;
   onExportTrades: () => void;
   onExportIVHistory: () => void | Promise<void>;
-  onExportJson: () => void | Promise<void>;
-  onImportBackup: (raw: string) => void | Promise<void>;
-  onImportBackupError: (message: string) => void;
+  isValidTrade: (value: unknown) => value is PaperTrade;
+  onImportEntries: (entries: PaperTrade[]) => void;
+  onImportBlocked: () => void;
+  onNotify: (message: string) => void;
   onClearJournal: () => void;
   onExportRecovery: () => void;
   onExportOriginal: () => void;
@@ -38,15 +39,44 @@ export default function PaperJournalSection({
   onClose,
   onExportTrades,
   onExportIVHistory,
-  onExportJson,
-  onImportBackup,
-  onImportBackupError,
+  isValidTrade,
+  onImportEntries,
+  onImportBlocked,
+  onNotify,
   onClearJournal,
   onExportRecovery,
   onExportOriginal,
   onRetryPersistence,
   onNavigateToScanner,
 }: PaperJournalSectionProps) {
+  const exportJson = async () => {
+    const { downloadPaperJournalJsonBackup } = await import('../lib/paper-journal-backup-actions');
+    const result = downloadPaperJournalJsonBackup(trades, isValidTrade);
+    onNotify(result.ok
+      ? `تم تنزيل نسخة PAPER JSON (${result.count} سجل)؛ البيانات لم تُرفع إلى أي خادم.`
+      : result.message);
+  };
+
+  const importBackup = async (raw: string) => {
+    if (paperJournalLoad.persistenceBlocked) {
+      onNotify('الاستيراد متوقف لحماية نسخة الاستعادة؛ نزّل النسخ الخام أولاً.');
+      return;
+    }
+    const { importPaperJournalJsonBackup } = await import('../lib/paper-journal-backup-actions');
+    const result = importPaperJournalJsonBackup(raw, trades, isValidTrade, localStorage);
+    if (!result.ok) {
+      if (result.persistenceBlocked) onImportBlocked();
+      onNotify(result.message);
+      return;
+    }
+    if (result.added === 0) {
+      onNotify('النسخة صالحة، ولا تحتوي صفقات جديدة غير الموجودة حالياً.');
+      return;
+    }
+    onImportEntries(result.entries);
+    onNotify(`تم استيراد ${result.added} صفقة جديدة دون استبدال السجلات الحالية.`);
+  };
+
   return (
     <section className="section-anchor journal-section" id="journal">
       <div className="section-title-row">
@@ -54,18 +84,18 @@ export default function PaperJournalSection({
         <div className="journal-actions">
           <button className="button button-ghost" onClick={onExportTrades}><Download size={14} /> تصدير CSV</button>
           <button className="button button-ghost" onClick={onExportIVHistory}><Download size={14} /> نسخة IV JSON</button>
-          <button className="button button-ghost" onClick={onExportJson} disabled={!trades.length}><Download size={14} /> نسخة الدفتر JSON</button>
+          <button className="button button-ghost" onClick={exportJson} disabled={!trades.length}><Download size={14} /> نسخة الدفتر JSON</button>
           <label className="button button-ghost journal-import-button">استيراد نسخة JSON
             <input aria-label="استيراد نسخة دفتر PAPER JSON" type="file" accept="application/json,.json" disabled={paperJournalLoad.persistenceBlocked} onChange={async (event) => {
               const file = event.target.files?.[0];
               if (!file) return;
               if (file.size > 5 * 1024 * 1024) {
-                onImportBackupError('النسخة أكبر من الحد المسموح 5 MiB.');
+                onNotify('النسخة أكبر من الحد المسموح 5 MiB.');
                 event.target.value = '';
                 return;
               }
-              try { await onImportBackup(await file.text()); }
-              catch { onImportBackupError('تعذر قراءة ملف النسخة الاحتياطية.'); }
+              try { await importBackup(await file.text()); }
+              catch { onNotify('تعذر قراءة ملف النسخة الاحتياطية.'); }
               event.target.value = '';
             }} />
           </label>
