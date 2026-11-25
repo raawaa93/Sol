@@ -95,6 +95,21 @@ export interface BinanceBookTickerEvent {
   transactionTime?: number;
 }
 
+function asArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? value as T[] : [];
+}
+
+function finiteNumber(value: string | number | undefined): number | undefined {
+  if (value === undefined || value === null || value === '') return undefined;
+  const parsed = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function positiveNumber(value: string | number | undefined): number | undefined {
+  const parsed = finiteNumber(value);
+  return parsed !== undefined && parsed > 0 ? parsed : undefined;
+}
+
 /** Parse raw or combined public Binance bookTicker stream messages without inventing missing sides. */
 export function parseBinanceBookTickerMessage(payload: unknown): BinanceBookTickerEvent | null {
   let decoded = payload;
