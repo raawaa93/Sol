@@ -113,7 +113,7 @@ export function calculateQuoteCashMaxLoss(
 export interface QuoteCashRiskNeutralMetrics {
   probabilityOfProfit: number;
   probabilityInTheMoney: number;
-  /** Undiscounted risk-neutral expected expiry P&L for one contract, before fees. */
+  /** Undiscounted risk-neutral expected expiry P&L for one contract, net of entry fees. */
   expectedExpiryPnlPerContract: number;
   /** Discounted model value for one contract under the stated risk-neutral assumptions. */
   modelPricePerContract: number;
@@ -186,7 +186,7 @@ export function calculateQuoteCashRiskNeutralMetrics(
     return {
       probabilityOfProfit: profitable ? 1 : 0,
       probabilityInTheMoney: itm ? 1 : 0,
-      expectedExpiryPnlPerContract: expectedIntrinsic - premiumCash,
+      expectedExpiryPnlPerContract: expectedIntrinsic - totalDebit,
       modelPricePerContract,
       modelValueGapPerContract: modelPricePerContract - premiumCash,
       breakevenPrice,
@@ -216,7 +216,7 @@ export function calculateQuoteCashRiskNeutralMetrics(
   const expectedIntrinsic = expectedIntrinsicPerUnit * cashMultiplier;
   const discount = Math.exp(-rate * time);
   const modelPricePerContract = expectedIntrinsic * discount;
-  const expectedExpiryPnlPerContract = expectedIntrinsic - premiumCash;
+  const expectedExpiryPnlPerContract = expectedIntrinsic - totalDebit;
   const modelValueGapPerContract = modelPricePerContract - premiumCash;
 
   if (![probabilityOfProfit, probabilityInTheMoney, expectedExpiryPnlPerContract, modelPricePerContract].every(Number.isFinite)) return null;
