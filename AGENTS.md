@@ -60,6 +60,8 @@ Keep the personal finance and investment intelligence scope, multi-asset options
 | Commodity Options | XAUUSDT وXAGUSDT أول مجموعة منشورة؛ European، USDT cash-settled، expiry يومي/أسبوعي؛ retail long-only | لا نخلطها بعقود TradFi Perpetual أو CME futures options؛ لا short writing للعميل التجزئة وفق FAQ؛ عدد الأصول محدود |
 | U.S. Stock Options | خيارات على أسهم وETFs مدرجة في الولايات المتحدة؛ physical settlement؛ تنفيذ long-only Buy Call/Put؛ NTL introducing broker وAlpaca clearing broker | ليست سلسلة خيارات عالمية؛ التسوية قد تسلم أسهماً؛ أهلية Stock Options للسوريين غير مثبتة بصفحة Syria العامة وحدها لأن إعلان المنتج يقول إن التوفر الإقليمي قد يختلف؛ Stock Options API يعطي مرجع العقود فقط ولا يعطي option quotes/Greeks/IV في endpoints السوق الموثقة |
 
+**مصدر BBO القابل لإعادة التشغيل:** في Binance Options، `bookTicker` هو مصدر أفضل Bid/Ask مع كميات العرض والطلب وأوقات الحدث/المعاملة؛ يسجل التطبيق أيضاً وقت الاستلام المحلي ويعامل الكميات بوحدة العقود. لا تستخدم `optionTicker` (إحصاءات 24 ساعة) أو Mark Price بديلاً عن BBO تنفيذي، ولا تستخدم `E` أو `C` من 24h ticker كوقت عرض. إعادة التشغيل تتطلب وقت حدث BBO ووقت استلام وحجم معروض ووحدة معروفة؛ بيانات CSV تظل ادعاءات مستخدم ولا يثبت التطبيق أصالتها.
+
 **أثر ذلك:** Binance مناسبة كبوابة تنفيذ متعددة الفئات ضمن منتجاتها المتاحة، لكنها لا تحقق مطلب «كل الخيارات العالمية». Crypto Options API هو أكثر خطوط Binance اكتمالاً للبيانات الحية؛ Stock Options يحتاج مزود بيانات أمريكياً منفصلاً إذا أردنا سلسلة سعرية/Greeks موثوقة؛ والسلع الحالية تقتصر على XAU/XAG. لا نعدّ وجود أسهم/سلع/أصول في صفحة الأسواق دليلاً على وجود Options لها.
 
 ### أهلية سوريا والمنصات البديلة
