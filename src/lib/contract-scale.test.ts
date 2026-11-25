@@ -164,6 +164,7 @@ const canonicalGreekQuote: OptionQuote = {
   volume: 20,
   spot: 99000,
   unit: 100,
+  markIvSource: 'OPTION_TICKER',
   sourceTimestamps: {
     index: '2026-11-25T04:00:00Z',
     optionTicker: '2026-11-25T04:00:01Z',
