@@ -281,3 +281,12 @@ The old isolated worktree `research/options-pit-archive-2026-11-24` remains unav
 - Execution-record-only commits `b705bdcaa81643ef6807b3e8f82b32f38d0765d9` and subsequent documentation commits passed Project Context Guard; they did not change application code.
 - Main remains unprotected. The branch-protection endpoint returned 403 to the connected integration; this is an access limitation, not evidence that protection was enabled.
 - No live Binance collector, cloud archive, production backup/restore, or live trading was performed.
+
+
+## Coordinator snapshot — 25 November 2026, 09:01 UTC
+
+- Current main at this check: `65067381118bffe5d98e89c04c2d7dfa99b7182e`.
+- Options archive path is implemented on main: PR #192 WebSocket transport, PR #216 bounded opt-in local worker, and PR #219 fail-closed heartbeat/cancellation hardening. PR #219 exact-head CI passed 321/321 tests, build, bundle budgets, browser journeys, Project Context Guard and Lighthouse (98/100 Performance; 100/100 Accessibility, Best Practices and SEO). Its published-site smoke step was skipped.
+- Worker state: code merged, but not started, scheduled or deployed. No real Binance capture, forward dataset, cloud/off-device archive or independent restore has been verified. E1/E2 remain blocked; no strategy edge or profitability result exists.
+- Coordination state: Issue #159 remains open and unassigned. No Copilot acknowledgement, Copilot-authored branch, session or PR is visible. The available assignment/API attempts returned 403, so no claim is made that Copilot received or started the task. The current repo work in PRs #216/#219 was authored under `raawaa93`.
+- Safety: keep Sol Research/PAPER/read-only. The Syrian local-law, exact account/product eligibility and data-retention gates remain unresolved; no credentials, orders, funding, paid data, cloud resources, regional bypass or production writes were used.
