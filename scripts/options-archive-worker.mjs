@@ -81,8 +81,8 @@ export async function runOptionsArchiveWorker({
           logger({ type: 'worker_heartbeat', at: now(), bytes, quotaBytes: config.maxBytes });
         } catch (error) {
           heartbeatFailure = error;
-          logger({ type: 'worker_health_error', at: now(), code: error?.code ?? 'HEALTH_CHECK_FAILED' });
           controller.abort(error);
+          logger({ type: 'worker_health_error', at: now(), code: error?.code ?? 'HEALTH_CHECK_FAILED' });
         } finally {
           heartbeatInFlight = false;
         }
@@ -103,6 +103,10 @@ export async function runOptionsArchiveWorker({
       signal: controller.signal,
       now,
     });
+    if (heartbeat) {
+      clearInterval(heartbeat);
+      heartbeat = undefined;
+    }
     await heartbeatCheck;
     if (heartbeatFailure) throw heartbeatFailure;
     const verification = await activeArchive.verify();
