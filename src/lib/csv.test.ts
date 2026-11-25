@@ -112,13 +112,14 @@ test('duplicate contract symbols get stable unique row ids and a quality warning
 });
 
 test('missing IV is solved only when explicit European spot contract mechanics are supplied', () => {
-  const expiry = new Date(Date.now() + 30 * 86_400_000).toISOString();
+  const referenceTime = Date.parse('2026-11-23T14:00:00Z');
+  const expiry = new Date(referenceTime + 30 * 86_400_000).toISOString();
   const marketPrice = blackScholes(100, 100, 30, 0.4, 'CALL').price;
   const csv = [
     'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,delta,gamma,theta,vega,openInterest,volume,spot,unit,timestamp,assetClass,venue,underlyingKind,exerciseStyle,settlementStyle,carryYield,riskFreeRate',
     'sample,BTC,' + expiry + ',100,CALL,' + (marketPrice * 0.99) + ',' + (marketPrice * 1.01) + ',,,,,,,1,1,100,1,2026-11-23T14:00:00Z,CRYPTO,BINANCE,SPOT,EUROPEAN,CASH,0%,0%',
   ].join('\n');
-  const result = parseOptionsCsv(csv);
+  const result = parseOptionsCsv(csv, referenceTime);
   assert.equal(result.quotes.length, 1);
   assert.ok(Math.abs(result.quotes[0].iv - 0.4) < 0.01);
   assert.ok(result.quotes[0].estimatedFields?.includes('iv'));
