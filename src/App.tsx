@@ -1180,6 +1180,9 @@ function App() {
       ...(feeValue !== undefined ? { exitFees: feeValue } : {}),
     });
     if (!result.ok) {
+      if (result.persistenceBlocked) {
+        setPaperJournalLoad((current) => ({ ...current, persistenceBlocked: true }));
+      }
       notify(result.message);
       return;
     }
