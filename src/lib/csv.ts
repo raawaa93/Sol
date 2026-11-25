@@ -17,7 +17,7 @@ export interface CsvImportResult {
 }
 
 export { MAX_CSV_FILE_BYTES } from './csv-constants.ts';
-import { MAX_CSV_FILE_BYTES } from './csv-constants';
+import { MAX_CSV_FILE_BYTES } from './csv-constants.ts';
 
 function splitCsvLine(line: string, delimiter: string): string[] {
   const values: string[] = [];
