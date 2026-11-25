@@ -272,13 +272,15 @@ export function extractObservedAtm30DayIV(
   const capturedAt = Math.max(...selected.map((point) => point.capturedAt));
   const capturedAtIso = new Date(capturedAt).toISOString();
   const first = valid[0];
+  const venue = first?.venue;
+  if (!venue) return { ok: false, reason: 'NO_VALID_MARK_IV_QUOTES' };
   return {
     ok: true,
     observation: {
       schemaVersion: IV_HISTORY_SCHEMA_VERSION,
       id: ['BINANCE', first.underlying, convention, capturedAtIso].join(':'),
       underlying: first.underlying,
-      venue: first.venue.toUpperCase(),
+      venue: venue.toUpperCase(),
       convention,
       iv,
       tenorDays: 30,
