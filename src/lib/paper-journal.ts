@@ -122,6 +122,7 @@ export function canCreateCanonicalPaperTrade(
     || !Number.isFinite(quote.bid) || quote.bid <= 0
     || !Number.isFinite(quote.ask) || quote.ask < quote.bid
     || !Number.isFinite(quote.askQuantity) || quote.askQuantity! <= 0
+    || !Number.isFinite(quote.bidQuantity) || quote.bidQuantity! <= 0
     || !quote.quoteAsset || quote.quoteAsset !== economics.premium.quoteCurrency
     || !Number.isFinite(quote.takerFeeRate) || quote.takerFeeRate! < 0) return false;
   return calculatePremiumCash({ economics, premiumPrice: quote.ask, contracts: 1 }).ok;
@@ -211,7 +212,14 @@ export function createCanonicalPaperTrade(
 }
 
 function hasSameCanonicalContract(trade: PaperTrade, quote: OptionQuote): boolean {
-  return quote.symbol === trade.symbol
+  const entryEconomics = trade.contractEconomics;
+  const currentEconomics = quote.contractEconomics;
+  return Boolean(entryEconomics && currentEconomics
+    && validateContractEconomics(entryEconomics).adapterReady
+    && entryEconomics.provenance.status === 'PROVIDER_VERIFIED'
+    && entryEconomics.provenance.provider === 'BINANCE'
+    && entryEconomics.provenance.sourceRef === 'https://eapi.binance.com/eapi/v1/exchangeInfo'
+    && quote.symbol === trade.symbol
     && quote.venue === trade.contractVenueAtEntry
     && quote.assetClass === trade.contractAssetClassAtEntry
     && quote.underlyingKind === trade.contractUnderlyingKindAtEntry
@@ -220,9 +228,16 @@ function hasSameCanonicalContract(trade: PaperTrade, quote: OptionQuote): boolea
     && quote.expiry === trade.expiry
     && quote.strike === trade.strike
     && quote.unit === trade.contractUnitAtEntry
-    && quote.contractEconomics?.premium.multiplier === trade.premiumMultiplierAtEntry
-    && quote.contractEconomics?.premium.quoteCurrency === trade.premiumCurrencyAtEntry
-    && isProviderVerifiedBinanceEconomics(quote);
+    && currentEconomics.premium.multiplier === trade.premiumMultiplierAtEntry
+    && currentEconomics.premium.multiplier === entryEconomics.premium.multiplier
+    && currentEconomics.premium.quoteCurrency === trade.premiumCurrencyAtEntry
+    && currentEconomics.premium.priceUnit === entryEconomics.premium.priceUnit
+    && currentEconomics.exercise.style === entryEconomics.exercise.style
+    && currentEconomics.exercise.settlement === entryEconomics.exercise.settlement
+    && currentEconomics.exercise.cashSettlement?.reference === entryEconomics.exercise.cashSettlement?.reference
+    && currentEconomics.exercise.cashSettlement?.currency === entryEconomics.exercise.cashSettlement?.currency
+    && currentEconomics.exercise.cashSettlement?.multiplier === entryEconomics.exercise.cashSettlement?.multiplier
+    && isProviderVerifiedBinanceEconomics(quote));
 }
 
 export function closeCanonicalPaperTrade(input: CanonicalPaperCloseInput): CanonicalPaperCloseResult {
@@ -235,8 +250,10 @@ export function closeCanonicalPaperTrade(input: CanonicalPaperCloseInput): Canon
   }
   if (!hasSameCanonicalContract(trade, quote)) return { ok: false, reason: 'PAPER_CLOSE_CONTRACT_MISMATCH' };
   const closedAtMs = Date.parse(closedAt);
+  const entryAtMs = Date.parse(trade.createdAt);
   const expiryMs = Date.parse(trade.expiry);
-  if (!Number.isFinite(closedAtMs) || !Number.isFinite(expiryMs) || closedAtMs >= expiryMs) {
+  if (!Number.isFinite(closedAtMs) || !Number.isFinite(entryAtMs) || closedAtMs < entryAtMs
+    || !Number.isFinite(expiryMs) || closedAtMs >= expiryMs) {
     return { ok: false, reason: 'OPTION_EXPIRED_BEFORE_PAPER_CLOSE' };
   }
   if (!Number.isFinite(additionalFees) || additionalFees < 0
