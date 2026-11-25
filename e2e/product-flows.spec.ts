@@ -304,7 +304,7 @@ test('Binance order-book UI is exercised only with a deterministic mocked REST s
   await expect(page.locator('.source-stale')).toContainText('لا يثبت حداثة حقول Binance');
 });
 
-test('Binance proxy HTTP 451 triggers a direct current-network public-data attempt without changing IP or region', async ({ page }) => {
+test('Binance proxy HTTP 451 does not trigger any alternate direct network path', async ({ page }) => {
   let directAttempted = false;
   await page.route('https://eapi.binance.com/**', async (route) => {
     directAttempted = true;
@@ -322,9 +322,8 @@ test('Binance proxy HTTP 451 triggers a direct current-network public-data attem
   await page.getByRole('button', { name: 'تحميل Binance' }).click();
   const restriction = page.locator('.source-error-restricted');
   await expect(restriction).toContainText('HTTP 451');
-  await expect(restriction).toContainText('لم تنجح محاولة الاتصال المباشر من متصفحك');
-  await expect(restriction).toContainText('هذا لا يثبت منع حسابك أو المقيمين في سوريا');
-  await expect.poll(() => directAttempted).toBe(true);
+  await expect(restriction).toContainText('لم تتم محاولة اتصال مباشر أو استخدام مسار بديل');
+  await expect.poll(() => directAttempted).toBe(false);
   await expect(restriction.getByRole('link', { name: /سياسة Binance للمقيمين في سوريا/ }))
     .toHaveAttribute('href', 'https://www.binance.com/ar/support/faq/detail/863795c36a224bd7aa7d677996328ff9');
   await expect(restriction.getByRole('button', { name: 'إعادة المحاولة' })).toHaveCount(0);
