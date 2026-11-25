@@ -84,7 +84,7 @@ test('canonical PAPER entry stores independent premium scale and full contract/s
   assert.equal(result.premiumDebit, 4.4);
   assert.equal(result.premiumCurrency, 'USDT');
   assert.equal(result.trade.entryPremium, 1.3);
-  assert.equal(result.trade.premiumAmountAtEntry, 3.9);
+  assert.ok(Math.abs(result.trade.premiumAmountAtEntry! - 3.9) < 1e-9);
   assert.equal(result.trade.premiumMultiplierAtEntry, 1);
   assert.equal(result.trade.priceSourceAtEntry, 'ASK');
   assert.equal(result.trade.bidAskSourceAtEntry, 'BOOK_TICKER');
