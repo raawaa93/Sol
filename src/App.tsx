@@ -52,8 +52,8 @@ import { formatAssetPrice, formatNumber, formatOptionPrice, formatQuantity, form
 import type { AssetClass, OptionQuote, OptionSide, PaperTrade, Underlying } from './lib/types';
 import { ASSET_CLASS_LABELS } from './lib/asset-class';
 import { PAPER_CAMPAIGN_CAPITAL, PAPER_CAMPAIGN_MAX_LOSS, PAPER_CAMPAIGN_PER_TRADE_CAP, canAllocatePaperCampaignTrade, summarizePaperCampaignBudget } from './lib/paper-campaign-budget';
-import { clearPaperJournalRecovery, loadPaperJournal, readPaperJournalPrimary, readPaperJournalRecovery } from './lib/paper-journal-storage';
-import { appendPaperCloseEvent, clearPaperCloseEvents, clearPaperCloseEventsRecovery, loadPaperCloseEvents, readPaperCloseEventsPrimary, readPaperCloseEventsRecovery } from './lib/paper-journal-events';
+import { clearPaperJournalRecovery, loadPaperJournal, PAPER_JOURNAL_STORAGE_KEY, readPaperJournalPrimary, readPaperJournalRecovery } from './lib/paper-journal-storage';
+import { appendPaperCloseEvent, clearPaperCloseEvents, clearPaperCloseEventsRecovery, loadPaperCloseEvents, PAPER_CLOSE_EVENTS_KEY, readPaperCloseEventsPrimary, readPaperCloseEventsRecovery } from './lib/paper-journal-events';
 import { createCanonicalPaperCloseEvent, isCanonicalPaperCloseEventForTrade } from './lib/paper-journal';
 const MarketDepthPanel = lazy(() => import('./components/MarketDepthPanel'));
 const OpportunityReview = lazy(() => import('./components/OpportunityReview'));
