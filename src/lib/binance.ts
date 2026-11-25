@@ -188,27 +188,38 @@ export function parseBinanceBookTickerMessage(payload: unknown): BinanceBookTick
 }
 
 /** Apply a provider event to the matching quote while preserving independent source timestamps. */
-export function applyBinanceBookTicker(quote: OptionQuote, event: BinanceBookTickerEvent): OptionQuote {
+export function applyBinanceBookTicker(
+  quote: OptionQuote,
+  event: BinanceBookTickerEvent,
+  receivedAtMs = Date.now(),
+): OptionQuote {
   const timestamp = event.transactionTime ?? event.eventTime;
+  if (timestamp === undefined || !Number.isFinite(timestamp) || timestamp <= 0
+    || !Number.isFinite(receivedAtMs) || receivedAtMs < timestamp) return quote;
   const currentBboTimestamp = quote.bidAskSource === 'OPTION_TICKER'
-    ? Date.parse(quote.sourceTimestamps?.optionTicker ?? '')
+    ? Date.parse(quote.sourceTimestamps?.ticker ?? '')
     : quote.bidAskSource === 'MARK_PRICE'
       ? Date.parse(quote.sourceTimestamps?.markPrice ?? '')
       : quote.bidAskSource === 'BOOK_TICKER'
         ? Date.parse(quote.sourceTimestamps?.bookTicker ?? '')
         : Number.NaN;
-  if (timestamp !== undefined && Number.isFinite(currentBboTimestamp) && timestamp < currentBboTimestamp) return quote;
+  if (Number.isFinite(currentBboTimestamp) && timestamp < currentBboTimestamp) return quote;
   return {
     ...quote,
     bid: event.bidPrice,
     ask: event.askPrice,
     sourceTimestamps: {
       ...quote.sourceTimestamps,
-      ...(timestamp !== undefined && timestamp > 0 ? { bookTicker: new Date(timestamp).toISOString() } : {}),
+      bookTicker: new Date(timestamp).toISOString(),
     },
     bidQuantity: event.bidQuantity,
     askQuantity: event.askQuantity,
+    bidAskSizeUnit: 'CONTRACTS',
     bidAskSource: 'BOOK_TICKER',
+    sourceReceivedAt: {
+      ...quote.sourceReceivedAt,
+      bidAsk: new Date(receivedAtMs).toISOString(),
+    },
   };
 }
 
@@ -359,7 +370,7 @@ export function applyBinanceOptionMarkPrice(
   const currentBboTimestamp = quote.bidAskSource === 'BOOK_TICKER'
     ? Date.parse(quote.sourceTimestamps?.bookTicker ?? '')
     : quote.bidAskSource === 'OPTION_TICKER'
-      ? Date.parse(quote.sourceTimestamps?.optionTicker ?? '')
+      ? Date.parse(quote.sourceTimestamps?.ticker ?? '')
       : quote.bidAskSource === 'MARK_PRICE'
         ? Date.parse(quote.sourceTimestamps?.markPrice ?? '')
         : Number.NaN;

@@ -6,8 +6,8 @@ import type { OptionQuote } from './types.ts';
 
 function quote(timestamp: string, overrides: Partial<OptionQuote> = {}): OptionQuote {
   return {
-    id: 'XAU-261124-4000-C',
-    symbol: 'XAU-261124-4000-C',
+    id: 'BTC-261124-4000-C',
+    symbol: 'BTC-261124-4000-C',
     underlying: 'BTC',
     assetClass: 'CRYPTO',
     venue: 'TEST-CRYPTO-VENUE',
@@ -34,7 +34,13 @@ function quote(timestamp: string, overrides: Partial<OptionQuote> = {}): OptionQ
     spot: 4000,
     unit: 1,
     contractMultiplier: 1,
+    bidAskSource: 'BOOK_TICKER',
+    bidAskSizeUnit: 'CONTRACTS',
+    bidQuantity: 100,
+    askQuantity: 100,
     sourceTimestamp: timestamp,
+    sourceTimestamps: timestamp ? { bookTicker: timestamp } : {},
+    sourceReceivedAt: timestamp ? { bidAsk: timestamp } : {},
     ...overrides,
   };
 }
@@ -45,6 +51,7 @@ const config = {
   maxSpreadPct: 20,
   feeRatePerSide: 0,
   quantity: 1,
+  asOfTimestamp: '2026-11-25T07:00:00.000Z',
 };
 
 test('replay buys at ask and exits at bid after the configured hold period', () => {
@@ -58,6 +65,13 @@ test('replay buys at ask and exits at bid after the configured hold period', () 
   assert.equal(result.trades[0].exitBid, 13);
   assert.equal(result.trades[0].netPnl, 3);
   assert.equal(result.trades[0].holdingMs, 62 * 60_000);
+  assert.equal(result.trades[0].entryBidAskSource, 'BOOK_TICKER');
+  assert.equal(result.trades[0].exitBidAskSource, 'BOOK_TICKER');
+  assert.equal(result.trades[0].entrySourceTimestamp, '2026-11-24T10:00:00.000Z');
+  assert.equal(result.trades[0].exitSourceTimestamp, '2026-11-24T11:02:00.000Z');
+  assert.equal(result.trades[0].entryDisplayedSize, 100);
+  assert.equal(result.trades[0].exitDisplayedSize, 100);
+  assert.equal(result.trades[0].bidAskSizeUnit, 'CONTRACTS');
   assert.equal(result.winRate, 1);
 });
 
@@ -192,4 +206,84 @@ test('portfolio drawdown follows source-time order across different option symbo
   ], config);
   assert.deepEqual(result.trades.map((trade) => trade.symbol), ['A', 'B', 'C']);
   assert.equal(result.maxDrawdown, 8);
+});
+
+test('replay never treats the legacy last-trade timestamp as a bid/ask quote timestamp', () => {
+  const result = replayLongOptionSnapshots([
+    quote('', { sourceTimestamp: '2026-11-24T10:00:00.000Z' }),
+    quote('2026-11-24T11:00:00.000Z'),
+  ], config);
+  assert.equal(result.trades.length, 0);
+  assert.equal(result.skipped.missingTimestamp, 1);
+});
+
+test('replay requires a valid BBO source, receive clock and non-estimated execution prices', () => {
+  const result = replayLongOptionSnapshots([
+    quote('2026-11-24T10:00:00.000Z', { bidAskSource: 'MARK_PRICE' }),
+    quote('2026-11-24T10:00:00.000Z', { estimatedFields: ['bid'] }),
+    quote('2026-11-24T10:00:00.000Z', { sourceReceivedAt: {} }),
+    quote('2026-11-24T11:00:00.000Z'),
+  ], config);
+  assert.equal(result.trades.length, 0);
+  assert.equal(result.skipped.invalidBidAskSource, 1);
+  assert.equal(result.skipped.estimatedExecutionPrice, 1);
+  assert.equal(result.skipped.missingTimestamp, 1);
+});
+
+test('replay requires explicit displayed size units and enough size at both entry and exit', () => {
+  const result = replayLongOptionSnapshots([
+    quote('2026-11-24T10:00:00.000Z', { bidAskSizeUnit: undefined }),
+    quote('2026-11-24T10:30:00.000Z', { askQuantity: 0.5 }),
+    quote('2026-11-24T11:30:00.000Z'),
+  ], config);
+  assert.equal(result.trades.length, 0);
+  assert.equal(result.skipped.invalidSizeUnit, 1);
+  assert.equal(result.skipped.insufficientDisplayedSize, 1);
+
+  const insufficientExit = replayLongOptionSnapshots([
+    quote('2026-11-24T10:00:00.000Z'),
+    quote('2026-11-24T11:00:00.000Z', { bidQuantity: 0.5 }),
+  ], config);
+  assert.equal(insufficientExit.trades.length, 0);
+  assert.equal(insufficientExit.skipped.insufficientDisplayedSize, 1);
+});
+
+test('replay applies adverse per-side slippage to ask entry and bid exit', () => {
+  const result = replayLongOptionSnapshots([
+    quote('2026-11-24T10:00:00.000Z', { ask: 10, bid: 9 }),
+    quote('2026-11-24T11:00:00.000Z', { ask: 13, bid: 12 }),
+  ], { ...config, slippageBpsPerSide: 100 });
+  assert.equal(result.trades.length, 1);
+  assert.ok(Math.abs(result.trades[0].entryFill - 10.1) < 1e-12);
+  assert.ok(Math.abs(result.trades[0].exitFill - 11.88) < 1e-12);
+  assert.ok(Math.abs(result.trades[0].slippageCost - 0.22) < 1e-12);
+  assert.ok(Math.abs(result.trades[0].grossPnl - 1.78) < 1e-12);
+});
+
+test('underlying-unit displayed size is compared against contracts times contract unit', () => {
+  const result = replayLongOptionSnapshots([
+    quote('2026-11-24T10:00:00.000Z', { bidAskSizeUnit: 'UNDERLYING_UNITS', askQuantity: 1.5 }),
+    quote('2026-11-24T11:00:00.000Z', { bidAskSizeUnit: 'UNDERLYING_UNITS' }),
+  ], { ...config, quantity: 2 });
+  assert.equal(result.trades.length, 0);
+  assert.equal(result.skipped.insufficientDisplayedSize, 1);
+});
+
+
+test('OPTION_TICKER BBO provenance uses the REST ticker snapshot clock, not the optionTicker last-price clock', () => {
+  const result = replayLongOptionSnapshots([
+    quote('2026-11-24T10:00:00.100Z', {
+      bidAskSource: 'OPTION_TICKER',
+      sourceTimestamps: { ticker: '2026-11-24T10:00:00.000Z', optionTicker: '2026-11-24T08:00:00.000Z' },
+      sourceReceivedAt: { bidAsk: '2026-11-24T10:00:00.100Z' },
+    }),
+    quote('2026-11-24T11:00:00.100Z', {
+      bidAskSource: 'OPTION_TICKER',
+      sourceTimestamps: { ticker: '2026-11-24T11:00:00.000Z', optionTicker: '2026-11-24T08:00:00.000Z' },
+      sourceReceivedAt: { bidAsk: '2026-11-24T11:00:00.100Z' },
+    }),
+  ], config);
+  assert.equal(result.trades.length, 1);
+  assert.equal(result.trades[0].entrySourceTimestamp, '2026-11-24T10:00:00.000Z');
+  assert.equal(result.trades[0].exitSourceTimestamp, '2026-11-24T11:00:00.000Z');
 });

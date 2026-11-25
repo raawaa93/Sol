@@ -32,7 +32,6 @@ import {
 } from 'lucide-react';
 import DeferredVolatilityCharts from './components/DeferredVolatilityCharts';
 import DeferredPayoffChart from './components/DeferredPayoffChart';
-import OpportunityReview from './components/OpportunityReview';
 
 import { DEMO_MARKETS, DEMO_QUOTES, getExpiryChoices } from './lib/demo';
 import { applyBinanceBookTicker, applyBinanceOptionMarkPrice, applyBinanceOptionTicker, BinanceMarketDataError, fetchBinanceDepth, fetchBinanceOptions, parseBinanceBookTickerMessage, parseBinanceOptionMarkPriceMessage, parseBinanceOptionTickerMessage } from './lib/binance';
@@ -53,6 +52,7 @@ import { formatAssetPrice, formatNumber, formatOptionPrice, formatQuantity, form
 import type { AssetClass, OptionQuote, OptionSide, PaperTrade, Underlying } from './lib/types';
 import { ASSET_CLASS_LABELS } from './lib/asset-class';
 const MarketDepthPanel = lazy(() => import('./components/MarketDepthPanel'));
+const OpportunityReview = lazy(() => import('./components/OpportunityReview'));
 const GreeksPanel = lazy(() => import('./components/GreeksPanel'));
 const FinancialCockpit = lazy(() => import('./components/FinancialCockpit'));
 const HistoricalReplayPanel = lazy(() => import('./components/HistoricalReplayPanel'));
@@ -1310,6 +1310,7 @@ function App() {
             </section>
           )}
 
+          <Suspense fallback={<div className="panel chart-loading-area" role="status">جارٍ تحميل تحليل التقلب والتقييم...</div>}>
           <OpportunityReview
             quotes={assetQuotes}
             market={market ?? null}
@@ -1325,6 +1326,7 @@ function App() {
               navigate('scanner');
             }}
           />
+          </Suspense>
 
           <Suspense fallback={<div className="panel chart-loading-area" role="status">جارٍ تحميل إعادة التشغيل التاريخية...</div>}>
             <HistoricalReplayPanel quotes={assetQuotes} dataMode={dataMode} underlying={underlying} />

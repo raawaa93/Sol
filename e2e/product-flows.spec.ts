@@ -136,14 +136,14 @@ test('CSV import stays local and replays only an explicitly scaled supported cry
   const expiry = new Date(Date.now() + 40 * 86_400_000).toISOString();
   const firstTime = new Date(Date.now() - 2 * 60 * 60_000).toISOString();
   const secondTime = new Date(Date.now() - 60 * 60_000).toISOString();
-  const header = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,delta,gamma,theta,vega,openInterest,volume,spot,unit,timestamp,assetClass,venue,underlyingKind,exerciseStyle,settlementStyle,quoteAsset,settlementAsset,contractMultiplier';
+  const header = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,delta,gamma,theta,vega,openInterest,volume,spot,unit,timestamp,assetClass,venue,underlyingKind,exerciseStyle,settlementStyle,quoteAsset,settlementAsset,contractMultiplier,bidAskSource,bidAskTimestamp,bidAskReceivedAt,bidAskSizeUnit,bidQuantity,askQuantity';
   const first = [
     'BTC-custom-P', 'BTC', expiry, '40000', 'PUT', '50', '52', '51', '45%',
-    '', '', '', '', '', '', '41000', '1', firstTime, 'CRYPTO', 'BINANCE', 'SPOT', 'EUROPEAN', 'CASH', 'USDT', 'USDT', '1',
+    '', '', '', '', '', '', '41000', '1', firstTime, 'CRYPTO', 'BINANCE', 'SPOT', 'EUROPEAN', 'CASH', 'USDT', 'USDT', '1', 'BOOK_TICKER', firstTime, new Date(Date.parse(firstTime) + 100).toISOString(), 'CONTRACTS', '10', '10',
   ].join(',');
   const second = [
     'BTC-custom-P', 'BTC', expiry, '40000', 'PUT', '60', '61', '60.5', '45%',
-    '', '', '', '', '', '', '41000', '1', secondTime, 'CRYPTO', 'BINANCE', 'SPOT', 'EUROPEAN', 'CASH', 'USDT', 'USDT', '1',
+    '', '', '', '', '', '', '41000', '1', secondTime, 'CRYPTO', 'BINANCE', 'SPOT', 'EUROPEAN', 'CASH', 'USDT', 'USDT', '1', 'BOOK_TICKER', secondTime, new Date(Date.parse(secondTime) + 100).toISOString(), 'CONTRACTS', '10', '10',
   ].join(',');
   const csv = `${header}\n${first}\n${second}`;
 
@@ -284,10 +284,10 @@ test('mismatched contract multiplier keeps quotes visible but blocks per-contrac
   const expiry = new Date(Date.now() + 45 * 86_400_000).toISOString();
   const firstTime = new Date(Date.now() - 2 * 60 * 60_000).toISOString();
   const secondTime = new Date(Date.now() - 60 * 60_000).toISOString();
-  const header = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,spot,unit,timestamp,assetClass,venue,underlyingKind,forward,riskFreeRate,exerciseStyle,settlementStyle,quoteAsset,settlementAsset,contractMultiplier';
+  const header = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,spot,unit,timestamp,assetClass,venue,underlyingKind,forward,riskFreeRate,exerciseStyle,settlementStyle,quoteAsset,settlementAsset,contractMultiplier,bidAskSource,bidAskTimestamp,bidAskReceivedAt,bidAskSizeUnit,bidQuantity,askQuantity';
   const rows = [
-    ['CL-UNVERIFIED-70-C', 'CL', expiry, '70', 'CALL', '2.0', '2.2', '2.1', '20%', '69', '1', firstTime, 'ENERGY', 'CME', 'FUTURE', '69', '3%', 'EUROPEAN', 'PHYSICAL', 'USD', 'USD', '1000'],
-    ['CL-UNVERIFIED-70-C', 'CL', expiry, '70', 'CALL', '2.1', '2.3', '2.2', '20%', '69', '1', secondTime, 'ENERGY', 'CME', 'FUTURE', '69', '3%', 'EUROPEAN', 'PHYSICAL', 'USD', 'USD', '1000'],
+    ['CL-UNVERIFIED-70-C', 'CL', expiry, '70', 'CALL', '2.0', '2.1', '2.05', '20%', '69', '1', firstTime, 'ENERGY', 'CME', 'FUTURE', '69', '3%', 'EUROPEAN', 'PHYSICAL', 'USD', 'USD', '1000', 'BOOK_TICKER', firstTime, new Date(Date.parse(firstTime) + 100).toISOString(), 'CONTRACTS', '10', '10'],
+    ['CL-UNVERIFIED-70-C', 'CL', expiry, '70', 'CALL', '2.1', '2.2', '2.15', '20%', '69', '1', secondTime, 'ENERGY', 'CME', 'FUTURE', '69', '3%', 'EUROPEAN', 'PHYSICAL', 'USD', 'USD', '1000', 'BOOK_TICKER', secondTime, new Date(Date.parse(secondTime) + 100).toISOString(), 'CONTRACTS', '10', '10'],
   ].map((row) => row.join(','));
   await page.locator('section').filter({ hasText: 'MULTI-ASSET OPTIONS ·' }).locator('input[type="file"]').setInputFiles({
     name: 'unverified-futures-scale.csv',
