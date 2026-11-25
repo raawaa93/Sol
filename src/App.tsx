@@ -1251,37 +1251,6 @@ function App() {
     );
   };
   
-  const exportPaperJournalJson = async () => {
-    const { downloadPaperJournalJsonBackup } = await import('./lib/paper-journal-backup-actions');
-    const result = downloadPaperJournalJsonBackup(trades, isPaperTrade);
-    notify(result.ok
-      ? `تم تنزيل نسخة PAPER JSON (${result.count} سجل)؛ البيانات لم تُرفع إلى أي خادم.`
-      : result.message);
-  };
-
-  const importPaperJournalJson = async (raw: string) => {
-    if (paperJournalLoad.persistenceBlocked) {
-      notify('الاستيراد متوقف لحماية نسخة الاستعادة؛ نزّل النسخ الخام أولاً.');
-      return;
-    }
-    const { importPaperJournalJsonBackup } = await import('./lib/paper-journal-backup-actions');
-    const result = importPaperJournalJsonBackup(raw, trades, isPaperTrade, localStorage);
-    if (!result.ok) {
-      if (result.persistenceBlocked) {
-        setPaperJournalLoad((current) => ({ ...current, persistenceBlocked: true }));
-      }
-      notify(result.message);
-      return;
-    }
-    if (result.added === 0) {
-      notify('النسخة صالحة، ولا تحتوي صفقات جديدة غير الموجودة حالياً.');
-      return;
-    }
-    setTrades(result.entries);
-    notify(`تم استيراد ${result.added} صفقة جديدة دون استبدال السجلات الحالية.`);
-  };
-
-
   const retryPaperJournalPersistence = () => {
     if (!paperJournalLoad.persistenceBlocked) return;
     if (!window.confirm('بعد تنزيل كل النسخ الخام الظاهرة وحفظها خارج المتصفح، هل تريد إزالة قفل الاستعادة وإعادة فحص الملف الأصلي؟')) return;
@@ -1769,9 +1738,10 @@ function App() {
               onClose={closePaperTrade}
               onExportTrades={exportTrades}
               onExportIVHistory={exportIVHistoryBackup}
-              onExportJson={exportPaperJournalJson}
-              onImportBackup={importPaperJournalJson}
-              onImportBackupError={notify}
+              isValidTrade={isPaperTrade}
+              onImportEntries={setTrades}
+              onImportBlocked={() => setPaperJournalLoad((current) => ({ ...current, persistenceBlocked: true }))}
+              onNotify={notify}
               onClearJournal={clearPaperJournal}
               onExportRecovery={exportPaperJournalRecovery}
               onExportOriginal={exportPaperJournalOriginal}
