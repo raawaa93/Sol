@@ -16,7 +16,7 @@ export interface CsvImportResult {
   sourceTimeRange?: CsvTimestampRange;
 }
 
-export { MAX_CSV_FILE_BYTES } from './csv-constants';
+export { MAX_CSV_FILE_BYTES } from './csv-constants.ts';
 import { MAX_CSV_FILE_BYTES } from './csv-constants';
 
 function splitCsvLine(line: string, delimiter: string): string[] {
