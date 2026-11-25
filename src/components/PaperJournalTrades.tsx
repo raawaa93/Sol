@@ -35,7 +35,7 @@ export default function PaperJournalTrades({
   return (
     <>
       <div className="journal-exit-controls">
-        <p>إغلاق الصفقة التجريبية يستخدم سعر Bid وحجم العرض المرصود للعقد نفسه. اختر العقد من الماسح أولاً. اترك الرسوم فارغة إذا لم تعرفها؛ عندها نعرض الربح/الخسارة الإجمالي فقط ولا نخمن الصافي.</p>
+        <p>إغلاق الصفقة التجريبية يستخدم سعر Bid وحجم العرض المرصود للعقد نفسه. اختر العقد من الماسح أولاً. لا يظهر صافي P&amp;L إلا عند إدخال رسوم الدخول والخروج الفعلية؛ إذا غابت إحداهما نعرض الإجمالي فقط.</p>
         <label>رسوم الخروج الدقيقة بعملة العقد (اختياري)
           <input type="number" min="0" step="any" inputMode="decimal" value={paperExitFees} onChange={(event) => onExitFeesChange(event.target.value)} placeholder="اتركه فارغاً إذا كانت غير معروفة" />
         </label>
@@ -50,11 +50,11 @@ export default function PaperJournalTrades({
                 <td><span className={`mini-type ${trade.type.toLowerCase()}`}>{trade.type}</span><strong>{trade.symbol}</strong>{trade.contractEconomics && <small>لقطة العقد: قسط ×{trade.premiumMultiplierAtEntry} · وحدة التسليم {trade.contractUnitAtEntry}</small>}</td>
                 <td>{formatAssetPrice(trade.strike, trade.spotAtEntry, trade.quoteAsset ?? null)}</td>
                 <td>{formatQuantity(trade.quantity, { quantityScale: trade.quantityPrecision })}</td>
-                <td>{formatOptionPrice(trade.entryPremium, { priceScale: trade.pricePrecision }, trade.quoteAsset ?? null)}{trade.premiumDebitAtEntry !== undefined && <small>القسط والرسوم: {formatMoney(trade.premiumDebitAtEntry, trade.premiumCurrencyAtEntry ?? null)}</small>}</td>
+                <td>{formatOptionPrice(trade.entryPremium, { priceScale: trade.pricePrecision }, trade.quoteAsset ?? null)}{trade.premiumDebitAtEntry !== undefined && <small>{trade.entryFeesSource === 'USER_ENTERED' ? 'القسط + رسوم الدخول المدخلة: ' : trade.fees > 0 ? 'القسط + رسوم قديمة غير موثقة: ' : 'القسط فقط · رسوم الدخول غير معروفة: '}{formatMoney(trade.premiumDebitAtEntry, trade.premiumCurrencyAtEntry ?? null)}</small>}</td>
                 <td>{formatAssetPrice(trade.spotAtEntry, trade.spotAtEntry, trade.quoteAsset ?? null)}</td>
                 <td>{trade.exit
                   ? <span className="paper-status"><i /> مغلقة · {formatMoney(trade.exit.realizedGrossPnl, trade.premiumCurrencyAtEntry ?? null)} إجمالي{trade.exit.realizedNetPnl !== undefined ? ` · صافي ${formatMoney(trade.exit.realizedNetPnl, trade.premiumCurrencyAtEntry ?? null)}` : ' · الصافي غير معروف'}</span>
-                  : <button className="button button-ghost journal-close-button" disabled={!trade.contractEconomics || selectedQuoteSymbol !== trade.symbol || persistenceBlocked} onClick={() => onClose(trade)}>إغلاق عند Bid</button>}
+                   : trade.sourceReceivedAtAtEntry?.bidAsk ? <button className="button button-ghost journal-close-button" disabled={!trade.contractEconomics || selectedQuoteSymbol !== trade.symbol || persistenceBlocked} onClick={() => onClose(trade)}>إغلاق عند Bid</button> : <span className="paper-status">إغلاق غير متاح · وقت الاستلام عند الدخول غير محفوظ</span>}
                 </td>
               </tr>
             ))}
@@ -76,7 +76,7 @@ export default function PaperJournalTrades({
             </div>
             {trade.exit
               ? <span className="paper-status"><i /> PAPER ONLY · مغلقة · إجمالي {formatMoney(trade.exit.realizedGrossPnl, trade.premiumCurrencyAtEntry ?? null)}{trade.exit.realizedNetPnl !== undefined ? ` · صافي ${formatMoney(trade.exit.realizedNetPnl, trade.premiumCurrencyAtEntry ?? null)}` : ' · الصافي غير معروف'}</span>
-              : <><span className="paper-status"><i /> تجريبية · PAPER ONLY · مفتوحة</span><button className="button button-ghost journal-close-button" disabled={!trade.contractEconomics || selectedQuoteSymbol !== trade.symbol || persistenceBlocked} onClick={() => onClose(trade)}>إغلاق عند Bid</button></>}
+               : <><span className="paper-status"><i /> تجريبية · PAPER ONLY · مفتوحة</span>{trade.sourceReceivedAtAtEntry?.bidAsk ? <button className="button button-ghost journal-close-button" disabled={!trade.contractEconomics || selectedQuoteSymbol !== trade.symbol || persistenceBlocked} onClick={() => onClose(trade)}>إغلاق عند Bid</button> : <small>إغلاق غير متاح: وقت الاستلام عند الدخول غير محفوظ في هذا السجل القديم</small>}</>}
           </article>
         ))}
       </div>
