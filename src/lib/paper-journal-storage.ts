@@ -12,6 +12,7 @@ export interface PaperJournalLoadResult<T> {
 export interface PaperJournalStorage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
+  removeItem(key: string): void;
 }
 
 /**
@@ -85,4 +86,13 @@ export function readPaperJournalRecovery(storage: PaperJournalStorage): string |
 
 export function readPaperJournalPrimary(storage: PaperJournalStorage): string | null {
   try { return storage.getItem(PAPER_JOURNAL_STORAGE_KEY); } catch { return null; }
+}
+
+export function clearPaperJournalRecovery(storage: PaperJournalStorage): boolean {
+  try {
+    storage.removeItem(PAPER_JOURNAL_RECOVERY_KEY);
+    return true;
+  } catch {
+    return false;
+  }
 }
