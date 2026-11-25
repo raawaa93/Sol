@@ -67,6 +67,17 @@ test('a different existing recovery snapshot is never overwritten and blocks pri
   assert.equal(readPaperJournalRecovery(storage), oldRecovery);
 });
 
+test('raw primary snapshot remains exportable when recovery preservation fails', () => {
+  const storage = new MemoryStorage();
+  const raw = '{"legacy":"preserve exactly"}';
+  storage.setItem(PAPER_JOURNAL_STORAGE_KEY, raw);
+  storage.failSet = true;
+  const result = loadPaperJournal(storage, isValid);
+  assert.equal(result.persistenceBlocked, true);
+  assert.equal(readPaperJournalPrimary(storage), raw);
+  assert.equal(readPaperJournalRecovery(storage), null);
+});
+
 test('valid journal loads preserve an existing recovery snapshot without blocking normal writes', () => {
   const storage = new MemoryStorage();
   const recovery = 'older raw journal';
