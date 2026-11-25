@@ -1180,9 +1180,6 @@ function App() {
       ...(feeValue !== undefined ? { exitFees: feeValue } : {}),
     });
     if (!result.ok) {
-      if (result.persistenceBlocked) {
-        setPaperJournalLoad((current) => ({ ...current, persistenceBlocked: true }));
-      }
       notify(result.message);
       return;
     }
@@ -1268,8 +1265,11 @@ function App() {
       return;
     }
     const { importPaperJournalJsonBackup } = await import('./lib/paper-journal-backup-actions');
-    const result = importPaperJournalJsonBackup(raw, trades, isPaperTrade, localStorage, PAPER_JOURNAL_STORAGE_KEY);
+    const result = importPaperJournalJsonBackup(raw, trades, isPaperTrade, localStorage);
     if (!result.ok) {
+      if (result.persistenceBlocked) {
+        setPaperJournalLoad((current) => ({ ...current, persistenceBlocked: true }));
+      }
       notify(result.message);
       return;
     }
