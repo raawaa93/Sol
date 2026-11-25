@@ -69,7 +69,9 @@ export function canCreateCanonicalPaperTrade(
     || economics.exercise.settlement !== 'CASH'
     || !settlement || settlement.reference !== 'INDEX'
     || settlement.currency !== quote.settlementAsset
-    || economics.exercise.settlementCurrency !== quote.settlementAsset) return false;
+    || economics.exercise.settlementCurrency !== quote.settlementAsset
+    || settlement.multiplier !== quote.unit
+    || economics.provenance.rawFields?.unit !== quote.unit) return false;
   const entryPriceSource = getPaperEntryPriceSource(quote);
   if (!entryPriceSource || quote.estimatedFields?.includes('markPrice') && entryPriceSource === 'MARK') return false;
   if (!hasObservedPriceTimestamp(quote, entryPriceSource)
@@ -133,6 +135,7 @@ export function createCanonicalPaperTrade(
     premiumDebitAtEntry: debit.value.amount,
     premiumCurrencyAtEntry: debit.value.currency,
     priceSourceAtEntry: getPaperEntryPriceSource(quote),
+    bidAskSourceAtEntry: quote.bidAskSource,
     sourceTimestampsAtEntry: quote.sourceTimestamps ? { ...quote.sourceTimestamps } : undefined,
     status: 'PAPER',
   };
