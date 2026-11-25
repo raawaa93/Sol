@@ -183,19 +183,20 @@ export function createBinanceOptionsWebSocketTransport({
     throw new OptionsCollectorError('INVALID_RECONNECT_POLICY', 'WebSocket reconnect limits are invalid.');
   }
   return {
-    async subscribe(streams) {
+    async subscribe(streams, options = {}) {
       validatePublicStreams(streams);
+      const activeSignal = options.signal ?? signal;
       const url = new URL('wss://fstream.binance.com/public/stream');
       url.searchParams.set('streams', streams.join('/'));
       return (async function* () {
         let reconnects = 0;
         let connectionCount = 0;
-        while (!signal?.aborted) {
+        while (!activeSignal?.aborted) {
           const socket = new WebSocketImpl(url.toString());
           let closeEvent = null;
           let socketError = false;
           let socketOverflow = false;
-          for await (const event of readWebSocketEvents(socket, signal, maxQueuedMessages)) {
+          for await (const event of readWebSocketEvents(socket, activeSignal, maxQueuedMessages)) {
             if (event.type === 'open') {
               yield { type: connectionCount === 0 ? 'connect' : 'reconnect', reason: 'PUBLIC_OPTIONS_STREAM_CONNECTED' };
               connectionCount += 1;
@@ -213,7 +214,7 @@ export function createBinanceOptionsWebSocketTransport({
           }
           const closeCode = closeEvent?.code ?? 1006;
           yield { type: 'disconnect', code: closeCode, reason: socketOverflow ? 'local-buffer-overflow' : (closeEvent?.reason ?? 'websocket-error') };
-          if (signal?.aborted) return;
+          if (activeSignal?.aborted) return;
           if (socketOverflow) {
             throw new OptionsCollectorError('WEBSOCKET_BUFFER_OVERFLOW', 'WebSocket message queue exceeded its bound; the stream was stopped and a gap marker was emitted.');
           }
@@ -228,7 +229,7 @@ export function createBinanceOptionsWebSocketTransport({
           }
           const delay = Math.min(reconnectMaxDelayMs, reconnectBaseDelayMs * (2 ** reconnects));
           reconnects += 1;
-          await waitBeforeReconnect(delay, signal);
+          await waitBeforeReconnect(delay, activeSignal);
         }
       })();
     },
@@ -722,7 +723,7 @@ function gapRecord(rawPayload, receivedAt, reason) {
   });
 }
 
-export async function collectForwardOptionsEvents({ archive, transport, streams, enabled = false, restTransport, refreshExchangeInfo = false, exchangeInfoRefreshIntervalMs = 5 * 60 * 1000, onFatal = () => {}, now = () => new Date().toISOString() }) {
+export async function collectForwardOptionsEvents({ archive, transport, streams, enabled = false, restTransport, refreshExchangeInfo = false, exchangeInfoRefreshIntervalMs = 5 * 60 * 1000, onFatal = () => {}, signal, now = () => new Date().toISOString() }) {
   if (enabled !== true) throw new OptionsCollectorError('COLLECTOR_DISABLED', 'Forward collection is opt-in and remains disabled by default.');
   if (!archive || typeof archive.acquireWriterLease !== 'function' || !transport || typeof transport.subscribe !== 'function') {
     throw new OptionsCollectorError('TRANSPORT_REQUIRED', 'An archive and injected async-iterable transport are required.');
@@ -763,7 +764,7 @@ export async function collectForwardOptionsEvents({ archive, transport, streams,
         exchangeInfoRefreshes += 1;
       }
     }
-    const iterable = await transport.subscribe(streams);
+    const iterable = await transport.subscribe(streams, { signal });
     for await (const item of iterable) {
       const receivedAt = now();
       if (refreshExchangeInfo && Number.isFinite(Date.parse(receivedAt))
