@@ -254,6 +254,22 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
 
     const timestampText = readField(row, ['timestamp', 'asof', 'quotetime', 'updatedat', 'updatetime', 'eventtime', 'datetime', 'time']);
     const sourceTimestamp = timestampText ? parseTimestamp(timestampText) : undefined;
+    const bidAskSourceText = (readField(row, ['bidAskSource', 'bboSource', 'quoteSource']) ?? '').toUpperCase();
+    const bidAskSource = bidAskSourceText === 'BOOK_TICKER' || bidAskSourceText === 'OPTION_TICKER' || bidAskSourceText === 'MARK_PRICE'
+      ? bidAskSourceText as 'BOOK_TICKER' | 'OPTION_TICKER' | 'MARK_PRICE'
+      : undefined;
+    const bidAskTimestampText = readField(row, ['bidAskTimestamp', 'bboTimestamp', 'bookTickerTimestamp', 'quoteSnapshotTimestamp']);
+    const bidAskTimestamp = bidAskTimestampText ? parseTimestamp(bidAskTimestampText) : undefined;
+    const bidAskReceivedAtText = readField(row, ['bidAskReceivedAt', 'quoteReceivedAt', 'localReceiveTime']);
+    const bidAskReceivedAt = bidAskReceivedAtText ? parseTimestamp(bidAskReceivedAtText) : undefined;
+    const bidAskSizeUnitText = (readField(row, ['bidAskSizeUnit', 'bboSizeUnit', 'quantityUnit']) ?? '').toUpperCase();
+    const bidAskSizeUnit = bidAskSizeUnitText === 'CONTRACTS' || bidAskSizeUnitText === 'UNDERLYING_UNITS'
+      ? bidAskSizeUnitText as 'CONTRACTS' | 'UNDERLYING_UNITS'
+      : undefined;
+    const bidQuantity = parseNonnegativeNumber(readField(row, ['bidQuantity', 'bidQty', 'bq']), delimiter === ';');
+    const askQuantity = parseNonnegativeNumber(readField(row, ['askQuantity', 'askQty', 'aq']), delimiter === ';');
+    if (bidAskSourceText && !bidAskSource) addRowWarning(`تم تجاهل مصدر BBO غير معروف في الصف ${sourceRowNumber}.`);
+    if (bidAskTimestampText && !bidAskTimestamp) addRowWarning(`تعذر قراءة وقت BBO في الصف ${sourceRowNumber}.`);
     const bidValue = parseNumber(readField(row, ['bid', 'bidprice', 'bestbid']), delimiter === ';');
     const askValue = parseNumber(readField(row, ['ask', 'askprice', 'bestask']), delimiter === ';');
     const markValue = parseNumber(readField(row, ['mark', 'markprice', 'mid', 'lastprice']), delimiter === ';');
@@ -427,6 +443,16 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
       spot,
       unit,
       sourceTimestamp: sourceTimestamp?.toISOString(),
+      bidAskSource,
+      bidAskSizeUnit,
+      bidQuantity,
+      askQuantity,
+      sourceTimestamps: bidAskTimestamp && bidAskSource === 'BOOK_TICKER'
+        ? { bookTicker: bidAskTimestamp.toISOString() }
+        : bidAskTimestamp && bidAskSource === 'OPTION_TICKER'
+          ? { ticker: bidAskTimestamp.toISOString() }
+          : undefined,
+      sourceReceivedAt: bidAskReceivedAt ? { bidAsk: bidAskReceivedAt.toISOString() } : undefined,
       estimatedFields,
     });
   });
@@ -483,7 +509,7 @@ export function parseOptionsCsv(text: string, referenceTime = Date.now()): CsvIm
 }
 
 export function downloadCsvTemplate(): void {
-  const template = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,delta,gamma,theta,vega,rho,openInterest,openInterestUsd,volume,volumeQuote,spot,forward,unit,timestamp,assetClass,venue,underlyingKind,carryYield,riskFreeRate,quoteAsset,settlementAsset,contractMultiplier,exerciseStyle,settlementStyle,expiryTimezone,' + CONTRACT_ECONOMICS_CSV_V2_FIELDS.join(',');
+  const template = 'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,delta,gamma,theta,vega,rho,openInterest,openInterestUsd,volume,volumeQuote,spot,forward,unit,timestamp,assetClass,venue,underlyingKind,carryYield,riskFreeRate,quoteAsset,settlementAsset,contractMultiplier,exerciseStyle,settlementStyle,expiryTimezone,bidAskSource,bidAskTimestamp,bidAskReceivedAt,bidAskSizeUnit,bidQuantity,askQuantity,' + CONTRACT_ECONOMICS_CSV_V2_FIELDS.join(',');
   const blob = new Blob([template], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
