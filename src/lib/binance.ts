@@ -307,109 +307,42 @@ export function parseBinanceOptionTickerMessage(payload: unknown): BinanceOption
     if (data.e !== '24hrTicker' || typeof data.s !== 'string' || !data.s) return [];
     const eventTime = finiteNumber(data.E as string | number | undefined);
     if (eventTime === undefined || eventTime <= 0) return [];
-    const transactionTime = finiteNumber(data.T as string | number | undefined);
-    const lastPrice = positiveNumber(data.c as string | number | undefined);
+    const lastPrice = finiteNumber(data.c as string | number | undefined);
     const lastQuantity = finiteNumber(data.Q as string | number | undefined);
-    const volume = finiteNumber(data.V as string | number | undefined);
-    const volumeQuote = finiteNumber(data.A as string | number | undefined);
+    const volume = finiteNumber(data.v as string | number | undefined);
+    const volumeQuote = finiteNumber(data.q as string | number | undefined);
     const closeTime = finiteNumber(data.C as string | number | undefined);
-    const markPrice = positiveNumber(data.mp as string | number | undefined);
-    const bestBid = positiveNumber(data.bo as string | number | undefined);
-    const bestAsk = positiveNumber(data.ao as string | number | undefined);
-    const bestBidQuantity = finiteNumber(data.bq as string | number | undefined);
-    const bestAskQuantity = finiteNumber(data.aq as string | number | undefined);
-    const bidIv = positiveNumber(data.b as string | number | undefined);
-    const askIv = positiveNumber(data.a as string | number | undefined);
-    const venueVolatility = positiveNumber(data.vo as string | number | undefined);
-    const sourceGreeks = {
-      delta: finiteNumber(data.d as string | number | undefined),
-      gamma: finiteNumber(data.g as string | number | undefined),
-      theta: finiteNumber(data.t as string | number | undefined),
-      vega: finiteNumber(data.v as string | number | undefined),
-    };
-    if (![lastPrice, lastQuantity, volume, volumeQuote, closeTime, markPrice, bestBid, bestAsk, bidIv, askIv, venueVolatility, ...Object.values(sourceGreeks)].some(Number.isFinite)) return [];
+    if (![lastPrice, lastQuantity, volume, volumeQuote].some((value) => value !== undefined && value >= 0)) return [];
     return [{
       symbol: data.s,
       eventTime,
-      ...(transactionTime !== undefined && transactionTime > 0 ? { transactionTime } : {}),
-      ...(lastPrice !== undefined ? { lastPrice } : {}),
+      ...(lastPrice !== undefined && lastPrice >= 0 ? { lastPrice } : {}),
       ...(lastQuantity !== undefined && lastQuantity >= 0 ? { lastQuantity } : {}),
       ...(volume !== undefined && volume >= 0 ? { volume } : {}),
       ...(volumeQuote !== undefined && volumeQuote >= 0 ? { volumeQuote } : {}),
       ...(closeTime !== undefined && closeTime > 0 ? { closeTime } : {}),
-      ...(markPrice !== undefined ? { markPrice } : {}),
-      ...(bestBid !== undefined ? { bestBid } : {}),
-      ...(bestAsk !== undefined ? { bestAsk } : {}),
-      ...(bestBidQuantity !== undefined && bestBidQuantity >= 0 ? { bestBidQuantity } : {}),
-      ...(bestAskQuantity !== undefined && bestAskQuantity >= 0 ? { bestAskQuantity } : {}),
-      ...(bidIv !== undefined ? { bidIv } : {}),
-      ...(askIv !== undefined ? { askIv } : {}),
-      ...(venueVolatility !== undefined ? { venueVolatility } : {}),
-      sourceGreeks,
     }];
   });
 }
-
 /** Apply 24-hour ticker statistics only; it is not a book, mark or IV source. */
 export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptionTickerEvent): OptionQuote {
-  const marketTimestamp = event.transactionTime ?? event.eventTime;
   const previousTimestamp = quote.sourceTimestamps?.optionTicker
-    ? new Date(quote.sourceTimestamps.optionTicker).getTime()
-    : 0;
-  if (marketTimestamp < previousTimestamp) return quote;
-  const currentBboTimestamp = quote.bidAskSource === 'BOOK_TICKER'
-    ? Date.parse(quote.sourceTimestamps?.bookTicker ?? '')
-    : quote.bidAskSource === 'MARK_PRICE'
-      ? Date.parse(quote.sourceTimestamps?.markPrice ?? '')
-      : quote.bidAskSource === 'OPTION_TICKER'
-        ? Date.parse(quote.sourceTimestamps?.optionTicker ?? '')
-        : Number.NaN;
-  const updateBbo = !Number.isFinite(currentBboTimestamp) || marketTimestamp >= currentBboTimestamp;
-  const currentMarkTimestamp = Date.parse(quote.sourceTimestamps?.markPrice ?? '');
-  const updateMark = event.markPrice !== undefined
-    && (!Number.isFinite(currentMarkTimestamp) || marketTimestamp >= currentMarkTimestamp);
-  const useTickerBid = updateBbo && event.bestBid !== undefined;
-  const useTickerAsk = updateBbo && event.bestAsk !== undefined;
+    ? Date.parse(quote.sourceTimestamps.optionTicker)
+    : Number.NaN;
+  if (Number.isFinite(previousTimestamp) && event.eventTime < previousTimestamp) return quote;
   return {
     ...quote,
-    ...(event.lastPrice !== undefined ? {
-      lastPrice: event.lastPrice,
-      ...(quote.priceSource === 'LAST' && !updateMark ? { markPrice: event.lastPrice } : {}),
-    } : {}),
-    ...(updateMark ? { markPrice: event.markPrice, priceSource: 'MARK' as const } : {}),
-    ...(useTickerBid ? { bid: event.bestBid, ...(event.bestBidQuantity !== undefined ? { bidQuantity: event.bestBidQuantity } : {}) } : {}),
-    ...(useTickerAsk ? { ask: event.bestAsk, ...(event.bestAskQuantity !== undefined ? { askQuantity: event.bestAskQuantity } : {}) } : {}),
-    ...(useTickerBid || useTickerAsk ? { bidAskSource: useTickerBid && useTickerAsk ? 'OPTION_TICKER' as const : undefined } : {}),
-    ...(event.bidIv !== undefined ? { bidIv: event.bidIv } : {}),
-    ...(event.askIv !== undefined ? { askIv: event.askIv } : {}),
-    ...(event.venueVolatility !== undefined ? { venueVolatility: event.venueVolatility } : {}),
-    ...(Object.values(event.sourceGreeks).some(Number.isFinite)
-      ? { unverifiedSourceGreeks: { ...quote.unverifiedSourceGreeks, ...event.sourceGreeks } }
-      : {}),
-    ...(quote.estimatedFields ? {
-      estimatedFields: quote.estimatedFields.filter((field) => !(
-        (updateMark && field === 'markPrice')
-        || (useTickerBid && field === 'bid')
-        || (useTickerAsk && field === 'ask')
-        || (event.bidIv !== undefined && field === 'bidIv')
-        || (event.askIv !== undefined && field === 'askIv')
-      )),
-    } : {}),
+    ...(event.lastPrice !== undefined ? { lastPrice: event.lastPrice } : {}),
     ...(event.lastQuantity !== undefined ? { lastQuantity: event.lastQuantity } : {}),
     ...(event.volume !== undefined ? { volume: event.volume } : {}),
     ...(event.volumeQuote !== undefined ? { volumeQuote: event.volumeQuote } : {}),
     sourceTimestamps: {
       ...quote.sourceTimestamps,
-      optionTicker: new Date(marketTimestamp).toISOString(),
-      ...(event.closeTime !== undefined ? { ticker: new Date(event.closeTime).toISOString() } : {}),
-      ...(updateMark ? { markPrice: new Date(marketTimestamp).toISOString() } : {}),
-      ...(event.venueVolatility !== undefined ? { venueVolatility: new Date(marketTimestamp).toISOString() } : {}),
-      ...(event.bidIv !== undefined ? { bidIv: new Date(marketTimestamp).toISOString() } : {}),
-      ...(event.askIv !== undefined ? { askIv: new Date(marketTimestamp).toISOString() } : {}),
+      optionTicker: new Date(event.eventTime).toISOString(),
+      ...(event.closeTime !== undefined ? { tickerClose: new Date(event.closeTime).toISOString() } : {}),
     },
   };
 }
-
 /** Apply markPrice/index/rate updates; venue vo remains distinct from markIV. */
 export function applyBinanceOptionMarkPrice(
   quote: OptionQuote,
