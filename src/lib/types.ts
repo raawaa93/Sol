@@ -213,6 +213,7 @@ export interface PaperTradeExit {
   exitPremium: number;
   exitQuantity: number;
   exitFees?: number;
+  exitFeesSource?: 'USER_ENTERED';
   exitPremiumAmount: number;
   exitCreditAfterFees?: number;
   realizedGrossPnl: number;
