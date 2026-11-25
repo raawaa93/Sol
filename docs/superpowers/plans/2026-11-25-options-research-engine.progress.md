@@ -86,6 +86,12 @@
 - CI 45573552188 passed 303/303 tests, build, bundle and 18/18 Playwright journeys. Lighthouse 45573547735 and Project Context Guard 45573547738 passed.
 - Total bankroll, available cash and aggregate open risk are not yet modeled. This does not enable live trading.
 
+### Archive recovery-lock safety — PR #223
+- [x] Treat recent partially written recovery locks as busy and stale malformed recovery locks as corrupt; never delete them based on age alone without verifiable owner metadata.
+- [x] Add concurrent recovery regressions; document manual inspection and fail-closed recovery.
+- [x] Merged as `1cc8811b566b590be9b96af2441cef2f4fb39e18`; PR-head CI/Lighthouse/Project Context Guard passed. Main post-merge CI 45580536983 and Lighthouse 45580536944 passed; GitHub Pages deploy completed, published-site Lighthouse still running at last check.
+- [x] Research OKX historical 400/5000-level order-book API as a candidate; rejected collection for the current Syria eligibility and data-use rights (public data restricted to personal non-commercial use; no redistribution). No API call or data download made.
+
 ### Replay expiry guard — PR #221
 - [x] Reject missing/malformed expiry and snapshots at/after expiry.
 - [x] Skip fixed-hold replay trades when planned exit reaches/crosses expiry; count final would-be entries blocked by expiry.
