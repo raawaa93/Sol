@@ -287,3 +287,29 @@ test('OPTION_TICKER BBO provenance uses the REST ticker snapshot clock, not the 
   assert.equal(result.trades[0].entrySourceTimestamp, '2026-11-24T10:00:00.000Z');
   assert.equal(result.trades[0].exitSourceTimestamp, '2026-11-24T11:00:00.000Z');
 });
+
+
+test('replay refuses expired contracts and contracts whose planned holding period crosses expiry', () => {
+  const expired = replayLongOptionSnapshots([
+    quote('2026-11-24T10:00:00.000Z', { expiry: '2026-11-24T09:59:59.000Z' }),
+    quote('2026-11-24T11:00:00.000Z', { expiry: '2026-11-24T09:59:59.000Z' }),
+  ], config);
+  assert.equal(expired.trades.length, 0);
+  assert.equal(expired.skipped.expiredContract, 2);
+
+  const crossesExpiry = replayLongOptionSnapshots([
+    quote('2026-11-25T20:00:00.000Z', { expiry: '2026-11-25T20:30:00.000Z' }),
+    quote('2026-11-25T21:02:00.000Z', { expiry: '2026-11-25T20:30:00.000Z' }),
+  ], { ...config, asOfTimestamp: '2026-11-25T23:00:00.000Z' });
+  assert.equal(crossesExpiry.trades.length, 0);
+  assert.equal(crossesExpiry.skipped.expiryBeforeExit, 1);
+});
+
+test('replay rejects missing or malformed expiry timestamps', () => {
+  const result = replayLongOptionSnapshots([
+    quote('2026-11-24T10:00:00.000Z', { expiry: '' }),
+    quote('2026-11-24T11:00:00.000Z', { expiry: 'not-a-date' }),
+  ], config);
+  assert.equal(result.trades.length, 0);
+  assert.equal(result.skipped.invalidExpiry, 2);
+});
