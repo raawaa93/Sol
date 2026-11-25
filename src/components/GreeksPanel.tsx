@@ -29,7 +29,7 @@ export default function GreeksPanel({ quote, quantity, dataMode }: GreeksPanelPr
   const scaleIssueMessage = scaleIssue ? getContractScaleIssueMessage(scaleIssue) : '';
   const positionUnits = hasExplicitConsistentContractScale ? Math.max(0, Number.isFinite(quantity) ? quantity : 0) * quote.unit : 0;
   const pricingStatus = quote.pricingStatus ?? (dataMode === 'DEMO' ? 'ASSUMED' : 'OBSERVED_ONLY');
-  const modelAvailable = pricingStatus !== 'OBSERVED_ONLY';
+  const modelAvailable = pricingStatus !== 'OBSERVED_ONLY' && (!quote.contractEconomics || hasCanonicalModelGreeks);
   const underlyingMoveLabel = quote.underlyingKind === 'FUTURE' ? 'Forward' : 'السعر المرجعي';
   const modelName = quote.pricingModel === 'BLACK_76' ? 'Black–76' : 'Black–Scholes مع Carry';
   const quoteCurrency = getQuoteCurrency(quote);
@@ -97,8 +97,8 @@ export default function GreeksPanel({ quote, quantity, dataMode }: GreeksPanelPr
       <article className="panel greeks-panel">
         {pricingStatus === 'OBSERVED_ONLY' && <div className="greeks-footnote"><Info size={14} /><span>تتوفر بيانات السوق وIV، لكن مواصفات هذا العقد لا تسمح حالياً بحساب Greeks موثوقة. لن نستخدم أصفاراً مصطنعة أو نموذج Spot بديل. {quote.pricingReason ?? 'أدخل مواصفات عقد كاملة أو بيانات Greeks موثقة.'}</span></div>}
         {pricingStatus === 'ASSUMED' && <div className="greeks-footnote"><Info size={14} /><span>القيم التالية محسوبة بنموذج {modelName} مع افتراضات غير مرصودة بالكامل. {quote.pricingReason ?? 'تحقق من معدل الفائدة والـcarry ومواصفات التسوية قبل الاعتماد عليها.'}</span></div>}
-        {hasCanonicalModelGreeks && <div className="greeks-footnote"><Info size={14} /><span>تم التحقق من محوّل Binance النقدي: قيم Greeks لكل وحدة من الأصل الأساسي، وحساسية المركز مجمّعة باستخدام كمية العقد الموثقة. ما زالت قيم النموذج مشروطة بـ IV المرصود وافتراضات Black–Scholes/Carry الظاهرة، وليست قيماً مرصودة أو توقعاً.</span></div>}
-        {quote.contractEconomics && !hasCanonicalModelGreeks && <div className="greeks-footnote"><Info size={14} /><span>مواصفات العقد موثّقة، لكن هذه اللقطة لا تستوفي شروط محوّل Greeks، مثل توقيت IV المرصود أو توقيت مؤشر التسوية. نعرض قيمة النموذج لكل وحدة كمرجع فقط، ونحجب حساسية المركز واختبارات الصدمات حتى تكتمل مصادر المدخلات.</span></div>}
+        {hasCanonicalModelGreeks && <div className="greeks-footnote"><Info size={14} /><span>تم التحقق من محوّل Binance النقدي: markIV من لقطة REST حديثة، ومعدل الفائدة ومؤشر التسوية بمدخلات مؤرخة؛ قيم Greeks لكل وحدة من الأصل الأساسي، وحساسية المركز مجمّعة باستخدام كمية العقد الموثقة. Carry مفترض عند 0%، والقيم ناتج نموذج لا توقع أو قيم Greeks مرصودة.</span></div>}
+        {quote.contractEconomics && !hasCanonicalModelGreeks && <div className="greeks-footnote"><Info size={14} /><span>مواصفات العقد موثّقة، لكن هذه اللقطة لا تستوفي شروط الحداثة: markIV من لقطة REST المستلمة حديثاً، ومعدل فائدة ومؤشر تسوية بتوقيت صالح. لا نستخدم حقل vo أو بيانات 24 ساعة بديلاً عن markIV، ونحجب قيم النموذج وحساسية المركز معاً حتى تكتمل المصادر.</span></div>}
         {scaleIssue && <div className="greeks-footnote"><Info size={14} /><span>{scaleIssueMessage} ستبقى Greeks لكل وحدة مرجعية ظاهرة عند توفر النموذج، لكننا نحجب حساسية المركز المجمعة.</span></div>}
         <div className="greeks-table-wrap">
           <table className="greeks-table">
