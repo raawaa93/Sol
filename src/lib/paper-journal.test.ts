@@ -141,6 +141,21 @@ test('canonical PAPER entry requires the timestamp for the actual observed price
   }, 'BINANCE'), false);
 });
 
+test('canonical PAPER entry rejects premium and spot values detached from their timestamped sources', () => {
+  assert.equal(createCanonicalPaperTrade({ ...input, premiumPrice: 1.31 }).ok, false);
+  assert.equal(createCanonicalPaperTrade({ ...input, spotAtEntry: 99001 }).ok, false);
+});
+
+test('canonical PAPER entry rejects malformed canonical economics even with provider labels', () => {
+  assert.equal(canCreateCanonicalPaperTrade({
+    ...quote,
+    contractEconomics: {
+      ...economics,
+      exercise: { ...economics.exercise, cashSettlement: { ...economics.exercise.cashSettlement, multiplier: -100 } },
+    },
+  }, 'BINANCE'), false);
+});
+
 test('canonical PAPER entry rejects invalid quantity, premium, fees and reference price', () => {
   assert.equal(createCanonicalPaperTrade({ ...input, quantity: 0 }).ok, false);
   assert.equal(createCanonicalPaperTrade({ ...input, premiumPrice: 0 }).ok, false);
