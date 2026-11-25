@@ -47,8 +47,12 @@ export async function runOptionsArchiveWorker({
   if (!config || !Array.isArray(config.streams) || !config.archiveRoot) {
     throw new Error('A validated options archive worker configuration is required.');
   }
+  const controller = new AbortController();
+  const onAbort = () => controller.abort(signal?.reason ?? new Error('Worker stopped.'));
+  signal?.addEventListener('abort', onAbort, { once: true });
+  if (signal?.aborted) onAbort();
   if (!transport) {
-    transport = createBinanceOptionsWebSocketTransport({ signal });
+    transport = createBinanceOptionsWebSocketTransport({ signal: controller.signal });
   }
   await archive.initialize();
   const initialBytes = await archive.getArchiveBytes();
@@ -64,10 +68,6 @@ export async function runOptionsArchiveWorker({
     }
   }, config.heartbeatMs);
   heartbeat.unref?.();
-  const controller = new AbortController();
-  const onAbort = () => controller.abort(signal?.reason ?? new Error('Worker stopped.'));
-  signal?.addEventListener('abort', onAbort, { once: true });
-  if (signal?.aborted) onAbort();
   const runtimeTimer = setTimeout(() => controller.abort(new Error('Configured worker runtime reached.')), config.maxRuntimeMs);
   runtimeTimer.unref?.();
   try {
