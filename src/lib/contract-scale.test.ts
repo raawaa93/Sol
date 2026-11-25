@@ -184,21 +184,19 @@ test('canonical Binance model Greek capability scales per-underlying values by v
   assert.equal(hasLegacyScalarAnalyticsCapability(canonicalGreekQuote, 'BINANCE'), false);
 });
 
-test('canonical Binance model Greeks accept a fresh REST ticker BBO only with its snapshot timestamp', () => {
+test('canonical Binance model Greeks reject the 24-hour ticker as a BBO source', () => {
   const quote = {
     ...canonicalGreekQuote,
     bidAskSource: 'OPTION_TICKER' as const,
     sourceTimestamps: {
       ...canonicalGreekQuote.sourceTimestamps,
       ticker: '2026-11-25T04:00:00Z',
+      optionTicker: '2026-11-25T04:00:00Z',
     },
   };
-  assert.equal(hasCanonicalBinanceModelGreekCapability(quote, 'BINANCE', canonicalGreekNow), true);
-  assert.equal(hasCanonicalBinanceModelGreekCapability({
-    ...quote,
-    sourceTimestamps: { ...quote.sourceTimestamps, ticker: '2026-11-25T03:59:40Z' },
-  }, 'BINANCE', canonicalGreekNow), false);
+  assert.equal(hasCanonicalBinanceModelGreekCapability(quote, 'BINANCE', canonicalGreekNow), false);
 });
+
 
 test('canonical Binance model Greek capability rejects missing provenance, timestamp or estimated model inputs', () => {
   assert.equal(hasCanonicalBinanceModelGreekCapability({
