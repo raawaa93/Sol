@@ -236,6 +236,13 @@ export function applyBinanceOptionMarkPrice(
     ...(Object.values(event.sourceGreeks).some(Number.isFinite)
       ? { unverifiedSourceGreeks: { ...quote.unverifiedSourceGreeks, ...event.sourceGreeks } }
       : {}),
+    ...(quote.estimatedFields ? {
+      estimatedFields: quote.estimatedFields.filter((field) => !(
+        (event.indexPrice !== undefined && field === 'spot')
+        || (event.riskFreeRate !== undefined && field === 'riskFreeRate')
+        || field === 'markPrice'
+      )),
+    } : {}),
     sourceTimestamps: {
       ...quote.sourceTimestamps,
       markPrice: new Date(event.eventTime).toISOString(),
@@ -255,6 +262,7 @@ export function applyBinanceOptionMarkPrice(
     : Date.parse(updated.sourceReceivedAt?.riskFreeRate ?? '');
   const rateFresh = Number.isFinite(rateReceivedAt) && nowMs >= rateReceivedAt && nowMs - rateReceivedAt <= 60_000;
   const modelUpdate = markIvFresh && rateFresh && updated.ivStatus === 'OBSERVED'
+    && !updated.estimatedFields?.includes('iv')
     && Number.isFinite(updated.riskFreeRate)
     ? priceOption({ ...updated, volatility: updated.iv, rate: updated.riskFreeRate! })
     : undefined;
@@ -268,6 +276,7 @@ export function applyBinanceOptionMarkPrice(
       rho: modelUpdate.greeks.rhoPerRatePoint,
       pricingStatus: 'ASSUMED',
       pricingModel: modelUpdate.model,
+      estimatedFields: updated.estimatedFields?.filter((field) => !['delta', 'gamma', 'theta', 'vega', 'rho'].includes(field)),
     });
   } else {
     Object.assign(updated, {
@@ -275,6 +284,7 @@ export function applyBinanceOptionMarkPrice(
       pricingStatus: 'OBSERVED_ONLY',
       pricingModel: undefined,
       pricingReason: 'Observed markIV or risk-free input is missing/stale; model Greeks are withheld.',
+      estimatedFields: [...new Set([...(updated.estimatedFields ?? []), 'delta', 'gamma', 'theta', 'vega', 'rho'])],
     });
   }
   return updated;
