@@ -273,3 +273,11 @@ The old isolated worktree `research/options-pit-archive-2026-11-24` remains unav
 5. #152/#160 need timestamped licensed/eligible point-in-time data and out-of-sample validation before opportunity ranking or strategy performance can be claimed.
 6. #106 still has no encrypted production backup or isolated restore evidence; the last known workflow skipped for missing Actions configuration.
 7. #113/#179 remain owner/dashboard actions: GitHub main protection is not enabled through the current connector, and Supabase Free does not provide the leaked-password protection setting without an upgrade. No spending or upgrade is authorized.
+
+
+### Final mainline verification — 25 November 2026, 05:08 UTC
+
+- Main commit `d67d5629c61369dc388e42216b768a6466a38b12`: CI success (45550879596), Project Context Guard success (45550879632), Lighthouse baseline success (45550879682), GitHub Pages build/deploy success and published-site smoke/Lighthouse success (45550879655).
+- Execution-record-only commits `b705bdcaa81643ef6807b3e8f82b32f38d0765d9` and subsequent documentation commits passed Project Context Guard; they did not change application code.
+- Main remains unprotected. The branch-protection endpoint returned 403 to the connected integration; this is an access limitation, not evidence that protection was enabled.
+- No live Binance collector, cloud archive, production backup/restore, or live trading was performed.
