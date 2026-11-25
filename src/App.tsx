@@ -140,6 +140,37 @@ function formatSourceTimestamp(timestamp: string | undefined): string {
   return Number.isFinite(date.getTime()) ? `${formatDateTime(date)} UTC` : 'وقت المصدر غير صالح';
 }
 
+function isPaperTradeClose(value: unknown, trade: Partial<PaperTrade>): boolean {
+  if (!value || typeof value !== 'object') return false;
+  const close = value as Partial<NonNullable<PaperTrade['close']>>;
+  const closedAt = Date.parse(close.closedAt ?? '');
+  const expiry = Date.parse(trade.expiry ?? '');
+  const bookTimestamp = Date.parse(close.sourceTimestampsAtExit?.bookTicker ?? '');
+  const indexTimestamp = Date.parse(close.sourceTimestampsAtExit?.index ?? '');
+  const entryDebit = trade.premiumDebitAtEntry;
+  const expectedAmount = (close.exitPremium ?? Number.NaN)
+    * (trade.premiumMultiplierAtEntry ?? Number.NaN)
+    * (trade.quantity ?? Number.NaN);
+  return Number.isFinite(closedAt) && closedAt > Date.parse(trade.createdAt ?? '')
+    && Number.isFinite(expiry) && closedAt < expiry
+    && Number.isFinite(bookTimestamp) && bookTimestamp <= closedAt && closedAt - bookTimestamp <= 5 * 60_000
+    && Number.isFinite(indexTimestamp) && indexTimestamp <= closedAt && closedAt - indexTimestamp <= 5 * 60_000
+    && typeof close.exitPremium === 'number' && Number.isFinite(close.exitPremium) && close.exitPremium > 0
+    && typeof close.exitPremiumAmount === 'number' && Number.isFinite(close.exitPremiumAmount) && close.exitPremiumAmount >= 0
+    && Math.abs(close.exitPremiumAmount - expectedAmount) < 1e-8
+    && typeof close.exitFees === 'number' && Number.isFinite(close.exitFees) && close.exitFees >= 0
+    && typeof close.exitProceeds === 'number' && Number.isFinite(close.exitProceeds)
+    && Math.abs(close.exitProceeds - (close.exitPremiumAmount - close.exitFees)) < 1e-8
+    && close.exitCurrency === trade.premiumCurrencyAtEntry
+    && typeof close.exitSpot === 'number' && Number.isFinite(close.exitSpot) && close.exitSpot > 0
+    && close.exitPriceSource === 'BID'
+    && close.exitBidAskSource === 'BOOK_TICKER'
+    && typeof close.realizedPnl === 'number' && Number.isFinite(close.realizedPnl)
+    && Number.isFinite(entryDebit)
+    && Math.abs(close.realizedPnl - (close.exitProceeds - entryDebit!)) < 1e-8
+    && close.realizedPnlCurrency === close.exitCurrency;
+}
+
 function isPaperTrade(value: unknown): value is PaperTrade {
   if (!value || typeof value !== 'object') return false;
   const trade = value as Partial<PaperTrade>;
@@ -175,6 +206,7 @@ function isPaperTrade(value: unknown): value is PaperTrade {
       && typeof trade.premiumDebitAtEntry === 'number' && Number.isFinite(trade.premiumDebitAtEntry) && trade.premiumDebitAtEntry >= trade.premiumAmountAtEntry
       && trade.premiumCurrencyAtEntry === trade.contractEconomics.premium.quoteCurrency
       && (trade.priceSourceAtEntry !== 'MID' || trade.bidAskSourceAtEntry === 'BOOK_TICKER' || trade.bidAskSourceAtEntry === 'OPTION_TICKER' || trade.bidAskSourceAtEntry === 'MARK_PRICE')))
+    && (trade.close === undefined || isPaperTradeClose(trade.close, trade))
     && trade.status === 'PAPER';
 }
 
