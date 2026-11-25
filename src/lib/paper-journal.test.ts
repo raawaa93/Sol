@@ -174,3 +174,68 @@ test('canonical PAPER entry rejects invalid quantity, premium, fees and referenc
   assert.equal(createCanonicalPaperTrade({ ...input, fees: -1 }).ok, false);
   assert.equal(createCanonicalPaperTrade({ ...input, spotAtEntry: Number.NaN }).ok, false);
 });
+
+
+test('canonical PAPER entry rejects an option that expired before the recorded entry time', () => {
+  const expired = {
+    ...input,
+    createdAt: '2026-11-25T03:01:00Z',
+    quote: { ...quote, expiry: '2026-11-25T03:00:59Z' },
+  };
+  const result = createCanonicalPaperTrade(expired);
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.reason, 'OPTION_EXPIRED_AT_PAPER_ENTRY');
+});
+
+test('canonical PAPER entry rejects stale price or index snapshots older than five minutes', () => {
+  const stalePrice = {
+    ...input,
+    createdAt: '2026-11-25T03:06:00Z',
+  };
+  const priceResult = createCanonicalPaperTrade(stalePrice);
+  assert.equal(priceResult.ok, false);
+  if (!priceResult.ok) assert.equal(priceResult.reason, 'PAPER_ENTRY_MARKET_SNAPSHOT_STALE_OR_FUTURE');
+
+  const staleIndex = {
+    ...input,
+    createdAt: '2026-11-25T03:06:00Z',
+    quote: {
+      ...quote,
+      sourceTimestamps: {
+        ...quote.sourceTimestamps,
+        bookTicker: '2026-11-25T03:05:30Z',
+      },
+    },
+  };
+  const indexResult = createCanonicalPaperTrade(staleIndex);
+  assert.equal(indexResult.ok, false);
+  if (!indexResult.ok) assert.equal(indexResult.reason, 'PAPER_ENTRY_MARKET_SNAPSHOT_STALE_OR_FUTURE');
+});
+
+test('canonical PAPER entry rejects future-dated price and index source timestamps', () => {
+  const futurePrice = createCanonicalPaperTrade({
+    ...input,
+    quote: {
+      ...quote,
+      sourceTimestamps: {
+        ...quote.sourceTimestamps,
+        bookTicker: '2026-11-25T03:02:00Z',
+      },
+    },
+  });
+  assert.equal(futurePrice.ok, false);
+  if (!futurePrice.ok) assert.equal(futurePrice.reason, 'PAPER_ENTRY_MARKET_SNAPSHOT_STALE_OR_FUTURE');
+
+  const futureIndex = createCanonicalPaperTrade({
+    ...input,
+    quote: {
+      ...quote,
+      sourceTimestamps: {
+        ...quote.sourceTimestamps,
+        index: '2026-11-25T03:02:00Z',
+      },
+    },
+  });
+  assert.equal(futureIndex.ok, false);
+  if (!futureIndex.ok) assert.equal(futureIndex.reason, 'PAPER_ENTRY_MARKET_SNAPSHOT_STALE_OR_FUTURE');
+});
