@@ -143,12 +143,10 @@ export function calculateQuoteCashRiskNeutralMetrics(
     : Date.parse(quote.sourceReceivedAt?.riskFreeRate ?? '');
   const indexTimestamp = Date.parse(quote.sourceTimestamps?.index ?? '');
   const bboTimestamp = quote.bidAskSource === 'BOOK_TICKER'
-    ? Date.parse(quote.sourceTimestamps?.bookTicker ?? '')
-    : quote.bidAskSource === 'OPTION_TICKER'
-      ? Date.parse(quote.sourceTimestamps?.optionTicker ?? '')
-      : quote.bidAskSource === 'MARK_PRICE'
-        ? Date.parse(quote.sourceTimestamps?.markPrice ?? '')
-        : Number.NaN;
+    || quote.bidAskSource === 'OPTION_TICKER'
+    || quote.bidAskSource === 'MARK_PRICE'
+    ? Date.parse(quote.sourceTimestamps?.bidAsk ?? '')
+    : Number.NaN;
   const markIvFresh = Number.isFinite(markIvReceivedAt) && nowMs >= markIvReceivedAt && nowMs - markIvReceivedAt <= 60_000;
   const riskFreeFresh = Number.isFinite(riskFreeReceivedAt) && nowMs >= riskFreeReceivedAt && nowMs - riskFreeReceivedAt <= 60_000;
   const indexFresh = Number.isFinite(indexTimestamp) && nowMs >= indexTimestamp && nowMs - indexTimestamp <= 15_000;
