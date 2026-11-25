@@ -176,8 +176,8 @@ const canonicalGreekQuote: OptionQuote = {
 const canonicalGreekNow = Date.parse('2026-11-25T04:00:05Z');
 
 test('canonical Binance model Greek capability scales per-underlying values by verified contract unit', () => {
-  assert.equal(hasCanonicalBinanceModelGreekCapability(canonicalGreekQuote, 'BINANCE'), true);
-  assert.equal(hasCanonicalBinanceModelGreekCapability(canonicalGreekQuote, 'CSV'), false);
+  assert.equal(hasCanonicalBinanceModelGreekCapability(canonicalGreekQuote, 'BINANCE', canonicalGreekNow), true);
+  assert.equal(hasCanonicalBinanceModelGreekCapability(canonicalGreekQuote, 'CSV', canonicalGreekNow), false);
   assert.equal(hasLegacyScalarAnalyticsCapability(canonicalGreekQuote, 'BINANCE'), false);
 });
 
@@ -185,7 +185,7 @@ test('canonical Binance model Greek capability rejects missing provenance, times
   assert.equal(hasCanonicalBinanceModelGreekCapability({
     ...canonicalGreekQuote,
     sourceTimestamps: { index: canonicalGreekQuote.sourceTimestamps!.index },
-  }, 'BINANCE'), false);
+  }, 'BINANCE', canonicalGreekNow), false);
   assert.equal(hasCanonicalBinanceModelGreekCapability({
     ...canonicalGreekQuote,
     ivStatus: 'ESTIMATED',
