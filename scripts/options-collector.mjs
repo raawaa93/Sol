@@ -243,6 +243,52 @@ function parseExchangeInfo(rawPayload, receivedAt, state) {
   return [record];
 }
 
+export async function refreshBinanceExchangeInfoSnapshot({
+  archive,
+  restTransport,
+  state,
+  lease,
+  now = () => new Date().toISOString(),
+  minIntervalMs = 5 * 60 * 1000,
+  force = false,
+}) {
+  if (!archive || typeof archive.appendBatch !== 'function'
+    || typeof archive.renewWriterLease !== 'function'
+    || !lease?.token
+    || !restTransport || typeof restTransport.fetch !== 'function'
+    || !state || !(state.contractSpecs instanceof Map)) {
+    throw new OptionsCollectorError('TRANSPORT_REQUIRED', 'Archive, active writer lease, refresh state and injected public REST transport are required.');
+  }
+  if (!Number.isSafeInteger(minIntervalMs) || minIntervalMs < 30_000 || minIntervalMs > 60 * 60 * 1000) {
+    throw new OptionsCollectorError('INVALID_REFRESH_INTERVAL', 'exchangeInfo refresh interval must be between 30 seconds and one hour.');
+  }
+  const checkedAt = Date.parse(now());
+  if (!Number.isFinite(checkedAt)) throw new OptionsCollectorError('INVALID_RECEIVE_TIME', 'Local exchangeInfo refresh clock is invalid.');
+  if (!force && Number.isFinite(state.lastExchangeInfoRefreshAt)
+    && checkedAt - state.lastExchangeInfoRefreshAt < minIntervalMs) {
+    return { refreshed: false, archived: 0, mapped: state.contractSpecs.size };
+  }
+
+  if (Date.now() >= lease.expiresAt - 10_000) await archive.renewWriterLease(lease);
+  const payload = await requestPublicBinanceRest('exchangeInfo', {}, restTransport);
+  if (Date.now() >= lease.expiresAt - 10_000) await archive.renewWriterLease(lease);
+  const receivedAt = now();
+  const receivedMs = Date.parse(receivedAt);
+  if (!Number.isFinite(receivedMs)) throw new OptionsCollectorError('INVALID_RECEIVE_TIME', 'Local exchangeInfo receive clock is invalid.');
+
+  // Stage the full-snapshot map and publish it only after the raw snapshot is durable.
+  const nextState = { ...state, contractSpecs: new Map() };
+  const records = parseExchangeInfo(payload, receivedAt, nextState);
+  const last = records[records.length - 1];
+  const result = await archive.appendBatch(records, {
+    lease,
+    cursor: { lastIdempotencyKey: last.idempotencyKey, lastReceivedAt: receivedAt },
+  });
+  state.contractSpecs = nextState.contractSpecs;
+  state.lastExchangeInfoRefreshAt = receivedMs;
+  return { refreshed: true, receivedAt, archived: result.appended, mapped: state.contractSpecs.size };
+}
+
 function unwrap(rawPayload) {
   let parsed = rawPayload;
   if (typeof parsed === 'string') {
@@ -484,10 +530,16 @@ function gapRecord(rawPayload, receivedAt, reason) {
   });
 }
 
-export async function collectForwardOptionsEvents({ archive, transport, streams, enabled = false, now = () => new Date().toISOString() }) {
+export async function collectForwardOptionsEvents({ archive, transport, streams, enabled = false, restTransport, refreshExchangeInfo = false, exchangeInfoRefreshIntervalMs = 5 * 60 * 1000, now = () => new Date().toISOString() }) {
   if (enabled !== true) throw new OptionsCollectorError('COLLECTOR_DISABLED', 'Forward collection is opt-in and remains disabled by default.');
   if (!archive || typeof archive.acquireWriterLease !== 'function' || !transport || typeof transport.subscribe !== 'function') {
     throw new OptionsCollectorError('TRANSPORT_REQUIRED', 'An archive and injected async-iterable transport are required.');
+  }
+  if (refreshExchangeInfo === true && (!restTransport || typeof restTransport.fetch !== 'function')) {
+    throw new OptionsCollectorError('TRANSPORT_REQUIRED', 'Opt-in exchangeInfo refresh requires an injected public REST transport.');
+  }
+  if (refreshExchangeInfo !== true && refreshExchangeInfo !== false) {
+    throw new OptionsCollectorError('INVALID_REFRESH_SETTING', 'exchangeInfo refresh must be explicitly true or false.');
   }
   const isSupportedPublicStream = (stream) => typeof stream === 'string' && (
     /^[a-z0-9-]+@(bookTicker|optionTrade|optionTicker\d{6}?|optionTicker|kline_(1m|3m|5m|15m|30m|1h|2h|4h|6h|8h|12h|1d|3d|1w|1M)|depth@(100ms|500ms)|depth(5|10|20)@(100ms|500ms))$/i.test(stream)
@@ -498,19 +550,41 @@ export async function collectForwardOptionsEvents({ archive, transport, streams,
     throw new OptionsCollectorError('INVALID_STREAMS', 'Only supported public Binance Options stream names are accepted.');
   }
   const lease = await archive.acquireWriterLease();
-  const state = { depth: new Map(), contractSpecs: new Map() };
+  const state = { depth: new Map(), contractSpecs: new Map(), lastExchangeInfoRefreshAt: null };
   let processed = 0;
   let archived = 0;
   let gaps = 0;
+  let exchangeInfoRefreshes = 0;
   try {
+    if (refreshExchangeInfo) {
+      const refresh = await refreshBinanceExchangeInfoSnapshot({
+        archive, restTransport, state, lease, now, minIntervalMs: exchangeInfoRefreshIntervalMs,
+      });
+      if (refresh.refreshed) {
+        archived += refresh.archived;
+        exchangeInfoRefreshes += 1;
+      }
+    }
     const iterable = await transport.subscribe(streams);
     for await (const item of iterable) {
       const receivedAt = now();
+      if (refreshExchangeInfo && Number.isFinite(Date.parse(receivedAt))
+        && (!Number.isFinite(state.lastExchangeInfoRefreshAt)
+          || Date.parse(receivedAt) - state.lastExchangeInfoRefreshAt >= exchangeInfoRefreshIntervalMs)) {
+        const refresh = await refreshBinanceExchangeInfoSnapshot({
+          archive, restTransport, state, lease, now, minIntervalMs: exchangeInfoRefreshIntervalMs,
+        });
+        if (refresh.refreshed) {
+          archived += refresh.archived;
+          exchangeInfoRefreshes += 1;
+        }
+      }
       if (Date.now() >= lease.expiresAt - 10_000) await archive.renewWriterLease(lease);
       let records = [];
       if (item?.type === 'exchangeInfo') {
         const raw = item.payload ?? item.data ?? item;
         records = parseExchangeInfo(raw, receivedAt, state);
+        state.lastExchangeInfoRefreshAt = Date.parse(receivedAt);
       } else if (item?.type === 'depthSnapshot') {
         records = [attachContractSpec(parseDepthSnapshot(item, receivedAt, state), state)];
       } else if (item?.type === 'disconnect' || item?.type === 'reconnect') {
@@ -533,7 +607,7 @@ export async function collectForwardOptionsEvents({ archive, transport, streams,
         archived += result.appended;
       }
     }
-    return { processed, archived, gaps };
+    return { processed, archived, gaps, exchangeInfoRefreshes };
   } catch (error) {
     if (error?.status === 451 || error?.status === 403) {
       throw new OptionsCollectorError('ELIGIBILITY_BLOCKED', 'Stream transport reported a legal/eligibility restriction; collector stopped.');
