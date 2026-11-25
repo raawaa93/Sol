@@ -4,6 +4,7 @@ import {
   PAPER_JOURNAL_RECOVERY_KEY,
   PAPER_JOURNAL_STORAGE_KEY,
   loadPaperJournal,
+  clearPaperJournalRecovery,
   readPaperJournalRecovery,
   readPaperJournalPrimary,
   clearPaperJournalRecovery,
