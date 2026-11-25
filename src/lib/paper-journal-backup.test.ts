@@ -113,3 +113,27 @@ test('local import rejects ID conflicts before writing storage', () => {
   assert.equal(result.ok, false);
   assert.equal(storage.value, null);
 });
+
+
+test('merge accepts an identical full-size backup when the unique result stays within the cap', () => {
+  const rows = Array.from({ length: 10_000 }, (_, index) => ({
+    ...first,
+    id: `trade-${index}`,
+  }));
+  const result = mergePaperJournalBackup(rows, rows, valid);
+  assert.equal(result.ok, true);
+  if (result.ok) assert.equal(result.entries.length, 10_000);
+});
+
+test('merge treats reordered nested JSON object keys as the same record', () => {
+  const existing = {
+    ...first,
+    metadata: { source: 'BINANCE', clocks: { event: '2026-11-25T08:00:00Z', received: '2026-11-25T08:00:01Z' } },
+  };
+  const reordered = {
+    ...first,
+    metadata: { clocks: { received: '2026-11-25T08:00:01Z', event: '2026-11-25T08:00:00Z' }, source: 'BINANCE' },
+  };
+  const result = mergePaperJournalBackup([existing], [reordered], valid);
+  assert.deepEqual(result, { ok: true, entries: [existing] });
+});
