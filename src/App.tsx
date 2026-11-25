@@ -53,6 +53,8 @@ import type { AssetClass, OptionQuote, OptionSide, PaperTrade, Underlying } from
 import { ASSET_CLASS_LABELS } from './lib/asset-class';
 import { PAPER_CAMPAIGN_CAPITAL, PAPER_CAMPAIGN_MAX_LOSS, PAPER_CAMPAIGN_PER_TRADE_CAP, canAllocatePaperCampaignTrade, summarizePaperCampaignBudget } from './lib/paper-campaign-budget';
 import { clearPaperJournalRecovery, loadPaperJournal, readPaperJournalPrimary, readPaperJournalRecovery } from './lib/paper-journal-storage';
+import { appendPaperCloseEvent, loadPaperCloseEvents, readPaperCloseEventsPrimary, readPaperCloseEventsRecovery } from './lib/paper-journal-events';
+import { createCanonicalPaperCloseEvent } from './lib/paper-journal';
 const MarketDepthPanel = lazy(() => import('./components/MarketDepthPanel'));
 const OpportunityReview = lazy(() => import('./components/OpportunityReview'));
 const GreeksPanel = lazy(() => import('./components/GreeksPanel'));
@@ -261,6 +263,9 @@ function App() {
   const [quantity, setQuantity] = useState(0.01);
   const [riskBudget, setRiskBudget] = useState(PAPER_CAMPAIGN_PER_TRADE_CAP);
   const [fees, setFees] = useState(0);
+  const [exitFees, setExitFees] = useState<number | null>(null);
+  const [paperCloseEventsLoad] = useState(() => loadPaperCloseEvents(localStorage));
+  const [paperCloseEvents, setPaperCloseEvents] = useState(paperCloseEventsLoad.events);
   const [paperJournalLoad, setPaperJournalLoad] = useState(() => loadPaperJournal<PaperTrade>(localStorage, isPaperTrade));
   const [trades, setTrades] = useState<PaperTrade[]>(paperJournalLoad.entries);
   const [toast, setToast] = useState('');
@@ -694,8 +699,8 @@ function App() {
   const hasModelGreeks = hasExplicitConsistentContractScale && (selectedQuote.pricingStatus ?? (dataMode === 'DEMO' ? 'ASSUMED' : 'OBSERVED_ONLY')) !== 'OBSERVED_ONLY';
   const quoteAssetLabel = getQuoteCurrency(selectedQuote);
   const campaignBudget = useMemo(
-    () => summarizePaperCampaignBudget(trades, quoteAssetLabel ?? ''),
-    [trades, quoteAssetLabel],
+    () => summarizePaperCampaignBudget(trades, quoteAssetLabel ?? '', undefined, paperCloseEvents),
+    [trades, quoteAssetLabel, paperCloseEvents],
   );
   const campaignBudgetBlockMessage = !campaignBudget.supportedCurrency
     ? 'سقف الحملة يدعم USD أو USDT فقط حالياً؛ لا نفترض تحويل عملات.'
