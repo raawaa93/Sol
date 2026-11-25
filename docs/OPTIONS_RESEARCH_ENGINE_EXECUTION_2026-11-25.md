@@ -87,3 +87,14 @@ The zero-cost hosting comparison and operational gates are recorded in [OPTIONS_
 - **Deployed:** No new cloud service or worker deployed.
 - **Profitable:** Not established.
 - **Live trading:** Not enabled.
+
+
+## Follow-up — IV history browser acceptance (25 November 2026, 07:49 UTC)
+
+PR #196 merged as `26b82d63bdd533c96fba8a881a8036fcf7c0b470`. It adds an end-to-end browser journey with mocked Binance REST responses for paired 20/40-DTE CALL/PUT contracts. The test verifies source-bound 30-day IV extraction, keeps IV Rank unavailable with one daily sample, and exports a JSON backup retaining source, underlying and tenor metadata.
+
+- CI 45570955327: 293 unit/property tests passed, production build passed, bundle budget passed, and 18/18 Playwright journeys passed.
+- Lighthouse 45570955246: passed.
+- Project Context Guard 45570955274: passed.
+
+This test does not change the operational limitations: there is still no live capture, scheduled worker, durable cloud archive or measured strategy edge.
