@@ -18,8 +18,8 @@ export interface PaperJournalStorage {
 /**
  * Load only validated journal rows. Before dropping any invalid row from the
  * active view, preserve the exact original JSON in a separate recovery key.
- * If preservation fails (or a different earlier recovery snapshot already
- * exists), block writes to the primary key so the original bytes are not lost.
+ * A caller may recover a safe open-risk row from a malformed close record;
+ * unrecoverable rows, parse failures, or conflicting backups block primary writes.
  */
 export function loadPaperJournal<T>(
   storage: PaperJournalStorage,
@@ -84,7 +84,7 @@ function preserveRejectedJournal<T>(
       return { entries, rejectedCount, backupAvailable: true, persistenceBlocked: parseError || unrecoveredCount > 0, parseError };
     }
     if (existing === raw) {
-      return { entries, rejectedCount, backupAvailable: true, persistenceBlocked: false, parseError };
+      return { entries, rejectedCount, backupAvailable: true, persistenceBlocked: parseError || unrecoveredCount > 0, parseError };
     }
     // Never overwrite a previous recovery copy with a different snapshot.
     return { entries, rejectedCount, backupAvailable: true, persistenceBlocked: true, parseError };
