@@ -197,11 +197,11 @@ test('canonical Binance model Greek capability rejects missing provenance, times
   assert.equal(hasCanonicalBinanceModelGreekCapability({
     ...canonicalGreekQuote,
     estimatedFields: ['delta'],
-  }, 'BINANCE'), false);
+  }, 'BINANCE', canonicalGreekNow), false);
   assert.equal(hasCanonicalBinanceModelGreekCapability({
     ...canonicalGreekQuote,
     estimatedFields: ['riskFreeRate'],
-  }, 'BINANCE'), false);
+  }, 'BINANCE', canonicalGreekNow), false);
   assert.equal(hasCanonicalBinanceModelGreekCapability({
     ...canonicalGreekQuote,
     sourceTimestamps: { index: '2026-11-25T03:00:00Z' },
@@ -214,16 +214,16 @@ test('canonical Binance model Greek capability rejects missing provenance, times
   assert.equal(hasCanonicalBinanceModelGreekCapability({
     ...canonicalGreekQuote,
     sourceReceivedAt: { ...canonicalGreekQuote.sourceReceivedAt, markIv: '2026-11-25T03:00:00Z' },
-  }, 'BINANCE'), false);
+  }, 'BINANCE', canonicalGreekNow), false);
   assert.equal(hasCanonicalBinanceModelGreekCapability({
     ...canonicalGreekQuote,
     unit: 10,
-  }, 'BINANCE'), false);
+  }, 'BINANCE', canonicalGreekNow), false);
   assert.equal(hasCanonicalBinanceModelGreekCapability({
     ...canonicalGreekQuote,
     contractEconomics: {
       ...canonicalGreekQuote.contractEconomics!,
       provenance: { ...canonicalGreekQuote.contractEconomics!.provenance, status: 'USER_ASSERTED' },
     },
-  }, 'BINANCE'), false);
+  }, 'BINANCE', canonicalGreekNow), false);
 });
