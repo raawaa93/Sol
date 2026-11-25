@@ -1,7 +1,9 @@
 import type { PaperTrade } from './types.ts';
 
 export const PAPER_CAMPAIGN_CAPITAL = 200;
-export const PAPER_CAMPAIGN_MAX_LOSS = 60;
+export const PAPER_CAMPAIGN_ALLOCATION_CAP = 60;
+/** @deprecated Compatibility alias; this is a cumulative allocation ceiling, not a realized-loss cap. */
+export const PAPER_CAMPAIGN_MAX_LOSS = PAPER_CAMPAIGN_ALLOCATION_CAP;
 export const PAPER_CAMPAIGN_PER_TRADE_CAP = 20;
 
 export interface PaperCampaignBudgetSummary {
@@ -63,7 +65,7 @@ export function summarizePaperCampaignBudget(
 ): PaperCampaignBudgetSummary {
   const normalizedCurrency = currency.trim().toUpperCase();
   const supportedCurrency = normalizedCurrency === 'USD' || normalizedCurrency === 'USDT';
-  const effectiveCap = Number.isFinite(cap) && cap > 0 ? Math.min(cap, PAPER_CAMPAIGN_MAX_LOSS) : 0;
+  const effectiveCap = Number.isFinite(cap) && cap > 0 ? Math.min(cap, PAPER_CAMPAIGN_ALLOCATION_CAP) : 0;
   let used = 0;
   let unknownEntries = 0;
   let currencyMismatchEntries = 0;
@@ -106,7 +108,7 @@ export function canAllocatePaperCampaignTrade(
     ? Math.max(0, summary.cap - summary.used)
     : Number.NaN;
 
-  if (!Number.isFinite(summary.cap) || summary.cap <= 0 || summary.cap > PAPER_CAMPAIGN_MAX_LOSS
+  if (!Number.isFinite(summary.cap) || summary.cap <= 0 || summary.cap > PAPER_CAMPAIGN_ALLOCATION_CAP
     || !Number.isFinite(summary.used) || summary.used < 0
     || !Number.isFinite(summary.remaining) || summary.remaining < 0
     || !Number.isFinite(expectedRemaining) || Math.abs(summary.remaining - expectedRemaining) > 1e-9
