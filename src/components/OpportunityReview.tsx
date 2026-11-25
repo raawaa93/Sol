@@ -156,11 +156,11 @@ export default function OpportunityReview({ quotes, market, underlying, dataMode
                 <span className="review-market-meta">IV {quote.ivStatus === 'UNAVAILABLE' || quote.iv <= 0 ? '—' : formatPercent(quote.iv)} · OI {quote.openInterest === null ? '—' : formatSmallNumber(quote.openInterest)} · حجم {quote.volume === null ? '—' : formatSmallNumber(quote.volume)}</span>
                 {modelMetrics && expectedPnlPerContract !== undefined && <span className="review-model-meta">احتمال الربح عند الانتهاء: {formatPercent(modelMetrics.probabilityOfProfit)} · EV محايد/عقد: {expectedPnlPerContract >= 0 ? '+' : ''}{formatSmallAmount(expectedPnlPerContract, modelCurrency)}</span>}
                 {modelMetrics && <small className="review-model-note">{canonicalMetrics
-                  ? 'نموذج Black–Scholes مشروط بـ IV المرصود ومعدل الفائدة المنشور وCarry = 0%. يفترض سعر المؤشر لحظة الانتهاء؛ تسوية Binance الفعلية متوسط المؤشر خلال آخر 30 دقيقة، لذا النتيجة تقريبية. مرجعية الشروط القانونية هي مستندات Binance RIE/RCH، ولم يتم التحقق من انطباقها على حسابك. قبل الرسوم غير المدخلة، وليست توقعاً واقعياً أو ضماناً للربح.'
+                  ? 'نموذج Black–Scholes مشروط بـ markIV من لقطة REST حديثة ومعدل فائدة ومؤشر مؤرخين، مع افتراض Carry = 0%. يفترض سعر المؤشر عند الانتهاء؛ تسوية Binance الفعلية متوسط المؤشر خلال آخر 30 دقيقة، لذا النتيجة تقريبية. شروط RIE/RCH غير مؤكدة الانطباق على حسابك. قبل الرسوم غير المدخلة، وليست توقعاً واقعياً أو ضماناً للربح.'
                   : 'قياس محايد للمخاطر وفق النموذج والمعدل والـCarry المسجلين في العقد، قبل الرسوم والانزلاق؛ ليس احتمالاً واقعياً ولا توقعاً للسوق.'}</small>}
                 {quote.pricingStatus === 'ASSUMED' && <small className="review-estimated">Greeks مبنية على افتراضات: {quote.pricingReason ?? 'تحقق من المعدل والـcarry قبل الاعتماد عليها.'}</small>}
                 {quote.pricingStatus === 'OBSERVED_ONLY' && <small className="review-estimated">لا يوجد نموذج تسعير موثّق لهذا العقد؛ لا تُستخدم Greeks لتوليد احتمال ربح.</small>}
-                {quote.contractEconomics && !canonicalMetrics && <small className="review-estimated">تم إيقاف EV المحايد لهذا العقد حتى تتوفر مدخلات النموذج ومقياس القسط والتسوية الموثقين.</small>}
+                {quote.contractEconomics && !canonicalMetrics && <small className="review-estimated">تم إيقاف EV المحايد حتى تتوفر لقطة markIV حديثة، ومعدل فائدة ومؤشر تسوية مؤرخان، وعرض/طلب من مصدر سوق متسق.</small>}
                 {estimated && <small className="review-estimated">حقول تقديرية: {estimated}</small>}
                 <span className="review-open">افتح العقد في الماسح</span>
               </button>
