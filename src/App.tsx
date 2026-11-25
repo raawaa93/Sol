@@ -52,6 +52,7 @@ import { formatAssetPrice, formatNumber, formatOptionPrice, formatQuantity, form
 import type { AssetClass, OptionQuote, OptionSide, PaperTrade, Underlying } from './lib/types';
 import { ASSET_CLASS_LABELS } from './lib/asset-class';
 import { PAPER_CAMPAIGN_CAPITAL, PAPER_CAMPAIGN_MAX_LOSS, PAPER_CAMPAIGN_PER_TRADE_CAP, canAllocatePaperCampaignTrade, summarizePaperCampaignBudget } from './lib/paper-campaign-budget';
+import { loadPaperJournal, readPaperJournalRecovery } from './lib/paper-journal-storage';
 const MarketDepthPanel = lazy(() => import('./components/MarketDepthPanel'));
 const OpportunityReview = lazy(() => import('./components/OpportunityReview'));
 const GreeksPanel = lazy(() => import('./components/GreeksPanel'));
@@ -187,16 +188,6 @@ function loadWatchlist(): string[] {
   }
 }
 
-function loadPaperTrades(): PaperTrade[] {
-  try {
-    const value = localStorage.getItem('volterra-paper-trades-v1');
-    if (!value) return [];
-    const parsed: unknown = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed.filter(isPaperTrade) : [];
-  } catch {
-    return [];
-  }
-}
 
 function getQuantityStep(quote: OptionQuote): number {
   const lotFilter = quote.filters?.find((filter) => ['LOT_SIZE', 'MARKET_LOT_SIZE'].includes(filter.filterType.toUpperCase()));
@@ -270,7 +261,8 @@ function App() {
   const [quantity, setQuantity] = useState(0.01);
   const [riskBudget, setRiskBudget] = useState(PAPER_CAMPAIGN_PER_TRADE_CAP);
   const [fees, setFees] = useState(0);
-  const [trades, setTrades] = useState<PaperTrade[]>(loadPaperTrades);
+  const [paperJournalLoad] = useState(() => loadPaperJournal<PaperTrade>(localStorage, isPaperTrade));
+  const [trades, setTrades] = useState<PaperTrade[]>(paperJournalLoad.entries);
   const [toast, setToast] = useState('');
   const [csvWarnings, setCsvWarnings] = useState<string[]>([]);
   const [showAllCsvWarnings, setShowAllCsvWarnings] = useState(false);
@@ -638,12 +630,16 @@ function App() {
   }, [filteredQuotes, selectedId]);
 
   useEffect(() => {
+    if (paperJournalLoad.persistenceBlocked) {
+      setToast('توقفت الكتابة إلى دفتر PAPER لحماية نسخة بيانات سابقة لم يمكن حفظها بأمان. صدّر نسخة الاستعادة قبل المتابعة.');
+      return;
+    }
     try {
       localStorage.setItem('volterra-paper-trades-v1', JSON.stringify(trades));
     } catch {
       setToast('تعذر حفظ الدفتر محلياً؛ قد يكون التخزين معطلاً أو ممتلئاً.');
     }
-  }, [trades]);
+  }, [trades, paperJournalLoad.persistenceBlocked]);
 
   useEffect(() => {
     if (!toast) return;
@@ -1004,6 +1000,10 @@ function App() {
   };
 
   const savePaperTrade = async () => {
+    if (paperJournalLoad.persistenceBlocked) {
+      notify('تم إيقاف تسجيل صفقات PAPER لأن نسخة الاستعادة السابقة غير آمنة أو لم يمكن حفظها. صدّر النسخة أولاً ولا تمسح بيانات المتصفح.');
+      return;
+    }
     if (campaignBudgetBlockMessage) {
       notify(campaignBudgetBlockMessage);
       return;
@@ -1124,6 +1124,22 @@ function App() {
     if (!window.confirm('سيتم حذف إدخالات PAPER المحلية وتحرير ميزانية الحملة. صدّر CSV أولاً إذا أردت الاحتفاظ بالسجل. لا يؤثر هذا على أي أموال أو أوامر حقيقية. هل تريد المتابعة؟')) return;
     setTrades([]);
     notify('تم تصفير حملة PAPER المحلية فقط؛ لم يتغير أي حساب أو أمر حقيقي.');
+  };
+
+  const exportPaperJournalRecovery = () => {
+    const raw = readPaperJournalRecovery(localStorage);
+    if (raw === null) {
+      notify('لا توجد نسخة استعادة متاحة.');
+      return;
+    }
+    const blob = new Blob([raw], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'sol-paper-journal-recovery.json';
+    anchor.click();
+    URL.revokeObjectURL(url);
+    notify('تم تنزيل النسخة الخام المحفوظة من دفتر PAPER؛ احتفظ بها خارج المتصفح.');
   };
 
   const exportTrades = () => {
@@ -1578,6 +1594,7 @@ function App() {
             <div className="section-title-row"><div><span className="section-kicker">PAPER WORKSPACE</span><h2>الدفتر التجريبي</h2><p>سجل الفرضية والكمية والقسط قبل أن تقيم جودة القرار.</p></div><div className="journal-actions"><button className="button button-ghost" onClick={exportTrades}><Download size={14} /> تصدير CSV</button><button className="button button-ghost" onClick={exportIVHistoryBackup}><Download size={14} /> نسخة IV JSON</button><button className="button button-ghost danger-ghost" onClick={clearPaperJournal} disabled={!trades.length}><Trash2 size={14} /> مسح الدفتر</button></div></div>
             <article className="panel journal-panel">
               <div className="journal-summary"><div className="journal-summary-icon"><WalletCards size={18} /></div><div><strong>{trades.length} <span>صفقة تجريبية</span></strong><small>محفوظة محلياً في هذا المتصفح فقط</small></div><div className="journal-metric"><span>وضع التنفيذ</span><strong><i /> PAPER ONLY</strong></div><div className="journal-metric"><span>مفاتيح تداول</span><strong className="safe-label"><LockKeyhole size={13} /> غير مطلوبة</strong></div></div>
+              {(paperJournalLoad.backupAvailable || paperJournalLoad.persistenceBlocked) && <div className="journal-recovery-warning" role="alert"><strong>تنبيه سلامة دفتر PAPER</strong><p>{paperJournalLoad.persistenceBlocked ? 'أوقفنا أي كتابة جديدة حتى لا نفقد بيانات قديمة لم نستطع حفظ نسخة استعادتها بأمان.' : paperJournalLoad.parseError ? 'تعذر تحليل ملف الدفتر الأصلي؛ احتفظنا بنسخته الخام قبل استبعادها من العرض.' : `تم عزل ${paperJournalLoad.rejectedCount} سجل غير صالح من العرض، مع الاحتفاظ بالملف الأصلي الخام للاستعادة.`} لا تمسح بيانات المتصفح قبل تنزيل النسخة.</p>{paperJournalLoad.backupAvailable && <button className="button button-ghost" onClick={exportPaperJournalRecovery}><Download size={14} /> تنزيل نسخة الاستعادة JSON</button>}</div>}
               {trades.length ? <>
                 <div className="journal-table-wrap"><table className="journal-table"><thead><tr><th>وقت التسجيل</th><th>العقد</th><th>Strike</th><th>كمية</th><th>قسط الدخول</th><th>السعر المرجعي وقتها</th><th>الحالة</th></tr></thead><tbody>{trades.map((trade) => <tr key={trade.id}><td>{formatDateTime(new Date(trade.createdAt))}</td><td><span className={`mini-type ${trade.type.toLowerCase()}`}>{trade.type}</span><strong>{trade.symbol}</strong>{trade.contractEconomics && <small>لقطة العقد: قسط ×{trade.premiumMultiplierAtEntry} · وحدة التسليم {trade.contractUnitAtEntry}</small>}</td><td>{formatAssetPrice(trade.strike, trade.spotAtEntry, trade.quoteAsset ?? null)}</td><td>{formatQuantity(trade.quantity, { quantityScale: trade.quantityPrecision })}</td><td>{formatOptionPrice(trade.entryPremium, { priceScale: trade.pricePrecision }, trade.quoteAsset ?? null)}{trade.premiumDebitAtEntry !== undefined && <small>القسط والرسوم: {formatMoney(trade.premiumDebitAtEntry, 2, trade.premiumCurrencyAtEntry ?? null)}</small>}</td><td>{formatAssetPrice(trade.spotAtEntry, trade.spotAtEntry, trade.quoteAsset ?? null)}</td><td><span className="paper-status"><i /> تجريبية</span></td></tr>)}</tbody></table></div>
                 <div className="journal-mobile-list" role="list" aria-label="سجل الصفقات التجريبية">
