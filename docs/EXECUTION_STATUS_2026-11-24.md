@@ -237,3 +237,36 @@ The old isolated worktree `research/options-pit-archive-2026-11-24` remains unav
 - Observed mark IV is accepted only from the explicit `markIV` field, with `markIvSource=OPTION_TICKER` and a matching event timestamp. Mark-price events cannot create an IV timestamp.
 - Canonical position Greeks remain fail-closed when this explicit IV source is absent. No live trading is enabled.
 - PR CI, Project Context Guard and Lighthouse passed. Subsequent mainline deployment and published-site smoke test passed on the archive merge (run 45548127461).
+
+
+## Verified mainline update — 25 November 2026, 05:10 UTC
+
+This section supersedes earlier chronological notes above wherever they say the work below is still pending.
+
+### Merges and verified checks
+
+- **PR #170 — canonical cash-settled risk-neutral EV:** merged as `71a8a027659e880f22aa3b998b0c075c1a071bd3`. Risk-neutral expiry EV is conditional on verified Binance European cash-settled INDEX economics, separate premium/cash scales, observed IV/rate, fresh index/BBO, and explicit carry=0. It is a model diagnostic, not a real-world forecast or measured strategy edge.
+- **PR #186 — defer Binance market depth panel:** merged as `19d47c1101511a6458b113f1322a4e10ebbdfcfe`. Initial JavaScript budget was restored by deferring a Binance-only panel; no budget threshold was raised.
+- **PR #185 — legal contract provenance:** merged as `96b9050fe430d2574b0927195996c62e1baa3ca7`. Contract specification and RIE/RCH legal terms references are retained; account-specific applicability remains UNVERIFIED.
+- **PR #187 — Binance source provenance/freshness:** merged as `41a94cd2c08472e3c4d0d77e70e34782f9fc2200`. REST `/mark` IV/rate use local receive time because the payload has no exchange event clock; mark response receipt is captured independently from aggregate snapshot completion. WebSocket `@optionTicker` remains 24-hour statistics only; `vo` remains venue volatility; markPrice and bookTicker BBO/index/rate sources retain their own event clocks. REST 24-hour `closeTime` is no longer treated as last-trade event time. Canonical model Greeks/EV and PAPER entry capture fail closed on stale or mismatched sources.
+- **PR #189 — opt-in REST exchangeInfo archive refresh:** merged as `d67d5629c61369dc388e42216b768a6466a38b12`. An injected public REST transport can refresh and archive the full `exchangeInfo` snapshot before market events, with five-minute default rate limiting, age checks, durable append before state update, and stop-on-403/451. It is disabled by default and fake-transport tested only.
+
+PR-head verification:
+- PR #187: CI run 45550461997, Lighthouse 45550462332, Project Context Guard 45550462026 all succeeded.
+- PR #189: CI run 45550722114, Lighthouse 45550722136, Project Context Guard 45550722132 all succeeded.
+- PR #186: initial JS bundle budget, Playwright, Project Context Guard and Lighthouse succeeded; the change deferred the panel rather than raising the budget.
+
+### Current blockers and non-claims
+
+- **No live market capture:** no real Binance HTTP/WebSocket transport has been enabled or used. PR #189 adds only an opt-in injected REST refresh, tested with fake transport.
+- **No durable cloud archive:** the archive remains local filesystem only. No Supabase bucket/table/migration/policy/secret or production database resource was created.
+- **No offsite backup/restore proof:** GitHub Actions backup still lacks the required owner-configured `SUPABASE_DB_URL` secret and `AGE_RECIPIENT` variable; no encrypted production backup or isolated restore is proven.
+- **No branch protection:** repository main protection/ruleset write operations are not available through the current GitHub connector. Configure via GitHub repository settings; do not claim protection is active.
+- **No verified PIT history or strategy edge:** no historical quote archive, out-of-sample result, profitability, or live-trading capability is claimed.
+- **PAPER journal:** only a local entry-time audit snapshot exists. It has no lifecycle events, mark-to-market, amendments, exits, simulated P&L, portfolio aggregation or durable server-side ledger. Browser localStorage remains unencrypted.
+
+### Superseded work branches
+
+- PR #183 was closed unmerged as superseded by PR #187.
+- PR #169 was closed unmerged; the delivered PAPER entry snapshot is PR #172 plus hardening PR #175.
+- Earlier notes that describe PR #176 as pending are superseded: PR #176 is merged as `8dcd251e2cc6c03dccf04b82c0cd48eb2ada59a2`; PR #189 extends it only with the disabled-by-default injected REST refresh.
