@@ -40,12 +40,21 @@ export interface ExerciseTerms {
   cashSettlement?: CashSettlementFormula;
 }
 
+export interface ContractLegalTermsProvenance {
+  contractSpecificationRef: string;
+  clearingProceduresRef: string;
+  scope: 'BINANCE_RIE_RCH';
+  contractSpecificationPublicationDate: string;
+  accountApplicability: 'UNVERIFIED';
+}
+
 export interface ContractEconomicsProvenance {
   status: ContractEconomicsProvenanceStatus;
   provider?: string;
   sourceRef?: string;
   retrievedAt?: string;
   rawFields?: Record<string, string | number | boolean | null>;
+  legalTerms?: ContractLegalTermsProvenance;
 }
 
 /**
