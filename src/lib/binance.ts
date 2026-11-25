@@ -330,7 +330,7 @@ export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptio
     } : {}),
     ...(useTickerBid ? { bid: event.bestBid, ...(event.bestBidQuantity !== undefined ? { bidQuantity: event.bestBidQuantity } : {}) } : {}),
     ...(useTickerAsk ? { ask: event.bestAsk, ...(event.bestAskQuantity !== undefined ? { askQuantity: event.bestAskQuantity } : {}) } : {}),
-    ...(useTickerBid || useTickerAsk ? { bidAskSource: 'OPTION_TICKER' as const } : {}),
+    ...(useTickerBid || useTickerAsk ? { bidAskSource: useTickerBid && useTickerAsk ? 'OPTION_TICKER' as const : undefined } : {}),
     ...(event.markPrice !== undefined ? { markPrice: event.markPrice, priceSource: 'MARK' as const } : {}),
     ...(event.markIv !== undefined ? { iv: event.markIv, ivStatus: 'OBSERVED' as const } : {}),
     ...(event.bidIv !== undefined ? { bidIv: event.bidIv } : {}),
