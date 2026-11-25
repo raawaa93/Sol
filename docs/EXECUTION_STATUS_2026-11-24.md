@@ -213,6 +213,14 @@ The old isolated worktree `research/options-pit-archive-2026-11-24` remains unav
 - Follow-up PR #175: https://github.com/raawaa93/Sol/pull/175. Merged as `9ca75b1622e79f9adf70c558a7f7052a70d2a75c`; CI and published-site verification passed.
 
 
+## Binance legal-terms provenance merged — 25 November 2026
+
+- PR #185 merged as `96b9050fe430d2574b0927195996c62e1baa3ca7`: https://github.com/raawaa93/Sol/pull/185
+- Binance Crypto Options European exercise/cash INDEX assumptions now retain the published Contract Specifications and Clearing Procedures references, scoped to Binance RIE/RCH with account-specific applicability marked UNVERIFIED.
+- Exercise/settlement-dependent adapter readiness fails closed if the exact exchangeInfo source, product-family fields or legal terms provenance are absent. Independently verified per-contract premium arithmetic remains available.
+- Opportunity Review and GreeksPanel disclose the conditional legal scope.
+- Main CI run 45549655174, Project Context Guard 45549655188, local Lighthouse 45549655137 and deployment build/deploy passed. Published app and market-data-proxy smoke check passed; published-site Lighthouse collection is still running at the time of this update.
+
 ## Durable local options archive foundation merged — 25 November 2026
 
 - PR #176 merged as `8dcd251e2cc6c03dccf04b82c0cd48eb2ada59a2`: https://github.com/raawaa93/Sol/pull/176
