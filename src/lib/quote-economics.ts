@@ -166,7 +166,7 @@ export function calculateQuoteCashRiskNeutralMetrics(
     || (quote.bidAskSource === 'BOOK_TICKER'
       ? !quote.sourceTimestamps?.bookTicker || !Number.isFinite(Date.parse(quote.sourceTimestamps.bookTicker))
       : quote.bidAskSource === 'OPTION_TICKER'
-        ? !quote.sourceTimestamps?.optionTicker || !Number.isFinite(Date.parse(quote.sourceTimestamps.optionTicker))
+        ? !quote.sourceTimestamps?.ticker || !Number.isFinite(Date.parse(quote.sourceTimestamps.ticker))
         : quote.bidAskSource === 'MARK_PRICE'
           ? !quote.sourceTimestamps?.markPrice || !Number.isFinite(Date.parse(quote.sourceTimestamps.markPrice))
           : true)
