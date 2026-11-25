@@ -119,13 +119,15 @@ export function createCanonicalPaperTrade(
   const priceSource = getPaperEntryPriceSource(quote);
   const priceTimestamp = priceSource ? getObservedPriceTimestamp(quote, priceSource) : Number.NaN;
   const indexTimestamp = Date.parse(quote.sourceTimestamps?.index ?? '');
+  const bidAskReceivedAt = Date.parse(quote.sourceReceivedAt?.bidAsk ?? '');
   if (!Number.isFinite(createdAtMs) || !Number.isFinite(expiryMs) || expiryMs <= createdAtMs) {
     return { ok: false, reason: 'OPTION_EXPIRED_AT_PAPER_ENTRY' };
   }
-  if (!Number.isFinite(priceTimestamp) || !Number.isFinite(indexTimestamp)
-    || priceTimestamp > createdAtMs || indexTimestamp > createdAtMs
+  if (!Number.isFinite(priceTimestamp) || !Number.isFinite(indexTimestamp) || !Number.isFinite(bidAskReceivedAt)
+    || priceTimestamp > createdAtMs || indexTimestamp > createdAtMs || bidAskReceivedAt > createdAtMs
     || createdAtMs - priceTimestamp > MAX_PAPER_ENTRY_SOURCE_AGE_MS
-    || createdAtMs - indexTimestamp > MAX_PAPER_ENTRY_SOURCE_AGE_MS) {
+    || createdAtMs - indexTimestamp > MAX_PAPER_ENTRY_SOURCE_AGE_MS
+    || createdAtMs - bidAskReceivedAt > MAX_PAPER_ENTRY_SOURCE_AGE_MS) {
     return { ok: false, reason: 'PAPER_ENTRY_MARKET_SNAPSHOT_STALE_OR_FUTURE' };
   }
   if (quote.bidAskSizeUnit !== 'CONTRACTS' || !Number.isFinite(quote.askQuantity)
@@ -256,10 +258,12 @@ export function closeCanonicalPaperTrade(input: CanonicalPaperExitInput): Canoni
   const closedAtMs = Date.parse(closedAt);
   const bidTimestamp = Date.parse(quote.sourceTimestamps?.bookTicker ?? '');
   const indexTimestamp = Date.parse(quote.sourceTimestamps?.index ?? '');
-  if (!Number.isFinite(bidTimestamp) || !Number.isFinite(indexTimestamp)
-    || bidTimestamp > closedAtMs || indexTimestamp > closedAtMs
+  const bidAskReceivedAt = Date.parse(quote.sourceReceivedAt?.bidAsk ?? '');
+  if (!Number.isFinite(bidTimestamp) || !Number.isFinite(indexTimestamp) || !Number.isFinite(bidAskReceivedAt)
+    || bidTimestamp > closedAtMs || indexTimestamp > closedAtMs || bidAskReceivedAt > closedAtMs
     || closedAtMs - bidTimestamp > MAX_PAPER_EXIT_SOURCE_AGE_MS
     || closedAtMs - indexTimestamp > MAX_PAPER_EXIT_SOURCE_AGE_MS
+    || closedAtMs - bidAskReceivedAt > MAX_PAPER_EXIT_SOURCE_AGE_MS
     || !Number.isFinite(quote.spot) || quote.spot <= 0) {
     return { ok: false, reason: 'PAPER_EXIT_MARKET_SNAPSHOT_STALE_OR_FUTURE' };
   }
@@ -284,6 +288,7 @@ export function closeCanonicalPaperTrade(input: CanonicalPaperExitInput): Canoni
     priceSourceAtExit: 'BID',
     bidAskSourceAtExit: 'BOOK_TICKER',
     sourceTimestampsAtExit: { ...quote.sourceTimestamps! },
+    sourceReceivedAtAtExit: { bidAsk: quote.sourceReceivedAt!.bidAsk! },
   };
   const updatedTrade = { ...trade, exit };
   return {
