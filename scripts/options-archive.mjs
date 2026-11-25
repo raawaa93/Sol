@@ -455,8 +455,13 @@ export class ResumableOptionsArchive {
 
   async readCursor() {
     const path = join(this.root, 'cursor.json');
-    try { return verifyCursor(JSON.parse(await readFile(path, 'utf8'))); }
-    catch (error) {
+    try {
+      const info = await lstat(path);
+      if (info.isSymbolicLink() || !info.isFile()) {
+        throw new OptionsArchiveError('CURSOR_NOT_REGULAR_FILE', 'Archive cursor must be a regular file.');
+      }
+      return verifyCursor(JSON.parse(await readFile(path, 'utf8')));
+    } catch (error) {
       if (error.code === 'ENOENT') return null;
       throw error;
     }
