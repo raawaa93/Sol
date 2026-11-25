@@ -1,28 +1,24 @@
-# Execution ledger — plan: docs/superpowers/plans/2026-11-25-options-research-engine.md
+## Summary
 
-Base: 02686037ef33c658d06178062be69311568c72b9  
-Branch: feat/options-research-engine-readiness-2026-11-25  
-Workspace: remote GitHub feature branch (local clone unavailable in this execution environment).
+Implements the first vertical slice of source-bound historical IV analytics in the isolated feature branch.
 
-## Baseline
-- Main latest commit: 02686037ef33c658d06178062be69311568c72b9.
-- Main's latest recorded unit suite: 106 tests, per PRODUCT_REVIEW.md; not rerun in this session.
-- Existing archive is local Node NDJSON, not cloud; no verified live capture.
-- Existing IV−RV/skew/term structure functions exist; IV Rank/Percentile do not.
-- Open PR #192 contains an opt-in Node public WebSocket transport; CI state not yet independently verified.
-- Repository permissions: admin/maintain/push available.
-- Local container cannot resolve github.com, so no local clone, npm install or local test execution is possible. Use GitHub branch isolation and CI evidence; do not claim tests passed without a workflow result.
+## Implemented on this branch
+- Pure daily IV Rank / IV Percentile calculation with source-series isolation, one sample per UTC day, stale/future rejection, minimum sample threshold, partial-history reporting and flat-range handling.
+- Near-30-day ATM REST mark-IV extraction from fresh paired CALL/PUT observations, with strict source/timestamp checks and variance-time interpolation only when expiry points bracket 30 days.
+- Versioned, bounded browser-local IV history with idempotent append, corruption/quota errors, retention limits and JSON export.
+- UI integration for IV Rank, IV Percentile, sample coverage and local backup.
+- Regression tests for analytics and persistence.
 
-## Rulings
-- Ruling: use the GitHub feature branch as isolated workspace — local git worktree creation is unavailable because repository cannot be cloned in this runtime; this avoids writing to main.
-- Ruling: no cloud archive or Supabase production write — project context prohibits unreviewed shared-production mutations and no eligible R2 connection is exposed.
-- Ruling: keep provider spend at USD 0 — free sources do not prove universal executable quotes or permission to redisplay.
+## Verification status
+- An earlier CI build identified two TypeScript errors: IV persistence effect declared before its memoized input, and an optional venue not narrowed. Both were corrected in later branch commits.
+- A fresh CI run against the latest branch head is still required. Do not treat the branch as build-verified until it passes.
+- This branch does not contain a historical year of IV data; Rank/Percentile remain unavailable until 30 distinct valid daily observations exist.
+- No real market capture, paid feed, cloud archive, live orders or strategy performance claims.
 
-## Task status
-- Task 1: pending.
-- Task 2: pending.
-- Task 3: pending.
-- Task 4: pending.
-- Task 5: pending.
-- Task 6: blocked on valid point-in-time dataset.
-- Task 7: pending.
+## Remaining work
+1. Run fresh CI against the current branch head; fix all failures.
+2. Review IV extraction against the actual Binance REST mark payload and existing OptionQuote provenance fields; add tests for any uncovered mismatch.
+3. Complete UI tests and CSS/UX disclosure for warming, stale, Demo and partial-history states.
+4. Review PR #192 WebSocket transport and resolve its overflow/close-code semantics; merge only after its own CI passes.
+5. Complete replay/data prerequisites and document what cannot be made empirical without a valid point-in-time dataset.
+6. Update mainline product/research status only after verified merge and deployment evidence.
