@@ -131,7 +131,9 @@ Keep the personal finance and investment intelligence scope, multi-asset options
 
 ### تصحيح أهلية Binance
 
-FAQ Binance المنشور في 12 يونيو 2025 يثبت أن المقيمين السوريين يمكنهم التسجيل والتحقق وفق KYC والامتثال، ويقول إنهم يستطيعون الوصول إلى مجموعة واسعة من المنتجات. لكن قائمة المنتجات المسماة في الصفحة (P2P، COIN-M، USDⓈ-M Futures، Convert/Block Trade، Margin، Spot، Copy Trading، Alpha، Wallet) **لا تسمي Options صراحةً**. لذلك لا نستخدم الصفحة كدليل صريح على أهلية Options؛ يجب التحقق من تفعيل Crypto Options لكل حساب ومن Commodity/Stock Options كلٌ على حدة أو الحصول على جواب دعم مكتوب. المصدر: https://www.binance.com/en/support/faq/detail/863795c36a224bd7aa7d677996328ff9
+FAQ Binance المنشور في 12 يونيو 2025 يذكر «Options trading» صراحةً ضمن المنتجات المتاحة للمقيمين السوريين بعد KYC والامتثال؛ لذلك يثبت الإتاحة العامة لفئة الخيارات، لا تفعيل كل خط منتج أو صلاحية الشراء/الكتابة في حساب بعينه. يجب التحقق من Crypto Options وCommodity/TradFi Options وStock Options كلٌ على حدة داخل الحساب أو من Binance Support كتابةً. كما أن هذا لا يحسم قانونية التداول داخل سوريا؛ تبقى بوابة القانون المحلي قائمة. المصدر: https://www.binance.com/en/support/faq/detail/863795c36a224bd7aa7d677996328ff9
+
+**تنبيه UK منفصل:** إذا كان المستخدم مقيماً فعلياً في المملكة المتحدة ومصنفاً Retail Client، فلا تستنتج أهلية Crypto Options من قبول Binance للمقيمين السوريين أو من نجاح الاتصال التقني. FCA COBS 22.6 يحظر على الشركات الواقعة ضمن نطاقه بيع/توزيع/تسويق مشتقات الأصول الرقمية، بما فيها الخيارات، لعملاء التجزئة؛ وموقع Binance UK يعلن أن بعض الخدمات غير متاحة لعملاء التجزئة وبعضها محصور بالعملاء المحترفين. عنوان VPN أو IP بريطاني وحده لا يثبت الإقامة. المصادر: https://handbook.fca.org.uk/handbook/cobs22/cobs22s6 وhttps://www.binance.com/en-GB وhttps://www.fca.org.uk/news/news-stories/consumer-warning-binance-markets-limited-and-binance-group
 
 
 ## BBO-aware options replay rules
