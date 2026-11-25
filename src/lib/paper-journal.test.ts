@@ -341,9 +341,21 @@ test('Binance PAPER entry fee uses the symbol taker rate, index, unit and 10 per
   assert.equal(capped.ok, true);
   if (!capped.ok) return;
   assert.equal(capped.trade.exchangeFeeAtEntry, 0.39);
-  const uncappedQuote = { ...quote, takerFeeRate: 0.000001 };
+  const uncappedQuote = { ...quote, takerFeeRate: 0.000000001 };
   const uncapped = createCanonicalPaperTrade({ ...input, quote: uncappedQuote });
   assert.equal(uncapped.ok, true);
   if (!uncapped.ok) return;
   assert.equal(uncapped.trade.exchangeFeeAtEntry, 0.0297);
+});
+
+
+test('canonical PAPER close cannot be timestamped before its entry', () => {
+  const trade = createEntry();
+  const result = closeCanonicalPaperTrade({
+    trade,
+    quote: closeQuote(),
+    closedAt: '2026-11-25T03:00:59Z',
+  });
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.reason, 'OPTION_EXPIRED_BEFORE_PAPER_CLOSE');
 });
