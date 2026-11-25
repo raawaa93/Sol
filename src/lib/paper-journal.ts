@@ -283,6 +283,9 @@ export function createCanonicalPaperCloseEvent(input: {
 }): CanonicalPaperCloseResult {
   const { trade, quote, sourceMode, id, closedAt, exitFees, spotAtExit } = input;
   if (sourceMode !== 'BINANCE' || quote.venue !== 'BINANCE'
+    || quote.assetClass !== 'CRYPTO' || quote.underlyingKind !== 'SPOT'
+    || quote.exerciseStyle !== 'EUROPEAN' || quote.settlementStyle !== 'CASH'
+    || !Number.isFinite(quote.unit) || quote.unit <= 0
     || quote.bidAskSource !== 'BOOK_TICKER'
     || quote.bidAskSizeUnit !== 'CONTRACTS'
     || !Number.isFinite(quote.bid) || quote.bid <= 0
@@ -333,10 +336,20 @@ export function createCanonicalPaperCloseEvent(input: {
     return { ok: false, reason: 'PAPER_ENTRY_RECEIVE_TIMESTAMP_MISSING_OR_INVALID' };
   }
   const economics = trade.contractEconomics!;
+  const settlement = economics.exercise.cashSettlement;
   if (!validateContractEconomics(economics).adapterReady
     || economics.provenance.status !== 'PROVIDER_VERIFIED'
     || economics.provenance.provider !== 'BINANCE'
-    || economics.provenance.sourceRef !== 'https://eapi.binance.com/eapi/v1/exchangeInfo') {
+    || economics.provenance.sourceRef !== 'https://eapi.binance.com/eapi/v1/exchangeInfo'
+    || economics.premium.priceUnit !== 'PER_CONTRACT'
+    || economics.exercise.style !== 'EUROPEAN'
+    || economics.exercise.settlement !== 'CASH'
+    || !settlement || settlement.reference !== 'INDEX'
+    || settlement.currency !== quote.settlementAsset
+    || economics.premium.quoteCurrency !== quote.quoteAsset
+    || economics.exercise.settlementCurrency !== quote.settlementAsset
+    || settlement.multiplier !== quote.unit
+    || economics.provenance.rawFields?.unit !== quote.unit) {
     return { ok: false, reason: 'PAPER_CLOSE_CONTRACT_ECONOMICS_NOT_VERIFIED' };
   }
   const entry = calculatePremiumCash({
@@ -347,6 +360,7 @@ export function createCanonicalPaperCloseEvent(input: {
   });
   if (!entry.ok || !Number.isFinite(trade.premiumDebitAtEntry)
     || Math.abs(entry.value.amount - trade.premiumDebitAtEntry!) > Math.max(1e-8, entry.value.amount * 1e-8)
+    || Math.abs(entry.value.premiumAmount - (trade.premiumAmountAtEntry ?? Number.NaN)) > Math.max(1e-8, entry.value.premiumAmount * 1e-8)
     || trade.premiumCurrencyAtEntry !== entry.value.currency
     || trade.premiumMultiplierAtEntry !== entry.value.multiplier) {
     return { ok: false, reason: 'PAPER_ENTRY_DEBIT_SNAPSHOT_INVALID' };
