@@ -155,3 +155,11 @@ No second execution venue for a Syrian resident has been verified for global lis
 - بشكل مستقل، FCA COBS 22.6 يحظر على الشركات الواقعة ضمن نطاقه تسويق/توزيع/بيع مشتقات الأصول الرقمية، بما فيها الخيارات، لعملاء التجزئة في المملكة المتحدة. موقع Binance UK يذكر أن بعض الخدمات غير متاحة لعملاء التجزئة وبعض المنتجات مخصصة للمحترفين. لا يُستنتج بلد الإقامة من IP/VPN، ولا يُعد نجاح API دليلاً على أهلية التداول.
 - إذا كانت الإقامة الفعلية UK وتصنيف العميل Retail، فلا تفعّل Crypto Options الحية قبل تحقق قانوني/امتثال خاص بالكيان والمنتج. لا تخلط هذا القيد مع مجرد اتصال تقني من عنوان IP بريطاني.
 - المصادر: https://www.binance.com/en/support/faq/detail/863795c36a224bd7aa7d677996328ff9 ، https://handbook.fca.org.uk/handbook/cobs22/cobs22s6 ، https://www.binance.com/en-GB ، https://www.fca.org.uk/news/news-stories/consumer-warning-binance-markets-limited-and-binance-group
+
+## 15. Archive recovery and replay expiry — PR #223
+
+- PR #223 merged as `1cc8811b566b590be9b96af2441cef2f4fb39e18`.
+- Recent partially written recovery locks are treated as BUSY; malformed recovery locks are never auto-deleted without verifiable owner metadata.
+- Added regression tests for concurrent stale-lease recovery and malformed recovery-lock preservation; fixed the one failing main-branch concurrency test.
+- Replay rejects missing/malformed/expired option expiry and refuses holding periods or exits at/after expiry because settlement/assignment is not modeled.
+- PR-head CI, Lighthouse and Project Context Guard passed. Post-merge main workflows were started and must be checked before calling the main branch green.
