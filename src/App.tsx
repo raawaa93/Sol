@@ -1148,6 +1148,44 @@ function App() {
     notify('أضيفت الصفقة إلى الدفتر التجريبي فقط.');
   };
 
+  const closePaperTrade = async (trade: PaperTrade) => {
+    if (dataMode !== 'BINANCE') {
+      notify('إغلاق PAPER يتطلب لقطة Binance حديثة؛ لا نستخدم أسعار Demo أو CSV لإثبات الخروج.');
+      return;
+    }
+    const liveQuote = quotes.find((quote) => quote.symbol === trade.symbol)
+      ?? binanceSnapshot?.quotes.find((quote) => quote.symbol === trade.symbol);
+    if (!liveQuote) {
+      notify('لا توجد لقطة دفتر حالية لهذا العقد. انتظر تحديث bookTicker ثم أعد المحاولة.');
+      return;
+    }
+    const { closeCanonicalPaperTrade } = await import('./lib/paper-journal');
+    const result = closeCanonicalPaperTrade({ trade, quote: liveQuote, closedAt: new Date().toISOString() });
+    if (!result.ok) {
+      const messages: Record<string, string> = {
+        LEGACY_OR_NON_EXECUTABLE_PAPER_ENTRY_CANNOT_BE_CLOSED: 'هذا إدخال قديم مسجل على Mid/مرجع، وليس Ask قابلاً للمحاكاة؛ لا يمكن احتساب إغلاق تنفيذي له.',
+        PAPER_CLOSE_CONTRACT_MISMATCH: 'العقد الحالي لا يطابق عقد الدخول المحفوظ.',
+        OPTION_EXPIRED_BEFORE_PAPER_CLOSE: 'انتهى العقد؛ لا نسجل خروجاً وهمياً بعد الانتهاء.',
+        INSUFFICIENT_OR_INVALID_BID_FOR_PAPER_CLOSE: 'حجم Bid المتاح أقل من كمية المركز أو غير موثق.',
+        PAPER_CLOSE_MARKET_SNAPSHOT_STALE_OR_FUTURE: 'توقيت Bid قديم أو مستقبلي؛ انتظر تحديث الدفتر.',
+        PAPER_CLOSE_INDEX_SNAPSHOT_STALE_OR_FUTURE: 'توقيت مؤشر الأصل قديم أو غير صالح؛ لا يمكن حساب رسوم الإغلاق.',
+        BINANCE_EXIT_FEE_UNAVAILABLE: 'معدل رسوم الإغلاق غير متاح لهذا العقد.',
+      };
+      notify(messages[result.reason] ?? `تعذر إغلاق PAPER: ${result.reason}`);
+      return;
+    }
+    const close = result.close;
+    const pnlLabel = `${close.realizedPnl >= 0 ? '+' : ''}${formatMoney(close.realizedPnl, 2, close.currency)}`;
+    if (!window.confirm(
+      `إغلاق PAPER على Bid ${formatOptionPrice(close.exitPremium, liveQuote)}\n`
+      + `صافي العائد بعد الرسوم: ${formatMoney(close.exitNetProceeds, 2, close.currency)}\n`
+      + `النتيجة المحققة: ${pnlLabel}\n\n`
+      + 'سيتم تحديث دفتر PAPER المحلي فقط. لن يُرسل أي أمر إلى Binance.',
+    )) return;
+    setTrades((current) => current.map((item) => item.id === trade.id ? result.trade : item));
+    notify(`أُغلق سجل PAPER على Bid. النتيجة المحققة: ${pnlLabel}. لم يُرسل أي أمر حقيقي.`);
+  };
+
   const exportIVHistoryBackup = async () => {
     const { exportIVHistory } = await import('./lib/iv-history-store');
     const result = exportIVHistory(localStorage);
@@ -1199,6 +1237,18 @@ function App() {
       bidAskSourceAtEntry: trade.bidAskSourceAtEntry ?? '',
       contractEconomicsJSON: trade.contractEconomics ? JSON.stringify(trade.contractEconomics) : '',
       sourceTimestampsAtEntryJSON: trade.sourceTimestampsAtEntry ? JSON.stringify(trade.sourceTimestampsAtEntry) : '',
+      exchangeFeeAtEntry: trade.exchangeFeeAtEntry ?? '',
+      additionalFeesAtEntry: trade.additionalFeesAtEntry ?? '',
+      closedAtUTC: trade.close?.closedAt ?? '',
+      exitPremiumBid: trade.close?.exitPremium ?? '',
+      exitExchangeFee: trade.close?.exitExchangeFee ?? '',
+      exitAdditionalFees: trade.close?.exitAdditionalFees ?? '',
+      exitGrossProceeds: trade.close?.exitGrossProceeds ?? '',
+      exitNetProceeds: trade.close?.exitNetProceeds ?? '',
+      realizedPnl: trade.close?.realizedPnl ?? '',
+      spotAtExit: trade.close?.spotAtExit ?? '',
+      exitBookTimestamp: trade.close?.sourceTimestamps.bookTicker ?? '',
+      exitIndexTimestamp: trade.close?.sourceTimestamps.index ?? '',
       mode: 'PAPER',
     })));
   };
