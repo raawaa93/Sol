@@ -176,6 +176,7 @@ export function calculateQuoteCashRiskNeutralMetrics(
     || !['SUPPORTED', 'ASSUMED'].includes(quote.pricingStatus ?? '')
     || quote.ivStatus !== 'OBSERVED'
     || quote.markIvSource !== 'REST_MARK'
+    || (quote.riskFreeRateSource !== 'REST_MARK' && quote.riskFreeRateSource !== 'MARK_PRICE')
     || !markIvFresh || !riskFreeFresh || !indexFresh
     || quote.estimatedFields?.some((field) => ['iv', 'spot', 'riskFreeRate', 'daysToExpiry'].includes(field))
     || !Number.isFinite(quote.riskFreeRate)
