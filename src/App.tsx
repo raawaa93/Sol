@@ -175,6 +175,24 @@ function isPaperTrade(value: unknown): value is PaperTrade {
       && typeof trade.premiumDebitAtEntry === 'number' && Number.isFinite(trade.premiumDebitAtEntry) && trade.premiumDebitAtEntry >= trade.premiumAmountAtEntry
       && trade.premiumCurrencyAtEntry === trade.contractEconomics.premium.quoteCurrency
       && (trade.priceSourceAtEntry !== 'MID' || trade.bidAskSourceAtEntry === 'BOOK_TICKER' || trade.bidAskSourceAtEntry === 'OPTION_TICKER' || trade.bidAskSourceAtEntry === 'MARK_PRICE')))
+    && (trade.exit === undefined || (
+      trade.exit !== null && typeof trade.exit === 'object'
+      && typeof trade.exit.closedAt === 'string' && Number.isFinite(Date.parse(trade.exit.closedAt))
+      && typeof trade.exit.exitPremium === 'number' && Number.isFinite(trade.exit.exitPremium) && trade.exit.exitPremium > 0
+      && trade.exit.exitQuantity === trade.quantity
+      && (trade.exit.exitFees === undefined || (typeof trade.exit.exitFees === 'number' && Number.isFinite(trade.exit.exitFees) && trade.exit.exitFees >= 0))
+      && typeof trade.exit.exitPremiumAmount === 'number' && Number.isFinite(trade.exit.exitPremiumAmount) && trade.exit.exitPremiumAmount > 0
+      && (trade.exit.exitCreditAfterFees === undefined || (typeof trade.exit.exitCreditAfterFees === 'number' && Number.isFinite(trade.exit.exitCreditAfterFees)))
+      && typeof trade.exit.realizedGrossPnl === 'number' && Number.isFinite(trade.exit.realizedGrossPnl)
+      && (trade.exit.realizedNetPnl === undefined || (typeof trade.exit.realizedNetPnl === 'number' && Number.isFinite(trade.exit.realizedNetPnl)))
+      && typeof trade.exit.spotAtExit === 'number' && Number.isFinite(trade.exit.spotAtExit) && trade.exit.spotAtExit > 0
+      && typeof trade.exit.bidQuantityAtExit === 'number' && Number.isFinite(trade.exit.bidQuantityAtExit) && trade.exit.bidQuantityAtExit + 1e-9 >= trade.quantity
+      && trade.exit.priceSourceAtExit === 'BID'
+      && trade.exit.bidAskSourceAtExit === 'BOOK_TICKER'
+      && typeof trade.exit.sourceTimestampsAtExit?.bookTicker === 'string'
+      && Number.isFinite(Date.parse(trade.exit.sourceTimestampsAtExit.bookTicker))
+      && typeof trade.exit.sourceTimestampsAtExit?.index === 'string'
+      && Number.isFinite(Date.parse(trade.exit.sourceTimestampsAtExit.index))))
     && trade.status === 'PAPER';
 }
 
@@ -263,6 +281,7 @@ function App() {
   const [fees, setFees] = useState(0);
   const [paperJournalLoad, setPaperJournalLoad] = useState(() => loadPaperJournal<PaperTrade>(localStorage, isPaperTrade));
   const [trades, setTrades] = useState<PaperTrade[]>(paperJournalLoad.entries);
+  const [paperExitFees, setPaperExitFees] = useState('');
   const [toast, setToast] = useState('');
   const [csvWarnings, setCsvWarnings] = useState<string[]>([]);
   const [showAllCsvWarnings, setShowAllCsvWarnings] = useState(false);
