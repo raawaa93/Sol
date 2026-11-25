@@ -298,7 +298,9 @@ FAQ Binance المنشور في 12 يونيو 2025 يثبت أن المقيمي�
 التحقق: CI 45572889900 (303/303 اختبارات، build، bundle budget، و18/18 Playwright)؛ Lighthouse 45572889852 (Performance 99، Accessibility 100، Best Practices 100، SEO 100)؛ Project Context Guard 45572889839. لم يُجر اتصال سوق حي أو جمع تاريخي.
 
 **ما زال مانع القرار الاستثماري قائماً:** لا يوجد PIT BBO corpus مرخص أو جمع مجدول أو cloud archive أو forward PAPER track record؛ لذلك لا يوجد تصنيف موثوق لـ«أفضل عقد/أصل ربحية» ولا إثبات edge أو احتمالات ربح واقعية. لا تزال سورية legal gate تمنع تفعيل التداول الحقيقي أو التوصية بتمويل حساب قبل توضيح قانوني محلي مكتوب. يبقى المنتج research/PAPER فقط.
-\n\n## BBO-aware PAPER execution baseline — 25 November 2026
+
+
+## BBO-aware PAPER execution baseline — 25 November 2026
 
 PR #204 closes the prior replay defect that treated generic quote timestamps as executable BBO evidence. The replay now requires explicit BBO source, source-event/snapshot time, local receive time, non-estimated bid/ask, size unit and sufficient displayed Ask/Bid size for entry/exit. It applies configurable adverse per-side slippage and exposes fills, clocks, sizes, fees and slippage. CSV provenance is still user-asserted and unauthenticated.
 
