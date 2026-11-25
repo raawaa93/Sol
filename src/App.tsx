@@ -140,6 +140,41 @@ function formatSourceTimestamp(timestamp: string | undefined): string {
   return Number.isFinite(date.getTime()) ? `${formatDateTime(date)} UTC` : 'وقت المصدر غير صالح';
 }
 
+function isPaperTradeClose(value: unknown, trade: Partial<PaperTrade>): boolean {
+  if (!value || typeof value !== 'object') return false;
+  const close = value as Partial<NonNullable<PaperTrade['close']>>;
+  const closedAt = Date.parse(close.closedAt ?? '');
+  const expiry = Date.parse(trade.expiry ?? '');
+  const bookTimestamp = Date.parse(close.sourceTimestampsAtExit?.bookTicker ?? '');
+  const indexTimestamp = Date.parse(close.sourceTimestampsAtExit?.index ?? '');
+  const entryDebit = trade.premiumDebitAtEntry;
+  const expectedAmount = (close.exitPremium ?? Number.NaN)
+    * (trade.premiumMultiplierAtEntry ?? Number.NaN)
+    * (trade.quantity ?? Number.NaN);
+  return Number.isFinite(closedAt) && closedAt > Date.parse(trade.createdAt ?? '')
+    && Number.isFinite(expiry) && closedAt < expiry
+    && Number.isFinite(bookTimestamp) && bookTimestamp <= closedAt && closedAt - bookTimestamp <= 5 * 60_000
+    && Number.isFinite(indexTimestamp) && indexTimestamp <= closedAt && closedAt - indexTimestamp <= 5 * 60_000
+    && typeof close.exitPremium === 'number' && Number.isFinite(close.exitPremium) && close.exitPremium > 0
+    && typeof close.exitPremiumAmount === 'number' && Number.isFinite(close.exitPremiumAmount) && close.exitPremiumAmount >= 0
+    && Math.abs(close.exitPremiumAmount - expectedAmount) < 1e-8
+    && typeof close.exitFees === 'number' && Number.isFinite(close.exitFees) && close.exitFees >= 0
+    && close.exitFeeCurrency === close.exitCurrency
+    && close.exitFees <= close.exitPremiumAmount
+    && typeof close.exitProceeds === 'number' && Number.isFinite(close.exitProceeds) && close.exitProceeds >= 0
+    && Math.abs(close.exitProceeds - (close.exitPremiumAmount - close.exitFees)) < 1e-8
+    && close.exitCurrency === trade.premiumCurrencyAtEntry
+    && typeof close.exitSpot === 'number' && Number.isFinite(close.exitSpot) && close.exitSpot > 0
+    && close.exitPriceSource === 'BID'
+    && close.exitBidAskSource === 'BOOK_TICKER'
+    && close.exitBidSizeUnit === 'CONTRACTS'
+    && typeof close.exitBidQuantity === 'number' && Number.isFinite(close.exitBidQuantity) && close.exitBidQuantity + 1e-9 >= (trade.quantity ?? Number.POSITIVE_INFINITY)
+    && typeof close.realizedPnl === 'number' && Number.isFinite(close.realizedPnl)
+    && Number.isFinite(entryDebit)
+    && Math.abs(close.realizedPnl - (close.exitProceeds - entryDebit!)) < 1e-8
+    && close.realizedPnlCurrency === close.exitCurrency;
+}
+
 function isPaperTrade(value: unknown): value is PaperTrade {
   if (!value || typeof value !== 'object') return false;
   const trade = value as Partial<PaperTrade>;
@@ -174,7 +209,9 @@ function isPaperTrade(value: unknown): value is PaperTrade {
       && typeof trade.premiumAmountAtEntry === 'number' && Number.isFinite(trade.premiumAmountAtEntry) && trade.premiumAmountAtEntry >= 0
       && typeof trade.premiumDebitAtEntry === 'number' && Number.isFinite(trade.premiumDebitAtEntry) && trade.premiumDebitAtEntry >= trade.premiumAmountAtEntry
       && trade.premiumCurrencyAtEntry === trade.contractEconomics.premium.quoteCurrency
-      && (trade.priceSourceAtEntry !== 'MID' || trade.bidAskSourceAtEntry === 'BOOK_TICKER' || trade.bidAskSourceAtEntry === 'OPTION_TICKER' || trade.bidAskSourceAtEntry === 'MARK_PRICE')))
+      && (trade.priceSourceAtEntry !== 'MID' || trade.bidAskSourceAtEntry === 'BOOK_TICKER' || trade.bidAskSourceAtEntry === 'OPTION_TICKER' || trade.bidAskSourceAtEntry === 'MARK_PRICE')
+      && (trade.priceSourceAtEntry !== 'ASK' || (trade.bidAskSourceAtEntry === 'BOOK_TICKER' && trade.askSizeUnitAtEntry === 'CONTRACTS' && Number.isFinite(trade.askQuantityAtEntry) && trade.askQuantityAtEntry! + 1e-9 >= trade.quantity))))
+    && (trade.close === undefined || isPaperTradeClose(trade.close, trade))
     && trade.status === 'PAPER';
 }
 
@@ -261,6 +298,7 @@ function App() {
   const [quantity, setQuantity] = useState(0.01);
   const [riskBudget, setRiskBudget] = useState(PAPER_CAMPAIGN_PER_TRADE_CAP);
   const [fees, setFees] = useState(0);
+  const [closeFeesByCurrency, setCloseFeesByCurrency] = useState<Record<string, string>>({});
   const [paperJournalLoad, setPaperJournalLoad] = useState(() => loadPaperJournal<PaperTrade>(localStorage, isPaperTrade));
   const [trades, setTrades] = useState<PaperTrade[]>(paperJournalLoad.entries);
   const [toast, setToast] = useState('');
@@ -1103,6 +1141,57 @@ function App() {
     notify('أضيفت الصفقة إلى الدفتر التجريبي فقط.');
   };
 
+  const closePaperTrade = async (trade: PaperTrade) => {
+    if (paperJournalLoad.persistenceBlocked) {
+      notify('توقفت الكتابة لحماية دفتر PAPER؛ نزّل نسخة الاستعادة أولاً.');
+      return;
+    }
+    if (!trade.contractEconomics || trade.close || trade.priceSourceAtEntry !== 'ASK') {
+      notify('هذا الإدخال لا يملك لقطة دخول Ask موثقة قابلة للإغلاق الآلي.');
+      return;
+    }
+    if (dataMode !== 'BINANCE') {
+      notify('حوّل مصدر البيانات إلى Binance وحدّث دفتر السوق قبل الإغلاق.');
+      return;
+    }
+    const closeFeesInput = closeFeesByCurrency[trade.premiumCurrencyAtEntry ?? ''] ?? '';
+    if (!closeFeesInput.trim() || !Number.isFinite(Number(closeFeesInput)) || Number(closeFeesInput) < 0) {
+      notify('أدخل رسوم الإغلاق الفعلية بعملة القسط؛ لا نفترض رسوماً صفرية.');
+      return;
+    }
+    const exitQuote = quotes.find((quote) => quote.symbol === trade.symbol && quote.venue === 'BINANCE');
+    if (!exitQuote) {
+      notify('لا توجد لقطة Binance حالية لهذا العقد. حدّث السلسلة وانتظر BOOK_TICKER.');
+      return;
+    }
+    const { createCanonicalPaperClose } = await import('./lib/paper-journal');
+    const result = createCanonicalPaperClose({
+      trade,
+      quote: exitQuote,
+      closedAt: new Date().toISOString(),
+      exitPremium: exitQuote.bid,
+      exitFees: Number(closeFeesInput),
+    });
+    if (!result.ok) {
+      const messages: Record<string, string> = {
+        INSUFFICIENT_OBSERVED_BID_SIZE: 'حجم Bid المعروض أقل من كمية الصفقة أو مصدر الحجم غير موثّق.',
+        EXIT_MARKET_SNAPSHOT_STALE_OR_FUTURE: 'لقطة Bid أو المؤشر قديمة أو مستقبلية؛ انتظر تحديثاً جديداً.',
+        EXIT_CONTRACT_IDENTITY_MISMATCH: 'العقد الحالي لا يطابق لقطة الدخول الأصلية.',
+        EXIT_MUST_BE_BEFORE_EXPIRY_AND_AFTER_ENTRY: 'لا يمكن إغلاق العقد بعد الانتهاء أو قبل وقت الدخول.',
+        ENTRY_DEBIT_OR_SOURCE_SNAPSHOT_INVALID: 'لقطة الدخول أو تكلفة القسط المخزنة غير متسقة؛ لا نحسب P&L.',
+        EXIT_FEES_OR_ENTRY_DEBIT_UNVERIFIED: 'تعذر التحقق من رسوم الخروج أو تكلفة الدخول.',
+        EXIT_PREMIUM_DOES_NOT_MATCH_TIMESTAMPED_BID: 'سعر الخروج لا يطابق Bid المرصود؛ حدّث اللقطة.',
+        PROVIDER_VERIFIED_CONTRACT_TERMS_REQUIRED: 'تعذر إثبات تطابق شروط العقد من مصدر Binance.',
+        CANONICAL_CONTRACT_SNAPSHOT_REQUIRED: 'لا توجد مواصفات عقد موثقة كافية لإغلاق هذه الصفقة.',
+        INVALID_REALIZED_PNL: 'تعذر حساب صافي الربح والخسارة بأرقام صالحة.',
+      };
+      notify(messages[result.reason] ?? `تعذر إغلاق صفقة PAPER: ${result.reason}`);
+      return;
+    }
+    setTrades((current) => current.map((item) => item.id === trade.id ? result.trade : item));
+    notify(`أُغلقت محاكاة ${trade.symbol} عند Bid؛ صافي P&L ${formatMoney(result.realizedPnl, 4, result.currency)}. هذا تقدير PAPER وليس تعبئة فعلية.`);
+  };
+
   const exportIVHistoryBackup = async () => {
     const { exportIVHistory } = await import('./lib/iv-history-store');
     const result = exportIVHistory(localStorage);
@@ -1204,8 +1293,18 @@ function App() {
       premiumCurrencyAtEntry: trade.premiumCurrencyAtEntry ?? '',
       priceSourceAtEntry: trade.priceSourceAtEntry ?? '',
       bidAskSourceAtEntry: trade.bidAskSourceAtEntry ?? '',
+      askQuantityAtEntry: trade.askQuantityAtEntry ?? '',
+      askSizeUnitAtEntry: trade.askSizeUnitAtEntry ?? '',
       contractEconomicsJSON: trade.contractEconomics ? JSON.stringify(trade.contractEconomics) : '',
       sourceTimestampsAtEntryJSON: trade.sourceTimestampsAtEntry ? JSON.stringify(trade.sourceTimestampsAtEntry) : '',
+      closedAtUTC: trade.close?.closedAt ?? '',
+      exitPremiumBid: trade.close?.exitPremium ?? '',
+      exitFees: trade.close?.exitFees ?? '',
+      exitFeeCurrency: trade.close?.exitFeeCurrency ?? '',
+      exitProceeds: trade.close?.exitProceeds ?? '',
+      realizedPnl: trade.close?.realizedPnl ?? '',
+      realizedPnlCurrency: trade.close?.realizedPnlCurrency ?? '',
+      sourceTimestampsAtExitJSON: trade.close?.sourceTimestampsAtExit ? JSON.stringify(trade.close.sourceTimestampsAtExit) : '',
       mode: 'PAPER',
     })));
   };
@@ -1568,7 +1667,7 @@ function App() {
                   <div><span>المتبقي للحملة</span><strong>{campaignBudgetBlockMessage ? 'محجوب' : formatMoney(campaignBudget.remaining, 2, campaignBudget.currency || null)}</strong></div>
                   <div><span>احتياطي خارج التداول</span><strong>{formatMoney(PAPER_CAMPAIGN_CAPITAL - PAPER_CAMPAIGN_MAX_LOSS, 0, 'USD')}</strong></div>
                 </div>
-                {campaignBudgetBlockMessage && <div className="analysis-footnote"><ShieldAlert size={13} /><span>{campaignBudgetBlockMessage} يُحسب كل إدخال PAPER ضمن سقف الحملة حتى إعادة ضبط الدفتر؛ لا يدعم الدفتر حالياً تسجيل إغلاق الصفقات.</span></div>}
+                {campaignBudgetBlockMessage && <div className="analysis-footnote"><ShieldAlert size={13} /><span>{campaignBudgetBlockMessage} تبقى تكلفة الدخول محسوبة ضمن سقف الحملة حتى تصفير الحملة؛ تسجيل الإغلاق لا يعيد المخصص تلقائياً.</span></div>}
                 <div className="risk-summary">
                   <div><span>تكلفة القسط + الرسوم</span><strong>{canCalculatePremiumCost ? formatMoney(totalCost, 2, quoteAssetLabel ?? null) : 'غير متاح'}</strong></div>
                   <div><span>نقطة التعادل عند الانتهاء</span><strong>{canCalculateBreakEven ? formatMoney(breakEven, 0, quoteAssetLabel ?? null) : 'غير متاح'}</strong></div>
@@ -1631,9 +1730,10 @@ function App() {
             <div className="section-title-row"><div><span className="section-kicker">PAPER WORKSPACE</span><h2>الدفتر التجريبي</h2><p>سجل الفرضية والكمية والقسط قبل أن تقيم جودة القرار.</p></div><div className="journal-actions"><button className="button button-ghost" onClick={exportTrades}><Download size={14} /> تصدير CSV</button><button className="button button-ghost" onClick={exportIVHistoryBackup}><Download size={14} /> نسخة IV JSON</button><button className="button button-ghost danger-ghost" onClick={clearPaperJournal} disabled={!trades.length || paperJournalLoad.persistenceBlocked}><Trash2 size={14} /> مسح الدفتر</button></div></div>
             <article className="panel journal-panel">
               <div className="journal-summary"><div className="journal-summary-icon"><WalletCards size={18} /></div><div><strong>{trades.length} <span>صفقة تجريبية</span></strong><small>محفوظة محلياً في هذا المتصفح فقط</small></div><div className="journal-metric"><span>وضع التنفيذ</span><strong><i /> PAPER ONLY</strong></div><div className="journal-metric"><span>مفاتيح تداول</span><strong className="safe-label"><LockKeyhole size={13} /> غير مطلوبة</strong></div></div>
+              {[...new Set(trades.filter((trade) => trade.contractEconomics && !trade.close && trade.priceSourceAtEntry === 'ASK').map((trade) => trade.premiumCurrencyAtEntry ?? ''))].filter(Boolean).map((currency) => <div className="journal-close-controls" key={currency}><label><span>رسوم الإغلاق <small>{currency}</small></span><input type="number" min="0" step="0.0001" value={closeFeesByCurrency[currency] ?? ''} onChange={(event) => setCloseFeesByCurrency((current) => ({ ...current, [currency]: event.target.value }))} placeholder="أدخل الرسوم الفعلية" /></label><p>أدخل رسوم الخروج المحسوبة وفق مستوى حساب Binance والعقد. لا يقدّر المختبر معدل الرسوم أو يفترض أنها صفر.</p></div>)}
               {(paperJournalLoad.backupAvailable || paperJournalLoad.persistenceBlocked) && <div className="journal-recovery-warning" role="alert"><strong>تنبيه سلامة دفتر PAPER</strong><p>{paperJournalLoad.persistenceBlocked ? 'أوقفنا أي كتابة جديدة حتى لا نفقد بيانات قديمة لم نستطع حفظ نسخة استعادتها بأمان.' : paperJournalLoad.parseError ? 'تعذر تحليل ملف الدفتر الأصلي؛ احتفظنا بنسخته الخام قبل استبعادها من العرض.' : paperJournalLoad.rejectedCount > 0 ? `تم عزل ${paperJournalLoad.rejectedCount} سجل غير صالح من العرض، مع الاحتفاظ بالملف الأصلي الخام للاستعادة.` : 'توجد نسخة استعادة سابقة محفوظة من دفتر PAPER؛ احتفظ بها خارج المتصفح قبل مسح بياناته.'} لا تمسح بيانات المتصفح قبل تنزيل النسخة.</p>{paperJournalLoad.backupAvailable && <button className="button button-ghost" onClick={exportPaperJournalRecovery}><Download size={14} /> تنزيل نسخة الاستعادة JSON</button>}{paperJournalLoad.persistenceBlocked && <button className="button button-ghost" onClick={exportPaperJournalOriginal}><Download size={14} /> تنزيل الملف الأصلي الحالي</button>}{paperJournalLoad.persistenceBlocked && <button className="button button-ghost" onClick={retryPaperJournalPersistence}>إعادة المحاولة بعد حفظ النسخ</button>}</div>}
               {trades.length ? <>
-                <div className="journal-table-wrap"><table className="journal-table"><thead><tr><th>وقت التسجيل</th><th>العقد</th><th>Strike</th><th>كمية</th><th>قسط الدخول</th><th>السعر المرجعي وقتها</th><th>الحالة</th></tr></thead><tbody>{trades.map((trade) => <tr key={trade.id}><td>{formatDateTime(new Date(trade.createdAt))}</td><td><span className={`mini-type ${trade.type.toLowerCase()}`}>{trade.type}</span><strong>{trade.symbol}</strong>{trade.contractEconomics && <small>لقطة العقد: قسط ×{trade.premiumMultiplierAtEntry} · وحدة التسليم {trade.contractUnitAtEntry}</small>}</td><td>{formatAssetPrice(trade.strike, trade.spotAtEntry, trade.quoteAsset ?? null)}</td><td>{formatQuantity(trade.quantity, { quantityScale: trade.quantityPrecision })}</td><td>{formatOptionPrice(trade.entryPremium, { priceScale: trade.pricePrecision }, trade.quoteAsset ?? null)}{trade.premiumDebitAtEntry !== undefined && <small>القسط والرسوم: {formatMoney(trade.premiumDebitAtEntry, 2, trade.premiumCurrencyAtEntry ?? null)}</small>}</td><td>{formatAssetPrice(trade.spotAtEntry, trade.spotAtEntry, trade.quoteAsset ?? null)}</td><td><span className="paper-status"><i /> تجريبية</span></td></tr>)}</tbody></table></div>
+                <div className="journal-table-wrap"><table className="journal-table"><thead><tr><th>وقت التسجيل</th><th>العقد</th><th>Strike</th><th>كمية</th><th>قسط الدخول</th><th>السعر المرجعي وقتها</th><th>الحالة</th><th>الإغلاق / P&amp;L</th></tr></thead><tbody>{trades.map((trade) => <tr key={trade.id}><td>{formatDateTime(new Date(trade.createdAt))}</td><td><span className={`mini-type ${trade.type.toLowerCase()}`}>{trade.type}</span><strong>{trade.symbol}</strong>{trade.contractEconomics && <small>لقطة العقد: قسط ×{trade.premiumMultiplierAtEntry} · وحدة التسليم {trade.contractUnitAtEntry}</small>}</td><td>{formatAssetPrice(trade.strike, trade.spotAtEntry, trade.quoteAsset ?? null)}</td><td>{formatQuantity(trade.quantity, { quantityScale: trade.quantityPrecision })}</td><td>{formatOptionPrice(trade.entryPremium, { priceScale: trade.pricePrecision }, trade.quoteAsset ?? null)}{trade.premiumDebitAtEntry !== undefined && <small>القسط والرسوم: {formatMoney(trade.premiumDebitAtEntry, 2, trade.premiumCurrencyAtEntry ?? null)}</small>}</td><td>{formatAssetPrice(trade.spotAtEntry, trade.spotAtEntry, trade.quoteAsset ?? null)}</td><td>{trade.close ? <span className="paper-status closed-status"><i /> مغلقة</span> : <span className="paper-status"><i /> مفتوحة · PAPER</span>}</td><td>{trade.close ? <><strong className={trade.close.realizedPnl >= 0 ? 'positive-text' : 'negative-text'}>{formatMoney(trade.close.realizedPnl, 4, trade.close.realizedPnlCurrency)}</strong><small>Bid {formatOptionPrice(trade.close.exitPremium, { priceScale: trade.pricePrecision }, trade.close.exitCurrency)} · رسوم {formatMoney(trade.close.exitFees, 4, trade.close.exitFeeCurrency)} · {formatDateTime(new Date(trade.close.closedAt))}</small></> : trade.contractEconomics && trade.priceSourceAtEntry === 'ASK' ? <button className="button button-ghost journal-close-button" onClick={() => void closePaperTrade(trade)} disabled={dataMode !== 'BINANCE' || paperJournalLoad.persistenceBlocked}>إغلاق عند Bid</button> : <small>إغلاق غير متاح لهذا الإدخال</small>}</td></tr>)}</tbody></table></div>
                 <div className="journal-mobile-list" role="list" aria-label="سجل الصفقات التجريبية">
                   {trades.map((trade) => <article className="journal-mobile-card" role="listitem" key={trade.id}>
                     <div className="journal-mobile-card-head">
@@ -1646,7 +1746,7 @@ function App() {
                       <div><small>قسط الدخول</small><strong>{formatOptionPrice(trade.entryPremium, { priceScale: trade.pricePrecision }, trade.quoteAsset ?? null)}</strong>{trade.premiumDebitAtEntry !== undefined && <small>القسط والرسوم: {formatMoney(trade.premiumDebitAtEntry, 2, trade.premiumCurrencyAtEntry ?? null)}</small>}</div>
                       <div><small>السعر المرجعي</small><strong>{formatAssetPrice(trade.spotAtEntry, trade.spotAtEntry, trade.quoteAsset ?? null)}</strong></div>
                     </div>
-                    <span className="paper-status"><i /> تجريبية · PAPER ONLY</span>
+                    <div className="journal-mobile-close">{trade.close ? <><span className="paper-status closed-status"><i /> مغلقة</span><strong className={trade.close.realizedPnl >= 0 ? 'positive-text' : 'negative-text'}>صافي P&amp;L: {formatMoney(trade.close.realizedPnl, 4, trade.close.realizedPnlCurrency)}</strong><small>Bid {formatOptionPrice(trade.close.exitPremium, { priceScale: trade.pricePrecision }, trade.close.exitCurrency)} · رسوم {formatMoney(trade.close.exitFees, 4, trade.close.exitFeeCurrency)}</small></> : trade.contractEconomics && trade.priceSourceAtEntry === 'ASK' ? <button className="button button-ghost journal-close-button" onClick={() => void closePaperTrade(trade)} disabled={dataMode !== 'BINANCE' || paperJournalLoad.persistenceBlocked}>إغلاق عند Bid</button> : <span className="paper-status"><i /> PAPER ONLY · إغلاق غير متاح</span>}</div>
                   </article>)}
                 </div>
               </> : <div className="journal-empty"><div className="journal-empty-icon"><BookOpen size={20} /></div><strong>لا توجد صفقات مسجلة بعد</strong><span>اختر عقداً من الماسح ثم أضفه إلى الدفتر. لن يتم إرسال أي أمر إلى أي منصة.</span><button className="text-button" onClick={() => navigate('scanner')}>ابدأ بتحليل عقد <ArrowUpLeft size={14} /></button></div>}
