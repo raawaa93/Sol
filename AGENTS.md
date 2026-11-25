@@ -132,7 +132,9 @@ Keep the personal finance and investment intelligence scope, multi-asset options
 ### تصحيح أهلية Binance
 
 FAQ Binance المنشور في 12 يونيو 2025 يثبت أن المقيمين السوريين يمكنهم التسجيل والتحقق وفق KYC والامتثال، ويقول إنهم يستطيعون الوصول إلى مجموعة واسعة من المنتجات. لكن قائمة المنتجات المسماة في الصفحة (P2P، COIN-M، USDⓈ-M Futures، Convert/Block Trade، Margin، Spot، Copy Trading، Alpha، Wallet) **لا تسمي Options صراحةً**. لذلك لا نستخدم الصفحة كدليل صريح على أهلية Options؛ يجب التحقق من تفعيل Crypto Options لكل حساب ومن Commodity/Stock Options كلٌ على حدة أو الحصول على جواب دعم مكتوب. المصدر: https://www.binance.com/en/support/faq/detail/863795c36a224bd7aa7d677996328ff9
-\n\n## BBO-aware options replay rules
+
+
+## BBO-aware options replay rules
 
 - Historical replay must use an explicit executable BBO source, source-event/snapshot time, local receive time, displayed bid/ask quantities and an explicit size unit. Never substitute a generic trade timestamp, last-price clock, mark price or modelled quote for an executable BBO.
 - Binance `bookTicker` supplies BBO and contract-count quantities. REST `OPTION_TICKER` BBO uses `sourceTimestamps.ticker`; the WebSocket `optionTicker` clock is a separate 24-hour statistics/last-price stream and must not timestamp bid/ask.
