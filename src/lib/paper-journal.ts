@@ -32,7 +32,7 @@ export type CanonicalPaperCloseResult =
   | { ok: true; trade: PaperTrade; close: PaperTradeClose }
   | { ok: false; reason: string };
 
-const MAX_PAPER_SOURCE_AGE_MS = 5 * 60_000;
+const MAX_PAPER_SOURCE_AGE_MS = 5_000;
 const MAX_BINANCE_OPTION_TRADING_FEE_CAP = 0.1;
 
 function getPaperEntryPriceSource(quote: OptionQuote): OptionQuote['priceSource'] | undefined {
