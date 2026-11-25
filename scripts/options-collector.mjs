@@ -51,6 +51,166 @@ function observedField(name, value, unit, sourcePath, eventAt, receivedAt, avail
   };
 }
 
+function isSupportedPublicStream(stream) {
+  return typeof stream === 'string' && (
+    /^[a-z0-9-]+@(bookTicker|optionTrade|optionTicker\\d{6}?|optionTicker|kline_(1m|3m|5m|15m|30m|1h|2h|4h|6h|8h|12h|1d|3d|1w|1M)|depth@(100ms|500ms)|depth(5|10|20)@(100ms|500ms))$/i.test(stream)
+    || /^[a-z0-9]+@(optionMarkPrice|markPrice)$/i.test(stream)
+    || stream === '!index@arr'
+  );
+}
+
+function validatePublicStreams(streams) {
+  if (!Array.isArray(streams) || streams.length === 0 || streams.length > 200
+    || streams.some((stream) => !isSupportedPublicStream(stream))) {
+    throw new OptionsCollectorError('INVALID_STREAMS', 'Only 1–200 supported public Binance Options streams are accepted.');
+  }
+}
+
+async function* readWebSocketEvents(socket, signal) {
+  const queue = [];
+  let wake = null;
+  let finished = false;
+  const push = (event) => {
+    queue.push(event);
+    if (wake) {
+      const resume = wake;
+      wake = null;
+      resume();
+    }
+  };
+  const onOpen = () => push({ type: 'open' });
+  const onMessage = (event) => push({ type: 'message', data: event.data });
+  const onError = () => {
+    push({ type: 'error' });
+    finished = true;
+    if (wake) {
+      const resume = wake;
+      wake = null;
+      resume();
+    }
+  };
+  const onClose = (event) => {
+    push({ type: 'close', code: event.code, reason: event.reason ?? '' });
+    finished = true;
+  };
+  const onAbort = () => {
+    if (finished) return;
+    try { socket.close(1000, 'collector-aborted'); } catch {}
+    push({ type: 'close', code: 1000, reason: 'collector-aborted' });
+    finished = true;
+  };
+  socket.addEventListener('open', onOpen);
+  socket.addEventListener('message', onMessage);
+  socket.addEventListener('error', onError);
+  socket.addEventListener('close', onClose);
+  signal?.addEventListener('abort', onAbort, { once: true });
+  if (signal?.aborted) onAbort();
+  try {
+    while (true) {
+      if (queue.length) {
+        const event = queue.shift();
+        yield event;
+        if (event.type === 'close' || event.type === 'error') return;
+      } else if (finished) {
+        return;
+      } else {
+        await new Promise((resolve) => { wake = resolve; });
+      }
+    }
+  } finally {
+    socket.removeEventListener('open', onOpen);
+    socket.removeEventListener('message', onMessage);
+    socket.removeEventListener('error', onError);
+    socket.removeEventListener('close', onClose);
+    signal?.removeEventListener('abort', onAbort);
+    if (!finished) {
+      try { socket.close(1000, 'collector-stopped'); } catch {}
+    }
+  }
+}
+
+function waitBeforeReconnect(milliseconds, signal) {
+  if (signal?.aborted) return Promise.resolve();
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', finish);
+      resolve();
+    };
+    const timer = setTimeout(finish, milliseconds);
+    signal?.addEventListener('abort', finish, { once: true });
+  });
+}
+
+/**
+ * Real public-only Binance Options WebSocket transport.
+ * It uses the documented global public stream endpoint only; it has no
+ * proxy, alternate-region, credential, user-data or order capability.
+ * Any socket error/abnormal close fails closed. Only normal 24h/going-away
+ * closes are retried, with bounded exponential backoff.
+ */
+export function createBinanceOptionsWebSocketTransport({
+  WebSocketImpl = globalThis.WebSocket,
+  signal,
+  maxReconnects = 3,
+  reconnectBaseDelayMs = 1_000,
+  reconnectMaxDelayMs = 30_000,
+} = {}) {
+  if (typeof WebSocketImpl !== 'function') {
+    throw new OptionsCollectorError('WEBSOCKET_UNAVAILABLE', 'This Node runtime does not provide the WebSocket API.');
+  }
+  if (!Number.isSafeInteger(maxReconnects) || maxReconnects < 0 || maxReconnects > 100
+    || !Number.isSafeInteger(reconnectBaseDelayMs) || reconnectBaseDelayMs < 0
+    || !Number.isSafeInteger(reconnectMaxDelayMs) || reconnectMaxDelayMs < reconnectBaseDelayMs) {
+    throw new OptionsCollectorError('INVALID_RECONNECT_POLICY', 'WebSocket reconnect limits are invalid.');
+  }
+  return {
+    async subscribe(streams) {
+      validatePublicStreams(streams);
+      const url = new URL('wss://fstream.binance.com/public/stream');
+      url.searchParams.set('streams', streams.join('/'));
+      return (async function* () {
+        let reconnects = 0;
+        while (!signal?.aborted) {
+          const socket = new WebSocketImpl(url.toString());
+          let closeEvent = null;
+          let socketError = false;
+          for await (const event of readWebSocketEvents(socket, signal)) {
+            if (event.type === 'open') {
+              yield { type: 'reconnect', reason: 'PUBLIC_OPTIONS_STREAM_CONNECTED' };
+            } else if (event.type === 'message') {
+              yield { type: 'message', data: event.data };
+            } else if (event.type === 'error') {
+              socketError = true;
+            } else if (event.type === 'close') {
+              closeEvent = event;
+              break;
+            }
+          }
+          const closeCode = closeEvent?.code ?? 1006;
+          yield { type: 'disconnect', code: closeCode, reason: closeEvent?.reason ?? 'websocket-error' };
+          if (signal?.aborted) return;
+          // WebSocket APIs do not expose the HTTP status for a rejected
+          // upgrade. Stop on socket errors/abnormal closes; never try another
+          // host, proxy or egress region.
+          if (socketError || !closeEvent || ![1000, 1001].includes(closeCode)) {
+            throw new OptionsCollectorError('WEBSOCKET_CONNECTION_BLOCKED_OR_FAILED', 'Public Options WebSocket failed or was rejected; collection stopped without alternate egress.');
+          }
+          if (reconnects >= maxReconnects) {
+            throw new OptionsCollectorError('WEBSOCKET_RECONNECT_LIMIT', 'Public Options WebSocket reconnect limit reached.');
+          }
+          const delay = Math.min(reconnectMaxDelayMs, reconnectBaseDelayMs * (2 ** reconnects));
+          reconnects += 1;
+          await waitBeforeReconnect(delay, signal);
+        }
+      })();
+    },
+  };
+}
+
 export function buildPublicBinanceRestUrl(endpoint, params = {}) {
   const definition = REST_ENDPOINTS[endpoint];
   if (!definition) throw new OptionsCollectorError('ENDPOINT_NOT_ALLOWED', 'Only the public Binance Options REST allowlist is supported.');
@@ -541,14 +701,7 @@ export async function collectForwardOptionsEvents({ archive, transport, streams,
   if (refreshExchangeInfo !== true && refreshExchangeInfo !== false) {
     throw new OptionsCollectorError('INVALID_REFRESH_SETTING', 'exchangeInfo refresh must be explicitly true or false.');
   }
-  const isSupportedPublicStream = (stream) => typeof stream === 'string' && (
-    /^[a-z0-9-]+@(bookTicker|optionTrade|optionTicker\d{6}?|optionTicker|kline_(1m|3m|5m|15m|30m|1h|2h|4h|6h|8h|12h|1d|3d|1w|1M)|depth@(100ms|500ms)|depth(5|10|20)@(100ms|500ms))$/i.test(stream)
-    || /^[a-z0-9]+@(optionMarkPrice|markPrice)$/i.test(stream)
-    || stream === '!index@arr'
-  );
-  if (!Array.isArray(streams) || streams.length === 0 || streams.some((stream) => !isSupportedPublicStream(stream))) {
-    throw new OptionsCollectorError('INVALID_STREAMS', 'Only supported public Binance Options stream names are accepted.');
-  }
+  validatePublicStreams(streams);
   const lease = await archive.acquireWriterLease();
   const state = { depth: new Map(), contractSpecs: new Map(), lastExchangeInfoRefreshAt: null };
   let processed = 0;
