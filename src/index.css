@@ -769,3 +769,11 @@ h1, h2, h3, p { margin: 0; }
   .data-coverage-heading { align-items: flex-start; }
   .data-coverage-source { max-width: 112px; white-space: normal; text-align: center; }
 }
+
+
+.journal-exit-controls { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 20px; padding: 14px 18px; border-bottom: 1px solid var(--border, rgba(255,255,255,.08)); }
+.journal-exit-controls p { flex: 1 1 360px; margin: 0; color: var(--muted, #9aa0aa); font-size: 11px; line-height: 1.7; }
+.journal-exit-controls label { display: grid; gap: 6px; min-width: min(260px, 100%); color: var(--muted, #9aa0aa); font-size: 10px; }
+.journal-exit-controls input { width: 100%; min-height: 38px; padding: 8px 10px; border: 1px solid var(--border, rgba(255,255,255,.12)); border-radius: 8px; background: var(--surface, #15171b); color: inherit; font: inherit; }
+.journal-close-button { min-height: 32px; padding: 6px 10px; white-space: nowrap; }
+.journal-close-button:disabled { opacity: .42; cursor: not-allowed; }
