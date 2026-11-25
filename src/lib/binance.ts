@@ -364,13 +364,16 @@ export function applyBinanceOptionMarkPrice(
         ? Date.parse(quote.sourceTimestamps?.markPrice ?? '')
         : Number.NaN;
   const updateBbo = !Number.isFinite(currentBboTimestamp) || event.eventTime >= currentBboTimestamp;
+  const currentIndexTimestamp = Date.parse(quote.sourceTimestamps?.index ?? '');
+  const updateIndex = event.indexPrice !== undefined
+    && (!Number.isFinite(currentIndexTimestamp) || event.eventTime >= currentIndexTimestamp);
   const useMarkBid = updateBbo && event.bestBid !== undefined;
   const useMarkAsk = updateBbo && event.bestAsk !== undefined;
   const updated: OptionQuote = {
     ...quote,
     markPrice: event.markPrice,
     priceSource: 'MARK',
-    ...(event.indexPrice !== undefined ? { spot: event.indexPrice } : {}),
+    ...(updateIndex ? { spot: event.indexPrice } : {}),
     ...(useMarkBid ? { bid: event.bestBid, ...(event.bestBidQuantity !== undefined ? { bidQuantity: event.bestBidQuantity } : {}) } : {}),
     ...(useMarkAsk ? { ask: event.bestAsk, ...(event.bestAskQuantity !== undefined ? { askQuantity: event.bestAskQuantity } : {}) } : {}),
     ...(useMarkBid || useMarkAsk ? { bidAskSource: useMarkBid && useMarkAsk ? 'MARK_PRICE' as const : undefined } : {}),
@@ -387,7 +390,7 @@ export function applyBinanceOptionMarkPrice(
       : {}),
     ...(quote.estimatedFields ? {
       estimatedFields: quote.estimatedFields.filter((field) => !(
-        (event.indexPrice !== undefined && field === 'spot')
+        (updateIndex && field === 'spot')
         || (event.riskFreeRate !== undefined && field === 'riskFreeRate')
         || (event.bidIv !== undefined && field === 'bidIv')
         || (event.askIv !== undefined && field === 'askIv')
@@ -399,7 +402,7 @@ export function applyBinanceOptionMarkPrice(
     sourceTimestamps: {
       ...quote.sourceTimestamps,
       markPrice: new Date(event.eventTime).toISOString(),
-      ...(event.indexPrice !== undefined ? { index: new Date(event.eventTime).toISOString() } : {}),
+      ...(updateIndex ? { index: new Date(event.eventTime).toISOString() } : {}),
       ...(event.venueVolatility !== undefined ? { venueVolatility: new Date(event.eventTime).toISOString() } : {}),
       ...(event.bidIv !== undefined ? { bidIv: new Date(event.eventTime).toISOString() } : {}),
       ...(event.askIv !== undefined ? { askIv: new Date(event.eventTime).toISOString() } : {}),
