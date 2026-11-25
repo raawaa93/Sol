@@ -111,8 +111,21 @@ export function loadPaperCloseEvents(storage: PaperCloseEventsStorage): PaperClo
   let parsed: unknown;
   try { parsed = JSON.parse(raw); } catch { return preserveRaw(storage, raw, 0, true); }
   if (!Array.isArray(parsed)) return preserveRaw(storage, raw, 0, true);
-  const events = parsed.filter(isCanonicalPaperCloseEvent);
-  const rejectedCount = parsed.length - events.length;
+  const events: CanonicalPaperCloseEvent[] = [];
+  const seenEventIds = new Set<string>();
+  const seenTradeIds = new Set<string>();
+  let rejectedCount = 0;
+  for (const candidate of parsed) {
+    if (!isCanonicalPaperCloseEvent(candidate)
+      || seenEventIds.has(candidate.id)
+      || seenTradeIds.has(candidate.tradeId)) {
+      rejectedCount += 1;
+      continue;
+    }
+    seenEventIds.add(candidate.id);
+    seenTradeIds.add(candidate.tradeId);
+    events.push(candidate);
+  }
   if (rejectedCount === 0) {
     let backupAvailable = false;
     try { backupAvailable = storage.getItem(PAPER_CLOSE_EVENTS_RECOVERY_KEY) !== null; } catch { /* read-only fallback */ }
