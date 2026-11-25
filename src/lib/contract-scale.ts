@@ -134,7 +134,7 @@ export function hasCanonicalBinanceModelGreekCapability(
     && quote.pricingModel === 'BLACK_SCHOLES_CARRY'
     && (quote.pricingStatus === 'ASSUMED' || quote.pricingStatus === 'SUPPORTED')
     && quote.ivStatus === 'OBSERVED'
-    && !estimated.some((field) => ['iv', 'spot', 'daysToExpiry', 'delta', 'gamma', 'theta', 'vega', 'rho'].includes(field))
+    && !estimated.some((field) => ['iv', 'spot', 'daysToExpiry', 'riskFreeRate', 'delta', 'gamma', 'theta', 'vega', 'rho'].includes(field))
     && Number.isFinite(quote.spot) && quote.spot > 0
     && Number.isFinite(quote.strike) && quote.strike > 0
     && Number.isFinite(quote.daysToExpiry) && quote.daysToExpiry >= 0
@@ -144,7 +144,8 @@ export function hasCanonicalBinanceModelGreekCapability(
     && [quote.delta, quote.gamma, quote.theta, quote.vega, quote.rho].every(Number.isFinite)
     && validTimestamp(quote.sourceTimestamps?.index)
     && validTimestamp(quote.sourceTimestamps?.optionTicker)
-    && validTimestamp(quote.sourceTimestamps?.markIv);
+    && validTimestamp(quote.sourceTimestamps?.markIv)
+    && quote.sourceTimestamps?.markIv === quote.sourceTimestamps?.optionTicker;
 }
 
 export function getContractScaleIssueMessage(issue: ContractScaleIssue): string {
