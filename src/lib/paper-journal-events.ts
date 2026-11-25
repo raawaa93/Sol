@@ -157,3 +157,12 @@ export function readPaperCloseEventsRecovery(storage: PaperCloseEventsStorage): 
 export function readPaperCloseEventsPrimary(storage: PaperCloseEventsStorage): string | null {
   try { return storage.getItem(PAPER_CLOSE_EVENTS_KEY); } catch { return null; }
 }
+
+export function clearPaperCloseEventsRecovery(storage: PaperCloseEventsStorage & { removeItem(key: string): void }): boolean {
+  try {
+    storage.removeItem(PAPER_CLOSE_EVENTS_RECOVERY_KEY);
+    return true;
+  } catch {
+    return false;
+  }
+}
