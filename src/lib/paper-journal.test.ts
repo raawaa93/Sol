@@ -392,3 +392,17 @@ test('persisted PAPER close records are validated and corrupt close data keeps t
   assert.equal(recovered.integrityWarning, 'CLOSE_RECORD_INVALID');
   assert.equal(recovered.premiumDebitAtEntry, trade.premiumDebitAtEntry);
 });
+
+
+test('invalid stored Ask evidence keeps the PAPER debit reserved and blocks close', () => {
+  const trade = createEntry();
+  const corrupted = { ...trade, askQuantityAtEntry: 1 };
+  const recovered = normalizePaperTradeRecord(corrupted);
+  assert.equal(recovered.integrityWarning, 'ENTRY_EXECUTION_EVIDENCE_INVALID');
+  assert.equal(recovered.close, undefined);
+  assert.equal(recovered.premiumDebitAtEntry, trade.premiumDebitAtEntry);
+  assert.equal(
+    closeFailure({ trade: recovered, quote: closeQuote(), closedAt: '2026-11-25T03:10:02Z' }),
+    'LEGACY_OR_NON_EXECUTABLE_PAPER_ENTRY_CANNOT_BE_CLOSED',
+  );
+});
