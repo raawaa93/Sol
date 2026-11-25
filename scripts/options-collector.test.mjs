@@ -46,7 +46,7 @@ function exchangeInfoFixture() {
     optionSymbols: [{
       symbol: SYMBOL, underlying: 'BTCUSDT', quoteAsset: 'USDT', side: 'CALL',
       strikePrice: '100000', expiryDate: Date.parse('2026-12-25T08:00:00.000Z'),
-      unit: '100', contractType: 'CRYPTO_OPTIONS', underlyingType: 'CRYPTO',
+      unit: '100', contractType: 'CRYPTO_OPTIONS', underlyingType: 'CRYPTO', status: 'TRADING',
     }],
   };
 }
@@ -99,6 +99,14 @@ test('exchangeInfo maps only explicit Binance Crypto Options contract terms with
   assert.equal(mapVerifiedBinanceContractSpec({
     ...exchangeInfoFixture(),
     optionContracts: [{ ...exchangeInfoFixture().optionContracts[0], settleAsset: 'USDC' }],
+  }, SYMBOL, RECEIVED), null);
+  assert.equal(mapVerifiedBinanceContractSpec({
+    ...exchangeInfoFixture(),
+    optionSymbols: [{ ...exchangeInfoFixture().optionSymbols[0], status: 'HALT' }],
+  }, SYMBOL, RECEIVED), null);
+  assert.equal(mapVerifiedBinanceContractSpec({
+    ...exchangeInfoFixture(),
+    optionSymbols: [{ ...exchangeInfoFixture().optionSymbols[0], quoteAsset: 'USDC' }],
   }, SYMBOL, RECEIVED), null);
   assert.equal(mapVerifiedBinanceContractSpec(exchangeInfoFixture(), SYMBOL, 'not-a-timestamp'), null);
   assert.equal(mapVerifiedBinanceContractSpec({
