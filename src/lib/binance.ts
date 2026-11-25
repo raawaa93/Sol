@@ -214,6 +214,7 @@ export function applyBinanceBookTicker(
     },
     bidQuantity: event.bidQuantity,
     askQuantity: event.askQuantity,
+    bidAskSizeUnit: 'CONTRACTS',
     bidAskSource: 'BOOK_TICKER',
     sourceReceivedAt: {
       ...quote.sourceReceivedAt,
