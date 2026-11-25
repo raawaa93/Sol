@@ -216,6 +216,6 @@ PR #172 merged the PAPER-only entry snapshot; PR #175 merged subsequent source-c
 This is entry capture only. It does not implement mark-to-market, amendments, exits, simulated P&L, portfolio aggregation or replay. The journal remains browser-local storage, not a durable server-side ledger.
 
 
-### Binance mark-IV source provenance — PR #180 under verification
+### Binance mark-IV source provenance — PR #180 merged 25 November 2026
 
-A follow-up source audit found that Binance `vo` was incorrectly treated as observed `markIV` in the ticker/mark-price WebSocket path. PR #180 preserves `vo` as `venueVolatility`, accepts mark IV only from an explicit `markIV` field, and requires `markIvSource=OPTION_TICKER` plus matching event timestamps before position Greeks are enabled. This intentionally fails closed if the explicit mark-IV source is unavailable.
+PR #180 merged as `762918f8e95c958e8013512a623341d83946e20a`. Binance `vo` is preserved as venue-reported volatility, not mark IV. The adapter accepts observed mark IV only from the explicit `markIV` field and records `markIvSource=OPTION_TICKER` with the exact event timestamp. The canonical position-Greek gate requires that source and matching timestamps; it remains closed when the explicit mark-IV event is unavailable.
