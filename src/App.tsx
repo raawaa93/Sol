@@ -172,6 +172,17 @@ function isPaperTrade(value: unknown): value is PaperTrade {
       && typeof trade.premiumAmountAtEntry === 'number' && Number.isFinite(trade.premiumAmountAtEntry) && trade.premiumAmountAtEntry >= 0
       && typeof trade.premiumDebitAtEntry === 'number' && Number.isFinite(trade.premiumDebitAtEntry) && trade.premiumDebitAtEntry >= trade.premiumAmountAtEntry
       && trade.premiumCurrencyAtEntry === trade.contractEconomics.premium.quoteCurrency
+      && (trade.entryFeesSource === undefined || trade.entryFeesSource === 'USER_ENTERED')
+      && (trade.entryFeesSource !== 'USER_ENTERED' || trade.fees <= (trade.premiumAmountAtEntry ?? 0) * 0.1 + 1e-9)
+      && (typeof trade.sourceReceivedAtAtEntry?.bidAsk === 'string' && Number.isFinite(Date.parse(trade.sourceReceivedAtAtEntry.bidAsk)))
+      && (typeof trade.sourceTimestampsAtEntry?.bookTicker === 'string' && Number.isFinite(Date.parse(trade.sourceTimestampsAtEntry.bookTicker)))
+      && (typeof trade.sourceTimestampsAtEntry?.index === 'string' && Number.isFinite(Date.parse(trade.sourceTimestampsAtEntry.index)))
+      && Date.parse(trade.sourceReceivedAtAtEntry.bidAsk) <= Date.parse(trade.createdAt)
+      && Date.parse(trade.sourceTimestampsAtEntry.bookTicker) <= Date.parse(trade.createdAt)
+      && Date.parse(trade.sourceTimestampsAtEntry.index) <= Date.parse(trade.createdAt)
+      && Date.parse(trade.createdAt) - Date.parse(trade.sourceReceivedAtAtEntry.bidAsk) <= 300_000
+      && Date.parse(trade.createdAt) - Date.parse(trade.sourceTimestampsAtEntry.bookTicker) <= 300_000
+      && Date.parse(trade.createdAt) - Date.parse(trade.sourceTimestampsAtEntry.index) <= 300_000
       && (trade.priceSourceAtEntry !== 'MID' || trade.bidAskSourceAtEntry === 'BOOK_TICKER' || trade.bidAskSourceAtEntry === 'OPTION_TICKER' || trade.bidAskSourceAtEntry === 'MARK_PRICE')))
     && (trade.exit === undefined || (
       trade.exit !== null && typeof trade.exit === 'object'
@@ -207,8 +218,10 @@ function isPaperTrade(value: unknown): value is PaperTrade {
         : trade.exit.exitFeesSource === 'USER_ENTERED'
           && typeof trade.exit.exitCreditAfterFees === 'number'
           && Math.abs(trade.exit.exitCreditAfterFees - (trade.exit.exitPremiumAmount - trade.exit.exitFees)) <= Math.max(1e-8, Math.abs(trade.exit.exitCreditAfterFees) * 1e-8)
-          && typeof trade.exit.realizedNetPnl === 'number'
-          && Math.abs(trade.exit.realizedNetPnl - (trade.exit.exitCreditAfterFees - (trade.premiumDebitAtEntry ?? 0))) <= Math.max(1e-8, Math.abs(trade.exit.realizedNetPnl) * 1e-8))))
+          && (trade.entryFeesSource === 'USER_ENTERED'
+            ? typeof trade.exit.realizedNetPnl === 'number'
+              && Math.abs(trade.exit.realizedNetPnl - (trade.exit.exitCreditAfterFees - (trade.premiumDebitAtEntry ?? 0))) <= Math.max(1e-8, Math.abs(trade.exit.realizedNetPnl) * 1e-8)
+            : trade.exit.realizedNetPnl === undefined))))
     && trade.status === 'PAPER';
 }
 
@@ -295,6 +308,7 @@ function App() {
   const [quantity, setQuantity] = useState(0.01);
   const [riskBudget, setRiskBudget] = useState(PAPER_CAMPAIGN_PER_TRADE_CAP);
   const [fees, setFees] = useState(0);
+  const [entryFeesKnown, setEntryFeesKnown] = useState(false);
   const [paperJournalLoad, setPaperJournalLoad] = useState(() => loadPaperJournal<PaperTrade>(localStorage, isPaperTrade));
   const [trades, setTrades] = useState<PaperTrade[]>(paperJournalLoad.entries);
   const [paperExitFees, setPaperExitFees] = useState('');
@@ -1077,6 +1091,7 @@ function App() {
         quantity: safeQuantity,
         premiumPrice: canonicalEntryPremium,
         fees: safeFees,
+        ...(entryFeesKnown ? { entryFeesSource: 'USER_ENTERED' as const } : {}),
         spotAtEntry: underlyingReferencePrice,
       });
       if (!result.ok) {
@@ -1122,6 +1137,7 @@ function App() {
       entryPremium: selectedPremium,
       pricePrecision: getOptionPricePrecision(selectedPremium, selectedQuote),
       fees: safeFees,
+      ...(entryFeesKnown ? { entryFeesSource: 'USER_ENTERED' as const } : {}),
       spotAtEntry: underlyingReferencePrice,
       quoteAsset: quoteAssetLabel,
       contractVenueAtEntry: selectedQuote.venue,
@@ -1162,7 +1178,7 @@ function App() {
     setTrades((current) => current.map((item) => item.id === trade.id ? result.trade : item));
     setPaperExitFees('');
     notify(result.netPnl === undefined
-      ? `سُجل الإغلاق عند Bid. الربح/الخسارة الإجمالي ${formatMoney(result.grossPnl, 2, result.currency)}؛ الصافي غير متاح لأن رسوم الخروج غير محددة.`
+      ? `سُجل الإغلاق عند Bid. الربح/الخسارة الإجمالي ${formatMoney(result.grossPnl, 2, result.currency)}؛ الصافي غير متاح لأن رسوم الدخول أو الخروج غير معروفة بدقة.`
       : `سُجل الإغلاق عند Bid. صافي الربح/الخسارة ${formatMoney(result.netPnl, 2, result.currency)}.`);
   };
 
@@ -1269,6 +1285,8 @@ function App() {
       bidAskSourceAtEntry: trade.bidAskSourceAtEntry ?? '',
       contractEconomicsJSON: trade.contractEconomics ? JSON.stringify(trade.contractEconomics) : '',
       sourceTimestampsAtEntryJSON: trade.sourceTimestampsAtEntry ? JSON.stringify(trade.sourceTimestampsAtEntry) : '',
+      sourceReceivedAtAtEntryJSON: trade.sourceReceivedAtAtEntry ? JSON.stringify(trade.sourceReceivedAtAtEntry) : '',
+      entryFeesSource: trade.entryFeesSource ?? '',
       closedAtUTC: trade.exit?.closedAt ?? '',
       exitPremiumBid: trade.exit?.exitPremium ?? '',
       exitQuantity: trade.exit?.exitQuantity ?? '',
@@ -1633,7 +1651,7 @@ function App() {
                 <div className="analysis-divider" />
                 <div className="input-grid">
                   <label><span>{dataMode === 'BINANCE' ? 'كمية العقود' : 'الكمية'} <small>{dataMode === 'BINANCE' ? 'حسب مواصفات Binance' : 'من الأصل'}</small></span><input type="number" min={dataMode === 'BINANCE' ? minimumQuantity : 0.01} step={dataMode === 'BINANCE' ? quantityStep : 0.01} max={dataMode === 'BINANCE' ? selectedQuote.maxQty : undefined} value={quantity} onChange={(event) => setQuantity(Math.max(0, Number(event.target.value)))} /></label>
-                  <label><span>الرسوم التقديرية <small>{quoteAssetLabel ?? 'عملة غير محددة'}</small></span><input type="number" min="0" step="0.1" value={fees} onChange={(event) => setFees(Math.max(0, Number(event.target.value)))} /></label>
+                  <label><span>رسوم الدخول الفعلية <small>{quoteAssetLabel ?? 'عملة غير محددة'} · اختياري</small></span><input type="number" min="0" step="any" value={fees} onChange={(event) => { setFees(Math.max(0, Number(event.target.value))); setEntryFeesKnown(true); }} /></label>
                 </div>
                 {hasPremiumSizingCapability && <div className="budget-row"><label htmlFor="risk-budget">ميزانية المحاولة (حد أقصى 20)</label><div><input id="risk-budget" type="number" min="0" max={PAPER_CAMPAIGN_PER_TRADE_CAP} step="1" value={riskBudget} onChange={(event) => setRiskBudget(Math.min(PAPER_CAMPAIGN_PER_TRADE_CAP, Math.max(0, Number(event.target.value))))} /><span>{quoteAssetLabel ?? 'عملة غير محددة'}</span><button onClick={handleBudgetClick} title="احسب كمية لا تتجاوز الميزانية">احسب الكمية</button></div></div>}
                 <div className="risk-summary campaign-risk-summary">
