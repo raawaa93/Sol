@@ -85,6 +85,50 @@ interface BinanceTicker {
   closeTime?: number;
 }
 
+interface BinanceIndex {
+  underlying?: string;
+  indexPrice?: string | number;
+  time?: number;
+}
+
+interface BinanceOpenInterest {
+  symbol?: string;
+  sumOpenInterest?: string | number;
+  sumOpenInterestUsd?: string | number;
+  timestamp?: string | number;
+}
+
+export interface BinanceOptionsSnapshot {
+  quotes: OptionQuote[];
+  fetchedAt: number;
+  serverTime: number;
+  availableAssets: Underlying[];
+  activeSymbols: number;
+  warnings: string[];
+}
+
+export class BinanceMarketDataError extends Error {
+  readonly status: number;
+  readonly detail?: string;
+
+  constructor(status: number, detail?: string) {
+    super(`Binance market-data service returned HTTP ${status}${detail ? `: ${detail}` : ''}`);
+    this.name = 'BinanceMarketDataError';
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
+export interface BinanceFixture {
+  exchangeInfo: BinanceExchangeInfo;
+  marks?: BinanceMark[];
+  tickers?: BinanceTicker[];
+  indices?: Array<{ requestedUnderlying: string; item: BinanceIndex }>;
+  openInterest?: BinanceOpenInterest[];
+  fetchedAt?: number;
+}
+
+
 export interface BinanceBookTickerEvent {
   symbol: string;
   bidPrice: number;
