@@ -90,3 +90,38 @@ test('mixed currencies and unsupported currencies are blocked without implicit F
   assert.equal(unsupported.supportedCurrency, false);
   assert.equal(canAllocatePaperCampaignTrade(unsupported, 10, 'EUR').reason, 'UNSUPPORTED_CAMPAIGN_CURRENCY');
 });
+
+
+test('zero or negative stored premium debits are not treated as zero-risk entries', () => {
+  const unreconciled = trade({
+    premiumDebitAtEntry: 0,
+    premiumAmountAtEntry: undefined,
+    premiumMultiplierAtEntry: undefined,
+    contractUnitAtEntry: undefined,
+  });
+  const summary = summarizePaperCampaignBudget([unreconciled], 'USDT');
+  assert.equal(summary.unknownEntries, 1);
+  assert.equal(summary.canAllocate, false);
+
+  const recoverable = trade({
+    premiumDebitAtEntry: 0,
+    premiumAmountAtEntry: 15,
+    premiumMultiplierAtEntry: 1,
+    fees: 1,
+  });
+  const recovered = summarizePaperCampaignBudget([recoverable], 'USDT');
+  assert.equal(recovered.used, 16);
+  assert.equal(recovered.unknownEntries, 0);
+});
+
+test('invalid per-trade caps and malformed campaign summaries fail closed', () => {
+  const summary = summarizePaperCampaignBudget([], 'USDT');
+  assert.equal(
+    canAllocatePaperCampaignTrade(summary, 10, 'USDT', Number.NaN).reason,
+    'INVALID_PER_TRADE_CAP',
+  );
+  assert.equal(
+    canAllocatePaperCampaignTrade({ ...summary, remaining: Number.NaN }, 10, 'USDT').reason,
+    'INVALID_CAMPAIGN_BUDGET',
+  );
+});
