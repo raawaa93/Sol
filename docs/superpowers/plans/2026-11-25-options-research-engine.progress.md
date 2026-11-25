@@ -60,3 +60,13 @@
 - Do not mutate shared Supabase production resources.
 - Do not run the WebSocket transport from a US GitHub runner or alter egress to reach Binance.
 - Do not claim the system is fully production-ready or profitable.
+
+
+## Follow-up verification — IV history browser coverage (25 November 2026, 07:49 UTC)
+
+- PR #196 merged as `26b82d63bdd533c96fba8a881a8036fcf7c0b470`.
+- Added a deterministic Playwright journey using mocked Binance REST data: paired CALL/PUT at 20 and 40 DTE, source-verified 30-day IV extraction, honest insufficient-history state with one daily sample, and JSON export preserving source/underlying/tenor metadata.
+- CI run 45570955327 passed: 293 unit/property tests, TypeScript production build, compressed bundle budget, and all 18 Playwright browser journeys.
+- Lighthouse baseline run 45570955246 passed.
+- Project Context Guard run 45570955274 passed.
+- This is test coverage only; it does not create a live Binance connection, background sampler, cloud archive, or empirical strategy result.
