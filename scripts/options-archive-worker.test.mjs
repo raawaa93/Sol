@@ -144,3 +144,37 @@ test('worker aborts collection and fails closed when archive heartbeat health ch
   assert.ok(events.some((entry) => entry.type === 'worker_health_error'));
   assert.equal(events.at(-1).type, 'worker_failed');
 });
+
+test('worker stops heartbeat scheduling before archive verification begins', async () => {
+  const config = readOptionsWorkerConfig({
+    OPTIONS_ARCHIVE_DIR: '/tmp/sol-options',
+    OPTIONS_PUBLIC_STREAMS: 'btcusdt@bookTicker',
+    OPTIONS_ARCHIVE_HEARTBEAT_MS: '1000',
+    OPTIONS_ARCHIVE_MAX_RUNTIME_MS: '10000',
+  });
+  let byteReads = 0;
+  const archive = {
+    async initialize() {},
+    async getArchiveBytes() { byteReads += 1; return 0; },
+    async acquireWriterLease() { return { token: 'test' }; },
+    async releaseWriterLease() {},
+    async appendBatch() { throw new Error('unexpected append'); },
+    async verify() {
+      await new Promise((resolve) => setTimeout(resolve, 1_100));
+      return { ok: true, errors: [], segmentCount: 0 };
+    },
+  };
+  const transport = {
+    async subscribe() {
+      return (async function* () {})();
+    },
+  };
+  const result = await runOptionsArchiveWorker({
+    config,
+    archive,
+    transport,
+    logger: () => {},
+  });
+  assert.equal(result.stopped, false);
+  assert.equal(byteReads, 2); // initial size + final size; no heartbeat during verification
+});
