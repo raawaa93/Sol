@@ -131,7 +131,8 @@ export function mapVerifiedBinanceContractSpec(exchangeInfo, symbol, receivedAt)
     || String(contractInfo.contractType ?? '').toUpperCase() !== 'CRYPTO_OPTIONS'
     || (symbolInfo.underlyingType && String(symbolInfo.underlyingType).toUpperCase() !== 'CRYPTO')
     || (symbolInfo.contractType && String(symbolInfo.contractType).toUpperCase() !== 'CRYPTO_OPTIONS')) return null;
-  const optionType = String(symbolInfo.side ?? '').toUpperCase();
+  const side = String(symbolInfo.side ?? '').toUpperCase();
+  const optionType = side === 'CALL' || side === 'C' ? 'CALL' : side === 'PUT' || side === 'P' ? 'PUT' : '';
   const strike = numeric(symbolInfo.strikePrice);
   const expiry = numeric(symbolInfo.expiryDate);
   const unit = numeric(symbolInfo.unit);
@@ -140,7 +141,8 @@ export function mapVerifiedBinanceContractSpec(exchangeInfo, symbol, receivedAt)
   if (!['CALL', 'PUT'].includes(optionType) || strike === null || strike <= 0
     || expiry === null || expiry <= 0 || unit === null || unit <= 0
     || !/^[A-Z][A-Z0-9]{1,11}$/.test(quoteAsset)
-    || !/^[A-Z][A-Z0-9]{1,11}$/.test(settlementAsset)) return null;
+    || !/^[A-Z][A-Z0-9]{1,11}$/.test(settlementAsset)
+    || quoteAsset !== settlementAsset) return null;
   const contractSpec = {
     symbol,
     underlying: underlying || baseAsset,
