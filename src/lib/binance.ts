@@ -270,6 +270,8 @@ export function applyBinanceOptionMarkPrice(
       estimatedFields: quote.estimatedFields.filter((field) => !(
         (event.indexPrice !== undefined && field === 'spot')
         || (event.riskFreeRate !== undefined && field === 'riskFreeRate')
+        || (useMarkBid && field === 'bid')
+        || (useMarkAsk && field === 'ask')
         || field === 'markPrice'
       )),
     } : {}),
@@ -278,6 +280,8 @@ export function applyBinanceOptionMarkPrice(
       markPrice: new Date(event.eventTime).toISOString(),
       ...(event.indexPrice !== undefined ? { index: new Date(event.eventTime).toISOString() } : {}),
       ...(event.venueVolatility !== undefined ? { venueVolatility: new Date(event.eventTime).toISOString() } : {}),
+      ...(event.bidIv !== undefined ? { bidIv: new Date(event.eventTime).toISOString() } : {}),
+      ...(event.askIv !== undefined ? { askIv: new Date(event.eventTime).toISOString() } : {}),
       ...(event.riskFreeRate !== undefined ? { riskFreeRate: new Date(event.eventTime).toISOString() } : {}),
     },
   };
