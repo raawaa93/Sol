@@ -339,3 +339,17 @@ test('CSV preserves explicit BBO source, event/receive clocks, displayed quantit
   assert.equal(result.quotes[0].sourceTimestamps?.bookTicker, '2026-11-23T14:00:00.000Z');
   assert.equal(result.quotes[0].sourceReceivedAt?.bidAsk, '2026-11-23T14:00:00.250Z');
 });
+
+
+test('CSV maps OPTION_TICKER BBO event time to its dedicated provenance field', () => {
+  const csv = [
+    'symbol,underlying,expiry,strike,type,bid,ask,markPrice,iv,spot,unit,bidAskSource,bidAskTimestamp,bidAskReceivedAt,bidAskSizeUnit,bidQuantity,askQuantity',
+    'BTC-261230-95000-C,BTC,2026-12-30T08:00:00Z,95000,CALL,2250,2320,2285,58%,93420,1,OPTION_TICKER,2026-11-23T14:00:00Z,2026-11-23T14:00:00.250Z,CONTRACTS,12,15',
+  ].join('\\n');
+  const result = parseOptionsCsv(csv, Date.parse('2026-11-25T07:00:00Z'));
+  assert.equal(result.quotes.length, 1);
+  assert.equal(result.quotes[0].bidAskSource, 'OPTION_TICKER');
+  assert.equal(result.quotes[0].sourceTimestamps?.optionTicker, '2026-11-23T14:00:00.000Z');
+  assert.equal(result.quotes[0].sourceTimestamps?.ticker, undefined);
+  assert.equal(result.quotes[0].sourceReceivedAt?.bidAsk, '2026-11-23T14:00:00.250Z');
+});
