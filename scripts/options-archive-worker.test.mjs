@@ -124,15 +124,22 @@ test('worker aborts collection and fails closed when archive heartbeat health ch
       })();
     },
   };
-  await assert.rejects(
-    runOptionsArchiveWorker({
-      config,
-      archive,
-      transport,
-      logger: (entry) => events.push(entry),
-    }),
-    /simulated archive read failure/,
-  );
+  // The worker intentionally unreferences its heartbeat timer in production.
+  // Keep this offline test process alive until the first heartbeat fires.
+  const keepAlive = setTimeout(() => {}, 1_500);
+  try {
+    await assert.rejects(
+      runOptionsArchiveWorker({
+        config,
+        archive,
+        transport,
+        logger: (entry) => events.push(entry),
+      }),
+      /simulated archive read failure/,
+    );
+  } finally {
+    clearTimeout(keepAlive);
+  }
   assert.equal(released, true);
   assert.ok(events.some((entry) => entry.type === 'worker_health_error'));
   assert.equal(events.at(-1).type, 'worker_failed');
