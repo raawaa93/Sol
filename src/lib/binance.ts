@@ -3,7 +3,6 @@ import { impliedVolatilityForContract, priceOption } from './pricing-model.ts';
 import { inferAssetClass } from './asset-class.ts';
 import { mapBinanceCryptoOptionEconomics } from './binance-crypto-options-economics.ts';
 
-const BINANCE_OPTIONS_API = 'https://eapi.binance.com';
 const REQUEST_TIMEOUT_MS = 12_000;
 
 interface BinanceOptionContract {
@@ -813,15 +812,13 @@ async function getJson<T>(
   proxyUrl?: string,
   externalSignal?: AbortSignal,
 ): Promise<T> {
-  let url: URL;
-  if (proxyUrl) {
-    const endpoint = path.match(/^\/eapi\/v1\/([a-zA-Z]+)$/)?.[1];
-    if (!endpoint) throw new Error('Unsupported Binance market-data endpoint.');
-    url = new URL(proxyUrl);
-    url.searchParams.set('endpoint', endpoint);
-  } else {
-    url = new URL(`${BINANCE_OPTIONS_API}${path}`);
+  if (!proxyUrl) {
+    throw new Error('Syrian-network market-data proxy is required; direct Binance connections are disabled.');
   }
+  const endpoint = path.match(/^\/eapi\/v1\/([a-zA-Z]+)$/)?.[1];
+  if (!endpoint) throw new Error('Unsupported Binance market-data endpoint.');
+  const url = new URL(proxyUrl);
+  url.searchParams.set('endpoint', endpoint);
   Object.entries(params ?? {}).forEach(([key, value]) => url.searchParams.set(key, value));
   const controller = new AbortController();
   const abortFromCaller = () => controller.abort();
