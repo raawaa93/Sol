@@ -120,6 +120,32 @@ test('writer lease prevents a second process/instance from writing concurrently'
   await second.releaseWriterLease(recovered);
 });
 
+test('concurrent stale-lease recovery never removes a newly acquired writer lease', async (t) => {
+  const { root, archive } = await makeArchive(t);
+  const second = new ResumableOptionsArchive(root);
+  await second.initialize();
+  await writeFile(join(root, '.writer.lock'), JSON.stringify({
+    token: 'expired-owner',
+    pid: 2_147_483_647,
+    host: process.env.HOSTNAME ?? 'local',
+    expiresAt: Date.now() - 10_000,
+  }), { mode: 0o600 });
+
+  const attempts = await Promise.allSettled([
+    archive.acquireWriterLease(),
+    second.acquireWriterLease(),
+  ]);
+  const acquired = attempts.filter((attempt) => attempt.status === 'fulfilled');
+  assert.equal(acquired.length, 1, 'exactly one contender must own the recovered lease');
+  const lease = acquired[0].value;
+  const current = JSON.parse(await readFile(join(root, '.writer.lock'), 'utf8'));
+  assert.equal(current.token, lease.token, 'the active owner token must remain in the lock file');
+  const rejected = attempts.find((attempt) => attempt.status === 'rejected');
+  assert.ok(rejected?.reason instanceof OptionsArchiveError);
+  assert.ok(['WRITER_LEASE_HELD', 'WRITER_LEASE_RECOVERY_BUSY'].includes(rejected.reason.code));
+  await (attempts[0].status === 'fulfilled' ? archive : second).releaseWriterLease(lease);
+});
+
 test('restart after a durable segment but before cursor update is safely replayable', async (t) => {
   const { root, archive } = await makeArchive(t);
   const record = makeRecord();
