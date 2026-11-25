@@ -23,7 +23,14 @@ test('Binance crypto adapter keeps premium and underlying delivery scales indepe
   assert.equal(economics.exercise.cashSettlement?.reference, 'INDEX');
   assert.equal(economics.exercise.settlementCurrency, 'USDT');
   assert.equal(economics.provenance.status, 'PROVIDER_VERIFIED');
+  assert.equal(economics.provenance.legalTerms?.scope, 'BINANCE_RIE_RCH');
+  assert.equal(economics.provenance.legalTerms?.accountApplicability, 'UNVERIFIED');
   assert.equal(validateContractEconomics(economics).adapterReady, true);
+  const missingLegalTerms = {
+    ...economics,
+    provenance: { ...economics.provenance, legalTerms: undefined },
+  };
+  assert.ok(validateContractEconomics(missingLegalTerms).issues.includes('MISSING_LEGAL_TERMS_PROVENANCE'));
 
   const premium = calculatePremiumCash({ economics, premiumPrice: 12, contracts: 3 });
   assert.deepEqual(premium, {
