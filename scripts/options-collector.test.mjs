@@ -97,6 +97,11 @@ test('exchangeInfo maps only explicit Binance Crypto Options contract terms with
   assert.equal(spec.contractSpec.sourceEndpoint, 'REST_EXCHANGE_INFO');
   assert.equal(spec.contractSpecObservedAt, new Date(EVENT_MS).toISOString());
   assert.equal(spec.contractSpecAvailableAt, RECEIVED);
+  const laterSnapshot = exchangeInfoFixture();
+  laterSnapshot.serverTime = EVENT_MS + 500;
+  const laterSpec = mapVerifiedBinanceContractSpec(laterSnapshot, SYMBOL, '2026-11-25T03:00:01.000Z');
+  assert.equal(laterSpec.contractSpec.version, spec.contractSpec.version);
+  assert.notEqual(laterSpec.contractSpecObservedAt, spec.contractSpecObservedAt);
   assert.equal(mapVerifiedBinanceContractSpec({
     ...exchangeInfoFixture(),
     optionSymbols: [{ ...exchangeInfoFixture().optionSymbols[0], underlyingType: 'EQUITY' }],
