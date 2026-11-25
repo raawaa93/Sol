@@ -1230,34 +1230,34 @@ function App() {
     notify('تم تنزيل نسخة أحداث PAPER؛ احتفظ بها خارج المتصفح.');
   };
 
-  const retryPaperCloseEventsPersistence = () => {
-    if (!paperCloseEventsLoad.backupAvailable && !paperCloseEventsLoad.persistenceBlocked) return;
+  const retryPaperCloseEventsPersistence = async () => {
+    if (!paperCloseEventsReady || (!paperCloseEventsLoad.backupAvailable && !paperCloseEventsLoad.persistenceBlocked)) return;
     if (!window.confirm('بعد تنزيل نسخ أحداث الإغلاق الخام وحفظها خارج المتصفح، هل تريد اعتماد الأحداث الصالحة فقط وإزالة قفل الاستعادة؟')) return;
-    if (paperCloseEventsLoad.rejectedCount > 0 || paperCloseEventsLoad.parseError) {
-      const original = readPaperCloseEventsPrimary(localStorage);
-      if (original === null) {
-        notify('تعذر قراءة سجل الإغلاق الأصلي؛ لم نكتب فوقه ولم نزل قفل الاستعادة.');
+    try {
+      const eventModule = await import('./lib/paper-journal-events');
+      if (paperCloseEventsLoad.rejectedCount > 0 || paperCloseEventsLoad.parseError) {
+        const original = eventModule.readPaperCloseEventsPrimary(localStorage);
+        if (original === null) {
+          notify('تعذر قراءة سجل الإغلاق الأصلي؛ لم نكتب فوقه ولم نزل قفل الاستعادة.');
+          return;
+        }
+        const sanitized = JSON.stringify(paperCloseEvents);
+        localStorage.setItem(eventModule.PAPER_CLOSE_EVENTS_KEY, sanitized);
+        if (localStorage.getItem(eventModule.PAPER_CLOSE_EVENTS_KEY) !== sanitized) throw new Error('write verification failed');
+      }
+      if (!eventModule.clearPaperCloseEventsRecovery(localStorage)) {
+        notify('تعذر إزالة قفل استعادة أحداث الإغلاق؛ لم نكمل إعادة التهيئة.');
         return;
       }
-      const sanitized = JSON.stringify(paperCloseEvents);
-      try {
-        localStorage.setItem(PAPER_CLOSE_EVENTS_KEY, sanitized);
-        if (localStorage.getItem(PAPER_CLOSE_EVENTS_KEY) !== sanitized) throw new Error('write verification failed');
-      } catch {
-        notify('تعذر اعتماد أحداث الإغلاق الصالحة؛ بقي السجل الأصلي دون تغيير قدر الإمكان.');
-        return;
-      }
+      const next = eventModule.loadPaperCloseEvents(localStorage);
+      setPaperCloseEventsLoad(next);
+      setPaperCloseEvents(next.events);
+      notify(next.persistenceBlocked || next.backupAvailable
+        ? 'ما زالت استعادة أحداث الإغلاق غير مكتملة؛ بقيت الإغلاقات محجوبة.'
+        : 'اكتملت استعادة سجل الإغلاق؛ يمكن استئناف الإغلاق إذا كانت البيانات سليمة.');
+    } catch {
+      notify('تعذر تحميل وحدة استعادة أحداث PAPER؛ لم نغيّر السجل عمداً.');
     }
-    if (!clearPaperCloseEventsRecovery(localStorage)) {
-      notify('تعذر إزالة قفل استعادة أحداث الإغلاق؛ لم نكمل إعادة التهيئة.');
-      return;
-    }
-    const next = loadPaperCloseEvents(localStorage);
-    setPaperCloseEventsLoad(next);
-    setPaperCloseEvents(next.events);
-    notify(next.persistenceBlocked || next.backupAvailable
-      ? 'ما زالت استعادة أحداث الإغلاق غير مكتملة؛ بقيت الإغلاقات محجوبة.'
-      : 'اكتملت استعادة سجل الإغلاق؛ يمكن استئناف الإغلاق إذا كانت البيانات سليمة.');
   };
 
   const exportIVHistoryBackup = async () => {
@@ -1277,20 +1277,25 @@ function App() {
     notify('تم تصدير ' + result.count + ' عينة IV محلية.');
   };
 
-  const clearPaperJournal = () => {
-    if (paperJournalLoad.persistenceBlocked || paperJournalLoad.backupAvailable || paperCloseEventsLoad.persistenceBlocked || paperCloseEventsLoad.backupAvailable) {
+  const clearPaperJournal = async () => {
+    if (!paperCloseEventsReady || paperJournalLoad.persistenceBlocked || paperJournalLoad.backupAvailable || paperCloseEventsLoad.persistenceBlocked || paperCloseEventsLoad.backupAvailable) {
       notify('لا يمكن مسح دفتر PAPER قبل تنزيل نسخ الاستعادة وتأكيدها.');
       return;
     }
     if (!trades.length && !paperCloseEvents.length) return;
     if (!window.confirm('سيتم حذف إدخالات PAPER وأحداث الإغلاق المحلية وتحرير ميزانية الحملة. صدّر CSV وأحداث الإغلاق JSON أولاً إذا أردت الاحتفاظ بالسجل. ستبقى نسخ الاستعادة السابقة محفوظة. لا يؤثر هذا على أي أموال أو أوامر حقيقية. هل تريد المتابعة؟')) return;
-    if (!clearPaperCloseEvents(localStorage)) {
-      notify('تعذر تصفير أحداث الإغلاق؛ لم نمسح إدخالات PAPER.');
-      return;
+    try {
+      const { clearPaperCloseEvents } = await import('./lib/paper-journal-events');
+      if (!clearPaperCloseEvents(localStorage)) {
+        notify('تعذر تصفير أحداث الإغلاق؛ لم نمسح إدخالات PAPER.');
+        return;
+      }
+      setTrades([]);
+      setPaperCloseEvents([]);
+      notify('تم تصفير حملة PAPER المحلية فقط؛ بقيت نسخ الاستعادة السابقة محفوظة.');
+    } catch {
+      notify('تعذر تحميل وحدة دفتر الإغلاق؛ لم نمسح إدخالات PAPER.');
     }
-    setTrades([]);
-    setPaperCloseEvents([]);
-    notify('تم تصفير حملة PAPER المحلية فقط؛ بقيت نسخ الاستعادة السابقة محفوظة.');
   };
 
   const downloadPaperJournalRaw = (raw: string | null, filename: string, label: string) => {
