@@ -31,7 +31,7 @@ The project is shared with other applications. The safe path is to keep the curr
 ## Next gates
 
 1. Add explicit fault-injection coverage for a process crash between individual segment publications and for failed export/restore after target creation; current tests cover restart replay, checksum corruption, corrupt-source restore rejection, atomic target creation and destination no-overwrite.
-2. <text>Completed on main commit `d67d5629c61369dc388e42216b768a6466a38b12`: opt-in injected REST refresh for `exchangeInfo`, five-minute default rate limit, snapshot age validation, durable raw snapshot retention before market events, and fake-transport regression tests. It remains disabled by default and is not live-verified.</text>
+2. **Completed in code** on main commit `d67d5629c61369dc388e42216b768a6466a38b12`: opt-in injected REST refresh for `exchangeInfo`, five-minute default rate limit, snapshot age validation, durable raw snapshot retention before market events, and fake-transport regression tests. It remains disabled by default and is not live-verified.
 3. Verify the Binance RIE/RCH legal terms applicability to the specific service/account entity before treating those exercise and settlement assumptions as account-specific.
 4. Review Binance's current eligibility, terms and permitted use before any real capture. Stop on HTTP 403/451 or legal/licensing uncertainty; do not route around regional restrictions.
 5. Decide on a durable Sol-specific backend. Prefer an existing free resource only if ownership, RLS, quota, backup and restore are proven. Do not write to the shared production database or provision new paid resources without the required authorization.
