@@ -54,6 +54,7 @@ const quote: OptionQuote = {
   sourceTimestamps: {
     index: '2026-11-25T03:00:00Z',
     ticker: '2026-11-25T03:00:00Z',
+    bookTicker: '2026-11-25T03:00:00Z',
     markPrice: '2026-11-25T03:00:00Z',
   },
 };
