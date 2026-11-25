@@ -65,6 +65,25 @@ function isProviderVerifiedBinanceEconomics(quote: OptionQuote): boolean {
     && economics.exercise.cashSettlement?.reference === 'INDEX');
 }
 
+function calculateBinanceOptionFeeFromInputs(
+  takerFeeRate: number,
+  spotIndex: number,
+  contractUnit: number,
+  optionPrice: number,
+  contracts: number,
+): number | undefined {
+  if (!Number.isFinite(takerFeeRate) || takerFeeRate < 0
+    || !Number.isFinite(spotIndex) || spotIndex <= 0
+    || !Number.isFinite(contractUnit) || contractUnit <= 0
+    || !Number.isFinite(optionPrice) || optionPrice <= 0
+    || !Number.isFinite(contracts) || contracts <= 0) return undefined;
+  const indexBasedFee = takerFeeRate * spotIndex * contractUnit;
+  const premiumCap = MAX_BINANCE_OPTION_TRADING_FEE_CAP * optionPrice;
+  if (!Number.isFinite(indexBasedFee) || !Number.isFinite(premiumCap)) return undefined;
+  const fee = Math.min(indexBasedFee, premiumCap) * contracts;
+  return Number.isFinite(fee) && fee >= 0 ? fee : undefined;
+}
+
 /**
  * Binance Options trading fee estimate:
  * min(taker rate × Spot Index × contract unit, 10% × option traded price) × size.
@@ -75,18 +94,14 @@ export function estimateBinanceOptionsTradingFee(
   optionPrice: number,
   contracts: number,
 ): number | undefined {
-  if (!isProviderVerifiedBinanceEconomics(quote)
-    || !Number.isFinite(quote.takerFeeRate) || quote.takerFeeRate! < 0
-    || !Number.isFinite(quote.spot) || quote.spot <= 0
-    || !Number.isFinite(quote.unit) || quote.unit <= 0
-    || !Number.isFinite(optionPrice) || optionPrice <= 0
-    || !Number.isFinite(contracts) || contracts <= 0) return undefined;
-  const indexBasedFee = quote.takerFeeRate! * quote.spot * quote.unit;
-  const premiumCap = MAX_BINANCE_OPTION_TRADING_FEE_CAP * optionPrice;
-  if (!Number.isFinite(indexBasedFee) || !Number.isFinite(premiumCap)) return undefined;
-  const feePerContract = Math.min(indexBasedFee, premiumCap);
-  const fee = feePerContract * contracts;
-  return Number.isFinite(fee) && fee >= 0 ? fee : undefined;
+  if (!isProviderVerifiedBinanceEconomics(quote)) return undefined;
+  return calculateBinanceOptionFeeFromInputs(
+    quote.takerFeeRate ?? Number.NaN,
+    quote.spot,
+    quote.unit,
+    optionPrice,
+    contracts,
+  );
 }
 
 function hasFreshObservedBook(quote: OptionQuote, side: 'ASK' | 'BID', at: number): boolean {
