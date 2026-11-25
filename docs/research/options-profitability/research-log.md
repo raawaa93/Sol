@@ -64,3 +64,48 @@ This is a scoped initial pass, not exhaustive review of papers, vendors, reposit
 - anthonymakarewicz/volatility-trading: claimed realistic-cost research pipeline; verify methodology and licensing. https://github.com/anthonymakarewicz/volatility-trading
 
 Recent repo performance claims may rely on synthetic, proxy or incomplete data. Treat them as research leads, not evidence of strategy profitability.
+
+
+## Third research pass — new 2025–2026 evidence and Sol implementation audit
+
+### Important update: do not treat volatility selling as a timeless edge
+- Dew-Becker & Giglio, *The Decline of the Variance Risk Premium: Evidence from Traded and Synthetic Options* (Chicago Fed WP 2025-17, 4 Sep 2025): report that traded equity-index option alphas over the last 15 years became statistically indistinguishable from zero, despite historical negative returns; their synthetic options show no negative alpha over a 100-year sample. This directly qualifies the 2024 account-level result: selling volatility was strongest in that sample, but the premium can vary and decline. https://www.chicagofed.org/-/media/publications/working-papers/2025/wp2025-17.pdf
+- Bali, Kelly & Mörke, *Volatility Disagreement in the Options Market*, NBER WP 35500 (July 2026): a cross-sectional disagreement measure from heterogeneous realized-variance forecasts is associated with option opening; sorting delta-hedged straddles produces a reported long-short return of -5.14% per month. This is a working paper, not a deployable signal; investigate sample construction, turnover, costs, model disagreement and out-of-sample robustness. https://www.nber.org/papers/w35500
+- Terstegge, *Intermediary Option Pricing* (Nov 2025 working paper): argues option risk premia compensate market makers for equity inventory risk when overnight hedging is impaired; inventory exposure is not captured fully by common gamma measures. https://www.fma.org/assets/docs/Derivatives2025/Terstegge.pdf
+
+### Execution quality is broker/route-dependent
+- Huang, Jorion & Schwarz, *Some Anonymous Options Trades Are More Equal than Others* (revised June 2025): simultaneous market-order tests across six brokers found round-trip execution costs ranging from 0% to 7%, with variation linked to wholesaler routing and execution method. Treat as a small controlled sample, not a universal broker ranking. https://papers.ssrn.com/sol3/Delivery.cfm/4951825.pdf
+- *Option Auctions*, Review of Financial Studies (2026): studies option auctions, price improvement and market-maker revenues; reports auctions can improve execution for investors while market makers may lose on some auction trades and earn revenue in continuous trading. This reinforces that quoted spread alone is not net market-maker profit and execution economics are route- and venue-dependent. https://academic.oup.com/rfs/article/39/3/783/8193725
+
+### Surface modelling research
+- Del Valle Saragoni, *Arbitrage-Free Volatility Surface Construction: SVI, SABR, SSVI, and Vanna-Volga* (SSRN, Jan 2026): a useful technical survey/implementation lead, but SSRN preprint with no cited references in its page metadata; do not treat as peer-reviewed validation. https://papers.ssrn.com/sol3/Delivery.cfm/6197858.pdf
+- Guney, *Arbitrage-Free Construction of Volatility Surfaces in the Ultra-Short Tenor Regime* (SSRN, Mar 2026): reports severe butterfly-arbitrage violations from unconstrained spline interpolation in a 0DTE SPY tick dataset. Highly relevant to avoiding naive interpolation, but preprint and U.S. equity index domain; verify independently before generalizing to crypto options. https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6457378
+
+### Sol code audit (main branch at commit d6ae5ca5d27b6b6146259e5362f6cd07a522c91c)
+Reviewed `src/lib/binance-option-trades.ts`, its tests, `src/lib/pricing-model.ts`, `src/lib/binance-crypto-options-economics.ts`, `src/lib/types.ts`, `PROJECT_CONTEXT.md`, `package.json`, `docs/DATA_PROVIDER_EVALUATION_2026-11-24.md`, and Issue #155.
+
+Confirmed strengths:
+- Trade parser retains raw payload, schema version, event/transaction/receive timestamps, trade ID, execution type, raw side and maker flag.
+- Aggressor classification uses `m` independently from `S`; MARKET and BLOCK are kept in separate aggregates.
+- Batch dedup key is venue + symbol + trade ID; aggregates explicitly label venue quantities as unnormalized.
+- Crypto contract adapter separates premium multiplier (1 per contract) from settlement unit and validates canonical economics.
+- Pricing model explicitly separates Black-76 forward delta from spot Black-Scholes-with-carry; source Greeks are typed as unverified and audit-only.
+
+Gaps / risks to resolve before any feature claim:
+1. `deduplicateBinanceOptionTrades` is batch-local only; durable cross-batch idempotency/replay is not yet established by the reviewed parser.
+2. The reviewed parser does not itself establish feed continuity, sequence/gap detection, reconnect lifecycle, stale-feed alarms or clock-skew policy; those require a collector/runtime and operational tests.
+3. Parser accepts positive timestamps but does not enforce a documented event-time/transaction-time ordering tolerance; define this from Binance semantics rather than assume a strict order.
+4. `aggregateBinanceOptionTradeFlow` only aggregates raw contract quantity; no premium-notional, delta or vega exposure should be displayed until canonical economics, quote-time joins and units are validated.
+5. A batch of trade events is not a persistent event store; no durable storage, retention, quota, export/restore or replay guarantee was established in this code audit.
+6. `pricing-model.ts` supports specific Black-family assumptions; it is not a calibrated stochastic-volatility/local-volatility surface model. Surface fit and arbitrage diagnostics remain unverified.
+7. Current package scripts show tests/build/E2E/bundle checks, but this review did not execute CI or a live endpoint. Do not label any unrun test or live stream as verified.
+
+### Issue #155 status at audit time
+Issue remains open and has no assignee. Requirements are extensive and explicitly require a persistent collector, quote joins, contract economics, storage/replay, and live smoke test. Do not assume Copilot is working until GitHub shows it assigned or a new PR/commit appears.
+
+### Updated priority order
+P0: durable collector lifecycle + continuity/staleness/gap telemetry and event-time quote matching; persistent idempotency and replay; tests for clock skew and future/stale quote rejection.
+P1: volatility surface integrity diagnostics and source/model provenance; do not interpolate without static-arbitrage checks.
+P2: execution-cost/fill model and route/venue-sensitive spread metrics.
+P3: regime-aware VRP and disagreement research; report uncertainty and tail risk, not one static short-volatility signal.
+P4: dispersion only after component coverage, covariance/weight methodology and hedging costs are available.
