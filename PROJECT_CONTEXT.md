@@ -121,3 +121,13 @@ No second execution venue for a Syrian resident has been verified for global lis
 - CSV provenance remains user-asserted; tests use controlled fixtures and do not establish live market availability or authenticity.
 - Still blocked: live/forward capture, scheduled worker, durable cloud archive, PIT executable BBO corpus, strategy edge and any live trading. Continue research/PAPER only under the Syria legal gate.
 \n\n## 11. Verified BBO replay and risk sizing update — 25 November 2026\n\n- PR #204 merged as `337e03fb26d44c906125318affc473030c165da4`. Replay now requires explicit BBO source, source event/snapshot time, local receive time, non-estimated two-sided prices, explicit displayed-size unit and enough Ask size at entry/Bid size at exit.\n- Binance `bookTicker` is the executable BBO source; `optionTicker` 24-hour statistics are not BBO. REST `OPTION_TICKER` BBO uses the `ticker` source clock. CSV provenance is user-asserted, not provider-authenticated.\n- PR #205 merged as `b4c014131be9de4d610740ef30c4ad48308c5c6b`. The PAPER sizing field defaults to a per-trade premium-plus-fees cap of 60 quote units. This is not a portfolio-equity tracker and does not model the user's total bankroll as a separate input.\n- PR #205 CI 45573552188 passed 303/303 unit/property tests, production build, bundle budget and 18/18 Playwright journeys; Lighthouse 45573547735 and Project Context Guard 45573547738 passed. Lighthouse median: Performance 98, Accessibility 100, Best Practices 100, SEO 100.\n- No live capture, scheduled worker, durable cloud archive, point-in-time BBO corpus, measured edge or live trading. Continue research/PAPER only.\n
+
+## 11. سقف ميزانية PAPER — PR #209
+
+- Merged as f413ba8a5453a730fe4649d90c648f27390499b1.
+- Campaign assumption: 200 USD capital, 60 USD/USDT maximum cumulative premium-and-fee allocation, 20 maximum per attempt; 140 remains outside the risk budget.
+- The sizing calculator uses remaining campaign budget, and the save handler independently checks both per-attempt and cumulative caps, including manually changed quantities.
+- All append-only PAPER journal entries remain allocated until the user exports and explicitly resets the local journal. The journal does not yet track close events or realized P&L; reset is confirmation-protected.
+- Unknown legacy debit or mixed currency blocks new entries; no unit-one or implicit FX assumptions. USD and USDT campaigns are kept separate.
+- Verification: CI 45574730769 passed 309/309 tests, production build, bundle budget and 18/18 Playwright; Lighthouse 45574730886 and Project Context Guard 45574730851 passed.
+- This is local PAPER-only protection. It does not enforce a loss limit on live exchange orders or guarantee a live trading loss ceiling.
