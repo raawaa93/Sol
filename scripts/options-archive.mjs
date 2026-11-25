@@ -119,6 +119,7 @@ export function validateOptionsArchiveRecord(record) {
       || spec.symbol !== record.symbol
       || !['CALL', 'PUT'].includes(spec.optionType)
       || spec.premiumUnit !== 'PER_CONTRACT'
+      || !Number.isFinite(spec.premiumMultiplier) || spec.premiumMultiplier <= 0
       || !['EUROPEAN', 'AMERICAN'].includes(spec.exerciseStyle)
       || !['CASH', 'PHYSICAL'].includes(spec.settlementStyle)
       || spec.sourceEndpoint !== 'REST_EXCHANGE_INFO'
