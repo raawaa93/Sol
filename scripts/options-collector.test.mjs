@@ -289,7 +289,7 @@ test('collector accepts current public Binance Options stream names and rejects 
     'btc-261225-100000-c@bookTicker',
     'btc-261225-100000-c@optionTrade',
     'btc-261225-100000-c@optionTicker',
-    'btcusdt@optionTicker@261225',
+    'btcusdt@optionTicker261225',
     'btcusdt@optionMarkPrice',
     '!index@arr',
     'btc-261225-100000-c@kline_1m',
