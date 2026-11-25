@@ -198,6 +198,8 @@ h1, h2, h3, p { margin: 0; }
 .chart-legend-dot { width: 7px; height: 7px; border-radius: 2px; background: var(--green); }
 .chart-legend-dot.blue { background: #929df2; }
 .chart-wrap { height: 220px; margin-top: 9px; direction: ltr; }
+.simple-chart { display: block; width: 100%; height: 100%; direction: ltr; }
+.payoff-chart { height: 264px; }
 .chart-footnote { display: flex; justify-content: space-between; border-top: 1px solid #202a2e; margin-top: 1px; padding-top: 9px; color: #62706f; font-size: 8px; }
 .chart-loading-panel { min-height: 298px; display: flex; flex-direction: column; }
 .chart-loading-area { min-height: 220px; margin-top: 9px; display: grid; place-items: center; border: 1px dashed #243034; border-radius: 9px; color: #697775; background: linear-gradient(145deg, rgba(20, 28, 30, .45), rgba(13, 19, 21, .22)); font-size: 9px; text-align: center; }

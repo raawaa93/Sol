@@ -34,7 +34,6 @@ import DeferredVolatilityCharts from './components/DeferredVolatilityCharts';
 import DeferredPayoffChart from './components/DeferredPayoffChart';
 import GreeksPanel from './components/GreeksPanel';
 import OpportunityReview from './components/OpportunityReview';
-import HistoricalReplayPanel from './components/HistoricalReplayPanel';
 import MarketDepthPanel from './components/MarketDepthPanel';
 import { DEMO_MARKETS, DEMO_QUOTES, getExpiryChoices } from './lib/demo';
 import { applyBinanceBookTicker, applyBinanceOptionMarkPrice, applyBinanceOptionTicker, BinanceMarketDataError, fetchBinanceDepth, fetchBinanceOptions, parseBinanceBookTickerMessage, parseBinanceOptionMarkPriceMessage, parseBinanceOptionTickerMessage } from './lib/binance';
@@ -53,6 +52,7 @@ import { formatAssetPrice, formatNumber, formatOptionPrice, formatQuantity, form
 import type { AssetClass, OptionQuote, OptionSide, PaperTrade, Underlying } from './lib/types';
 import { ASSET_CLASS_LABELS } from './lib/asset-class';
 const FinancialCockpit = lazy(() => import('./components/FinancialCockpit'));
+const HistoricalReplayPanel = lazy(() => import('./components/HistoricalReplayPanel'));
 
 const UNDERLYING_NAMES: Record<string, string> = {
   BTC: 'Bitcoin',
@@ -1144,7 +1144,9 @@ function App() {
             }}
           />
 
-          <HistoricalReplayPanel quotes={assetQuotes} dataMode={dataMode} underlying={underlying} />
+          <Suspense fallback={<div className="panel chart-loading-area" role="status">جارٍ تحميل إعادة التشغيل التاريخية...</div>}>
+            <HistoricalReplayPanel quotes={assetQuotes} dataMode={dataMode} underlying={underlying} />
+          </Suspense>
 
           <DeferredVolatilityCharts
             smileData={smileData}
