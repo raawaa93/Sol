@@ -202,9 +202,13 @@ export function validateContractEconomics(economics: unknown): ContractEconomics
   }
 
   const rawProviderFields = isRecord(provenance?.rawFields) ? provenance.rawFields : null;
-  if (provenance?.provider === 'BINANCE' && rawProviderFields?.contractType === 'CRYPTO_OPTIONS') {
+  if (provenance?.provider === 'BINANCE'
+    && provenance.sourceRef === 'https://eapi.binance.com/eapi/v1/exchangeInfo') {
     const legal = isRecord(provenance.legalTerms) ? provenance.legalTerms : null;
-    if (!legal
+    if (!rawProviderFields
+      || rawProviderFields.underlyingType !== 'CRYPTO'
+      || rawProviderFields.contractType !== 'CRYPTO_OPTIONS'
+      || !legal
       || legal.contractSpecificationRef !== BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS.contractSpecificationRef
       || legal.clearingProceduresRef !== BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS.clearingProceduresRef
       || legal.scope !== BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS.scope
