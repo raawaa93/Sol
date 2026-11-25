@@ -155,6 +155,24 @@ function isPaperTrade(value: unknown): value is PaperTrade {
     && typeof trade.fees === 'number' && Number.isFinite(trade.fees) && trade.fees >= 0
     && typeof trade.spotAtEntry === 'number' && Number.isFinite(trade.spotAtEntry) && trade.spotAtEntry > 0
     && (trade.quoteAsset === undefined || (typeof trade.quoteAsset === 'string' && /^[A-Z0-9]{2,12}$/.test(trade.quoteAsset)))
+    && (trade.contractEconomics === undefined || (
+      trade.contractEconomics !== null && typeof trade.contractEconomics === 'object'
+      && trade.contractEconomics.provenance?.status === 'PROVIDER_VERIFIED'
+      && trade.contractEconomics.provenance?.provider === 'BINANCE'
+      && trade.contractEconomics.provenance?.sourceRef === 'https://eapi.binance.com/eapi/v1/exchangeInfo'
+      && trade.contractEconomics.premium?.priceUnit === 'PER_CONTRACT'
+      && Number.isFinite(trade.contractEconomics.premium?.multiplier) && trade.contractEconomics.premium.multiplier > 0
+      && trade.contractEconomics.exercise?.style === 'EUROPEAN'
+      && trade.contractEconomics.exercise?.settlement === 'CASH'
+      && trade.contractEconomics.exercise?.cashSettlement?.reference === 'INDEX'
+      && Number.isFinite(trade.contractEconomics.exercise.cashSettlement.multiplier) && trade.contractEconomics.exercise.cashSettlement.multiplier > 0
+      && typeof trade.contractUnitAtEntry === 'number' && Number.isFinite(trade.contractUnitAtEntry) && trade.contractUnitAtEntry > 0
+      && trade.contractUnitAtEntry === trade.contractEconomics.exercise.cashSettlement.multiplier
+      && typeof trade.premiumMultiplierAtEntry === 'number' && Number.isFinite(trade.premiumMultiplierAtEntry) && trade.premiumMultiplierAtEntry > 0
+      && typeof trade.premiumAmountAtEntry === 'number' && Number.isFinite(trade.premiumAmountAtEntry) && trade.premiumAmountAtEntry >= 0
+      && typeof trade.premiumDebitAtEntry === 'number' && Number.isFinite(trade.premiumDebitAtEntry) && trade.premiumDebitAtEntry >= 0
+      && typeof trade.premiumCurrencyAtEntry === 'string' && /^[A-Z0-9]{2,12}$/.test(trade.premiumCurrencyAtEntry)
+      && (trade.priceSourceAtEntry !== 'MID' || trade.bidAskSourceAtEntry === 'BOOK_TICKER' || trade.bidAskSourceAtEntry === 'OPTION_TICKER')))
     && trade.status === 'PAPER';
 }
 
@@ -577,7 +595,7 @@ function App() {
   const canCalculateMaxLoss = canonicalMaxLossAmount !== undefined || hasExplicitConsistentContractScale;
   const contractScaleIssueMessage = selectedQuote.contractEconomics
     ? canonicalPremiumPerContract !== undefined
-      ? 'تم احتساب تكلفة القسط وحجم المركز من مضاعف القسط الموثق. لا تزال Greeks المركز ودفتر PAPER وإعادة التشغيل محجوبة حتى ربطها بالنموذج الاقتصادي الموحد.'
+      ? 'تم احتساب تكلفة القسط وحجم المركز من مضاعف القسط الموثق، ويمكن تسجيل إدخال PAPER مع حفظ مواصفات العقد والمصدر. لا تزال Greeks المركز وEV وإعادة التشغيل محجوبة حتى ربطها بنموذج متوافق.'
       : 'مواصفات العقد الاقتصادية غير كافية لحساب القسط أو المخاطر؛ لم نستخدم unit أو أي حساب قديم كبديل.'
     : contractScaleIssue ? getContractScaleIssueMessage(contractScaleIssue) : '';
   const totalCost = canonicalPremiumPerContract !== undefined
@@ -887,11 +905,7 @@ function App() {
     notify('تمت استعادة مجموعة المحاكاة.');
   };
 
-  const savePaperTrade = () => {
-    if (!hasExplicitConsistentContractScale) {
-      notify(contractScaleIssueMessage);
-      return;
-    }
+  const savePaperTrade = async () => {
     if (safeQuantity <= 0) {
       notify('أدخل كمية أكبر من صفر للمحاكاة.');
       return;
@@ -914,6 +928,30 @@ function App() {
         notify(`الكمية يجب أن تتوافق مع خطوة العقد ${formatQuantity(quantityStep, selectedQuote)}.`);
         return;
       }
+    }
+    if (selectedQuote.contractEconomics) {
+      const { createCanonicalPaperTrade } = await import('./lib/paper-journal');
+      const result = createCanonicalPaperTrade({
+        quote: selectedQuote,
+        sourceMode: dataMode,
+        id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`,
+        createdAt: new Date().toISOString(),
+        quantity: safeQuantity,
+        premiumPrice: selectedPremium,
+        fees: safeFees,
+        spotAtEntry: underlyingReferencePrice,
+      });
+      if (!result.ok) {
+        notify('لم يُسجّل الإدخال: يلزم عقد Binance موثّق وسعر سوق مرصود مع توقيت مصدر، ومقياس قسط صالح.');
+        return;
+      }
+      setTrades((current) => [result.trade, ...current]);
+      notify(`سُجّل إدخال PAPER بتكلفة قسط ${formatMoney(result.premiumDebit, 2, result.premiumCurrency)}. لم يُرسل أي أمر ولم تُحسب نتيجة أو ربح وخسارة.`);
+      return;
+    }
+    if (!hasExplicitConsistentContractScale) {
+      notify(contractScaleIssueMessage);
+      return;
     }
     const newTrade: PaperTrade = {
       id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`,
@@ -953,6 +991,16 @@ function App() {
       fees: trade.fees,
       spotAtEntry: trade.spotAtEntry,
       quoteAsset: trade.quoteAsset ?? '',
+      contractVenueAtEntry: trade.contractVenueAtEntry ?? '',
+      contractUnitAtEntry: trade.contractUnitAtEntry ?? '',
+      premiumMultiplierAtEntry: trade.premiumMultiplierAtEntry ?? '',
+      premiumAmountAtEntry: trade.premiumAmountAtEntry ?? '',
+      premiumDebitAtEntry: trade.premiumDebitAtEntry ?? '',
+      premiumCurrencyAtEntry: trade.premiumCurrencyAtEntry ?? '',
+      priceSourceAtEntry: trade.priceSourceAtEntry ?? '',
+      bidAskSourceAtEntry: trade.bidAskSourceAtEntry ?? '',
+      contractEconomicsJSON: trade.contractEconomics ? JSON.stringify(trade.contractEconomics) : '',
+      sourceTimestampsAtEntryJSON: trade.sourceTimestampsAtEntry ? JSON.stringify(trade.sourceTimestampsAtEntry) : '',
       mode: 'PAPER',
     })));
   };
@@ -1306,7 +1354,7 @@ function App() {
                   <div className="risk-row"><span>أقصى خسارة للمشتري</span><strong className="loss-value">{canCalculateMaxLoss ? formatMoney(maxLoss, 2, quoteAssetLabel ?? null) : 'غير متاح'}</strong></div>
                 </div>
                 <div className="analysis-footnote"><Info size={13} /><span>{contractScaleIssueMessage ? `${contractScaleIssueMessage} ` : ''}{dataMode !== 'DEMO' && selectedQuote.estimatedFields?.length ? `حقول مقدّرة أو افتراضية في هذا العقد: ${formatEstimatedFields(selectedQuote.estimatedFields)}. ` : ''}اتساق unit وcontractMultiplier إن توفرا هو تحقق داخلي من الحقول فقط، ولا يثبت مطابقة deliverables لمواصفات البورصة. الحساب لا يضيف تلقائياً رسوم المنصة أو أثر التنفيذ؛ أدخل الرسوم الفعلية وراجع وحدة العقد.</span></div>
-                <button className="button button-paper" onClick={savePaperTrade} disabled={!hasExplicitConsistentContractScale}><Plus size={16} /> أضف إلى الدفتر التجريبي</button>
+                <button className="button button-paper" onClick={savePaperTrade} disabled={!hasExplicitConsistentContractScale && !selectedQuote.contractEconomics}><Plus size={16} /> أضف إلى الدفتر التجريبي</button>
                 <div className="no-signal"><ShieldAlert size={15} /><span>لا يصدر المختبر توصية شراء أو بيع.</span></div>
               </aside>
             </div>
@@ -1357,17 +1405,17 @@ function App() {
             <article className="panel journal-panel">
               <div className="journal-summary"><div className="journal-summary-icon"><WalletCards size={18} /></div><div><strong>{trades.length} <span>صفقة تجريبية</span></strong><small>محفوظة محلياً في هذا المتصفح فقط</small></div><div className="journal-metric"><span>وضع التنفيذ</span><strong><i /> PAPER ONLY</strong></div><div className="journal-metric"><span>مفاتيح تداول</span><strong className="safe-label"><LockKeyhole size={13} /> غير مطلوبة</strong></div></div>
               {trades.length ? <>
-                <div className="journal-table-wrap"><table className="journal-table"><thead><tr><th>وقت التسجيل</th><th>العقد</th><th>Strike</th><th>كمية</th><th>قسط الدخول</th><th>السعر المرجعي وقتها</th><th>الحالة</th></tr></thead><tbody>{trades.map((trade) => <tr key={trade.id}><td>{formatDateTime(new Date(trade.createdAt))}</td><td><span className={`mini-type ${trade.type.toLowerCase()}`}>{trade.type}</span><strong>{trade.symbol}</strong></td><td>{formatAssetPrice(trade.strike, trade.spotAtEntry, trade.quoteAsset ?? null)}</td><td>{formatQuantity(trade.quantity, { quantityScale: trade.quantityPrecision })}</td><td>{formatOptionPrice(trade.entryPremium, { priceScale: trade.pricePrecision }, trade.quoteAsset ?? null)}</td><td>{formatAssetPrice(trade.spotAtEntry, trade.spotAtEntry, trade.quoteAsset ?? null)}</td><td><span className="paper-status"><i /> تجريبية</span></td></tr>)}</tbody></table></div>
+                <div className="journal-table-wrap"><table className="journal-table"><thead><tr><th>وقت التسجيل</th><th>العقد</th><th>Strike</th><th>كمية</th><th>قسط الدخول</th><th>السعر المرجعي وقتها</th><th>الحالة</th></tr></thead><tbody>{trades.map((trade) => <tr key={trade.id}><td>{formatDateTime(new Date(trade.createdAt))}</td><td><span className={`mini-type ${trade.type.toLowerCase()}`}>{trade.type}</span><strong>{trade.symbol}</strong>{trade.contractEconomics && <small>لقطة العقد: قسط ×{trade.premiumMultiplierAtEntry} · وحدة التسليم {trade.contractUnitAtEntry}</small>}</td><td>{formatAssetPrice(trade.strike, trade.spotAtEntry, trade.quoteAsset ?? null)}</td><td>{formatQuantity(trade.quantity, { quantityScale: trade.quantityPrecision })}</td><td>{formatOptionPrice(trade.entryPremium, { priceScale: trade.pricePrecision }, trade.quoteAsset ?? null)}{trade.premiumDebitAtEntry !== undefined && <small>القسط والرسوم: {formatMoney(trade.premiumDebitAtEntry, 2, trade.premiumCurrencyAtEntry ?? null)}</small>}</td><td>{formatAssetPrice(trade.spotAtEntry, trade.spotAtEntry, trade.quoteAsset ?? null)}</td><td><span className="paper-status"><i /> تجريبية</span></td></tr>)}</tbody></table></div>
                 <div className="journal-mobile-list" role="list" aria-label="سجل الصفقات التجريبية">
                   {trades.map((trade) => <article className="journal-mobile-card" role="listitem" key={trade.id}>
                     <div className="journal-mobile-card-head">
-                      <span><span className={`mini-type ${trade.type.toLowerCase()}`}>{trade.type}</span><strong dir="ltr">{trade.symbol}</strong></span>
+                      <span><span className={`mini-type ${trade.type.toLowerCase()}`}>{trade.type}</span><strong dir="ltr">{trade.symbol}</strong>{trade.contractEconomics && <small>قسط ×{trade.premiumMultiplierAtEntry} · وحدة التسليم {trade.contractUnitAtEntry}</small>}</span>
                       <small>{formatDateTime(new Date(trade.createdAt))}</small>
                     </div>
                     <div className="journal-mobile-values">
                       <div><small>Strike</small><strong>{formatAssetPrice(trade.strike, trade.spotAtEntry, trade.quoteAsset ?? null)}</strong></div>
                       <div><small>الكمية</small><strong>{formatQuantity(trade.quantity, { quantityScale: trade.quantityPrecision })}</strong></div>
-                      <div><small>قسط الدخول</small><strong>{formatOptionPrice(trade.entryPremium, { priceScale: trade.pricePrecision }, trade.quoteAsset ?? null)}</strong></div>
+                      <div><small>قسط الدخول</small><strong>{formatOptionPrice(trade.entryPremium, { priceScale: trade.pricePrecision }, trade.quoteAsset ?? null)}</strong>{trade.premiumDebitAtEntry !== undefined && <small>القسط والرسوم: {formatMoney(trade.premiumDebitAtEntry, 2, trade.premiumCurrencyAtEntry ?? null)}</small>}</div>
                       <div><small>السعر المرجعي</small><strong>{formatAssetPrice(trade.spotAtEntry, trade.spotAtEntry, trade.quoteAsset ?? null)}</strong></div>
                     </div>
                     <span className="paper-status"><i /> تجريبية · PAPER ONLY</span>
