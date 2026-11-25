@@ -186,7 +186,7 @@ test('canonical PAPER entry rejects invalid quantity, premium, fees and referenc
 test('canonical PAPER entry rejects an option that expired before the recorded entry time', () => {
   const expired = {
     ...input,
-    createdAt: '2026-11-25T03:01:00Z',
+    createdAt: '2026-11-25T03:00:02Z',
     quote: { ...quote, expiry: '2026-11-25T03:00:01Z' },
   };
   const result = createCanonicalPaperTrade(expired);
@@ -205,7 +205,7 @@ test('canonical PAPER entry rejects stale price or index snapshots older than fi
 
   const staleIndex = {
     ...input,
-    createdAt: '2026-11-25T03:06:00Z',
+    createdAt: '2026-11-25T03:00:06Z',
     quote: {
       ...quote,
       sourceTimestamps: {
