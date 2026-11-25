@@ -1047,7 +1047,7 @@ function App() {
         notify('لم يُسجّل الإدخال: يلزم عقد Binance موثّق وسعر سوق مرصود مع توقيت مصدر، ومقياس قسط صالح.');
         return;
       }
-      const allocation = canAllocatePaperCampaignTrade(campaignBudget, result.premiumDebit, result.premiumCurrency);
+      const allocation = canAllocatePaperCampaignTrade(campaignBudget, result.premiumDebit, result.premiumCurrency, safeRiskBudget);
       if (!allocation.ok) {
         notify(allocation.reason === 'PER_TRADE_RISK_CAP_EXCEEDED'
           ? 'تجاوزت الصفقة سقف 20 دولاراً للمحاولة الواحدة.'
@@ -1064,7 +1064,7 @@ function App() {
       notify(contractScaleIssueMessage);
       return;
     }
-    const legacyAllocation = canAllocatePaperCampaignTrade(campaignBudget, totalCost, quoteAssetLabel ?? '');
+    const legacyAllocation = canAllocatePaperCampaignTrade(campaignBudget, totalCost, quoteAssetLabel ?? '', safeRiskBudget);
     if (!legacyAllocation.ok) {
       notify(legacyAllocation.reason === 'PER_TRADE_RISK_CAP_EXCEEDED'
         ? 'تجاوزت الصفقة سقف 20 دولاراً للمحاولة الواحدة.'
