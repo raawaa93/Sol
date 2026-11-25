@@ -149,7 +149,7 @@ test('canonical PAPER entry accepts a markPrice-stream midpoint only with its ow
   const markQuote = {
     ...quote,
     bidAskSource: 'MARK_PRICE' as const,
-    sourceTimestamps: { ...quote.sourceTimestamps, markPrice: '2026-11-25T03:00:01Z' },
+    sourceTimestamps: { ...quote.sourceTimestamps, markPrice: '2026-11-25T03:00:01Z', bidAsk: '2026-11-25T03:00:01Z' },
   };
   assert.equal(canCreateCanonicalPaperTrade(markQuote, 'BINANCE', paperNow), true);
 });
