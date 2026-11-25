@@ -326,6 +326,32 @@ test('index and mark price stream arrays are parsed into independent raw archive
   assert.equal(markRecords[0].symbol, SYMBOL);
 });
 
+test('forward collection accepts the documented public Options stream names', async () => {
+  const lease = { expiresAt: Date.now() + 60_000 };
+  const archive = {
+    async acquireWriterLease() { return lease; },
+    async releaseWriterLease() {},
+  };
+  const transport = {
+    async subscribe() {
+      return (async function* () {})();
+    },
+  };
+  const streams = [
+    'btcusdt@bookTicker',
+    'btcusdt@optionTrade',
+    'btcusdt@optionTicker251230',
+    'btcusdt@optionMarkPrice',
+    'btcusdt@markPrice',
+    '!index@arr',
+    'btc-261225-100000-c@kline_1m',
+    'btc-261225-100000-c@depth@100ms',
+    'btc-261225-100000-c@depth10@500ms',
+  ];
+  const result = await collectForwardOptionsEvents({ archive, transport, streams, enabled: true });
+  assert.deepEqual(result, { processed: 0, archived: 0, gaps: 0 });
+});
+
 test('forward collection is disabled by default and rejects private stream names', async () => {
   const archive = { acquireWriterLease: async () => { throw new Error('must not acquire'); } };
   await assert.rejects(
