@@ -177,6 +177,8 @@ export function createCanonicalPaperTrade(
     premiumCurrencyAtEntry: debit.value.currency,
     priceSourceAtEntry: getPaperEntryPriceSource(quote),
     bidAskSourceAtEntry: quote.bidAskSource,
+    askQuantityAtEntry: quote.askQuantity,
+    askSizeUnitAtEntry: 'CONTRACTS',
     sourceTimestampsAtEntry: quote.sourceTimestamps ? { ...quote.sourceTimestamps } : undefined,
     status: 'PAPER',
   };
@@ -251,6 +253,8 @@ export function createCanonicalPaperClose(input: CanonicalPaperCloseInput): Cano
   });
   const entrySnapshotValid = trade.priceSourceAtEntry === 'ASK'
     && trade.bidAskSourceAtEntry === 'BOOK_TICKER'
+    && trade.askSizeUnitAtEntry === 'CONTRACTS'
+    && Number.isFinite(trade.askQuantityAtEntry) && trade.askQuantityAtEntry! + 1e-9 >= trade.quantity
     && Number.isFinite(entryAtMs)
     && Number.isFinite(entryBookTimestamp)
     && Number.isFinite(entryIndexTimestamp)
@@ -325,6 +329,8 @@ export function createCanonicalPaperClose(input: CanonicalPaperCloseInput): Cano
     exitSpot: quote.spot,
     exitPriceSource: 'BID',
     exitBidAskSource: 'BOOK_TICKER',
+    exitBidQuantity: quote.bidQuantity!,
+    exitBidSizeUnit: 'CONTRACTS',
     sourceTimestampsAtExit: quote.sourceTimestamps ? { ...quote.sourceTimestamps } : undefined,
     realizedPnl,
     realizedPnlCurrency: proceeds.value.currency,
