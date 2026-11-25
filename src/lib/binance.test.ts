@@ -770,6 +770,27 @@ test('Binance bookTicker updates only BBO fields and records its own source time
 });
 
 
+test('stale markPrice index does not replace a fresher REST index snapshot', () => {
+  const quote = {
+    spot: 100,
+    markPrice: 1,
+    sourceTimestamps: {
+      index: '2026-11-25T04:00:10.000Z',
+      markPrice: '2026-11-25T04:00:00.000Z',
+    },
+  } as import('./types.ts').OptionQuote;
+  const updated = applyBinanceOptionMarkPrice(quote, {
+    symbol: 'BTC-261225-100000-C',
+    eventTime: Date.parse('2026-11-25T04:00:05.000Z'),
+    markPrice: 2,
+    indexPrice: 101,
+    sourceGreeks: {},
+  });
+  assert.equal(updated.markPrice, 2, 'the mark price event remains usable');
+  assert.equal(updated.spot, 100, 'the older index observation is ignored');
+  assert.equal(updated.sourceTimestamps?.index, '2026-11-25T04:00:10.000Z');
+});
+
 test('Binance markPrice parser keeps venue vo separate from markIV', () => {
   const events = parseBinanceOptionMarkPriceMessage(JSON.stringify({
     stream: 'btc@markPrice',
