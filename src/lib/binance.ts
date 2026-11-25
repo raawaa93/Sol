@@ -188,7 +188,11 @@ export function parseBinanceBookTickerMessage(payload: unknown): BinanceBookTick
 }
 
 /** Apply a provider event to the matching quote while preserving independent source timestamps. */
-export function applyBinanceBookTicker(quote: OptionQuote, event: BinanceBookTickerEvent): OptionQuote {
+export function applyBinanceBookTicker(
+  quote: OptionQuote,
+  event: BinanceBookTickerEvent,
+  receivedAtMs = Date.now(),
+): OptionQuote {
   const timestamp = event.transactionTime ?? event.eventTime;
   const currentBboTimestamp = quote.bidAskSource === 'OPTION_TICKER'
     ? Date.parse(quote.sourceTimestamps?.optionTicker ?? '')
@@ -209,6 +213,12 @@ export function applyBinanceBookTicker(quote: OptionQuote, event: BinanceBookTic
     bidQuantity: event.bidQuantity,
     askQuantity: event.askQuantity,
     bidAskSource: 'BOOK_TICKER',
+    sourceReceivedAt: {
+      ...quote.sourceReceivedAt,
+      ...(timestamp !== undefined && timestamp > 0 && Number.isFinite(receivedAtMs) && receivedAtMs >= timestamp
+        ? { bidAsk: new Date(receivedAtMs).toISOString() }
+        : {}),
+    },
   };
 }
 
