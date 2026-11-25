@@ -356,11 +356,17 @@ export function createCanonicalPaperCloseEvent(input: {
 
   const entrySourceTimestamp = Date.parse(trade.sourceTimestampsAtEntry?.bookTicker ?? '');
   const entryReceivedTimestamp = Date.parse(trade.sourceReceivedAtAtEntry?.bidAsk ?? '');
+  const entryIndexTimestamp = Date.parse(trade.sourceTimestampsAtEntry?.index ?? '');
   const entryCreatedTimestamp = Date.parse(trade.createdAt);
   if (!Number.isFinite(entrySourceTimestamp) || !Number.isFinite(entryReceivedTimestamp)
-    || !Number.isFinite(entryCreatedTimestamp) || entrySourceTimestamp > entryReceivedTimestamp
+    || !Number.isFinite(entryIndexTimestamp) || !Number.isFinite(entryCreatedTimestamp)
+    || entrySourceTimestamp > entryReceivedTimestamp
     || entryReceivedTimestamp > entryCreatedTimestamp || entryCreatedTimestamp >= closedAtMs
-    || entryReceivedTimestamp - entrySourceTimestamp > MAX_PAPER_CLOSE_SOURCE_AGE_MS) {
+    || entryIndexTimestamp > entryCreatedTimestamp
+    || entryReceivedTimestamp - entrySourceTimestamp > MAX_PAPER_CLOSE_SOURCE_AGE_MS
+    || entryCreatedTimestamp - entryReceivedTimestamp > MAX_PAPER_CLOSE_SOURCE_AGE_MS
+    || entryCreatedTimestamp - entrySourceTimestamp > MAX_PAPER_CLOSE_SOURCE_AGE_MS
+    || entryCreatedTimestamp - entryIndexTimestamp > MAX_PAPER_CLOSE_SOURCE_AGE_MS) {
     return { ok: false, reason: 'PAPER_ENTRY_RECEIVE_TIMESTAMP_MISSING_OR_INVALID' };
   }
   const economics = trade.contractEconomics!;
@@ -462,11 +468,15 @@ export function isCanonicalPaperCloseEventForTrade(
   const economics = trade.contractEconomics;
   const entrySourceTimestamp = Date.parse(trade.sourceTimestampsAtEntry?.bookTicker ?? '');
   const entryReceivedTimestamp = Date.parse(trade.sourceReceivedAtAtEntry?.bidAsk ?? '');
+  const entryIndexTimestamp = Date.parse(trade.sourceTimestampsAtEntry?.index ?? '');
   const entryCreatedTimestamp = Date.parse(trade.createdAt);
   if (!economics || !Number.isFinite(entrySourceTimestamp) || !Number.isFinite(entryReceivedTimestamp)
-    || !Number.isFinite(entryCreatedTimestamp) || entrySourceTimestamp > entryReceivedTimestamp
-    || entryReceivedTimestamp > entryCreatedTimestamp
+    || !Number.isFinite(entryIndexTimestamp) || !Number.isFinite(entryCreatedTimestamp) || entrySourceTimestamp > entryReceivedTimestamp
+    || entryReceivedTimestamp > entryCreatedTimestamp || entryIndexTimestamp > entryCreatedTimestamp
     || entryReceivedTimestamp - entrySourceTimestamp > MAX_PAPER_CLOSE_SOURCE_AGE_MS
+    || entryCreatedTimestamp - entryReceivedTimestamp > MAX_PAPER_CLOSE_SOURCE_AGE_MS
+    || entryCreatedTimestamp - entrySourceTimestamp > MAX_PAPER_CLOSE_SOURCE_AGE_MS
+    || entryCreatedTimestamp - entryIndexTimestamp > MAX_PAPER_CLOSE_SOURCE_AGE_MS
     || event.tradeId !== trade.id || event.quantity !== trade.quantity
     || event.entryDebit !== trade.premiumDebitAtEntry
     || event.currency !== (trade.premiumCurrencyAtEntry ?? trade.quoteAsset)
