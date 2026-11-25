@@ -171,6 +171,7 @@ export interface BinanceOptionMarkPriceEvent {
 export interface BinanceOptionTickerEvent {
   symbol: string;
   eventTime: number;
+  transactionTime?: number;
   lastPrice?: number;
   lastQuantity?: number;
   volume?: number;
@@ -254,10 +255,11 @@ export function parseBinanceOptionTickerMessage(payload: unknown): BinanceOption
     if (data.e !== '24hrTicker' || typeof data.s !== 'string' || !data.s) return [];
     const eventTime = finiteNumber(data.E as string | number | undefined);
     if (eventTime === undefined || eventTime <= 0) return [];
+    const transactionTime = finiteNumber(data.T as string | number | undefined);
     const lastPrice = positiveNumber(data.c as string | number | undefined);
     const lastQuantity = finiteNumber(data.Q as string | number | undefined);
-    const volume = finiteNumber(data.v as string | number | undefined);
-    const volumeQuote = finiteNumber(data.q as string | number | undefined);
+    const volume = finiteNumber(data.V as string | number | undefined);
+    const volumeQuote = finiteNumber(data.A as string | number | undefined);
     const closeTime = finiteNumber(data.C as string | number | undefined);
     const markPrice = positiveNumber(data.mp as string | number | undefined);
     const bestBid = positiveNumber(data.bo as string | number | undefined);
@@ -277,6 +279,7 @@ export function parseBinanceOptionTickerMessage(payload: unknown): BinanceOption
     return [{
       symbol: data.s,
       eventTime,
+      ...(transactionTime !== undefined && transactionTime > 0 ? { transactionTime } : {}),
       ...(lastPrice !== undefined ? { lastPrice } : {}),
       ...(lastQuantity !== undefined && lastQuantity >= 0 ? { lastQuantity } : {}),
       ...(volume !== undefined && volume >= 0 ? { volume } : {}),
@@ -301,6 +304,7 @@ export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptio
     ? new Date(quote.sourceTimestamps.optionTicker).getTime()
     : 0;
   if (event.eventTime < previousTimestamp) return quote;
+  const marketTimestamp = event.transactionTime ?? event.eventTime;
   const currentBboTimestamp = quote.bidAskSource === 'BOOK_TICKER'
     ? Date.parse(quote.sourceTimestamps?.bookTicker ?? '')
     : quote.bidAskSource === 'MARK_PRICE'
@@ -308,10 +312,10 @@ export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptio
       : quote.bidAskSource === 'OPTION_TICKER'
         ? Date.parse(quote.sourceTimestamps?.optionTicker ?? '')
         : Number.NaN;
-  const updateBbo = !Number.isFinite(currentBboTimestamp) || event.eventTime >= currentBboTimestamp;
+  const updateBbo = !Number.isFinite(currentBboTimestamp) || marketTimestamp >= currentBboTimestamp;
   const currentMarkTimestamp = Date.parse(quote.sourceTimestamps?.markPrice ?? '');
   const updateMark = event.markPrice !== undefined
-    && (!Number.isFinite(currentMarkTimestamp) || event.eventTime >= currentMarkTimestamp);
+    && (!Number.isFinite(currentMarkTimestamp) || marketTimestamp >= currentMarkTimestamp);
   const useTickerBid = updateBbo && event.bestBid !== undefined;
   const useTickerAsk = updateBbo && event.bestAsk !== undefined;
   return {
@@ -335,12 +339,12 @@ export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptio
     ...(event.volumeQuote !== undefined ? { volumeQuote: event.volumeQuote } : {}),
     sourceTimestamps: {
       ...quote.sourceTimestamps,
-      optionTicker: new Date(event.eventTime).toISOString(),
+      optionTicker: new Date(marketTimestamp).toISOString(),
       ...(event.closeTime !== undefined ? { ticker: new Date(event.closeTime).toISOString() } : {}),
-      ...(updateMark ? { markPrice: new Date(event.eventTime).toISOString() } : {}),
-      ...(event.venueVolatility !== undefined ? { venueVolatility: new Date(event.eventTime).toISOString() } : {}),
-      ...(event.bidIv !== undefined ? { bidIv: new Date(event.eventTime).toISOString() } : {}),
-      ...(event.askIv !== undefined ? { askIv: new Date(event.eventTime).toISOString() } : {}),
+      ...(updateMark ? { markPrice: new Date(marketTimestamp).toISOString() } : {}),
+      ...(event.venueVolatility !== undefined ? { venueVolatility: new Date(marketTimestamp).toISOString() } : {}),
+      ...(event.bidIv !== undefined ? { bidIv: new Date(marketTimestamp).toISOString() } : {}),
+      ...(event.askIv !== undefined ? { askIv: new Date(marketTimestamp).toISOString() } : {}),
     },
   };
 }
