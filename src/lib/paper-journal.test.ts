@@ -356,7 +356,7 @@ test('canonical PAPER close uses fresh executable Bid and sufficient displayed c
     spotAtExit: closeQuote.spot,
   });
   assert.equal(beforeEntry.ok, false);
-  if (!beforeEntry.ok) assert.equal(beforeEntry.reason, 'PAPER_ENTRY_RECEIVE_TIMESTAMP_MISSING_OR_INVALID');
+  if (!beforeEntry.ok) assert.equal(beforeEntry.reason, 'PAPER_CLOSE_MARKET_SNAPSHOT_STALE_OR_FUTURE');
 
   const impossibleFee = createCanonicalPaperCloseEvent({
     trade: entry.trade,
