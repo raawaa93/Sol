@@ -204,4 +204,12 @@ No cloud resource, subscription, credential, schedule or billing change was crea
 - Malformed recovery locks are no longer deleted automatically, even if old, because owner/process metadata cannot be verified. The worker fails closed with `WRITER_LEASE_RECOVERY_CORRUPT` and requires manual inspection rather than risking deletion of a live recovery lock.
 - Added regression tests for recent partial and stale malformed recovery locks. The original failing concurrency test now passes on the PR head.
 - Replay now rejects missing/malformed/expired option expiry timestamps and skips hypothetical trades whose planned hold or exit reaches/crosses expiry. The replay has no expiry settlement/assignment model, so it cannot invent a post-expiry quote exit.
-- PR-head CI 45580317705, Lighthouse 45580317770 and Project Context Guard 45580317843 passed. Main post-merge CI/Lighthouse/Guard/Pages runs were started on the merge SHA; confirm their final result separately.
+- PR-head CI 45580317705, Lighthouse 45580317770 and Project Context Guard 45580317843 passed. Main post-merge CI 45580536983, Lighthouse 45580536944 and Project Context Guard 45580537100 passed. GitHub Pages deployment 45580537112 and published-site smoke/Lighthouse completed successfully.
+
+## Canonical PAPER entry time-integrity — PR #225
+
+- PR #225 merged to main as `cb0897ddafba5816c7e976e5c10a0aadeaeabc03`.
+- Canonical PAPER entries now reject options that have expired by the recorded entry time and reject source price/index timestamps that are future-dated or older than five minutes.
+- The check is applied at entry construction, not just in UI presentation, so a stale browser snapshot cannot be saved as a valid observed entry.
+- PR-head CI 45580783479, Lighthouse 45580783570 and Project Context Guard 45580783485 passed. Main post-merge verification is running on the merge SHA.
+- Remaining PAPER limitation: no close/realized-P&L workflow or risk-budget release exists yet; all recorded debit remains reserved until export and explicit reset. No automatic release or settlement is inferred.
