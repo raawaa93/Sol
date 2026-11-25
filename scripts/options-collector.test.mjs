@@ -159,7 +159,7 @@ test('collector refuses to attach an expired exchangeInfo snapshot to later mark
   assert.equal(report.ok, true, report.errors.join('; '));
   const records = [];
   for (const path of await listFiles(join(archive.root, 'segments'))) {
-    for (const line of (await readFile(path, 'utf8')).trim().split('\\n')) records.push(JSON.parse(line));
+    for (const line of (await readFile(path, 'utf8')).trim().split('\n')) records.push(JSON.parse(line));
   }
   const quote = records.find((record) => record.kind === 'BOOK_TICKER');
   assert.equal(quote?.contractSpec, null);
