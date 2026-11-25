@@ -40,7 +40,7 @@ function hasObservedPriceTimestamp(quote: OptionQuote, source: NonNullable<Optio
   if (source === 'LAST') return isValidTimestamp(timestamps.ticker);
   if (source === 'MID' || source === 'BID' || source === 'ASK') {
     if (quote.bidAskSource === 'BOOK_TICKER') return isValidTimestamp(timestamps.bookTicker);
-    if (quote.bidAskSource === 'OPTION_TICKER') return isValidTimestamp(timestamps.optionTicker);
+    if (quote.bidAskSource === 'OPTION_TICKER') return isValidTimestamp(timestamps.ticker);
     if (quote.bidAskSource === 'MARK_PRICE') return isValidTimestamp(timestamps.markPrice);
   }
   return false;
