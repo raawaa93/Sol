@@ -317,6 +317,8 @@ function App() {
   });
   const [paperCloseEvents, setPaperCloseEvents] = useState<PaperCloseEventsLoadResult['events']>([]);
   const [paperCloseEventsReady, setPaperCloseEventsReady] = useState(false);
+  const [paperBudgetModule, setPaperBudgetModule] = useState<null | typeof import('./lib/paper-campaign-budget')>(null);
+
   const [paperJournalLoad, setPaperJournalLoad] = useState(() => loadPaperJournal<PaperTrade>(localStorage, isPaperTrade));
   const [trades, setTrades] = useState<PaperTrade[]>(paperJournalLoad.entries);
   const closedTradeIds = useMemo(
@@ -328,6 +330,16 @@ function App() {
   const [toast, setToast] = useState('');
   const [csvWarnings, setCsvWarnings] = useState<string[]>([]);
   const [showAllCsvWarnings, setShowAllCsvWarnings] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    import('./lib/paper-campaign-budget').then((module) => {
+      if (active) setPaperBudgetModule(module);
+    }).catch(() => {
+      if (active) setPaperBudgetModule(null);
+    });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -773,10 +785,21 @@ function App() {
   const hasPremiumSizingCapability = premiumCostPerContract !== undefined;
   const hasModelGreeks = hasExplicitConsistentContractScale && (selectedQuote.pricingStatus ?? (dataMode === 'DEMO' ? 'ASSUMED' : 'OBSERVED_ONLY')) !== 'OBSERVED_ONLY';
   const quoteAssetLabel = getQuoteCurrency(selectedQuote);
-  const campaignBudget = useMemo(
-    () => summarizePaperCampaignBudget(trades, quoteAssetLabel ?? '', undefined, paperCloseEvents),
-    [trades, quoteAssetLabel, paperCloseEvents],
-  );
+  const campaignBudget = useMemo<PaperCampaignBudgetSummary>(() => {
+    if (!paperBudgetModule) {
+      return {
+        currency: (quoteAssetLabel ?? '').trim().toUpperCase(),
+        cap: PAPER_CAMPAIGN_MAX_LOSS,
+        used: 0,
+        remaining: 0,
+        unknownEntries: 1,
+        currencyMismatchEntries: 0,
+        supportedCurrency: false,
+        canAllocate: false,
+      };
+    }
+    return paperBudgetModule.summarizePaperCampaignBudget(trades, quoteAssetLabel ?? '', undefined, paperCloseEvents);
+  }, [paperBudgetModule, trades, quoteAssetLabel, paperCloseEvents]);
   const campaignBudgetBlockMessage = !paperCloseEventsReady
     ? 'جارٍ تحميل سجل إغلاقات PAPER والتحقق منه؛ الإدخالات والإغلاقات محجوبة مؤقتاً.'
     : paperJournalLoad.backupAvailable || paperJournalLoad.persistenceBlocked
