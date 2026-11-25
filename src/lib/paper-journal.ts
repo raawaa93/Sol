@@ -147,7 +147,8 @@ export function createCanonicalPaperTrade(
   }
   const debit = calculatePremiumCash({ economics, premiumPrice, contracts: quantity, fees });
   if (!debit.ok) return { ok: false, reason: debit.reason };
-  if (fees > debit.value.premiumAmount * 0.1 + 1e-9) return { ok: false, reason: 'PAPER_ENTRY_FEE_EXCEEDS_EXCHANGE_CAP' };
+  if (entryFeesSource === undefined && fees !== 0) return { ok: false, reason: 'PAPER_ENTRY_FEE_PROVENANCE_REQUIRED' };
+  if (entryFeesSource === 'USER_ENTERED' && fees > debit.value.premiumAmount * 0.1 + 1e-9) return { ok: false, reason: 'PAPER_ENTRY_FEE_EXCEEDS_EXCHANGE_CAP' };
 
   const trade: PaperTrade = {
     id,
