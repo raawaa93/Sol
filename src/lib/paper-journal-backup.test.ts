@@ -74,10 +74,12 @@ class MemoryStorage {
   value: string | null = null;
   failSet = false;
   failReadBack = false;
-  getItem() { return this.failReadBack ? 'different' : this.value; }
+  didSet = false;
+  getItem() { return this.failReadBack && this.didSet ? 'different' : this.value; }
   setItem(_key: string, value: string) {
     if (this.failSet) throw new Error('quota exceeded');
     this.value = value;
+    this.didSet = true;
   }
 }
 
