@@ -153,3 +153,13 @@ No cloud resource, subscription, credential, schedule or billing change was crea
 3. Add an idempotent segment uploader and manifest/cursor reconciliation, with checksums, object-size caps, retry bounds and no destructive overwrite.
 4. Restore into a fresh directory/device and compare segment hashes, counts and cursor state.
 5. Only then evaluate a scheduled bounded capture. Preserve gap markers and alert on missed sessions; do not describe scheduled Actions as continuous coverage.
+
+### Additional free compute candidate — Oracle OCI Always Free
+
+- OCI documents Always Free compute for the life of the account: up to 2 OCPUs and 12 GB RAM on Ampere A1, plus 200 GB combined block-volume storage in the home region. This is enough capacity for the Node worker, subject to region availability and ARM64 compatibility.
+- It is **not provisioned**. Oracle generally requires a credit/debit card for identity verification; a temporary authorization hold may occur. A free account must use accurate billing/contact information, only one free account is permitted per person, and capacity may be unavailable in the selected home region.
+- Oracle may reclaim an Always Free VM if CPU, network and memory utilization all remain below its documented thresholds for seven days. Do not generate artificial load to avoid reclamation. A low-volume market stream may not reliably prevent idle classification.
+- Therefore OCI is a possible zero-recurring-cost compute host only if the user already has or can legitimately create an eligible account, can tolerate card verification and capacity uncertainty, and the actual worker workload satisfies the provider's idle policy. It is not currently a verified persistent runtime.
+- Official sources: https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm and https://www.oracle.com/cloud/free/faq/
+
+**Current decision:** R2 remains the preferred dedicated archive destination; OCI Always Free is the best candidate found for compute, but neither has been provisioned. No card details, account credentials, resource creation, or paid upgrade were requested or used.
