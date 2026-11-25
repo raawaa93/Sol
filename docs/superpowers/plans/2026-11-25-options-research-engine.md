@@ -141,9 +141,11 @@ The merged transport is a tested library component, not an operating collector. 
 - Report sample size, coverage, drawdown, tail loss, profit factor, turnover and uncertainty; suppress unsupported statistics.
 - E1 volatility-risk-premium and E2 order-flow experiments remain BLOCKED until their data prerequisites are met.
 
-- [x] Audit the existing replay and strategy-evaluation protocol. Current replay is a conservative one-leg fixed-hold PAPER baseline, not a signal strategy; it buys at Ask and exits at Bid but does not yet model depth/partial fills, queue position, latency, expiry settlement or hedging.
-- [ ] Extend replay only after a point-in-time BBO/size corpus and verified contract economics exist; no supported empirical dataset is currently available.
-- [ ] Add a separate deterministic synthetic strategy fixture suite only when a concrete replay defect or extension is selected; existing statistical tests are synthetic and do not establish a market edge.
+- [x] Audit the existing replay and strategy-evaluation protocol. The current engine remains a one-leg fixed-hold PAPER baseline, not a signal strategy.
+- [x] Harden replay to require a fresh BBO event timestamp plus receive timestamp, explicit displayed-size unit and sufficient Ask size at entry/Bid size at exit; reject mark-only, estimated, stale, future, missing-size and unknown-unit quotes.
+- [x] Apply configurable per-side slippage and fees; display source labels, source event clocks, displayed sizes, fill prices and slippage cost. Zero fees/slippage are explicitly disclosed as unmodeled assumptions.
+- [x] Add CSV template fields and regression coverage for provenance, size, scale mismatch and execution details. PR #204 CI passed 303/303 unit/property tests and 18/18 Playwright journeys.
+- [ ] Full depth/partial-fill/queue-position/latency/expiry-settlement/hedging simulation remains deferred until a point-in-time depth/BBO corpus and verified contract economics exist; current CSV provenance is user-asserted and not independently authenticated.
 - [x] Keep strategy performance and cross-asset profitability ranking blocked until a real PIT corpus and forward PAPER run pass the gates.
 
 ### Task 7: Operational record and final verification
