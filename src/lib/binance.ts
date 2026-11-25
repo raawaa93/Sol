@@ -736,7 +736,6 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
       priceScale: finiteNumber(symbolInfo.priceScale),
       quantityScale: finiteNumber(symbolInfo.quantityScale),
       filters,
-      sourceTimestamp: sourceTimestamps.ticker,
       sourceTimestamps,
       estimatedFields,
     });
