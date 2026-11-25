@@ -312,6 +312,16 @@ test('tampered segment is detected by its content hash', async (t) => {
   assert.ok(report.errors.some((error) => error.startsWith('SEGMENT_HASH_MISMATCH')));
 });
 
+test('archive verification rejects a symlinked cursor without reading its target', async (t) => {
+  const { root, archive } = await makeArchive(t);
+  const outside = join(root, 'outside-cursor.json');
+  await writeFile(outside, JSON.stringify({ schemaVersion: 1, value: null, updatedAt: RECEIVED, checksum: '0'.repeat(64) }));
+  await symlink(outside, join(root, 'cursor.json'));
+  const report = await archive.verify();
+  assert.equal(report.ok, false);
+  assert.ok(report.errors.includes('CURSOR_NOT_REGULAR_FILE'));
+});
+
 test('orphaned temporary segments are removed under the writer lease before the next append', async (t) => {
   const { root, archive } = await makeArchive(t);
   const orphan = join(root, '.tmp', 'crashed-writer.ndjson.tmp');
