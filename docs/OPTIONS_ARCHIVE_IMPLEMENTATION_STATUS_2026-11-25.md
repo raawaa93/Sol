@@ -77,3 +77,12 @@ This is provenance tracking only. The notice is for Binance RCH and does not est
 - PR #196 merged as `26b82d63bdd533c96fba8a881a8036fcf7c0b470`, adding a deterministic browser journey for paired 20/40-DTE CALL/PUT quotes, insufficient-history disclosure and provenance-preserving JSON export.
 - CI 45570955327 passed 293 unit/property tests, production build, compressed bundle budget and 18 Playwright journeys. Lighthouse 45570955246 and Project Context Guard 45570955274 passed.
 - These are code/test results only. No live Binance request, scheduled capture, cloud archive, historical BBO corpus or strategy edge is claimed.
+
+
+## Follow-up — BBO-aware replay and archive provisioning — 25 November 2026
+
+PR #204 merged as `337e03fb26d44c906125318affc473030c165da4`. Replay now requires BBO event/receive clocks, explicit displayed-size unit and sufficient size at entry/exit. Binance `bookTicker` is the executable BBO source; `optionTicker` 24-hour statistics and Mark Price are not substituted. The UI exposes source times, displayed quantities, fills, fees and slippage; zero values are clearly unmodeled assumptions.
+
+Verification: CI 45572889900 passed 303/303 unit/property tests, production build, bundle budget and 18/18 Playwright journeys. Lighthouse 45572889852 passed (99 performance; 100 accessibility, best practices and SEO). Project Context Guard 45572889839 passed.
+
+Cloud archive remains unprovisioned: no Cloudflare connector is available, Activepieces GitHub write permission returned 403 for private-repository creation, and Supabase project creation requires an explicit organization selection. No data capture, new project, production schema change or spend occurred.
