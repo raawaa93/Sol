@@ -93,7 +93,7 @@ test('exchangeInfo maps only explicit Binance Crypto Options contract terms with
   }, SYMBOL, RECEIVED), null);
   assert.equal(mapVerifiedBinanceContractSpec({
     ...exchangeInfoFixture(),
-    optionSymbols: [{ ...exchangeInfoFixture().optionSymbols[0], contractType: undefined }],
+    optionSymbols: [{ ...exchangeInfoFixture().optionSymbols[0], contractType: '' }],
   }, SYMBOL, RECEIVED), null);
   assert.equal(mapVerifiedBinanceContractSpec({
     ...exchangeInfoFixture(),
