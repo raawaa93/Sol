@@ -76,6 +76,10 @@ test('PAPER-only journal records and exports a local single-option scenario', as
 });
 
 test('versioned PAPER JSON backup exports, clears and restores locally without replacing existing entries', async ({ page }) => {
+  await page.locator('.asset-switch').getByRole('button').filter({ hasText: 'XRP' }).click();
+  await expect(page.locator('#overview-metrics')).toContainText('XRP/USD');
+  const quantity = page.locator('#trade-lab label').filter({ hasText: 'الكمية' }).locator('input');
+  await quantity.fill('0.01');
   await page.getByRole('button', { name: 'أضف إلى الدفتر التجريبي' }).click();
   await expect(page.getByText('أضيفت الصفقة إلى الدفتر التجريبي فقط.')).toBeVisible();
   await page.locator('.side-nav').getByRole('button', { name: 'الدفتر التجريبي' }).click();
