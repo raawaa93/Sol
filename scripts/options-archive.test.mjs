@@ -179,6 +179,17 @@ test('tampered segment is detected by its content hash', async (t) => {
   assert.ok(report.errors.some((error) => error.startsWith('SEGMENT_HASH_MISMATCH')));
 });
 
+test('orphaned temporary segments are removed under the writer lease before the next append', async (t) => {
+  const { root, archive } = await makeArchive(t);
+  const orphan = join(root, '.tmp', 'crashed-writer.ndjson.tmp');
+  await writeFile(orphan, 'partial-segment');
+  await withLease(archive, async (lease) => {
+    await archive.appendBatch([makeRecord()], { lease });
+    await assert.rejects(readFile(orphan, 'utf8'), (error) => error.code === 'ENOENT');
+  });
+  assert.equal((await archive.verify()).ok, true);
+});
+
 test('quota failure writes neither a segment nor a cursor', async (t) => {
   const { root, archive } = await makeArchive(t, { maxBytes: 1 });
   await withLease(archive, async (lease) => {
