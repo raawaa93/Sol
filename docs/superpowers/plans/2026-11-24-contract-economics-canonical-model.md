@@ -42,7 +42,10 @@
 - [x] Route premium debit/credit and break-even through canonical economics for provider-verified Binance Crypto Options cash-settlement terms (PR #167).
 - [x] Route expiry payoff, max loss and scenario series through canonical cash-settlement payoff for the supported Binance Crypto Options adapter (PR #167).
 - [ ] Route position Greeks through model-specific deliverable scaling.
-- [ ] Route opportunity EV and historical replay through the same validation result.
+- [x] Add canonical risk-neutral expiry EV for provider-verified Binance Crypto Options (PR #170; carry=0 assumption, EV shown before fees in Opportunity Review).
+- [ ] Complete canonical historical replay through the same validation result.
+- [x] Persist a canonical PAPER entry snapshot with the premium multiplier, contract unit and matching observed price/index timestamps (PR #172; entry record only, no P&L/exit valuation).
+- [ ] Complete canonical PAPER lifecycle valuation (mark-to-market, exits and P&L).
 - [ ] Add invariants proving no component uses legacy unit/multiplier as a universal shortcut.
 
 ## Phase 5 — UI, CSV and migration
@@ -193,3 +196,18 @@ Merged to main as `71a8a027659e880f22aa3b998b0c075c1a071bd3`.
 - CI, Project Context Guard and Lighthouse passed on PR head `d93a9a9bacae6edc1ecc98bbb00a82a43680a0c5`. Published-site smoke test was skipped by workflow conditions.
 
 Remaining: model-aware position Greek aggregation/shock P&L, canonical PAPER lifecycle valuation and replay. Entry-only PAPER snapshots are handled separately by PR #169 and remain unmerged pending checks.
+
+
+### Legacy Greek/EV bypass closure — 25 November 2026
+
+PR #168 merged to main as `f39ffde79b25ca3fd5416fa075ad1b1e7b3c3958`.
+
+- Added a shared `hasLegacyScalarAnalyticsCapability` gate that rejects every quote carrying canonical terms from legacy scalar analytics, even when unit=1.
+- Applied the gate to App, GreeksPanel and direct risk-neutral expiry metrics.
+- Per-unit model Greeks may remain visible as explicitly assumed/reference-only values, but position Greeks and Greek shock P&L are hidden until a model adapter declares canonical scale capability.
+- Direct risk-neutral EV now fails closed for canonical quotes; no probability or EV claim is made for them.
+- Regression tests, CI, Playwright, bundle budget, Project Context Guard, Lighthouse, main CI, deployment and published-site smoke test passed.
+
+### Canonical PAPER entry snapshot — PR #172 (rebased successor to PR #169)
+
+PR #169 adds a PAPER-only entry snapshot for verified Binance Crypto Options. It stores canonical economics, independent premium multiplier and unit, premium debit, exact observed price basis and its source timestamp. It rejects CSV provenance, model-generated prices and missing/mismatched timestamps. It does not implement mark-to-market, exits, P&L, Greeks, EV or replay. Await PR checks before calling it delivered.
