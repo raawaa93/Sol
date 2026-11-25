@@ -163,3 +163,13 @@ No cloud resource, subscription, credential, schedule or billing change was crea
 - Official sources: https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm and https://www.oracle.com/cloud/free/faq/
 
 **Current decision:** R2 remains the preferred dedicated archive destination; OCI Always Free is the best candidate found for compute, but neither has been provisioned. No card details, account credentials, resource creation, or paid upgrade were requested or used.
+
+
+## Worker health fail-closed hardening — PR #219
+
+- PR #219 merged to main as `39ca0c7e8525d4ee1b72366d89a80c3a694e77a0`.
+- Heartbeat archive-read/quota failures now abort the collector transport, wait for collector cleanup and writer lease release, and fail the worker rather than merely logging a warning.
+- AbortSignal is propagated from worker through collector to WebSocket transport; injected stream configuration rejects duplicates, malformed values and invalid refresh flags.
+- Heartbeat polling is stopped before final archive verification, preventing a timer race from misclassifying a final verification error as an operator stop.
+- CI 45579436891, Lighthouse 45579436842 and Project Context Guard 45579436903 passed on the PR head.
+- This remains local, opt-in and undeployed. No schedule, remote storage, real market capture or trading was enabled.
