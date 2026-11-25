@@ -661,11 +661,11 @@ export function normalizeBinanceSnapshot(fixture: BinanceFixture): BinanceOption
     if (!modelGreeks) estimatedFields.push('delta', 'gamma', 'theta', 'vega', 'rho');
 
     const expiry = new Date(expiryDate).toISOString();
-    const tickerTimestamp = finiteNumber(ticker?.closeTime);
+    const tickerCloseTime = finiteNumber(ticker?.closeTime);
     const indexTimestamp = indexTimestampByUnderlying.get(indexKey);
     const openInterestTimestamp = finiteNumber(openInterest?.timestamp);
     const sourceTimestamps = {
-      ...(tickerTimestamp !== undefined && tickerTimestamp > 0 ? { ticker: new Date(tickerTimestamp).toISOString() } : {}),
+      ...(tickerCloseTime !== undefined && tickerCloseTime > 0 ? { tickerClose: new Date(tickerCloseTime).toISOString() } : {}),
       ...(indexTimestamp !== undefined && indexTimestamp > 0 ? { index: new Date(indexTimestamp).toISOString() } : {}),
       ...(openInterestTimestamp !== undefined && openInterestTimestamp > 0 ? { openInterest: new Date(openInterestTimestamp).toISOString() } : {}),
     };
