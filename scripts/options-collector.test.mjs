@@ -7,6 +7,7 @@ import { evaluateOptionsPointInTime, ResumableOptionsArchive } from './options-a
 import {
   buildPublicBinanceRestUrl,
   collectForwardOptionsEvents,
+  createBinanceOptionsWebSocketTransport,
   createFakeOptionsTransport,
   OptionsCollectorError,
   mapVerifiedBinanceContractSpec,
@@ -435,4 +436,93 @@ test('forward collection is disabled by default and rejects private stream names
     collectForwardOptionsEvents({ archive, transport: { subscribe: async () => [] }, streams: ['listenKey@orderReport'], enabled: true }),
     (error) => error.code === 'INVALID_STREAMS',
   );
+});
+
+
+test('real WebSocket transport uses only the official public endpoint and fails closed on abnormal close', async () => {
+  class FakeWebSocket {
+    static instances = [];
+    constructor(url) {
+      this.url = url;
+      this.listeners = new Map();
+      FakeWebSocket.instances.push(this);
+      queueMicrotask(() => this.emit('open', {}));
+    }
+    addEventListener(type, callback) {
+      if (!this.listeners.has(type)) this.listeners.set(type, new Set());
+      this.listeners.get(type).add(callback);
+    }
+    removeEventListener(type, callback) { this.listeners.get(type)?.delete(callback); }
+    emit(type, event) {
+      for (const callback of this.listeners.get(type) ?? []) callback(event);
+    }
+    close(code = 1000, reason = '') { this.emit('close', { code, reason }); }
+  }
+  FakeWebSocket.instances = [];
+  const transport = createBinanceOptionsWebSocketTransport({
+    WebSocketImpl: FakeWebSocket,
+    maxReconnects: 0,
+  });
+  const streams = ['btcusdt@optionTrade', 'btcusdt@bookTicker'];
+  const iterator = (await transport.subscribe(streams))[Symbol.asyncIterator]();
+  assert.equal((await iterator.next()).value.type, 'reconnect');
+  const url = new URL(FakeWebSocket.instances[0].url);
+  assert.equal(url.origin, 'wss://fstream.binance.com');
+  assert.equal(url.pathname, '/public/stream');
+  assert.equal(url.searchParams.get('streams'), streams.join('/'));
+  FakeWebSocket.instances[0].emit('message', {
+    data: JSON.stringify({ stream: streams[0], data: { e: 'trade', E: EVENT_MS, s: SYMBOL } }),
+  });
+  const message = await iterator.next();
+  assert.equal(message.value.type, 'message');
+  assert.equal(JSON.parse(message.value.data).data.e, 'trade');
+  FakeWebSocket.instances[0].close(1006, 'abnormal-close');
+  const gap = await iterator.next();
+  assert.deepEqual(gap.value, { type: 'disconnect', code: 1006, reason: 'abnormal-close' });
+  await assert.rejects(
+    iterator.next(),
+    (error) => error instanceof OptionsCollectorError && error.code === 'WEBSOCKET_CONNECTION_BLOCKED_OR_FAILED',
+  );
+  await assert.rejects(
+    transport.subscribe(Array.from({ length: 201 }, (_, index) => `btc-${index}@bookTicker`)),
+    (error) => error.code === 'INVALID_STREAMS',
+  );
+});
+
+test('WebSocket transport reconnects only after normal 24-hour close and supports cancellation', async () => {
+  class FakeWebSocket {
+    static instances = [];
+    constructor(url) {
+      this.url = url;
+      this.listeners = new Map();
+      FakeWebSocket.instances.push(this);
+      queueMicrotask(() => this.emit('open', {}));
+    }
+    addEventListener(type, callback) {
+      if (!this.listeners.has(type)) this.listeners.set(type, new Set());
+      this.listeners.get(type).add(callback);
+    }
+    removeEventListener(type, callback) { this.listeners.get(type)?.delete(callback); }
+    emit(type, event) {
+      for (const callback of this.listeners.get(type) ?? []) callback(event);
+    }
+    close(code = 1000, reason = '') { this.emit('close', { code, reason }); }
+  }
+  FakeWebSocket.instances = [];
+  const controller = new AbortController();
+  const transport = createBinanceOptionsWebSocketTransport({
+    WebSocketImpl: FakeWebSocket,
+    signal: controller.signal,
+    maxReconnects: 1,
+    reconnectBaseDelayMs: 0,
+    reconnectMaxDelayMs: 0,
+  });
+  const iterator = (await transport.subscribe(['btcusdt@bookTicker']))[Symbol.asyncIterator]();
+  assert.equal((await iterator.next()).value.type, 'reconnect');
+  FakeWebSocket.instances[0].close(1000, '24h-rotation');
+  assert.equal((await iterator.next()).value.type, 'disconnect');
+  assert.equal((await iterator.next()).value.type, 'reconnect');
+  assert.equal(FakeWebSocket.instances.length, 2);
+  controller.abort();
+  await iterator.return();
 });
