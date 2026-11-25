@@ -722,7 +722,7 @@ function gapRecord(rawPayload, receivedAt, reason) {
   });
 }
 
-export async function collectForwardOptionsEvents({ archive, transport, streams, enabled = false, restTransport, refreshExchangeInfo = false, exchangeInfoRefreshIntervalMs = 5 * 60 * 1000, now = () => new Date().toISOString() }) {
+export async function collectForwardOptionsEvents({ archive, transport, streams, enabled = false, restTransport, refreshExchangeInfo = false, exchangeInfoRefreshIntervalMs = 5 * 60 * 1000, onFatal = () => {}, now = () => new Date().toISOString() }) {
   if (enabled !== true) throw new OptionsCollectorError('COLLECTOR_DISABLED', 'Forward collection is opt-in and remains disabled by default.');
   if (!archive || typeof archive.acquireWriterLease !== 'function' || !transport || typeof transport.subscribe !== 'function') {
     throw new OptionsCollectorError('TRANSPORT_REQUIRED', 'An archive and injected async-iterable transport are required.');
@@ -735,6 +735,19 @@ export async function collectForwardOptionsEvents({ archive, transport, streams,
   }
   validatePublicStreams(streams);
   const lease = await archive.acquireWriterLease();
+  let leaseRenewalError = null;
+  let leaseRenewalInFlight = false;
+  let leaseRenewalPromise = Promise.resolve();
+  const leaseRenewalIntervalMs = Math.max(1_000, Math.floor((archive.leaseTtlMs ?? 30_000) / 3));
+  const leaseRenewalTimer = setInterval(() => {
+    if (leaseRenewalInFlight || leaseRenewalError) return;
+    leaseRenewalInFlight = true;
+    leaseRenewalPromise = archive.renewWriterLease(lease).catch((error) => {
+      leaseRenewalError = error;
+      try { onFatal(error); } catch {}
+    }).finally(() => { leaseRenewalInFlight = false; });
+  }, leaseRenewalIntervalMs);
+  leaseRenewalTimer.unref?.();
   const state = { depth: new Map(), contractSpecs: new Map(), lastExchangeInfoRefreshAt: null };
   let processed = 0;
   let archived = 0;
@@ -764,7 +777,7 @@ export async function collectForwardOptionsEvents({ archive, transport, streams,
           exchangeInfoRefreshes += 1;
         }
       }
-      if (Date.now() >= lease.expiresAt - 10_000) await archive.renewWriterLease(lease);
+      if (leaseRenewalError) throw leaseRenewalError;
       let records = [];
       if (item?.type === 'exchangeInfo') {
         const raw = item.payload ?? item.data ?? item;
@@ -792,6 +805,7 @@ export async function collectForwardOptionsEvents({ archive, transport, streams,
         archived += result.appended;
       }
     }
+    if (leaseRenewalError) throw leaseRenewalError;
     return { processed, archived, gaps, exchangeInfoRefreshes };
   } catch (error) {
     if (error?.status === 451 || error?.status === 403) {
@@ -799,6 +813,8 @@ export async function collectForwardOptionsEvents({ archive, transport, streams,
     }
     throw error;
   } finally {
+    clearInterval(leaseRenewalTimer);
+    await leaseRenewalPromise;
     await archive.releaseWriterLease(lease);
   }
 }
