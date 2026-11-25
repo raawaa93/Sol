@@ -196,3 +196,10 @@ A targeted review of free samples, paid vendors and public analytics did not ide
 - Do not replace Binance with OKX or another venue solely to obtain data; exchange eligibility, location restrictions and data-use rights remain separate gates.
 - Do not use mark, trade-print, OHLCV, daily IV/OI or modeled surfaces as substitutes for executable BBO.
 - Keep the supervised forward-only archive as the primary route. Treat Tardis' first-of-month sample as a possible parser fixture only after a real file and its licensing are verified. No vendor access, sample data, external dataset or live capture was used in strategy evaluation.
+## PAPER entry execution basis — 25 November 2026
+
+- Canonical Binance long-option journal entries are now Ask-side only and require BOOK_TICKER provenance, contract-denominated displayed ask size, sufficient size for the requested contracts, a matching timestamped index, a non-expired contract, and price/index timestamps no older than five minutes.
+- Midpoint, mark price, last trade, mark-price BBO without verified size, and missing/insufficient ask depth are not accepted as canonical entry prices. Sizing and canonical scenario calculations use the Ask, including fees supplied to the PAPER calculation.
+- This remains a conservative displayed-ask PAPER entry, not a guaranteed fill: it does not model latency, queue priority, market impact, partial fills, price movement between observation and hypothetical order arrival, or the contract-specific exchange fee schedule automatically.
+- The journal remains entry-only. A Bid-side close, exit-depth check, expiry settlement/assignment, realized P&L, and budget release are not implemented. No performance claim follows from these records.
+- Implementation merged in PR #226 (`5f48a42d54ccf44310464a00c251862c88f9c127`); CI, Lighthouse and Project Context Guard passed.
