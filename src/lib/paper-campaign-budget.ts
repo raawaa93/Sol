@@ -46,9 +46,8 @@ function getTradeDebit(trade: PaperTrade): number | undefined {
 }
 
 /**
- * A campaign reserves the full premium debit of every append-only PAPER entry.
- * The journal has no close/realized-P&L workflow yet, so entries remain allocated
- * until the user exports and explicitly resets the local campaign.
+ * Risk usage is open premium debit plus realized losses on closed PAPER trades.
+ * Realized gains do not offset losses or create extra risk budget.
  */
 export function summarizePaperCampaignBudget(
   trades: PaperTrade[],
@@ -70,6 +69,23 @@ export function summarizePaperCampaignBudget(
     const debit = getTradeDebit(trade);
     if (debit === undefined || !Number.isFinite(debit) || debit <= 0) {
       unknownEntries += 1;
+      continue;
+    }
+    if (trade.close) {
+      const close = trade.close;
+      const consistent = close.currency === normalizedCurrency
+        && Number.isFinite(Date.parse(close.closedAt))
+        && Number.isFinite(close.exitGrossProceeds) && close.exitGrossProceeds >= 0
+        && Number.isFinite(close.exitNetProceeds) && close.exitNetProceeds >= 0
+        && Number.isFinite(close.exitFees) && close.exitFees >= 0
+        && Number.isFinite(close.realizedPnl)
+        && Math.abs(close.realizedPnl - (close.exitNetProceeds - debit)) <= 1e-8
+        && Math.abs(close.exitGrossProceeds - close.exitNetProceeds - close.exitFees) <= 1e-8;
+      if (!consistent) {
+        unknownEntries += 1;
+        continue;
+      }
+      used += Math.max(0, -close.realizedPnl);
       continue;
     }
     used += debit;
