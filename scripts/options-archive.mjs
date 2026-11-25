@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { cp, mkdir, open, readFile, readdir, rename, stat, unlink } from 'node:fs/promises';
+import { cp, link, mkdir, open, readFile, readdir, rename, stat, unlink } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 
 export const OPTIONS_ARCHIVE_SCHEMA_VERSION = 1;
@@ -371,7 +371,7 @@ export class ResumableOptionsArchive {
       const handle = await open(temp, 'wx', 0o600);
       try { await handle.writeFile(segment.content, 'utf8'); await handle.sync(); } finally { await handle.close(); }
       try {
-        await (await import('node:fs/promises')).link(temp, segment.path);
+        await link(temp, segment.path);
       } catch (error) {
         if (error.code !== 'EEXIST') throw error;
         const existing = await readFile(segment.path, 'utf8');
@@ -404,6 +404,7 @@ export class ResumableOptionsArchive {
       const content = await readFile(file, 'utf8');
       const expectedHash = file.slice(file.lastIndexOf('/') + 1).replace(/\.ndjson$/, '');
       if (sha256(content) !== expectedHash) { errors.push(`SEGMENT_HASH_MISMATCH:${relative(this.root, file)}`); continue; }
+      segmentHashes.add(expectedHash);
       for (const [lineIndex, line] of content.split('\n').entries()) {
         if (!line) continue;
         try {
