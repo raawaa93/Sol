@@ -369,6 +369,10 @@ test('archive initialization rejects a symbolic-link root before creating child 
     archive.initialize(),
     (error) => error instanceof OptionsArchiveError && error.code === 'SYMLINK_NOT_ALLOWED',
   );
+  await assert.rejects(
+    archive.verify(),
+    (error) => error instanceof OptionsArchiveError && error.code === 'SYMLINK_NOT_ALLOWED',
+  );
   assert.deepEqual(await readdir(target), []);
 });
 
