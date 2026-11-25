@@ -1,0 +1,100 @@
+name: Binance SOL Options Snapshot
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/binance-sol-options-snapshot.yml"
+  schedule:
+    - cron: "*/15 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: binance-sol-options-snapshot
+  cancel-in-progress: true
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fetch and rank live SOL options from Binance
+        id: snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          node <<'NODE'
+          const fs = require('node:fs');
+          const base = 'https://eapi.binance.com';
+          const sleep = ms => new Promise(r => setTimeout(r, ms));
+          async function get(path, params={}) {
+            const url = new URL(base + path);
+            for (const [k,v] of Object.entries(params)) url.searchParams.set(k, v);
+            let last;
+            for (let i=0;i<4;i++) {
+              try {
+                const res = await fetch(url, {headers:{accept:'application/json'}, signal:AbortSignal.timeout(12000)});
+                const body = await res.text();
+                if (!res.ok) throw new Error(`HTTP ${res.status}: ${body.slice(0,300)}`);
+                return JSON.parse(body);
+              } catch(e) { last=e; await sleep(500*(i+1)); }
+            }
+            throw last;
+          }
+          const now = Date.now();
+          const [info, marks, tickers, index] = await Promise.all([
+            get('/eapi/v1/exchangeInfo'),
+            get('/eapi/v1/mark'),
+            get('/eapi/v1/ticker'),
+            get('/eapi/v1/index',{underlying:'SOLUSDT'})
+          ]);
+          const contracts = (info.optionSymbols||[]).filter(x =>
+            x.underlying === 'SOLUSDT' && x.status === 'TRADING' && Number(x.expiryDate)>now
+          );
+          const markMap = new Map((Array.isArray(marks)?marks:[]).map(x=>[x.symbol,x]));
+          const tickerMap = new Map((Array.isArray(tickers)?tickers:[]).map(x=>[x.symbol,x]));
+          const expiries = [...new Set(contracts.map(x=>String(x.expiryDate).slice(0,8)))];
+          const oiByExpiry = {};
+          for (const expMs of [...new Set(contracts.map(x=>x.expiryDate))]) {
+            const d = new Date(Number(expMs));
+            const ymd = String(d.getUTCFullYear()).slice(-2)+String(d.getUTCMonth()+1).padStart(2,'0')+String(d.getUTCDate()).padStart(2,'0');
+            try { oiByExpiry[ymd] = await get('/eapi/v1/openInterest',{underlyingAsset:'SOL',expiration:ymd}); }
+            catch(e) { oiByExpiry[ymd] = {error:String(e)}; }
+          }
+          const oiMap = new Map();
+          for (const arr of Object.values(oiByExpiry)) if (Array.isArray(arr)) for (const x of arr) oiMap.set(x.symbol,x);
+          const candidates = contracts.map(c=>{
+            const m=markMap.get(c.symbol)||{}, t=tickerMap.get(c.symbol)||{}, oi=oiMap.get(c.symbol)||{};
+            const bid=Number(t.bidPrice||0), ask=Number(t.askPrice||0), mid=(bid+ask)/2;
+            const spreadPct=mid>0?(ask-bid)/mid*100:null;
+            const volume=Number(t.volume||0), amount=Number(t.amount||0), openInterest=Number(oi.sumOpenInterest||0);
+            const delta=Number(m.delta), iv=Number(m.markIV);
+            const days=(Number(c.expiryDate)-now)/86400000;
+            const twoSided=bid>0&&ask>0&&ask>=bid;
+            const d=Number.isFinite(delta)?Math.abs(delta):null;
+            const deltaFit=d===null?0:Math.max(0,1-Math.abs(d-0.5)/0.5);
+            const spreadFit=spreadPct===null?0:Math.max(0,1-spreadPct/50);
+            const liquidity=Math.log1p(volume*10+amount*10+openInterest);
+            const score=twoSided ? (40*spreadFit+25*deltaFit+15*Math.min(1,liquidity/5)+10*(volume>0?1:0)+10*(openInterest>0?1:0)) : 0;
+            return {symbol:c.symbol,side:c.side,strike:Number(c.strikePrice),expiry:new Date(Number(c.expiryDate)).toISOString(),daysToExpiry:+days.toFixed(3),bid,ask,spreadPct:spreadPct===null?null:+spreadPct.toFixed(2),last:Number(t.lastPrice||0),volume,amount,openInterest,mark:Number(m.markPrice||0),iv:Number.isFinite(iv)?iv:null,delta:Number.isFinite(delta)?delta:null,gamma:Number(m.gamma||0),theta:Number(m.theta||0),vega:Number(m.vega||0),twoSided,score:+score.toFixed(2)};
+          }).sort((a,b)=>b.score-a.score);
+          const calls=candidates.filter(x=>x.side==='CALL').slice(0,5);
+          const puts=candidates.filter(x=>x.side==='PUT').slice(0,5);
+          const result={source:'Binance European Options API',generatedAt:new Date().toISOString(),serverTime:info.serverTime||null,underlying:'SOLUSDT',indexPrice:Number(index.indexPrice||0),activeContracts:contracts.length,expiryCount:new Set(contracts.map(x=>x.expiryDate)).size,coverage:{marks:Array.isArray(marks)?marks.length:0,tickers:Array.isArray(tickers)?tickers.length:0,oiExpiries:Object.keys(oiByExpiry).length},calls,puts,all:candidates,oiErrors:Object.fromEntries(Object.entries(oiByExpiry).filter(([,v])=>!Array.isArray(v)))};
+          fs.writeFileSync('artifacts/binance-sol-options.json',JSON.stringify(result,null,2));
+          const fmt=x=>`| ${x.symbol} | ${x.bid} / ${x.ask} | ${x.spreadPct??'—'}% | ${x.iv===null?'—':(x.iv*100).toFixed(1)+'%'} | ${x.delta===null?'—':x.delta.toFixed(3)} | ${x.volume} | ${x.openInterest} | ${x.score} |`;
+          let md=`# Binance SOL Options live snapshot\n\nGenerated: ${result.generatedAt}\n\nUnderlying index: **${result.indexPrice} USDT**\n\nActive SOLUSDT contracts: **${result.activeContracts}** across **${result.expiryCount}** expiries.\n\nRanking is a screening score, not a buy signal. Contracts without two-sided quotes are excluded from ranking.\n\nColumns: symbol, bid/ask, spread, IV, delta, 24h volume, OI, screening score.\n\n## Top Calls\n\n| Contract | Bid / Ask | Spread | IV | Delta | Volume | OI | Score |\n|---|---:|---:|---:|---:|---:|---:|---:|\n${calls.map(fmt).join('\n')||'No eligible calls'}\n\n## Top Puts\n\n| Contract | Bid / Ask | Spread | IV | Delta | Volume | OI | Score |\n|---|---:|---:|---:|---:|---:|---:|---:|\n${puts.map(fmt).join('\n')||'No eligible puts'}\n\n## Data coverage\n\n${JSON.stringify(result.coverage)}\n\nNo orders were placed. Verify quote freshness and market depth before any decision.\n`;
+          fs.writeFileSync('artifacts/summary.md',md);
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,md);
+          console.log(JSON.stringify({generatedAt:result.generatedAt,indexPrice:result.indexPrice,activeContracts:result.activeContracts,calls:calls.slice(0,3),puts:puts.slice(0,3),coverage:result.coverage},null,2));
+          NODE
+      - name: Upload raw snapshot and ranked report
+        uses: actions/upload-artifact@v4
+        with:
+          name: binance-sol-options-${{ github.run_id }}
+          path: artifacts/
+          retention-days: 14
