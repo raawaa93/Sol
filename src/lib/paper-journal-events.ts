@@ -68,6 +68,8 @@ export function isCanonicalPaperCloseEvent(value: unknown): value is CanonicalPa
   if (!economics.adapterReady || !isRecord(value.contractEconomicsAtExit)) return false;
   const provenance = isRecord(value.contractEconomicsAtExit.provenance) ? value.contractEconomicsAtExit.provenance : {};
   const premium = isRecord(value.contractEconomicsAtExit.premium) ? value.contractEconomicsAtExit.premium : {};
+  const exercise = isRecord(value.contractEconomicsAtExit.exercise) ? value.contractEconomicsAtExit.exercise : {};
+  const cashSettlement = isRecord(exercise.cashSettlement) ? exercise.cashSettlement : {};
   const multiplier = premium.multiplier;
   const closedAt = Date.parse(value.closedAt as string);
   const bookAt = Date.parse((value.sourceTimestampsAtExit as Record<string, string>).bookTicker);
@@ -80,6 +82,9 @@ export function isCanonicalPaperCloseEvent(value: unknown): value is CanonicalPa
     && provenance.provider === 'BINANCE'
     && provenance.sourceRef === 'https://eapi.binance.com/eapi/v1/exchangeInfo'
     && Number.isFinite(multiplier) && (multiplier as number) > 0
+    && value.currency === premium.quoteCurrency
+    && value.contractAtExit.quoteAsset === premium.quoteCurrency
+    && value.contractAtExit.unit === cashSettlement.multiplier
     && Math.abs((value.grossProceeds as number) - grossExpected) <= tolerance
     && Math.abs((value.netPnl as number) - netExpected) <= Math.max(1e-8, Math.abs(netExpected) * 1e-8)
     && value.bidAtExit === value.exitPremium
