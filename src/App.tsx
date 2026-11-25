@@ -52,6 +52,7 @@ import { formatAssetPrice, formatNumber, formatOptionPrice, formatQuantity, form
 import type { AssetClass, OptionQuote, OptionSide, PaperTrade, Underlying } from './lib/types';
 import { ASSET_CLASS_LABELS } from './lib/asset-class';
 import { PAPER_CAMPAIGN_CAPITAL, PAPER_CAMPAIGN_MAX_LOSS, PAPER_CAMPAIGN_PER_TRADE_CAP, canAllocatePaperCampaignTrade, summarizePaperCampaignBudget } from './lib/paper-campaign-budget';
+import { canCreateCanonicalPaperTrade, closeCanonicalPaperTrade, createCanonicalPaperTrade, estimateBinanceOptionsTradingFee } from './lib/paper-journal';
 const MarketDepthPanel = lazy(() => import('./components/MarketDepthPanel'));
 const OpportunityReview = lazy(() => import('./components/OpportunityReview'));
 const GreeksPanel = lazy(() => import('./components/GreeksPanel'));
@@ -153,6 +154,7 @@ function isPaperTradeClose(value: unknown, trade: Partial<PaperTrade>): boolean 
     && typeof close.realizedPnl === 'number' && Number.isFinite(close.realizedPnl)
     && typeof debit === 'number' && Number.isFinite(debit) && Math.abs(close.realizedPnl - (close.exitNetProceeds - debit)) <= 1e-8
     && Math.abs(close.exitGrossProceeds - close.exitNetProceeds - close.exitFees) <= 1e-8
+    && Math.abs(close.exitFees - close.exitExchangeFee - close.exitAdditionalFees) <= 1e-8
     && typeof close.currency === 'string' && close.currency === trade.premiumCurrencyAtEntry
     && typeof close.spotAtExit === 'number' && Number.isFinite(close.spotAtExit) && close.spotAtExit > 0
     && close.bidAskSource === 'BOOK_TICKER'
@@ -703,11 +705,9 @@ function App() {
     ? calculatePremiumCash({ economics: selectedQuote.contractEconomics, premiumPrice: selectedEntryPremium, contracts: 1 })
     : undefined;
   const canonicalPremiumPerContract = canonicalUnitPremium?.ok ? canonicalUnitPremium.value.amount : undefined;
-  const canonicalExchangeFeePerContract = selectedQuote.contractEconomics && dataMode === 'BINANCE'
-    && Number.isFinite(selectedQuote.takerFeeRate) && selectedQuote.takerFeeRate! >= 0
-    && Number.isFinite(selectedQuote.spot) && selectedQuote.spot > 0 && selectedQuote.unit > 0
-    ? Math.min(selectedQuote.takerFeeRate! * selectedQuote.spot * selectedQuote.unit, 0.1 * selectedEntryPremium)
-    : selectedQuote.contractEconomics && dataMode === 'BINANCE' ? undefined : 0;
+  const canonicalExchangeFeePerContract = selectedQuote.contractEconomics
+    ? dataMode === 'BINANCE' ? estimateBinanceOptionsTradingFee(selectedQuote, selectedEntryPremium, 1) : 0
+    : undefined;
   const canonicalTotalFees = canonicalExchangeFeePerContract === undefined
     ? Number.NaN
     : canonicalExchangeFeePerContract * safeQuantity + safeFees;
@@ -761,12 +761,12 @@ function App() {
   const expectedMove = hasModelGreeks ? getExpectedMove(underlyingReferencePrice, selectedQuote.iv, selectedQuote.daysToExpiry) : undefined;
   const scenarioSeries = useMemo(() => {
     if (selectedQuote.contractEconomics) {
-      return buildQuoteCashExpiryScenarioSeries(selectedQuote, selectedPremium, safeQuantity, safeFees) ?? [];
+      return buildQuoteCashExpiryScenarioSeries(selectedQuote, selectedEntryPremium, safeQuantity, canonicalTotalFees) ?? [];
     }
     return hasExplicitConsistentContractScale
       ? buildScenarioSeries(selectedQuote, selectedPremium, safeQuantity, safeFees)
       : [];
-  }, [hasExplicitConsistentContractScale, safeFees, safeQuantity, selectedPremium, selectedQuote]);
+  }, [canonicalTotalFees, hasExplicitConsistentContractScale, safeFees, safeQuantity, selectedEntryPremium, selectedPremium, selectedQuote]);
   const effectiveRiskBudget = campaignBudget.canAllocate ? Math.min(safeRiskBudget, campaignBudget.remaining) : 0;
   const rawAffordableQty = hasPremiumSizingCapability && premiumCostPerContract > 0
     ? Math.floor(Math.max(0, effectiveRiskBudget - safeFees) / premiumCostPerContract / quantityStep + 1e-9) * quantityStep
@@ -1078,7 +1078,6 @@ function App() {
       }
     }
     if (selectedQuote.contractEconomics) {
-      const { createCanonicalPaperTrade } = await import('./lib/paper-journal');
       const result = createCanonicalPaperTrade({
         quote: selectedQuote,
         sourceMode: dataMode,
@@ -1090,7 +1089,14 @@ function App() {
         spotAtEntry: selectedQuote.spot,
       });
       if (!result.ok) {
-        notify('لم يُسجّل الإدخال: يلزم عقد Binance موثّق وسعر سوق مرصود مع توقيت مصدر، ومقياس قسط صالح.');
+        const messages: Record<string, string> = {
+          CANONICAL_BINANCE_SIZED_ASK_REQUIRED: 'يلزم دفتر Binance موثّق ومحدّث مع Ask وحجم عرض واضح.',
+          INSUFFICIENT_ASK_SIZE_FOR_PAPER_ENTRY: 'حجم Ask المتاح أقل من كمية الدخول المطلوبة.',
+          PAPER_ENTRY_MARKET_SNAPSHOT_STALE_OR_FUTURE: 'توقيت Ask أو مؤشر الأصل قديم أو مستقبلي؛ انتظر تحديث السوق.',
+          ENTRY_PREMIUM_MUST_MATCH_OBSERVED_ASK: 'يجب أن يطابق سعر الدخول Ask المرصود.',
+          BINANCE_ENTRY_FEE_UNAVAILABLE: 'رسوم Binance غير متاحة لهذا العقد؛ لم نسجل تكلفة غير مكتملة.',
+        };
+        notify(messages[result.reason] ?? `لم يُسجّل الإدخال: ${result.reason}`);
         return;
       }
       const allocation = canAllocatePaperCampaignTrade(campaignBudget, result.premiumDebit, result.premiumCurrency, safeRiskBudget);
@@ -1159,7 +1165,6 @@ function App() {
       notify('لا توجد لقطة دفتر حالية لهذا العقد. انتظر تحديث bookTicker ثم أعد المحاولة.');
       return;
     }
-    const { closeCanonicalPaperTrade } = await import('./lib/paper-journal');
     const result = closeCanonicalPaperTrade({ trade, quote: liveQuote, closedAt: new Date().toISOString() });
     if (!result.ok) {
       const messages: Record<string, string> = {
@@ -1618,7 +1623,7 @@ function App() {
                   <div className="risk-row"><span>أقصى خسارة للمشتري</span><strong className="loss-value">{canCalculateMaxLoss ? formatMoney(maxLoss, 2, quoteAssetLabel ?? null) : 'غير متاح'}</strong></div>
                 </div>
                 <div className="analysis-footnote"><Info size={13} /><span>{contractScaleIssueMessage ? `${contractScaleIssueMessage} ` : ''}{dataMode !== 'DEMO' && selectedQuote.estimatedFields?.length ? `حقول مقدّرة أو افتراضية في هذا العقد: ${formatEstimatedFields(selectedQuote.estimatedFields)}. ` : ''}اتساق unit وcontractMultiplier إن توفرا هو تحقق داخلي من الحقول فقط، ولا يثبت مطابقة deliverables لمواصفات البورصة. دخول PAPER على Ask وخروج Bid يتطلبان حجم دفتر كافياً؛ رسوم Binance مقدّرة وفق معدل الرمز وصيغة الرسوم الرسمية، وأي رسوم إضافية أدخلها يدوياً.</span></div>
-                <button className="button button-paper" onClick={savePaperTrade} disabled={!hasExplicitConsistentContractScale && !selectedQuote.contractEconomics}><Plus size={16} /> أضف إلى الدفتر التجريبي</button>
+                <button className="button button-paper" onClick={savePaperTrade} disabled={selectedQuote.contractEconomics ? !canCreateCanonicalPaperTrade(selectedQuote, dataMode) || (dataMode === 'BINANCE' && (!Number.isFinite(selectedQuote.askQuantity) || selectedQuote.askQuantity! + 1e-9 < safeQuantity || estimateBinanceOptionsTradingFee(selectedQuote, selectedEntryPremium, 1) === undefined)) : !hasExplicitConsistentContractScale}><Plus size={16} /> أضف إلى الدفتر التجريبي</button>
                 <div className="no-signal"><ShieldAlert size={15} /><span>لا يصدر المختبر توصية شراء أو بيع.</span></div>
               </aside>
             </div>
