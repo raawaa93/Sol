@@ -145,9 +145,9 @@ test('inconsistent used and remaining values in a campaign summary fail closed',
 });
 
 
+
 test('closed PAPER trades retain entry allocation and add the explicit exit fee without netting sale proceeds', () => {
-  const trade = {
-    ...trade(),
+  const closedTrade = trade({
     premiumDebitAtEntry: 10,
     premiumCurrencyAtEntry: 'USDT',
     close: {
@@ -159,23 +159,22 @@ test('closed PAPER trades retain entry allocation and add the explicit exit fee 
       exitProceeds: 3.1,
       exitCurrency: 'USDT',
       exitSpot: 99000,
-      exitPriceSource: 'BID' as const,
-      exitBidAskSource: 'BOOK_TICKER' as const,
+      exitPriceSource: 'BID',
+      exitBidAskSource: 'BOOK_TICKER',
       exitBidQuantity: 10,
-      exitBidSizeUnit: 'CONTRACTS' as const,
+      exitBidSizeUnit: 'CONTRACTS',
       sourceTimestampsAtExit: { bookTicker: '2026-11-25T03:59:00Z', index: '2026-11-25T03:59:00Z' },
       realizedPnl: -6.9,
       realizedPnlCurrency: 'USDT',
     },
-  } as PaperTrade;
-  const summary = summarizePaperCampaignBudget([trade], 'USDT');
+  });
+  const summary = summarizePaperCampaignBudget([closedTrade], 'USDT');
   assert.equal(summary.used, 10.2);
   assert.equal(summary.remaining, 49.8);
 });
 
 test('closed PAPER trade with missing or mismatched exit fee currency fails closed', () => {
-  const trade = {
-    ...baseTrade,
+  const mismatchedFeeTrade = trade({
     premiumDebitAtEntry: 10,
     premiumCurrencyAtEntry: 'USDT',
     close: {
@@ -187,16 +186,16 @@ test('closed PAPER trade with missing or mismatched exit fee currency fails clos
       exitProceeds: 3.1,
       exitCurrency: 'USDT',
       exitSpot: 99000,
-      exitPriceSource: 'BID' as const,
-      exitBidAskSource: 'BOOK_TICKER' as const,
+      exitPriceSource: 'BID',
+      exitBidAskSource: 'BOOK_TICKER',
       exitBidQuantity: 10,
-      exitBidSizeUnit: 'CONTRACTS' as const,
+      exitBidSizeUnit: 'CONTRACTS',
       sourceTimestampsAtExit: { bookTicker: '2026-11-25T03:59:00Z', index: '2026-11-25T03:59:00Z' },
       realizedPnl: -6.9,
       realizedPnlCurrency: 'USDT',
     },
-  } as PaperTrade;
-  const summary = summarizePaperCampaignBudget([trade], 'USDT');
+  });
+  const summary = summarizePaperCampaignBudget([mismatchedFeeTrade], 'USDT');
   assert.equal(summary.unknownEntries, 1);
   assert.equal(summary.canAllocate, false);
 });
