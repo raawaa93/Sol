@@ -167,6 +167,8 @@ function isPaperTradeClose(value: unknown, trade: Partial<PaperTrade>): boolean 
     && typeof close.exitSpot === 'number' && Number.isFinite(close.exitSpot) && close.exitSpot > 0
     && close.exitPriceSource === 'BID'
     && close.exitBidAskSource === 'BOOK_TICKER'
+    && close.exitBidSizeUnit === 'CONTRACTS'
+    && typeof close.exitBidQuantity === 'number' && Number.isFinite(close.exitBidQuantity) && close.exitBidQuantity + 1e-9 >= (trade.quantity ?? Number.POSITIVE_INFINITY)
     && typeof close.realizedPnl === 'number' && Number.isFinite(close.realizedPnl)
     && Number.isFinite(entryDebit)
     && Math.abs(close.realizedPnl - (close.exitProceeds - entryDebit!)) < 1e-8
@@ -1271,6 +1273,8 @@ function App() {
       premiumCurrencyAtEntry: trade.premiumCurrencyAtEntry ?? '',
       priceSourceAtEntry: trade.priceSourceAtEntry ?? '',
       bidAskSourceAtEntry: trade.bidAskSourceAtEntry ?? '',
+      askQuantityAtEntry: trade.askQuantityAtEntry ?? '',
+      askSizeUnitAtEntry: trade.askSizeUnitAtEntry ?? '',
       contractEconomicsJSON: trade.contractEconomics ? JSON.stringify(trade.contractEconomics) : '',
       sourceTimestampsAtEntryJSON: trade.sourceTimestampsAtEntry ? JSON.stringify(trade.sourceTimestampsAtEntry) : '',
       closedAtUTC: trade.close?.closedAt ?? '',
