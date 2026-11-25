@@ -184,7 +184,7 @@ test('canonical Binance model Greek capability scales per-underlying values by v
 test('canonical Binance model Greek capability rejects missing provenance, timestamp or estimated model inputs', () => {
   assert.equal(hasCanonicalBinanceModelGreekCapability({
     ...canonicalGreekQuote,
-    sourceTimestamps: { index: canonicalGreekQuote.sourceTimestamps!.index },
+    sourceTimestamps: {},
   }, 'BINANCE', canonicalGreekNow), false);
   assert.equal(hasCanonicalBinanceModelGreekCapability({
     ...canonicalGreekQuote,
