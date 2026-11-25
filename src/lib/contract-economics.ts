@@ -35,6 +35,7 @@ export const BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS = {
   clearingProceduresRef: 'https://bin.bnbstatic.com/static/cms/cg08ou2ak0tn7mcplvfg/file/a86691f40d8155992c622715ce727d608d7f972ebb93ce90fa0106830e8a0a36.pdf',
   clearingProceduresAmendmentNoticeRef: 'https://bin.bnbstatic.com/static/cms/cg08ou2ak0tn7mcplvfg/file/fa97cef498054d23290ba2a132eda63816395d84766af2db7b433d906432dd0b.pdf',
   clearingProceduresAmendmentEffectiveDate: '2026-05-21',
+  clearingProceduresAmendmentScope: 'BINANCE_RCH',
   clearingProceduresVersion: '1.3',
   clearingProceduresConsolidatedTextVerified: false,
   scope: 'BINANCE_RIE_RCH',
@@ -223,6 +224,7 @@ export function validateContractEconomics(economics: unknown): ContractEconomics
       || legal.clearingProceduresRef !== BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS.clearingProceduresRef
       || legal.clearingProceduresAmendmentNoticeRef !== BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS.clearingProceduresAmendmentNoticeRef
       || legal.clearingProceduresAmendmentEffectiveDate !== BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS.clearingProceduresAmendmentEffectiveDate
+      || legal.clearingProceduresAmendmentScope !== BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS.clearingProceduresAmendmentScope
       || legal.clearingProceduresVersion !== BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS.clearingProceduresVersion
       || legal.clearingProceduresConsolidatedTextVerified !== BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS.clearingProceduresConsolidatedTextVerified
       || legal.scope !== BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS.scope
