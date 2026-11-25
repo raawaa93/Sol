@@ -268,16 +268,6 @@ export async function handleRequest(request: Request): Promise<Response> {
   const origin = request.headers.get('origin');
   const headers = getCorsHeaders(origin);
 
-  // Supabase's hosted ingress is fronted by Cloudflare. Accept only its
-  // server-populated country metadata; never trust a client-side country field.
-  const sourceCountry = request.headers.get('cf-ipcountry')?.trim().toUpperCase() ?? '';
-  if (!/^[A-Z]{2}$/.test(sourceCountry)) {
-    return jsonResponse({ error: 'Trusted source-country metadata is unavailable; market data is denied.', code: 'SOURCE_COUNTRY_UNVERIFIED' }, 503, origin);
-  }
-  if (sourceCountry !== 'SY') {
-    return jsonResponse({ error: 'Only requests classified as Syria by the trusted edge are allowed.', code: 'SOURCE_COUNTRY_NOT_ALLOWED' }, 403, origin);
-  }
-
   if (request.method === 'OPTIONS') {
     if (origin && !isAllowedOrigin(origin)) return new Response(null, { status: 403, headers });
     return new Response(null, { status: 204, headers });
