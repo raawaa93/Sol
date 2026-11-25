@@ -1148,6 +1148,10 @@ function App() {
   };
 
   const closePaperTrade = async (trade: PaperTrade) => {
+    if (paperJournalLoad.persistenceBlocked) {
+      notify('توقفت تعديلات دفتر PAPER حتى تُستعاد سلامة النسخة المحلية. نزّل النسخة الخام أولاً.');
+      return;
+    }
     if (dataMode !== 'BINANCE') {
       notify('إغلاق PAPER يتطلب لقطة Binance حديثة؛ لا نستخدم أسعار Demo أو CSV لإثبات الخروج.');
       return;
