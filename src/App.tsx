@@ -319,8 +319,11 @@ function App() {
   const [paperCloseEventsReady, setPaperCloseEventsReady] = useState(false);
   const [paperBudgetModule, setPaperBudgetModule] = useState<null | typeof import('./lib/paper-campaign-budget')>(null);
 
-  const [paperJournalLoad, setPaperJournalLoad] = useState(() => loadPaperJournal<PaperTrade>(localStorage, isPaperTrade));
-  const [trades, setTrades] = useState<PaperTrade[]>(paperJournalLoad.entries);
+  const [paperJournalLoad, setPaperJournalLoad] = useState<PaperJournalLoadResult<PaperTrade>>({
+    entries: [], rejectedCount: 0, backupAvailable: false, persistenceBlocked: true, parseError: false,
+  });
+  const [paperJournalReady, setPaperJournalReady] = useState(false);
+  const [trades, setTrades] = useState<PaperTrade[]>([]);
   const closedTradeIds = useMemo(
     () => new Set(paperCloseEvents.filter((event) => trades.some((trade) => isVisiblePaperCloseEventForTrade(event, trade))).map((event) => event.tradeId)),
     [paperCloseEvents, trades],
@@ -330,6 +333,24 @@ function App() {
   const [toast, setToast] = useState('');
   const [csvWarnings, setCsvWarnings] = useState<string[]>([]);
   const [showAllCsvWarnings, setShowAllCsvWarnings] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    import('./lib/paper-journal-storage').then(({ loadPaperJournal }) => {
+      if (!active) return;
+      const loaded = loadPaperJournal<PaperTrade>(localStorage, isPaperTrade);
+      setPaperJournalLoad(loaded);
+      setTrades(loaded.entries);
+      setPaperJournalReady(true);
+    }).catch(() => {
+      if (!active) return;
+      setPaperJournalLoad({
+        entries: [], rejectedCount: 0, backupAvailable: false, persistenceBlocked: true, parseError: false,
+      });
+      setPaperJournalReady(true);
+    });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     let active = true;
