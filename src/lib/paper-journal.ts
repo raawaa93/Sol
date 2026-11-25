@@ -30,7 +30,7 @@ function hasObservedPriceTimestamp(quote: OptionQuote, source: NonNullable<Optio
   const timestamps = quote.sourceTimestamps;
   if (!timestamps) return false;
   if (source === 'MARK') return Boolean(timestamps.markPrice);
-  if (source === 'MID' || source === 'BID' || source === 'ASK') return Boolean(timestamps.bookTicker || timestamps.optionTicker);
+  if (source === 'MID' || source === 'BID' || source === 'ASK') return Boolean(timestamps.bookTicker || timestamps.optionTicker || timestamps.ticker);
   return false;
 }
 
