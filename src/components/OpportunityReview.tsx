@@ -160,7 +160,7 @@ export default function OpportunityReview({ quotes, market, underlying, dataMode
                   : 'قياس محايد للمخاطر وفق النموذج والمعدل والـCarry المسجلين في العقد، قبل الرسوم والانزلاق؛ ليس احتمالاً واقعياً ولا توقعاً للسوق.'}</small>}
                 {quote.pricingStatus === 'ASSUMED' && <small className="review-estimated">Greeks مبنية على افتراضات: {quote.pricingReason ?? 'تحقق من المعدل والـcarry قبل الاعتماد عليها.'}</small>}
                 {quote.pricingStatus === 'OBSERVED_ONLY' && <small className="review-estimated">لا يوجد نموذج تسعير موثّق لهذا العقد؛ لا تُستخدم Greeks لتوليد احتمال ربح.</small>}
-                {quote.contractEconomics && !canonicalMetrics && <small className="review-estimated">تم إيقاف EV المحايد حتى تتوفر لقطة markIV حديثة، ومعدل فائدة ومؤشر تسوية مؤرخان، وعرض/طلب من مصدر سوق متسق.</small>}
+                {quote.contractEconomics && !canonicalMetrics && <small className="review-estimated">تم إيقاف EV المحايد حتى تكتمل مرجعية العقد القانونية وتتوفر لقطة markIV حديثة، ومعدل فائدة ومؤشر تسوية مؤرخان، وعرض/طلب حديث من مصدر سوق متسق.</small>}
                 {estimated && <small className="review-estimated">حقول تقديرية: {estimated}</small>}
                 <span className="review-open">افتح العقد في الماسح</span>
               </button>
