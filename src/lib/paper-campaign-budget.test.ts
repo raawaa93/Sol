@@ -143,3 +143,26 @@ test('inconsistent used and remaining values in a campaign summary fail closed',
     'INVALID_CAMPAIGN_BUDGET',
   );
 });
+
+
+test('campaign currency metadata cannot claim USD eligibility for a non-dollar currency', () => {
+  const summary = summarizePaperCampaignBudget([], 'USDT');
+  assert.equal(
+    canAllocatePaperCampaignTrade({ ...summary, currency: 'EUR' }, 10, 'EUR').reason,
+    'INVALID_CAMPAIGN_BUDGET',
+  );
+  assert.equal(
+    canAllocatePaperCampaignTrade({ ...summary, supportedCurrency: false }, 10, 'USDT').reason,
+    'INVALID_CAMPAIGN_BUDGET',
+  );
+});
+
+test('invalid configured campaign cap produces a closed budget', () => {
+  const summary = summarizePaperCampaignBudget([], 'USDT', Number.NaN);
+  assert.equal(summary.cap, 0);
+  assert.equal(summary.canAllocate, false);
+  assert.equal(
+    canAllocatePaperCampaignTrade(summary, 1, 'USDT').reason,
+    'INVALID_CAMPAIGN_BUDGET',
+  );
+});
