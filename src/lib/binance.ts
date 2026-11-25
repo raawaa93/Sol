@@ -100,6 +100,12 @@ export interface BinanceOptionMarkPriceEvent {
   eventTime: number;
   markPrice: number;
   indexPrice?: number;
+  bestBid?: number;
+  bestAsk?: number;
+  bestBidQuantity?: number;
+  bestAskQuantity?: number;
+  bidIv?: number;
+  askIv?: number;
   /** Binance websocket vo is venue volatility, not markIV. */
   venueVolatility?: number;
   riskFreeRate?: number;
@@ -134,6 +140,12 @@ export function parseBinanceOptionMarkPriceMessage(payload: unknown): BinanceOpt
     const markPrice = positiveNumber(data.mp as string | number | undefined);
     if (eventTime === undefined || eventTime <= 0 || markPrice === undefined) return [];
     const indexPrice = positiveNumber(data.i as string | number | undefined);
+    const bestBid = positiveNumber(data.bo as string | number | undefined);
+    const bestAsk = positiveNumber(data.ao as string | number | undefined);
+    const bestBidQuantity = finiteNumber(data.bq as string | number | undefined);
+    const bestAskQuantity = finiteNumber(data.aq as string | number | undefined);
+    const bidIv = positiveNumber(data.b as string | number | undefined);
+    const askIv = positiveNumber(data.a as string | number | undefined);
     const venueVolatility = positiveNumber(data.vo as string | number | undefined);
     const riskFreeRate = finiteNumber(data.rf as string | number | undefined);
     const sourceGreeks = {
@@ -147,6 +159,12 @@ export function parseBinanceOptionMarkPriceMessage(payload: unknown): BinanceOpt
       eventTime,
       markPrice,
       ...(indexPrice !== undefined ? { indexPrice } : {}),
+      ...(bestBid !== undefined ? { bestBid } : {}),
+      ...(bestAsk !== undefined ? { bestAsk } : {}),
+      ...(bestBidQuantity !== undefined && bestBidQuantity >= 0 ? { bestBidQuantity } : {}),
+      ...(bestAskQuantity !== undefined && bestAskQuantity >= 0 ? { bestAskQuantity } : {}),
+      ...(bidIv !== undefined ? { bidIv } : {}),
+      ...(askIv !== undefined ? { askIv } : {}),
       ...(venueVolatility !== undefined ? { venueVolatility } : {}),
       ...(riskFreeRate !== undefined ? { riskFreeRate } : {}),
       sourceGreeks,
@@ -222,11 +240,23 @@ export function applyBinanceOptionMarkPrice(
     : 0;
   if (event.eventTime < previousTimestamp) return quote;
 
+  const bookTickerTimestamp = quote.sourceTimestamps?.bookTicker
+    ? Date.parse(quote.sourceTimestamps.bookTicker)
+    : Number.NaN;
+  const bookTickerFresh = Number.isFinite(bookTickerTimestamp)
+    && nowMs >= bookTickerTimestamp && nowMs - bookTickerTimestamp <= 5_000;
+  const useMarkBid = !bookTickerFresh && event.bestBid !== undefined;
+  const useMarkAsk = !bookTickerFresh && event.bestAsk !== undefined;
   const updated: OptionQuote = {
     ...quote,
     markPrice: event.markPrice,
     priceSource: 'MARK',
     ...(event.indexPrice !== undefined ? { spot: event.indexPrice } : {}),
+    ...(useMarkBid ? { bid: event.bestBid, ...(event.bestBidQuantity !== undefined ? { bidQuantity: event.bestBidQuantity } : {}) } : {}),
+    ...(useMarkAsk ? { ask: event.bestAsk, ...(event.bestAskQuantity !== undefined ? { askQuantity: event.bestAskQuantity } : {}) } : {}),
+    ...(useMarkBid || useMarkAsk ? { bidAskSource: useMarkBid && useMarkAsk ? 'MARK_PRICE' as const : undefined } : {}),
+    ...(event.bidIv !== undefined ? { bidIv: event.bidIv } : {}),
+    ...(event.askIv !== undefined ? { askIv: event.askIv } : {}),
     ...(event.venueVolatility !== undefined ? { venueVolatility: event.venueVolatility } : {}),
     ...(event.riskFreeRate !== undefined ? {
       riskFreeRate: event.riskFreeRate,
