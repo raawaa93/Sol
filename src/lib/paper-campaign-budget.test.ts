@@ -147,7 +147,7 @@ test('inconsistent used and remaining values in a campaign summary fail closed',
 
 test('closed PAPER trades retain entry allocation and add the explicit exit fee without netting sale proceeds', () => {
   const trade = {
-    ...baseTrade,
+    ...trade(),
     premiumDebitAtEntry: 10,
     premiumCurrencyAtEntry: 'USDT',
     close: {
