@@ -256,16 +256,16 @@ test('underlying-unit displayed size is compared against contracts times contrac
 });
 
 
-test('OPTION_TICKER BBO provenance uses the optionTicker event clock, not the 24-hour ticker clock', () => {
+test('OPTION_TICKER BBO provenance uses the REST ticker snapshot clock, not the optionTicker last-price clock', () => {
   const result = replayLongOptionSnapshots([
     quote('2026-11-24T10:00:00.100Z', {
       bidAskSource: 'OPTION_TICKER',
-      sourceTimestamps: { optionTicker: '2026-11-24T10:00:00.000Z', ticker: '2026-11-24T08:00:00.000Z' },
+      sourceTimestamps: { ticker: '2026-11-24T10:00:00.000Z', optionTicker: '2026-11-24T08:00:00.000Z' },
       sourceReceivedAt: { bidAsk: '2026-11-24T10:00:00.100Z' },
     }),
     quote('2026-11-24T11:00:00.100Z', {
       bidAskSource: 'OPTION_TICKER',
-      sourceTimestamps: { optionTicker: '2026-11-24T11:00:00.000Z', ticker: '2026-11-24T08:00:00.000Z' },
+      sourceTimestamps: { ticker: '2026-11-24T11:00:00.000Z', optionTicker: '2026-11-24T08:00:00.000Z' },
       sourceReceivedAt: { bidAsk: '2026-11-24T11:00:00.100Z' },
     }),
   ], config);
