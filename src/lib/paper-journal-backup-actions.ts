@@ -4,6 +4,7 @@ import {
   mergePaperJournalBackup,
   parsePaperJournalBackup,
 } from './paper-journal-backup.ts';
+import { PAPER_JOURNAL_STORAGE_KEY } from './paper-journal-storage.ts';
 import type { PaperJournalStorage } from './paper-journal-storage.ts';
 
 export function downloadPaperJournalJsonBackup<T>(
@@ -31,7 +32,6 @@ export function importPaperJournalJsonBackup<T extends { id: string }>(
   current: T[],
   isValid: (value: unknown) => value is T,
   storage: PaperJournalStorage,
-  storageKey: string,
 ): { ok: true; entries: T[]; added: number } | { ok: false; message: string; persistenceBlocked?: true } {
   const parsed = parsePaperJournalBackup(raw, isValid);
   if (!parsed.ok) {
@@ -57,7 +57,7 @@ export function importPaperJournalJsonBackup<T extends { id: string }>(
   if (added === 0) return { ok: true, entries: merged.entries, added: 0 };
   let original: string | null;
   try {
-    original = storage.getItem(storageKey);
+    original = storage.getItem(PAPER_JOURNAL_STORAGE_KEY);
   } catch {
     return { ok: false, persistenceBlocked: true, message: 'تعذر قراءة الدفتر الحالي؛ أوقفنا الاستيراد والكتابة حتى تعيد تحميل الصفحة وتتحقق من النسخة الخام.' };
   }
@@ -73,7 +73,7 @@ export function importPaperJournalJsonBackup<T extends { id: string }>(
     if (storage.getItem(storageKey) !== original) {
       return { ok: false, persistenceBlocked: true, message: 'تغير الدفتر أثناء الاستيراد؛ أوقفنا الكتابة ولم نكتب فوق التعديل الآخر. أعد تحميل الصفحة.' };
     }
-    storage.setItem(storageKey, serialized);
+    storage.setItem(PAPER_JOURNAL_STORAGE_KEY, serialized);
     if (storage.getItem(storageKey) !== serialized) {
       return { ok: false, persistenceBlocked: true, message: 'تعذر التحقق من حفظ النسخة المدمجة؛ أوقفنا الكتابة. نزّل الملف الأصلي ثم أعد تحميل الصفحة قبل المتابعة.' };
     }
