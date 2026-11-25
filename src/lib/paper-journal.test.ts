@@ -64,6 +64,7 @@ const quote: OptionQuote = {
     bookTicker: '2026-11-25T03:00:00Z',
     markPrice: '2026-11-25T03:00:00Z',
   },
+  sourceReceivedAt: { bidAsk: '2026-11-25T03:00:01Z' },
 };
 
 const input = {
@@ -279,6 +280,7 @@ test('canonical PAPER close uses fresh executable Bid and sufficient displayed c
       bookTicker: '2026-11-25T03:01:30Z',
       index: '2026-11-25T03:01:30Z',
     },
+    sourceReceivedAt: { bidAsk: '2026-11-25T03:01:31Z' },
   };
   const result = createCanonicalPaperCloseEvent({
     trade: entry.trade,
@@ -310,6 +312,7 @@ test('canonical PAPER close rejects insufficient Bid size, wrong contract and st
       bookTicker: '2026-11-25T03:01:30Z',
       index: '2026-11-25T03:01:30Z',
     },
+    sourceReceivedAt: { bidAsk: '2026-11-25T03:01:31Z' },
   };
   const base = {
     trade: entry.trade,
