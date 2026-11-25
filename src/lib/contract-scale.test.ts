@@ -17,11 +17,11 @@ const binanceCrypto = {
 
 test('synthetic Demo scale is trusted only in Demo mode', () => {
   assert.equal(getContractScaleIssue(demo, 'DEMO'), undefined);
-  assert.equal(getContractScaleIssue(demo, 'CSV', canonicalGreekNow), 'UNSUPPORTED_CONTRACT_SCALE');
+  assert.equal(getContractScaleIssue(demo, 'CSV'), 'UNSUPPORTED_CONTRACT_SCALE');
 });
 
 test('documented Binance European cash-settled crypto uses exchange unit in Binance mode', () => {
-  assert.equal(getContractScaleIssue(binanceCrypto, 'BINANCE', canonicalGreekNow), undefined);
+  assert.equal(getContractScaleIssue(binanceCrypto, 'BINANCE'), undefined);
   assert.equal(getContractScaleIssue({ ...binanceCrypto, venue: 'OTHER' }, 'BINANCE'), 'UNSUPPORTED_CONTRACT_SCALE');
   assert.equal(getContractScaleIssue({ ...binanceCrypto, settlementAsset: 'BTC' }, 'BINANCE'), 'UNSUPPORTED_CONTRACT_SCALE');
 });
