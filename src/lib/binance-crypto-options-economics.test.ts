@@ -43,6 +43,9 @@ test('Binance crypto adapter keeps premium and underlying delivery scales indepe
   const wrongProductFamily = structuredClone(economics);
   wrongProductFamily.provenance.rawFields!.contractType = 'TRADFI_OPTIONS';
   assert.equal(validateContractEconomics(wrongProductFamily).adapterReady, false);
+  const wrongExchangeSource = structuredClone(economics);
+  wrongExchangeSource.provenance.sourceRef = 'https://example.invalid/exchangeInfo';
+  assert.equal(validateContractEconomics(wrongExchangeSource).adapterReady, false);
 
   const premium = calculatePremiumCash({ economics, premiumPrice: 12, contracts: 3 });
   assert.deepEqual(premium, {
