@@ -23,7 +23,29 @@ test('Binance crypto adapter keeps premium and underlying delivery scales indepe
   assert.equal(economics.exercise.cashSettlement?.reference, 'INDEX');
   assert.equal(economics.exercise.settlementCurrency, 'USDT');
   assert.equal(economics.provenance.status, 'PROVIDER_VERIFIED');
+  assert.equal(economics.provenance.legalTerms?.scope, 'BINANCE_RIE_RCH');
+  assert.equal(economics.provenance.legalTerms?.effectiveDate, '2026-01-05');
+  assert.equal(economics.provenance.legalTerms?.accountApplicability, 'UNVERIFIED');
+  assert.ok((economics.provenance.legalTerms?.contractSpecificationRef ?? '').includes('bin.bnbstatic.com'));
+  assert.ok((economics.provenance.legalTerms?.clearingProceduresRef ?? '').includes('bin.bnbstatic.com'));
   assert.equal(validateContractEconomics(economics).adapterReady, true);
+  const missingLegalTerms = structuredClone(economics);
+  delete missingLegalTerms.provenance.legalTerms;
+  const missingLegalValidation = validateContractEconomics(missingLegalTerms);
+  assert.equal(missingLegalValidation.valid, true, 'the provider quote/premium fields remain valid');
+  assert.equal(missingLegalValidation.adapterReady, false);
+  assert.ok(missingLegalValidation.unsupportedReasons.includes('MISSING_LEGAL_TERMS_PROVENANCE'));
+  const premiumOnly = calculatePremiumCash({ economics: missingLegalTerms, premiumPrice: 12, contracts: 3 });
+  assert.equal(premiumOnly.ok, true, 'premium scale is independently sourced from exchangeInfo');
+  const missingProductFields = structuredClone(economics);
+  delete missingProductFields.provenance.rawFields;
+  assert.equal(validateContractEconomics(missingProductFields).adapterReady, false);
+  const wrongProductFamily = structuredClone(economics);
+  wrongProductFamily.provenance.rawFields!.contractType = 'TRADFI_OPTIONS';
+  assert.equal(validateContractEconomics(wrongProductFamily).adapterReady, false);
+  const wrongExchangeSource = structuredClone(economics);
+  wrongExchangeSource.provenance.sourceRef = 'https://example.invalid/exchangeInfo';
+  assert.equal(validateContractEconomics(wrongExchangeSource).adapterReady, false);
 
   const premium = calculatePremiumCash({ economics, premiumPrice: 12, contracts: 3 });
   assert.deepEqual(premium, {
