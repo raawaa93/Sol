@@ -77,7 +77,7 @@ test('computes IV Rank and IV Percentile from 30 distinct daily observations', (
   assert.ok(Math.abs((result.rank ?? 0) - ((0.35 - 0.2) / (0.48 - 0.2)) * 100) < 1e-9);
   assert.equal(result.percentile, 50);
   assert.equal(result.minimumIV, 0.2);
-  assert.equal(result.maximumIV, 0.48);
+  assert.ok(Math.abs((result.maximumIV ?? 0) - 0.48) < 1e-12);
   assert.equal(result.isPartialHistory, true);
 });
 
