@@ -309,3 +309,18 @@ PR #205 sets the default per-trade premium-plus-fees sizing cap to 60 quote unit
 Verification: PR #204 CI 45572889900 (303/303 tests, build, bundle, 18/18 Playwright), Lighthouse 45572889852 (99/100 performance, 100 accessibility/best-practices/SEO), Project Context Guard 45572889839. PR #205 CI 45573552188 (303/303 tests, build, bundle, 18/18 Playwright), Lighthouse 45573547735 (98/100 performance, 100 accessibility/best-practices/SEO), Project Context Guard 45573547738.
 
 Remaining: no historical BBO corpus, scheduled collector, cloud archive, full depth/queue/partial-fill/latency/expiry-settlement/hedging model, measured strategy edge or live trading.
+
+## تحديث سقف ميزانية PAPER للحملة — PR #209
+
+**PR #209 مُدمج:** `f413ba8a5453a730fe4649d90c648f27390499b1`.
+
+- رأس مال الحملة الافتراضي 200 USD.
+- سقف إجمالي صارم 60 USD/USDT من الأقساط والرسوم المسجلة في دفتر PAPER.
+- سقف كل محاولة 20، والحاسبة تستخدم الرصيد المتبقي من سقف الحملة؛ ومسار الحفظ يعيد التحقق حتى إذا غيّر المستخدم الكمية يدوياً.
+- كل إدخال PAPER يبقى محجوزاً حتى تصدير الدفتر وإعادة ضبطه صراحةً؛ لا توجد حالياً آلية لإغلاق صفقة افتراضية وتسجيل P&L محقق.
+- الإدخالات القديمة ذات التكلفة غير المعروفة أو العملات المختلطة توقف الإضافة بدلاً من افتراض وحدة/سعر صرف. USD وUSDT حملتان منفصلتان بلا FX ضمني.
+- إعادة ضبط الدفتر تتطلب تأكيداً وتحذّر من ضرورة التصدير أولاً.
+
+**التحقق:** CI 45574730769 نجح: 309/309 اختباراً، البناء الإنتاجي، حد الحزمة، و18/18 اختبار Playwright؛ Lighthouse 45574730886 وProject Context Guard 45574730851 نجحا.
+
+هذا حد ميزانية داخل دفتر PAPER المحلي فقط، وليس ضابط خسارة على حساب Binance ولا ضماناً للخسارة الفعلية في التداول الحي.
