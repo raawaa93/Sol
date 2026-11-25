@@ -41,7 +41,7 @@ function exchangeInfoFixture() {
     serverTime: EVENT_MS,
     optionContracts: [{
       baseAsset: 'BTC', quoteAsset: 'USDT', underlying: 'BTCUSDT',
-      settleAsset: 'USDT', contractType: 'CRYPTO_OPTIONS', underlyingType: 'CRYPTO',
+      settleAsset: 'USDT',
     }],
     optionSymbols: [{
       symbol: SYMBOL, underlying: 'BTCUSDT', quoteAsset: 'USDT', side: 'CALL',
@@ -89,7 +89,11 @@ test('exchangeInfo maps only explicit Binance Crypto Options contract terms with
   assert.equal(spec.contractSpecAvailableAt, RECEIVED);
   assert.equal(mapVerifiedBinanceContractSpec({
     ...exchangeInfoFixture(),
-    optionContracts: [{ ...exchangeInfoFixture().optionContracts[0], underlyingType: 'EQUITY' }],
+    optionSymbols: [{ ...exchangeInfoFixture().optionSymbols[0], underlyingType: 'EQUITY' }],
+  }, SYMBOL, RECEIVED), null);
+  assert.equal(mapVerifiedBinanceContractSpec({
+    ...exchangeInfoFixture(),
+    optionSymbols: [{ ...exchangeInfoFixture().optionSymbols[0], contractType: undefined }],
   }, SYMBOL, RECEIVED), null);
   assert.equal(mapVerifiedBinanceContractSpec({
     ...exchangeInfoFixture(),
