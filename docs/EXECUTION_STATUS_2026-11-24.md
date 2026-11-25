@@ -144,11 +144,18 @@ No production database connection/dump, migration, data deletion, credential rea
 
 ### Remaining P0 integration audit
 
-A fresh mainline code-search audit confirmed that canonical quote-level functions in `src/lib/quote-economics.ts` are not yet called by application consumers outside their tests. The live app still uses legacy scalar `getBreakeven`, `getMaxLoss`, `getExpiryPnl` and `buildScenarioSeries` paths; the narrow `getContractScaleIssue` guard keeps non-unit/unverified profiles blocked. Binance canonical economics are attached to live `OptionQuote` objects, but the app has not yet routed its cost/risk/scenario calculations through the canonical capability functions. Issue #91 remains open and must not be marked complete until that integration and conformance coverage are delivered.
+Canonical economics are now wired into the live Binance path in stages:
+- PR #167 routes premium debit/affordability and cash-settled break-even, max-loss and expiry scenarios through separate canonical premium and settlement multipliers.
+- PR #168 blocks legacy scalar analytics for every quote carrying canonical terms, including unit=1.
+- PR #170 adds a risk-neutral expiry diagnostic for verified Binance European cash-settled INDEX contracts, with observed IV/rate and timestamp gates.
+- PR #172/#175 add a PAPER entry audit snapshot with strict price/source consistency.
+- PR #177 adds position Greeks/shock sensitivities for a narrow verified model adapter; PR #180 corrects the `vo` versus explicit mark-IV provenance before treating those Greeks as enabled.
 
-### Archive worktree availability
+Still incomplete: PAPER mark-to-market, amendments, exits and simulated P&L; full point-in-time replay; portfolio-level risk aggregation; and verified strategy performance. Issue #91 remains open.
 
-A remote branch search for `research/options-pit-archive-2026-11-24` returned no branch. The previously reported local Copilot workspace is not exposed through the current GitHub connector, so its unpushed local diff cannot be inspected or safely continued from this session. No replacement archive implementation was created; the issue remains blocked on recovering/publishing that existing local work or receiving an accessible patch. Mainline archive/PIT/collector delivery remains NOT VERIFIED.
+### Archive worktree and replacement foundation
+
+The old isolated worktree `research/options-pit-archive-2026-11-24` remains unavailable through the current GitHub integration. A replacement local archive foundation is being developed in PR #176: content-addressed append-only segments, integrity/idempotency, writer lease and crash recovery, PIT gates, contract-spec snapshots and fake-transport parsers. PR #176 is not merged yet and does not include a real network transport or durable cloud storage. No live capture or production persistence has started.
 
 
 ## Canonical Binance cash-settlement integration merged — 25 November 2026
@@ -156,7 +163,7 @@ A remote branch search for `research/options-pit-archive-2026-11-24` returned no
 - PR #167 merged as `acd5efcdbec53c2fbcee27a0a4e198a85454eb64`: https://github.com/raawaa93/Sol/pull/167
 - Verified the Binance live adapter attaches provider-verified `contractEconomics` from explicit exchangeInfo product-family fields; source index timestamp is retained.
 - Premium debit and affordability now use the independent premium multiplier; break-even, max loss and expiry scenarios use the independent cash-settlement multiplier.
-- No legacy scalar fallback is allowed for a quote carrying canonical terms, even at unit=1. Position Greeks, PAPER, EV and replay remain gated until canonical/model-aware consumers are implemented.
+- No legacy scalar fallback is allowed for a quote carrying canonical terms, even at unit=1. Dedicated capabilities now exist for EV (#170), PAPER entry capture (#172/#175) and position Greeks (#177); PAPER lifecycle valuation and replay remain gated.
 - PR CI, build, bundle budget, Playwright journeys, Project Context Guard and Lighthouse passed. Published-site smoke-test job was skipped by workflow conditions; no post-merge published-site verification is claimed.
 - A subsequent audit identified that the standalone GreeksPanel and direct risk-neutral EV function still accepted the old unit=1 parity path for canonical quotes. A dedicated follow-up branch now centralizes the legacy capability gate and adds regression tests; see PR to follow.
 
@@ -168,7 +175,7 @@ A remote branch search for `research/options-pit-archive-2026-11-24` returned no
 - Separates premium and cash-settlement multipliers; calculates probability of ITM and probability of positive expiry P&L independently; includes supplied fees in expiry P&L.
 - Requires observed IV, valid timestamped index, observed risk-free rate and model metadata; 0% carry remains an explicit assumption in UI.
 - Binance per-underlying model price/Greeks normalize to per-contract only through verified canonical cash scale (premium multiplier 1). Unknown products remain blocked.
-- CI, Project Context Guard and Lighthouse passed. Published-site smoke test skipped by workflow conditions. No strategy profitability or historical edge claim.
+- CI, Project Context Guard and Lighthouse passed on PR head; its own published-site smoke job was skipped. A later mainline deployment and published-site smoke test passed after PR #172 and PR #177. No strategy profitability or historical edge claim.
 - Remaining canonical work: model-aware position Greeks/shock P&L, PAPER lifecycle valuation and replay. PR #169 entry-only PAPER snapshot is under verification.
 
 
