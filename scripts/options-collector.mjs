@@ -174,13 +174,15 @@ export function createBinanceOptionsWebSocketTransport({
       url.searchParams.set('streams', streams.join('/'));
       return (async function* () {
         let reconnects = 0;
+        let connectionCount = 0;
         while (!signal?.aborted) {
           const socket = new WebSocketImpl(url.toString());
           let closeEvent = null;
           let socketError = false;
           for await (const event of readWebSocketEvents(socket, signal)) {
             if (event.type === 'open') {
-              yield { type: 'reconnect', reason: 'PUBLIC_OPTIONS_STREAM_CONNECTED' };
+              yield { type: connectionCount === 0 ? 'connect' : 'reconnect', reason: 'PUBLIC_OPTIONS_STREAM_CONNECTED' };
+              connectionCount += 1;
             } else if (event.type === 'message') {
               yield { type: 'message', data: event.data };
             } else if (event.type === 'error') {
