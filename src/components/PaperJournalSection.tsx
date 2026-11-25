@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 import type { PaperJournalLoadResult } from '../lib/paper-journal-storage';
 import type { PaperTrade } from '../lib/types';
-import { PAPER_JOURNAL_STORAGE_KEY } from '../lib/paper-journal-storage';
 import PaperJournalTrades from './PaperJournalTrades';
 
 interface PaperJournalSectionProps {
@@ -20,9 +19,9 @@ interface PaperJournalSectionProps {
   onClose: (trade: PaperTrade) => void | Promise<void>;
   onExportTrades: () => void;
   onExportIVHistory: () => void | Promise<void>;
-  isValidTrade: (value: unknown) => value is PaperTrade;
-  onTradesImported: (entries: PaperTrade[]) => void;
-  onNotify: (message: string) => void;
+  onExportJson: () => void | Promise<void>;
+  onImportBackup: (raw: string) => void | Promise<void>;
+  onImportBackupError: (message: string) => void;
   onClearJournal: () => void;
   onExportRecovery: () => void;
   onExportOriginal: () => void;
@@ -39,42 +38,15 @@ export default function PaperJournalSection({
   onClose,
   onExportTrades,
   onExportIVHistory,
-  isValidTrade,
-  onTradesImported,
-  onNotify,
+  onExportJson,
+  onImportBackup,
+  onImportBackupError,
   onClearJournal,
   onExportRecovery,
   onExportOriginal,
   onRetryPersistence,
   onNavigateToScanner,
 }: PaperJournalSectionProps) {
-  const exportPaperJournalJson = async () => {
-    const { downloadPaperJournalJsonBackup } = await import('../lib/paper-journal-backup-actions');
-    const result = downloadPaperJournalJsonBackup(trades, isValidTrade);
-    onNotify(result.ok
-      ? `تم تنزيل نسخة PAPER JSON (${result.count} سجل)؛ البيانات لم تُرفع إلى أي خادم.`
-      : result.message);
-  };
-
-  const importPaperJournalJson = async (raw: string) => {
-    if (paperJournalLoad.persistenceBlocked) {
-      onNotify('الاستيراد متوقف لحماية نسخة الاستعادة؛ نزّل النسخ الخام أولاً.');
-      return;
-    }
-    const { importPaperJournalJsonBackup } = await import('../lib/paper-journal-backup-actions');
-    const result = importPaperJournalJsonBackup(raw, trades, isValidTrade, localStorage);
-    if (!result.ok) {
-      onNotify(result.message);
-      return;
-    }
-    if (result.added === 0) {
-      onNotify('النسخة صالحة، ولا تحتوي صفقات جديدة غير الموجودة حالياً.');
-      return;
-    }
-    onTradesImported(result.entries);
-    onNotify(`تم استيراد ${result.added} صفقة جديدة محلياً دون استبدال السجلات الموجودة.`);
-  };
-
   return (
     <section className="section-anchor journal-section" id="journal">
       <div className="section-title-row">
@@ -82,18 +54,18 @@ export default function PaperJournalSection({
         <div className="journal-actions">
           <button className="button button-ghost" onClick={onExportTrades}><Download size={14} /> تصدير CSV</button>
           <button className="button button-ghost" onClick={onExportIVHistory}><Download size={14} /> نسخة IV JSON</button>
-          <button className="button button-ghost" onClick={exportPaperJournalJson} disabled={!trades.length}><Download size={14} /> نسخة الدفتر JSON</button>
+          <button className="button button-ghost" onClick={onExportJson} disabled={!trades.length}><Download size={14} /> نسخة الدفتر JSON</button>
           <label className="button button-ghost journal-import-button">استيراد نسخة JSON
             <input aria-label="استيراد نسخة دفتر PAPER JSON" type="file" accept="application/json,.json" disabled={paperJournalLoad.persistenceBlocked} onChange={async (event) => {
               const file = event.target.files?.[0];
               if (!file) return;
               if (file.size > 5 * 1024 * 1024) {
-                onNotify('النسخة أكبر من الحد المسموح 5 MiB.');
+                onImportBackupError('النسخة أكبر من الحد المسموح 5 MiB.');
                 event.target.value = '';
                 return;
               }
-              try { await importPaperJournalJson(await file.text()); }
-              catch { onNotify('تعذر قراءة ملف النسخة الاحتياطية.'); }
+              try { await onImportBackup(await file.text()); }
+              catch { onImportBackupError('تعذر قراءة ملف النسخة الاحتياطية.'); }
               event.target.value = '';
             }} />
           </label>
