@@ -19,6 +19,8 @@ interface PaperJournalSectionProps {
   onClose: (trade: PaperTrade) => void | Promise<void>;
   onExportTrades: () => void;
   onExportIVHistory: () => void | Promise<void>;
+  onExportJson: () => void | Promise<void>;
+  onImportBackup: (raw: string) => void | Promise<void>;
   onClearJournal: () => void;
   onExportRecovery: () => void;
   onExportOriginal: () => void;
@@ -35,6 +37,8 @@ export default function PaperJournalSection({
   onClose,
   onExportTrades,
   onExportIVHistory,
+  onExportJson,
+  onImportBackup,
   onClearJournal,
   onExportRecovery,
   onExportOriginal,
@@ -48,6 +52,21 @@ export default function PaperJournalSection({
         <div className="journal-actions">
           <button className="button button-ghost" onClick={onExportTrades}><Download size={14} /> تصدير CSV</button>
           <button className="button button-ghost" onClick={onExportIVHistory}><Download size={14} /> نسخة IV JSON</button>
+          <button className="button button-ghost" onClick={onExportJson} disabled={!trades.length}><Download size={14} /> نسخة الدفتر JSON</button>
+          <label className="button button-ghost journal-import-button">استيراد نسخة JSON
+            <input aria-label="استيراد نسخة دفتر PAPER JSON" type="file" accept="application/json,.json" disabled={paperJournalLoad.persistenceBlocked} onChange={async (event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              if (file.size > 5 * 1024 * 1024) {
+                window.alert('النسخة أكبر من الحد المسموح 5 MiB.');
+                event.target.value = '';
+                return;
+              }
+              try { await onImportBackup(await file.text()); }
+              catch { window.alert('تعذر قراءة ملف النسخة الاحتياطية.'); }
+              event.target.value = '';
+            }} />
+          </label>
           <button className="button button-ghost danger-ghost" onClick={onClearJournal} disabled={!trades.length || paperJournalLoad.persistenceBlocked}><Trash2 size={14} /> مسح الدفتر</button>
         </div>
       </div>
