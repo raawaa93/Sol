@@ -867,7 +867,7 @@ test('Binance Options ticker fills missing sides but never overrides BookTicker 
   assert.equal(refreshed.bid, 5100);
   assert.equal(refreshed.ask, 5300);
   assert.equal(refreshed.bidAskSource, 'OPTION_TICKER');
-  assert.equal(refreshed.sourceTimestamps?.markIv, new Date(event.eventTime).toISOString());
+  assert.equal(refreshed.sourceTimestamps?.markIv, new Date(event.transactionTime ?? event.eventTime).toISOString());
 
   const oneSidedTicker = applyBinanceOptionTicker(staleBookQuote, { ...event, bestAsk: undefined });
   assert.equal(oneSidedTicker.bid, 5100);
