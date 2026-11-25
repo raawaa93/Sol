@@ -60,7 +60,7 @@ test('book ticker parser preserves event and transaction times, raw fields, and 
   assert.equal(record.clocks.exchangeEventAt, new Date(EVENT_MS).toISOString());
   assert.equal(record.rawPayload.T, EVENT_MS - 5);
   assert.equal(record.fields.find((field) => field.name === 'bid').value, 1200);
-  assert.equal(record.fields.find((field) => field.name === 'transactionTime').value, new Date(EVENT_MS - 5).toISOString());
+  assert.equal(record.fields.find((field) => field.name === 'transactionTime').value, EVENT_MS - 5);
   const [crossed] = parseBinancePublicStreamEvent({ ...event, b: '1220', a: '1210', u: 43 }, RECEIVED, { depth: new Map() });
   assert.equal(crossed.quality.status, 'INVALID');
   assert.ok(crossed.quality.flags.includes('CROSSED_BOOK'));
@@ -139,7 +139,7 @@ test('forward collection is disabled by default and rejects private stream names
     (error) => error.code === 'COLLECTOR_DISABLED',
   );
   await assert.rejects(
-    collectForwardOptionsEvents({ archive, transport: {}, streams: ['listenKey@orderReport'], enabled: true }),
+    collectForwardOptionsEvents({ archive, transport: { subscribe: async () => [] }, streams: ['listenKey@orderReport'], enabled: true }),
     (error) => error.code === 'INVALID_STREAMS',
   );
 });
