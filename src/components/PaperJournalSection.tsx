@@ -21,6 +21,7 @@ interface PaperJournalSectionProps {
   onExportIVHistory: () => void | Promise<void>;
   onExportJson: () => void | Promise<void>;
   onImportBackup: (raw: string) => void | Promise<void>;
+  onImportBackupError: (message: string) => void;
   onClearJournal: () => void;
   onExportRecovery: () => void;
   onExportOriginal: () => void;
@@ -39,6 +40,7 @@ export default function PaperJournalSection({
   onExportIVHistory,
   onExportJson,
   onImportBackup,
+  onImportBackupError,
   onClearJournal,
   onExportRecovery,
   onExportOriginal,
@@ -58,12 +60,12 @@ export default function PaperJournalSection({
               const file = event.target.files?.[0];
               if (!file) return;
               if (file.size > 5 * 1024 * 1024) {
-                window.alert('النسخة أكبر من الحد المسموح 5 MiB.');
+                onImportBackupError('النسخة أكبر من الحد المسموح 5 MiB.');
                 event.target.value = '';
                 return;
               }
               try { await onImportBackup(await file.text()); }
-              catch { window.alert('تعذر قراءة ملف النسخة الاحتياطية.'); }
+              catch { onImportBackupError('تعذر قراءة ملف النسخة الاحتياطية.'); }
               event.target.value = '';
             }} />
           </label>
