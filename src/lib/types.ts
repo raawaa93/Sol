@@ -124,15 +124,19 @@ export interface OptionQuote {
   bidQuantity?: number;
   askQuantity?: number;
   /** Provenance for the current bid/ask values; no inference from mere presence. */
-  bidAskSource?: 'BOOK_TICKER' | 'OPTION_TICKER';
+  bidAskSource?: 'BOOK_TICKER' | 'OPTION_TICKER' | 'MARK_PRICE';
   markPrice: number;
   priceSource?: QuotePriceSource;
   /** Zero is the unavailable sentinel; ivStatus distinguishes it from a valid observed or modelled value. */
   iv: number;
   ivStatus?: 'OBSERVED' | 'ESTIMATED' | 'UNAVAILABLE';
-  /** Binance vo is preserved as venue-reported volatility, not silently relabelled markIV. */
+  /** Explicitly sourced mark IV from the REST mark snapshot; never sourced from websocket `vo`. */
+  markIvSource?: 'REST_MARK';
+  riskFreeRateSource?: 'REST_MARK' | 'MARK_PRICE';
+  /** Venue `vo` field, preserved separately from mark IV. */
   venueVolatility?: number;
-  markIvSource?: 'OPTION_TICKER' | 'MARK_PRICE';
+  /** Local receive time for fields from endpoints that do not publish event timestamps. */
+  sourceReceivedAt?: { markIv?: string; riskFreeRate?: string };
   /** Exchange-provided IV at the best bid, in annual decimal units. */
   bidIv?: number;
   /** Exchange-provided IV at the best ask, in annual decimal units. */
@@ -149,6 +153,8 @@ export interface OptionQuote {
   openInterestUsd?: number | null;
   volume: number | null;
   volumeQuote?: number | null;
+  lastPrice?: number;
+  lastQuantity?: number;
   spot: number;
   /** Underlying quantity represented by one contract; may be an explicitly marked import default. */
   unit: number;
@@ -166,9 +172,11 @@ export interface OptionQuote {
   /** Independent exchange timestamps; absent means the endpoint did not publish a timestamp. */
   sourceTimestamps?: {
     ticker?: string;
+    tickerClose?: string;
+    riskFreeRate?: string;
+    venueVolatility?: string;
     optionTicker?: string;
     markIv?: string;
-    venueVolatility?: string;
     index?: string;
     openInterest?: string;
     bookTicker?: string;
