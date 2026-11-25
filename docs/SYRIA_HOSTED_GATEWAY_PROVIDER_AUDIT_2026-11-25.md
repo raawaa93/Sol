@@ -56,3 +56,26 @@ No provider has yet been technically qualified for this project. Do not migrate 
 ## Compliance and scope
 
 The project remains public-data research and PAPER only. Do not add authenticated trading credentials or order execution. Verify the current Syrian legal and provider eligibility position independently before using market-data or derivative products. This note does not imply that Binance permits requests from every Syrian network or that trading a given product is lawful.
+
+## Primary-source update: National Data Center VPS
+
+Official NDC service page: https://ndc.sy/vps-hosting.html
+
+Verified on the provider's own site:
+- VPS is a self-managed virtual server with root access and isolated VLAN; Linux and Windows are listed.
+- The listed plans appear to range from 1 vCPU / 512 MB RAM / 30 GB to 3 vCPU / 2 GB RAM / 80 GB SSD. Because the table is RTL-formatted, confirm the exact plan-to-spec mapping directly.
+- Annual fees are displayed in SYP: 2,600 / 3,500 / 3,900 / 7,200 for the four tiers, plus setup 450, real-IP 200 and optional backups 550 / 900 / 1,400 / 1,400. The page carries a 2024 copyright notice; these figures may be stale or affected by currency redenomination. They are not a valid quote until NDC confirms the current denomination, total, taxes and renewal.
+- Optional backups are described as daily with 10-day retention.
+- Documents: signed/stamped VPS form; ID for individuals or commercial registration/license for companies; payment notice.
+- Contact: domain@naits.gov.sy; +963 11 393 7032 / 393 7052; +963 11 393 7079. Location: Rif Dimashq, Sahara Intersection, Dimas Technical Complex.
+
+**Technical recommendation:** request a custom minimum of 2 vCPU, 4 GB RAM, 40 GB SSD, root access, Ubuntu 22.04/24.04, static public IPv4, outbound HTTPS, and explicit disclosure of public egress IP and ASN. A local business address or data-center address does not prove the server's egress route is Syrian.
+
+## Outreach and tracking
+
+No email has been sent and no server has been purchased. Gmail is not yet connected. The qualification checklist is tracked in https://github.com/raawaa93/Sol/issues/250.
+
+## Binance Syria policy caveat
+
+Binance's Syrian-resident FAQ dated 12 June 2025 states that Syrian residents may register and access services subject to ordinary KYC/compliance checks after its stated policy change. This does not guarantee every API endpoint, product, or regional Binance entity. Check the terms applicable to the actual product/account; do not route through another country to evade restrictions.
+Source: https://www.binance.com/en/support/faq/detail/863795c36a224bd7aa7d677996328ff9
