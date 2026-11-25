@@ -1,4 +1,5 @@
 import { calculatePremiumCash } from './contract-economics-calculations.ts';
+import { validateContractEconomics } from './contract-economics.ts';
 import type { OptionQuote, PaperTrade } from './types.ts';
 
 export type PaperJournalSourceMode = 'DEMO' | 'CSV' | 'BINANCE';
@@ -60,7 +61,8 @@ export function canCreateCanonicalPaperTrade(
     || !Number.isFinite(quote.unit) || quote.unit <= 0
     || !Number.isFinite(quote.strike) || quote.strike <= 0
     || !Number.isFinite(Date.parse(quote.expiry))) return false;
-  if (economics.provenance.status !== 'PROVIDER_VERIFIED'
+  if (!validateContractEconomics(economics).valid
+    || economics.provenance.status !== 'PROVIDER_VERIFIED'
     || economics.provenance.provider !== 'BINANCE'
     || economics.provenance.sourceRef !== 'https://eapi.binance.com/eapi/v1/exchangeInfo') return false;
   const settlement = economics.exercise.cashSettlement;
@@ -100,6 +102,20 @@ export function createCanonicalPaperTrade(
     return { ok: false, reason: 'INVALID_PAPER_ENTRY_INPUT' };
   }
   const economics = quote.contractEconomics!;
+  const entryPriceSource = getPaperEntryPriceSource(quote);
+  const observedEntryPrice = entryPriceSource === 'MID'
+    ? (quote.bid + quote.ask) / 2
+    : entryPriceSource === 'MARK' || entryPriceSource === 'LAST'
+      ? quote.markPrice
+      : entryPriceSource === 'BID' ? quote.bid : entryPriceSource === 'ASK' ? quote.ask : Number.NaN;
+  if (!Number.isFinite(observedEntryPrice) || observedEntryPrice <= 0
+    || Math.abs(premiumPrice - observedEntryPrice) > Math.max(1e-8, observedEntryPrice * 1e-8)) {
+    return { ok: false, reason: 'ENTRY_PREMIUM_DOES_NOT_MATCH_TIMESTAMPED_MARKET_BASIS' };
+  }
+  if (!Number.isFinite(quote.spot) || quote.spot <= 0
+    || Math.abs(spotAtEntry - quote.spot) > Math.max(1e-8, quote.spot * 1e-8)) {
+    return { ok: false, reason: 'ENTRY_SPOT_DOES_NOT_MATCH_TIMESTAMPED_INDEX' };
+  }
   const debit = calculatePremiumCash({ economics, premiumPrice, contracts: quantity, fees });
   if (!debit.ok) return { ok: false, reason: debit.reason };
 
