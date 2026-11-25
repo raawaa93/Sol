@@ -23,7 +23,7 @@ function getPaperEntryPriceSource(quote: OptionQuote): OptionQuote['priceSource'
   // getMidPrice prefers a two-sided mid over markPrice. Never label that mid
   // as MARK when its bid/ask source has no matching event timestamp.
   if (quote.bid > 0 && quote.ask >= quote.bid) {
-    return quote.bidAskSource === 'BOOK_TICKER' || quote.bidAskSource === 'OPTION_TICKER' ? 'MID' : undefined;
+    return quote.bidAskSource === 'BOOK_TICKER' || quote.bidAskSource === 'OPTION_TICKER' || quote.bidAskSource === 'MARK_PRICE' ? 'MID' : undefined;
   }
   if (quote.priceSource === 'MARK' && quote.markPrice > 0) return 'MARK';
   if (quote.priceSource === 'LAST' && quote.markPrice > 0) return 'LAST';
@@ -40,7 +40,8 @@ function hasObservedPriceTimestamp(quote: OptionQuote, source: NonNullable<Optio
   if (source === 'LAST') return isValidTimestamp(timestamps.ticker);
   if (source === 'MID' || source === 'BID' || source === 'ASK') {
     if (quote.bidAskSource === 'BOOK_TICKER') return isValidTimestamp(timestamps.bookTicker);
-    if (quote.bidAskSource === 'OPTION_TICKER') return isValidTimestamp(timestamps.optionTicker);
+    if (quote.bidAskSource === 'OPTION_TICKER') return isValidTimestamp(timestamps.ticker);
+    if (quote.bidAskSource === 'MARK_PRICE') return isValidTimestamp(timestamps.markPrice);
   }
   return false;
 }
