@@ -220,6 +220,18 @@ export interface CanonicalPaperCloseEvent {
     index: string;
   };
   sourceReceivedAtAtExit: { bidAsk: string };
+  contractAtExit: {
+    symbol: string;
+    underlying: string;
+    type: 'CALL' | 'PUT';
+    expiry: string;
+    strike: number;
+    venue: string;
+    assetClass: string;
+    underlyingKind: string;
+    unit: number;
+    quoteAsset: string;
+  };
   contractEconomicsAtExit: ContractEconomics;
 }
 
@@ -376,7 +388,48 @@ export function createCanonicalPaperCloseEvent(input: {
         index: quote.sourceTimestamps!.index!,
       },
       sourceReceivedAtAtExit: { bidAsk: quote.sourceReceivedAt!.bidAsk! },
+      contractAtExit: {
+        symbol: quote.symbol,
+        underlying: quote.underlying,
+        type: quote.type,
+        expiry: quote.expiry,
+        strike: quote.strike,
+        venue: quote.venue!,
+        assetClass: quote.assetClass!,
+        underlyingKind: quote.underlyingKind!,
+        unit: quote.unit,
+        quoteAsset: quote.quoteAsset!,
+      },
       contractEconomicsAtExit: economics,
     },
   };
+}
+
+
+export function isCanonicalPaperCloseEventForTrade(
+  event: CanonicalPaperCloseEvent,
+  trade: PaperTrade,
+): boolean {
+  const economics = trade.contractEconomics;
+  if (!economics || event.tradeId !== trade.id || event.quantity !== trade.quantity
+    || event.entryDebit !== trade.premiumDebitAtEntry
+    || event.currency !== (trade.premiumCurrencyAtEntry ?? trade.quoteAsset)
+    || event.contractAtExit.symbol !== trade.symbol
+    || event.contractAtExit.underlying !== trade.underlying
+    || event.contractAtExit.type !== trade.type
+    || event.contractAtExit.expiry !== trade.expiry
+    || event.contractAtExit.strike !== trade.strike
+    || event.contractAtExit.venue !== trade.contractVenueAtEntry
+    || event.contractAtExit.assetClass !== trade.contractAssetClassAtEntry
+    || event.contractAtExit.underlyingKind !== trade.contractUnderlyingKindAtEntry
+    || event.contractAtExit.unit !== trade.contractUnitAtEntry
+    || event.contractAtExit.quoteAsset !== trade.quoteAsset
+    || stableJson(event.contractEconomicsAtExit) !== stableJson(economics)) return false;
+  const entry = calculatePremiumCash({
+    economics,
+    premiumPrice: trade.entryPremium,
+    contracts: trade.quantity,
+    fees: trade.fees,
+  });
+  return entry.ok && Math.abs(entry.value.amount - event.entryDebit) <= Math.max(1e-8, entry.value.amount * 1e-8);
 }
