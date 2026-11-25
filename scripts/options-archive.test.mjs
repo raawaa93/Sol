@@ -18,7 +18,7 @@ const CONTRACT = {
   symbol: 'BTC-261225-100000-C', underlying: 'BTC', optionType: 'CALL', strike: 100_000,
   expiryAt: '2026-12-25T08:00:00.000Z', unit: 100, premiumUnit: 'PER_CONTRACT', premiumMultiplier: 1,
   quoteAsset: 'USDT', settlementAsset: 'USDT', exerciseStyle: 'EUROPEAN', settlementStyle: 'CASH',
-  cashSettlementMultiplier: 100, sourceEndpoint: 'REST_EXCHANGE_INFO', version: 'exchangeInfo-2026-11-25T03:00:00.000Z',
+  cashSettlementMultiplier: 100, sourceEndpoint: 'REST_EXCHANGE_INFO', termsSource: 'BINANCE_OPTIONS_CONTRACT_SPECIFICATIONS_2026-01-05', settlementTermsSource: 'BINANCE_CLEARING_PROCEDURES_126_130', version: 'exchangeInfo-2026-11-25T03:00:00.000Z',
 };
 
 function makeRecord(overrides = {}) {
