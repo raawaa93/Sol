@@ -1,5 +1,5 @@
 import type { ContractEconomics } from './types.ts';
-import { validateContractEconomics } from './contract-economics.ts';
+import { BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS, validateContractEconomics } from './contract-economics.ts';
 
 export interface BinanceCryptoOptionContractTerms {
   symbol: string;
@@ -17,7 +17,10 @@ export interface BinanceCryptoOptionContractTerms {
  * used as the premium multiplier. Option premium orders are contract-denominated,
  * so the premium multiplier is 1.
  *
- * This reference adapter does not declare pricing/Greeks model capability.
+ * Exercise/settlement assumptions are cross-referenced to the Binance RIE/RCH
+ * contract and clearing documents. Account-specific applicability is explicitly
+ * unverified; consumers must surface that limitation. This adapter does not
+ * declare pricing/Greeks model capability by itself.
  */
 export function mapBinanceCryptoOptionEconomics(
   terms: BinanceCryptoOptionContractTerms,
@@ -61,6 +64,7 @@ export function mapBinanceCryptoOptionEconomics(
         quoteAsset: terms.quoteAsset,
         settleAsset: terms.settleAsset,
       },
+      legalTerms: { ...BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS },
     },
   };
   const validation = validateContractEconomics(economics);
