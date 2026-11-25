@@ -8,6 +8,15 @@
 
 ## Completed and verified
 
+### BBO-aware execution replay — PR #204
+- Merge commit 337e03fb26d44c906125318affc473030c165da4.
+- Replay requires explicit BBO source, source-event/snapshot timestamp, local receive/availability timestamp, non-estimated bid/ask, explicit size unit and displayed size. It no longer uses generic/last-trade timestamp as a BBO clock.
+- Entry uses Ask and checks displayed Ask size; exit uses Bid and checks displayed Bid size. Mark-only, stale (>5-minute source-to-receive delay), future, missing, estimated and undersized quotes are rejected.
+- Configurable adverse per-side slippage and fee assumptions; UI displays source clocks, fills, size and slippage cost.
+- CSV parser/template supports explicit BBO metadata; CSV provenance remains user-asserted, not authenticated.
+- Binance bookTicker adapter records local receive time and labels sizes in contracts; optionTicker 24-hour statistics are not BBO timestamps.
+- CI 45572889900 passed 303/303 tests, build, bundle budget and 18/18 Playwright journeys; Lighthouse 45572889852 and Project Context Guard 45572889839 passed.
+
 ### Historical IV analytics
 - Pure IV Rank / IV Percentile calculations use the same underlying, venue, source reference and IV convention.
 - One latest sample per UTC day is selected; future samples and invalid source/time records are excluded.
@@ -29,6 +38,8 @@
 - Transport remains opt-in; no live Binance connection or market capture was attempted.
 
 ## Verification evidence
+
+- Latest replay hardening PR #204: CI 45572889900 passed 303/303 tests, build, bundle budget and 18/18 Playwright journeys; Lighthouse 45572889852 and Project Context Guard 45572889839 passed.
 - CI run 45570010720: 293 tests passed, 0 failed; production build passed; compressed bundle budget passed; Playwright browser journeys passed.
 - Lighthouse baseline run 45570010778: passed.
 - Project Context Guard run 45570010823: passed.
@@ -42,9 +53,10 @@
 2. **No historical executable BBO dataset.** REST depth is a point snapshot; recent trades are not a historical quote tape. No strategy backtest can claim executable fills from mark/EOD/last data.
 3. **No supervised worker or cloud archive.** The WebSocket transport is not scheduled or wired into a persistent service. The local Node NDJSON archive remains a filesystem primitive.
 4. **Local IV history is device-local and unencrypted.** JSON export exists; import is intentionally deferred because an imported file cannot independently prove original source provenance. No cross-device sync.
+5. **Replay remains a one-leg fixed-hold baseline.** It models top-of-book size and configurable per-side slippage, but not partial fills, queue priority, market impact, full latency, expiry/settlement or hedging. CSV provenance is user-asserted. No historical BBO corpus exists.
 5. **Supabase cloud destination is not provisioned.** Existing project Ghaioooth-core (ref oyoyozdugicmnkfhjovo) is shared with other workloads and remains untouched. Existing branch rawaa-consent-staging-test is for Raawaa-store and non-persistent; do not reuse. A new development branch costs USD 0.01344/hour (~USD 9.81 per 730-hour month) and is not suitable for a permanent free archive. A new project quote is USD 0/month, but the connector requires the user to choose the organization; only organization Ghaioooth is currently listed. Free projects can pause after seven days of low database activity and have limited quotas. A secure auth/RLS model is required before cloud writes; do not expose unauthenticated public writes.
 6. **Legal and account eligibility.** Syrian local legal position for foreign options derivatives remains unverified; Binance product/account eligibility must be checked separately. No live orders, funding or VPN/egress circumvention.
-7. **No measured strategy edge.** PBO/Deflated Sharpe and conservative replay foundations do not create performance evidence without point-in-time data. Cross-asset profitability ranking remains blocked.
+7. **No measured strategy edge.** PBO/Deflated Sharpe and the hardened conservative replay baseline do not create performance evidence without point-in-time data. Cross-asset profitability ranking remains blocked.
 
 ## Next execution order
 1. Resolve the dedicated free Supabase project organization choice and secure authentication/RLS model; only then create it. Do not use the shared project or paid branches.
