@@ -73,7 +73,8 @@ test('export and import reject backups over the 5 MiB size limit', () => {
 class MemoryStorage {
   value: string | null = null;
   failSet = false;
-  getItem() { return this.value; }
+  failReadBack = false;
+  getItem() { return this.failReadBack ? 'different' : this.value; }
   setItem(_key: string, value: string) {
     if (this.failSet) throw new Error('quota exceeded');
     this.value = value;
@@ -85,6 +86,7 @@ test('local import persists merged records before the caller updates UI state', 
   assert.equal(backup.ok, true);
   if (!backup.ok || !backup.json) return;
   const storage = new MemoryStorage();
+  storage.value = JSON.stringify([first]);
   const result = importPaperJournalJsonBackup(backup.json, [first], valid, storage, 'journal');
   assert.deepEqual(result, { ok: true, entries: [first, second], added: 1 });
   assert.deepEqual(JSON.parse(storage.value!), [first, second]);
@@ -109,9 +111,10 @@ test('local import rejects ID conflicts before writing storage', () => {
   assert.equal(backup.ok, true);
   if (!backup.ok || !backup.json) return;
   const storage = new MemoryStorage();
+  storage.value = JSON.stringify([first]);
   const result = importPaperJournalJsonBackup(backup.json, [first], valid, storage, 'journal');
   assert.equal(result.ok, false);
-  assert.equal(storage.value, null);
+  assert.equal(storage.value, JSON.stringify([first]));
 });
 
 
@@ -136,4 +139,30 @@ test('merge treats reordered nested JSON object keys as the same record', () => 
   };
   const result = mergePaperJournalBackup([existing], [reordered], valid);
   assert.deepEqual(result, { ok: true, entries: [existing] });
+});
+
+
+test('local import rejects stale in-memory state instead of overwriting a concurrent tab update', () => {
+  const backup = createPaperJournalBackup([second], valid, '2026-11-25T09:00:00Z');
+  assert.equal(backup.ok, true);
+  if (!backup.ok || !backup.json) return;
+  const storage = new MemoryStorage();
+  const changedByOtherTab = JSON.stringify([{ ...first, amount: 18 }]);
+  storage.value = changedByOtherTab;
+  const result = importPaperJournalJsonBackup(backup.json, [first], valid, storage, 'journal');
+  assert.equal(result.ok, false);
+  assert.match(result.message, /تغير الدفتر/);
+  assert.equal(storage.value, changedByOtherTab);
+});
+
+test('local import verifies the final persisted bytes before reporting success', () => {
+  const backup = createPaperJournalBackup([second], valid, '2026-11-25T09:00:00Z');
+  assert.equal(backup.ok, true);
+  if (!backup.ok || !backup.json) return;
+  const storage = new MemoryStorage();
+  storage.value = JSON.stringify([first]);
+  storage.failReadBack = true;
+  const result = importPaperJournalJsonBackup(backup.json, [first], valid, storage, 'journal');
+  assert.equal(result.ok, false);
+  assert.match(result.message, /التحقق من حفظ/);
 });
