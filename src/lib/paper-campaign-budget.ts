@@ -22,35 +22,31 @@ function getTradeCurrency(trade: PaperTrade): string {
 }
 
 function getTradeDebit(trade: PaperTrade): number | undefined {
-  const debit = trade.premiumDebitAtEntry;
-  if (Number.isFinite(debit) && debit! > 0) {
-    if (!trade.close) return debit;
+  let entryDebit = trade.premiumDebitAtEntry;
+  if (!Number.isFinite(entryDebit) || entryDebit! <= 0) {
+    const fees = Number.isFinite(trade.fees) && trade.fees >= 0 ? trade.fees : undefined;
+    if (fees === undefined) return undefined;
+
+    const amount = trade.premiumAmountAtEntry;
+    const multiplier = trade.premiumMultiplierAtEntry;
+    if (Number.isFinite(amount) && amount! > 0 && Number.isFinite(multiplier) && multiplier! > 0) {
+      entryDebit = amount! * multiplier! + fees;
+    } else {
+      const unit = trade.contractUnitAtEntry;
+      if (!Number.isFinite(trade.entryPremium) || trade.entryPremium <= 0
+        || !Number.isFinite(trade.quantity) || trade.quantity <= 0
+        || !Number.isFinite(unit) || unit! <= 0
+        || !Number.isFinite(multiplier) || multiplier! <= 0) return undefined;
+      entryDebit = trade.entryPremium * trade.quantity * unit! * multiplier! + fees;
+    }
+  }
+  if (!Number.isFinite(entryDebit) || entryDebit! <= 0) return undefined;
+  if (trade.close) {
     if (!Number.isFinite(trade.close.exitFees) || trade.close.exitFees < 0
       || trade.close.exitFeeCurrency !== getTradeCurrency(trade)) return undefined;
-    const totalAllocated = debit! + trade.close.exitFees;
-    return Number.isFinite(totalAllocated) && totalAllocated > 0 ? totalAllocated : undefined;
+    entryDebit = entryDebit! + trade.close.exitFees;
   }
-
-  const fees = Number.isFinite(trade.fees) && trade.fees >= 0 ? trade.fees : undefined;
-  if (fees === undefined) return undefined;
-
-  const amount = trade.premiumAmountAtEntry;
-  const multiplier = trade.premiumMultiplierAtEntry;
-  if (Number.isFinite(amount) && amount! > 0 && Number.isFinite(multiplier) && multiplier! > 0) {
-    const reconciled = amount! * multiplier! + fees;
-    return Number.isFinite(reconciled) && reconciled > 0 ? reconciled : undefined;
-  }
-
-  const unit = trade.contractUnitAtEntry;
-  if (Number.isFinite(trade.entryPremium) && trade.entryPremium > 0
-    && Number.isFinite(trade.quantity) && trade.quantity > 0
-    && Number.isFinite(unit) && unit! > 0
-    && Number.isFinite(multiplier) && multiplier! > 0) {
-    const reconciled = trade.entryPremium * trade.quantity * unit! * multiplier! + fees;
-    return Number.isFinite(reconciled) && reconciled > 0 ? reconciled : undefined;
-  }
-
-  return undefined;
+  return Number.isFinite(entryDebit) && entryDebit! > 0 ? entryDebit : undefined;
 }
 
 /**
@@ -61,7 +57,7 @@ function getTradeDebit(trade: PaperTrade): number | undefined {
 export function summarizePaperCampaignBudget(
   trades: PaperTrade[],
   currency: string,
-  cap = PAPER_CAMPAIGN_MAX_LOSS,
+  cap = PAPER_CAMPAIGN_ALLOCATION_CAP,
 ): PaperCampaignBudgetSummary {
   const normalizedCurrency = currency.trim().toUpperCase();
   const supportedCurrency = normalizedCurrency === 'USD' || normalizedCurrency === 'USDT';
