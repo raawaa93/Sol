@@ -95,6 +95,7 @@ export function createCanonicalPaperTrade(
     contractUnitAtEntry: quote.unit,
     premiumMultiplierAtEntry: debit.value.multiplier,
     premiumAmountAtEntry: debit.value.premiumAmount,
+    premiumDebitAtEntry: debit.value.amount,
     premiumCurrencyAtEntry: debit.value.currency,
     priceSourceAtEntry: quote.priceSource,
     sourceTimestampsAtEntry: quote.sourceTimestamps ? { ...quote.sourceTimestamps } : undefined,
