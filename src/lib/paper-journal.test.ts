@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { canCreateCanonicalPaperTrade, createCanonicalPaperTrade } from './paper-journal.ts';
+import { BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS } from './contract-economics.ts';
 import type { OptionQuote } from './types.ts';
 
 const economics = {
@@ -15,6 +16,7 @@ const economics = {
   provenance: {
     status: 'PROVIDER_VERIFIED' as const,
     provider: 'BINANCE',
+    legalTerms: BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS,
     sourceRef: 'https://eapi.binance.com/eapi/v1/exchangeInfo',
     retrievedAt: '2026-11-25T03:00:00Z',
     rawFields: { unit: 100, quoteAsset: 'USDT', settleAsset: 'USDT' },
