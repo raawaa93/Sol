@@ -782,12 +782,30 @@ test('Binance bookTicker updates only BBO fields and records its own source time
     symbol: quote.symbol, bidPrice: 10, bidQuantity: 2, askPrice: 12, askQuantity: 3,
     transactionTime: 1_800_000_000_900,
   };
-  const updated = applyBinanceBookTicker(quote, event);
+  const receivedAtMs = event.transactionTime + 250;
+  const updated = applyBinanceBookTicker(quote, event, receivedAtMs);
   assert.equal(updated.bid, 10);
   assert.equal(updated.ask, 12);
   assert.equal(updated.markPrice, 11);
   assert.equal(updated.sourceTimestamps?.ticker, quote.sourceTimestamps.ticker);
   assert.equal(updated.sourceTimestamps?.bookTicker, new Date(event.transactionTime).toISOString());
+  assert.equal(updated.sourceReceivedAt?.bidAsk, new Date(receivedAtMs).toISOString());
+});
+
+test('Binance bookTicker does not stamp a receive clock earlier than the exchange event', () => {
+  const quote = {
+    id: 'BTC-261225-100000-C', symbol: 'BTC-261225-100000-C', underlying: 'BTC',
+    expiry: '2026-12-25T08:00:00.000Z', daysToExpiry: 30, strike: 100000, type: 'CALL' as const,
+    bid: 0, ask: 12, markPrice: 11, iv: 0.5, delta: 0.5, gamma: 0, theta: 0,
+    vega: 0, rho: 0, openInterest: null, volume: null, spot: 100000, unit: 1,
+  };
+  const event = {
+    symbol: quote.symbol, bidPrice: 10, bidQuantity: 2, askPrice: 12, askQuantity: 3,
+    transactionTime: 1_800_000_000_900,
+  };
+  const updated = applyBinanceBookTicker(quote, event, event.transactionTime - 1);
+  assert.equal(updated.bid, 10);
+  assert.equal(updated.sourceReceivedAt?.bidAsk, undefined);
 });
 
 
