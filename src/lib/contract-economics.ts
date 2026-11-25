@@ -209,7 +209,7 @@ export function validateContractEconomics(economics: unknown): ContractEconomics
       || legal.scope !== BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS.scope
       || legal.effectiveDate !== BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS.effectiveDate
       || legal.accountApplicability !== BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS.accountApplicability) {
-      issues.push('MISSING_LEGAL_TERMS_PROVENANCE');
+      unsupportedReasons.push('MISSING_LEGAL_TERMS_PROVENANCE');
     }
   }
 
