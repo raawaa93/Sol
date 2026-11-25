@@ -284,6 +284,21 @@ test('canonical Binance risk-neutral EV scales intrinsic value by settlement mul
     - ((metrics?.modelPricePerContract ?? 0) * Math.exp(quote.riskFreeRate! * (quote.daysToExpiry / 365)) - 900 - 2)) < 1e-8);
 });
 
+test('canonical risk-neutral EV accepts only a timestamped markPrice BBO source', () => {
+  const quote = canonicalBinanceRiskQuote({
+    bidAskSource: 'MARK_PRICE',
+    sourceTimestamps: {
+      index: '2026-11-25T03:00:00.000Z',
+      markPrice: '2026-11-25T03:00:01.000Z',
+    },
+  });
+  assert.ok(calculateQuoteCashRiskNeutralMetrics(quote, 900, 0, riskNeutralNow));
+  assert.equal(calculateQuoteCashRiskNeutralMetrics({
+    ...quote,
+    sourceTimestamps: { index: quote.sourceTimestamps?.index },
+  }, 900, 0, riskNeutralNow), null);
+});
+
 test('canonical put risk-neutral probability uses cash-settlement multiplier and fees in break-even', () => {
   const quote = canonicalBinanceRiskQuote({ type: 'PUT', strike: 110 });
   const metrics = calculateQuoteCashRiskNeutralMetrics(quote, 900, 3, riskNeutralNow);
