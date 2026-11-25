@@ -236,6 +236,7 @@ test('replay requires explicit displayed size units and enough size at both entr
     quote('2026-11-24T10:30:00.000Z', { askQuantity: 0.5 }),
     quote('2026-11-24T11:30:00.000Z'),
   ], config);
+  console.log('DEBUG replay displayed-size counters', result.skipped);
   assert.equal(result.trades.length, 0);
   assert.equal(result.skipped.invalidSizeUnit, 1);
   assert.equal(result.skipped.insufficientDisplayedSize, 1);
@@ -265,6 +266,7 @@ test('underlying-unit displayed size is compared against contracts times contrac
     quote('2026-11-24T10:00:00.000Z', { bidAskSizeUnit: 'UNDERLYING_UNITS', askQuantity: 1.5 }),
     quote('2026-11-24T11:00:00.000Z', { bidAskSizeUnit: 'UNDERLYING_UNITS' }),
   ], { ...config, quantity: 2 });
+  console.log('DEBUG replay underlying-size counters', result.skipped);
   assert.equal(result.trades.length, 0);
   assert.equal(result.skipped.insufficientDisplayedSize, 1);
 });
