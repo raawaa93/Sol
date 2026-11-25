@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { importPaperJournalJsonBackup } from './paper-journal-backup-actions.ts';
 import {
   PAPER_JOURNAL_BACKUP_FORMAT,
   PAPER_JOURNAL_BACKUP_MAX_BYTES,
@@ -66,4 +67,49 @@ test('export and import reject backups over the 5 MiB size limit', () => {
     Boolean(value && typeof value === 'object' && typeof (value as { id?: unknown }).id === 'string'), '2026-11-25T09:00:00Z');
   assert.equal(exported.ok, false);
   if (!exported.ok) assert.equal(exported.reason, 'BACKUP_TOO_LARGE');
+});
+
+
+class MemoryStorage {
+  value: string | null = null;
+  failSet = false;
+  getItem() { return this.value; }
+  setItem(_key: string, value: string) {
+    if (this.failSet) throw new Error('quota exceeded');
+    this.value = value;
+  }
+}
+
+test('local import persists merged records before the caller updates UI state', () => {
+  const backup = createPaperJournalBackup([second], valid, '2026-11-25T09:00:00Z');
+  assert.equal(backup.ok, true);
+  if (!backup.ok || !backup.json) return;
+  const storage = new MemoryStorage();
+  const result = importPaperJournalJsonBackup(backup.json, [first], valid, storage, 'journal');
+  assert.deepEqual(result, { ok: true, entries: [first, second], added: 1 });
+  assert.deepEqual(JSON.parse(storage.value!), [first, second]);
+});
+
+test('local import leaves existing storage unchanged when persistence fails', () => {
+  const backup = createPaperJournalBackup([second], valid, '2026-11-25T09:00:00Z');
+  assert.equal(backup.ok, true);
+  if (!backup.ok || !backup.json) return;
+  const storage = new MemoryStorage();
+  const original = JSON.stringify([first]);
+  storage.value = original;
+  storage.failSet = true;
+  const result = importPaperJournalJsonBackup(backup.json, [first], valid, storage, 'journal');
+  assert.deepEqual(result, { ok: false, message: 'تعذر حفظ النسخة المدمجة بسبب مساحة التخزين؛ بقي الدفتر الحالي كما هو.' });
+  assert.equal(storage.value, original);
+});
+
+test('local import rejects ID conflicts before writing storage', () => {
+  const changed = { ...first, amount: 50 };
+  const backup = createPaperJournalBackup([changed], valid, '2026-11-25T09:00:00Z');
+  assert.equal(backup.ok, true);
+  if (!backup.ok || !backup.json) return;
+  const storage = new MemoryStorage();
+  const result = importPaperJournalJsonBackup(backup.json, [first], valid, storage, 'journal');
+  assert.equal(result.ok, false);
+  assert.equal(storage.value, null);
 });
