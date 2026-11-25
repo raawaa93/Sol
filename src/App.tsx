@@ -1169,6 +1169,7 @@ function App() {
     const pnlLabel = `${close.realizedPnl >= 0 ? '+' : ''}${formatMoney(close.realizedPnl, 2, close.currency)}`;
     if (!window.confirm(
       `إغلاق PAPER على Bid ${formatOptionPrice(close.exitPremium, liveQuote)}\n`
+      + `رسوم الخروج المقدّرة: ${formatMoney(close.exitFees, 2, close.currency)}\n`
       + `صافي العائد بعد الرسوم: ${formatMoney(close.exitNetProceeds, 2, close.currency)}\n`
       + `النتيجة المحققة: ${pnlLabel}\n\n`
       + 'الرسوم تقديرية بمعدل taker العام، دون خصومات VIP/BNB أو رسوم إضافية خاصة بالحساب. سيُحدّث دفتر PAPER المحلي فقط؛ لن يُرسل أي أمر إلى Binance.',
