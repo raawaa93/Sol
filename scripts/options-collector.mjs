@@ -129,8 +129,8 @@ function parseBookTicker(event, rawPayload, receivedAt) {
   const askSize = numeric(event.A);
   const crossed = bid !== null && ask !== null && bid > ask;
   const fields = [
-    observedField('bid', bid, 'VENUE_PRICE_PER_CONTRACT', 'b', eventAt, receivedAt),
-    observedField('ask', ask, 'VENUE_PRICE_PER_CONTRACT', 'a', eventAt, receivedAt),
+    observedField('bid', bid, 'VENUE_REPORTED_PRICE_UNIT', 'b', eventAt, receivedAt),
+    observedField('ask', ask, 'VENUE_REPORTED_PRICE_UNIT', 'a', eventAt, receivedAt),
     observedField('bidSize', bidSize, 'VENUE_REPORTED_SIZE_UNIT', 'B', eventAt, receivedAt),
     observedField('askSize', askSize, 'VENUE_REPORTED_SIZE_UNIT', 'A', eventAt, receivedAt),
     observedField('updateId', numeric(event.u), 'UPDATE_ID', 'u', eventAt, receivedAt),
@@ -145,13 +145,18 @@ function parseBookTicker(event, rawPayload, receivedAt) {
 }
 
 function parseTrade(event, rawPayload, receivedAt) {
+  if (event.X !== 'MARKET' && event.X !== 'BLOCK') {
+    return makeRecord({ kind: 'GAP', endpoint: 'WS_OPTION_TRADE', symbol: event.s, rawPayload,
+      eventAt: iso(event.E), receivedAt, fields: [], quality: 'INVALID', flags: ['UNKNOWN_TRADE_TYPE'],
+      id: event.t !== undefined ? `unknown-trade:${event.t}` : undefined });
+  }
   const tradeKind = event.X === 'BLOCK' ? 'TRADE_BLOCK' : 'TRADE_MARKET';
   const eventAt = iso(event.E);
   const transactionAt = iso(event.T);
   const maker = typeof event.m === 'boolean' ? event.m : null;
   const aggressor = maker === null ? null : maker ? 'SELL' : 'BUY';
   const fields = [
-    observedField('price', numeric(event.p), 'VENUE_PRICE_PER_CONTRACT', 'p', eventAt, receivedAt),
+    observedField('price', numeric(event.p), 'VENUE_REPORTED_PRICE_UNIT', 'p', eventAt, receivedAt),
     observedField('quantity', numeric(event.q), 'VENUE_REPORTED_SIZE_UNIT', 'q', eventAt, receivedAt),
     observedField('tradeId', numeric(event.t), 'TRADE_ID', 't', eventAt, receivedAt, receivedAt, null),
     observedField('tradeTime', transactionAt, 'ISO_TIMESTAMP', 'T', transactionAt, receivedAt, receivedAt, null),
@@ -182,10 +187,10 @@ function parseKline(event, rawPayload, receivedAt) {
   const fields = [
     observedField('openTime', iso(candle.t), 'ISO_TIMESTAMP', 'k.t', closeAt, receivedAt, availableAt, null),
     observedField('closeTime', closeAt, 'ISO_TIMESTAMP', 'k.T', closeAt, receivedAt, availableAt, null),
-    observedField('open', numeric(candle.o), 'VENUE_PRICE_PER_CONTRACT', 'k.o', closeAt, receivedAt, availableAt, null),
-    observedField('high', numeric(candle.h), 'VENUE_PRICE_PER_CONTRACT', 'k.h', closeAt, receivedAt, availableAt, null),
-    observedField('low', numeric(candle.l), 'VENUE_PRICE_PER_CONTRACT', 'k.l', closeAt, receivedAt, availableAt, null),
-    observedField('close', numeric(candle.c), 'VENUE_PRICE_PER_CONTRACT', 'k.c', closeAt, receivedAt, availableAt, null),
+    observedField('open', numeric(candle.o), 'VENUE_REPORTED_PRICE_UNIT', 'k.o', closeAt, receivedAt, availableAt, null),
+    observedField('high', numeric(candle.h), 'VENUE_REPORTED_PRICE_UNIT', 'k.h', closeAt, receivedAt, availableAt, null),
+    observedField('low', numeric(candle.l), 'VENUE_REPORTED_PRICE_UNIT', 'k.l', closeAt, receivedAt, availableAt, null),
+    observedField('close', numeric(candle.c), 'VENUE_REPORTED_PRICE_UNIT', 'k.c', closeAt, receivedAt, availableAt, null),
     observedField('volume', numeric(candle.v), 'VENUE_REPORTED_SIZE_UNIT', 'k.v', closeAt, receivedAt, availableAt, null),
   ];
   return makeRecord({
@@ -202,7 +207,7 @@ function parseTicker(event, rawPayload, receivedAt) {
     kind: 'OPTION_TICKER', endpoint: 'WS_OPTION_TICKER', symbol: event.s, rawPayload, eventAt, receivedAt,
     id: eventAt ? `ticker:${eventAt}` : undefined,
     fields: [
-      observedField('lastPrice', numeric(event.c), 'VENUE_PRICE_PER_CONTRACT', 'c', eventAt, receivedAt),
+      observedField('lastPrice', numeric(event.c), 'VENUE_REPORTED_PRICE_UNIT', 'c', eventAt, receivedAt),
       observedField('lastQuantity', numeric(event.Q), 'VENUE_REPORTED_SIZE_UNIT', 'Q', eventAt, receivedAt),
       observedField('baseVolume24h', numeric(event.v), 'VENUE_REPORTED_SIZE_UNIT', 'v', eventAt, receivedAt),
       observedField('quoteVolume24h', numeric(event.q), 'VENUE_REPORTED_QUOTE_AMOUNT', 'q', eventAt, receivedAt),
@@ -219,14 +224,14 @@ function parseIndexOrMark(event, rawPayload, receivedAt, isMark) {
   const symbol = event.s ?? event.underlying ?? event.underlyingAsset;
   const fields = isMark
     ? [
-      observedField('markPrice', numeric(event.mp ?? event.markPrice), 'VENUE_PRICE_PER_CONTRACT', 'mp', eventAt, receivedAt),
+      observedField('markPrice', numeric(event.mp ?? event.markPrice), 'VENUE_REPORTED_PRICE_UNIT', 'mp', eventAt, receivedAt),
       observedField('venueVolatility', numeric(event.vo ?? event.markIV), 'VENUE_REPORTED_RAW_UNIT', 'vo', eventAt, receivedAt),
       observedField('delta', numeric(event.d), 'VENUE_REPORTED_RAW_UNIT', 'd', eventAt, receivedAt),
       observedField('gamma', numeric(event.g), 'VENUE_REPORTED_RAW_UNIT', 'g', eventAt, receivedAt),
       observedField('theta', numeric(event.t), 'VENUE_REPORTED_RAW_UNIT', 't', eventAt, receivedAt),
       observedField('vega', numeric(event.v), 'VENUE_REPORTED_RAW_UNIT', 'v', eventAt, receivedAt),
     ]
-    : [observedField('indexPrice', numeric(event.p), 'INDEX_PRICE', 'p', eventAt, receivedAt, receivedAt, 5_000)];
+    : [observedField('indexPrice', numeric(event.p), 'VENUE_REPORTED_INDEX_UNIT', 'p', eventAt, receivedAt, receivedAt, 5_000)];
   return makeRecord({
     kind: isMark ? 'MARK_PRICE' : 'INDEX_PRICE',
     endpoint: isMark ? 'WS_MARK_PRICE' : 'WS_INDEX_PRICE',
@@ -238,6 +243,28 @@ function parseIndexOrMark(event, rawPayload, receivedAt, isMark) {
     id: eventAt ? `${isMark ? 'mark' : 'index'}:${eventAt}` : undefined,
     quality: eventAt ? 'VALID' : 'DEGRADED',
     flags: eventAt ? [] : ['EVENT_TIME_MISSING'],
+  });
+}
+
+function parseDepthSnapshot(item, receivedAt, state) {
+  const symbol = item.symbol ?? item.data?.symbol;
+  const lastUpdateId = numeric(item.lastUpdateId ?? item.data?.lastUpdateId);
+  const payload = item.payload ?? item.data?.payload ?? item;
+  if (!validSymbol(symbol) || !validPositiveInteger(lastUpdateId)) {
+    throw new OptionsCollectorError('INVALID_DEPTH_SNAPSHOT', 'Depth snapshot needs a symbol and positive lastUpdateId.');
+  }
+  state.depth.set(symbol, { lastUpdateId, synced: false });
+  return makeRecord({
+    kind: 'DEPTH_SNAPSHOT', endpoint: 'REST_DEPTH', symbol, rawPayload: payload,
+    eventAt: null, receivedAt,
+    fields: [
+      observedField('lastUpdateId', lastUpdateId, 'UPDATE_ID', 'lastUpdateId', null, receivedAt, receivedAt, null),
+      observedField('bids', item.bids ?? item.data?.bids, 'PRICE_SIZE_LEVELS', 'bids', null, receivedAt, receivedAt, null),
+      observedField('asks', item.asks ?? item.data?.asks, 'PRICE_SIZE_LEVELS', 'asks', null, receivedAt, receivedAt, null),
+    ],
+    id: `depth-snapshot:${lastUpdateId}`,
+    quality: 'DEGRADED',
+    flags: ['REST_SNAPSHOT_HAS_NO_EXCHANGE_EVENT_TIME'],
   });
 }
 
@@ -259,21 +286,13 @@ export function parseBinancePublicStreamEvent(rawPayload, receivedAt, state = {}
     const eventAt = iso(event.E);
     const current = numeric(event.u);
     const previous = numeric(event.pu);
-    const firstDiffBridgesSnapshot = prior && !prior.synced
+    const firstDiffBridgesSnapshot = prior && !prior.synced && Number.isFinite(prior.lastUpdateId)
       && numeric(event.U) <= prior.lastUpdateId + 1
       && current >= prior.lastUpdateId + 1;
     const sequenceValid = prior && (prior.synced ? previous === prior.lastUpdateId : firstDiffBridgesSnapshot);
-    if (!sequenceValid) {
-      if (state.depth) state.depth.set(symbol, { lastUpdateId: current ?? 0, synced: false });
-      const gap = makeRecord({
-        kind: 'GAP', endpoint: 'WS_DEPTH', symbol, rawPayload, eventAt, receivedAt,
-        fields: [], quality: 'DEGRADED', flags: [prior ? 'DEPTH_SEQUENCE_GAP' : 'DEPTH_BASELINE_MISSING'],
-        id: `depth-gap:${eventAt ?? receivedAt}:${event.U ?? 'unknown'}:${event.u ?? 'unknown'}`,
-      });
-      return [gap];
-    }
-    state.depth.set(symbol, { lastUpdateId: current, synced: true });
-    return [makeRecord({
+    const quality = sequenceValid ? 'VALID' : 'INVALID';
+    const flags = sequenceValid ? [] : [prior?.lastUpdateId === null || !prior ? 'DEPTH_BASELINE_MISSING' : 'DEPTH_SEQUENCE_GAP'];
+    const diff = makeRecord({
       kind: 'DEPTH_DIFF', endpoint: 'WS_DEPTH', symbol, rawPayload, eventAt, receivedAt,
       fields: [
         observedField('firstUpdateId', numeric(event.U), 'UPDATE_ID', 'U', eventAt, receivedAt, receivedAt, null),
@@ -284,7 +303,19 @@ export function parseBinancePublicStreamEvent(rawPayload, receivedAt, state = {}
         observedField('transactionTime', iso(event.T), 'ISO_TIMESTAMP', 'T', iso(event.T), receivedAt, receivedAt, null),
       ],
       id: validPositiveInteger(current) ? `depth:${current}` : undefined,
-    })];
+      quality,
+      flags,
+    });
+    if (state.depth) state.depth.set(symbol, sequenceValid
+      ? { lastUpdateId: current, synced: true }
+      : { lastUpdateId: null, synced: false });
+    if (sequenceValid) return [diff];
+    const gap = makeRecord({
+      kind: 'GAP', endpoint: 'WS_DEPTH', symbol, rawPayload, eventAt, receivedAt,
+      fields: [], quality: 'DEGRADED', flags,
+      id: `depth-gap:${eventAt ?? receivedAt}:${event.U ?? 'unknown'}:${event.u ?? 'unknown'}`,
+    });
+    return [diff, gap];
   }
   return [];
 }
@@ -292,7 +323,7 @@ export function parseBinancePublicStreamEvent(rawPayload, receivedAt, state = {}
 function gapRecord(rawPayload, receivedAt, reason) {
   return createOptionsArchiveRecord({
     kind: 'GAP',
-    endpoint: 'WS_BOOK_TICKER',
+    endpoint: 'WS_CONNECTION',
     symbol: 'UNKNOWN',
     idempotencyKey: `GAP|connection|${reason}|${receivedAt}`,
     rawPayload,
@@ -309,7 +340,7 @@ export async function collectForwardOptionsEvents({ archive, transport, streams,
   if (!archive || typeof archive.acquireWriterLease !== 'function' || !transport || typeof transport.subscribe !== 'function') {
     throw new OptionsCollectorError('TRANSPORT_REQUIRED', 'An archive and injected async-iterable transport are required.');
   }
-  if (!Array.isArray(streams) || streams.length === 0 || streams.some((stream) => typeof stream !== 'string' || !/^[a-z0-9@_:-]{3,96}$/.test(stream))) {
+  if (!Array.isArray(streams) || streams.length === 0 || streams.some((stream) => typeof stream !== 'string' || !/^[a-z0-9-]+@(bookTicker|optionTrade|optionTicker\\d{6}|index|markPrice|kline_(1m|3m|5m|15m|30m|1h|2h|4h|6h|12h|1d)|depth(10|20|50|100|1000)?(@100ms|@500ms|@1000ms)?)$/i.test(stream))) {
     throw new OptionsCollectorError('INVALID_STREAMS', 'Explicit public stream names are required.');
   }
   const lease = await archive.acquireWriterLease();
@@ -322,7 +353,9 @@ export async function collectForwardOptionsEvents({ archive, transport, streams,
     for await (const item of iterable) {
       const receivedAt = now();
       let records = [];
-      if (item?.type === 'disconnect' || item?.type === 'reconnect') {
+      if (item?.type === 'depthSnapshot') {
+        records = [parseDepthSnapshot(item, receivedAt, state)];
+      } else if (item?.type === 'disconnect' || item?.type === 'reconnect') {
         state.depth.clear();
         records = [gapRecord(item, receivedAt, item.type === 'disconnect' ? 'STREAM_DISCONNECTED' : 'STREAM_RECONNECTED')];
         gaps += 1;
