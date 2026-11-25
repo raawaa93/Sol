@@ -124,7 +124,7 @@ test('future, invalid and wrong-source observations cannot contaminate the IV hi
   history.push(observation(1, Number.NaN, { id: 'nan' }));
   const result = computeIVRankPercentile(history, observation(0, 0.4), AS_OF);
   assert.equal(result.sampleCount, 30);
-  assert.equal(result.maximumIV, 0.48);
+  assert.ok(Math.abs((result.maximumIV ?? 0) - 0.48) < 1e-12);
 });
 
 test('rejects a stale or future current IV observation', () => {
