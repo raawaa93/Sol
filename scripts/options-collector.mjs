@@ -115,16 +115,17 @@ function makeRecord({ kind, endpoint, symbol, rawPayload, eventAt, receivedAt, a
 export function mapVerifiedBinanceContractSpec(exchangeInfo, symbol, receivedAt) {
   const payload = unwrap(exchangeInfo);
   const serverTime = numeric(payload.serverTime);
-  if (!validSymbol(symbol) || serverTime === null || serverTime <= 0 || Date.parse(receivedAt) < serverTime) return null;
+  if (!validSymbol(symbol) || serverTime === null || serverTime <= 0 || Date.parse(receivedAt) < serverTime
+    || Date.parse(receivedAt) - serverTime > 5 * 60 * 1000) return null;
   const symbolInfo = Array.isArray(payload.optionSymbols)
     ? payload.optionSymbols.find((item) => item?.symbol?.toUpperCase() === symbol)
     : undefined;
   if (!symbolInfo) return null;
   const underlying = typeof symbolInfo.underlying === 'string' ? symbolInfo.underlying.toUpperCase() : '';
   const baseAsset = symbol.split('-')[0];
+  if (!underlying) return null;
   const contractInfo = Array.isArray(payload.optionContracts)
-    ? payload.optionContracts.find((item) => item?.underlying?.toUpperCase() === underlying
-      || item?.baseAsset?.toUpperCase() === baseAsset)
+    ? payload.optionContracts.find((item) => item?.underlying?.toUpperCase() === underlying)
     : undefined;
   if (!contractInfo
     || String(contractInfo.underlyingType ?? '').toUpperCase() !== 'CRYPTO'
@@ -139,10 +140,11 @@ export function mapVerifiedBinanceContractSpec(exchangeInfo, symbol, receivedAt)
   const quoteAsset = String(symbolInfo.quoteAsset ?? contractInfo.quoteAsset ?? '').toUpperCase();
   const settlementAsset = String(contractInfo.settleAsset ?? '').toUpperCase();
   if (!['CALL', 'PUT'].includes(optionType) || strike === null || strike <= 0
-    || expiry === null || expiry <= 0 || unit === null || unit <= 0
+    || expiry === null || expiry <= serverTime || unit === null || unit <= 0
     || !/^[A-Z][A-Z0-9]{1,11}$/.test(quoteAsset)
     || !/^[A-Z][A-Z0-9]{1,11}$/.test(settlementAsset)
-    || quoteAsset !== settlementAsset) return null;
+    || quoteAsset !== settlementAsset
+    || (contractInfo.baseAsset && contractInfo.baseAsset.toUpperCase() !== baseAsset)) return null;
   const contractSpec = {
     symbol,
     underlying: underlying || baseAsset,
