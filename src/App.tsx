@@ -49,7 +49,7 @@ import { formatAssetPrice, formatNumber, formatOptionPrice, formatQuantity, form
 import type { AssetClass, OptionQuote, OptionSide, PaperTrade, Underlying } from './lib/types';
 import { ASSET_CLASS_LABELS } from './lib/asset-class';
 import { PAPER_CAMPAIGN_CAPITAL, PAPER_CAMPAIGN_MAX_LOSS, PAPER_CAMPAIGN_PER_TRADE_CAP, canAllocatePaperCampaignTrade, summarizePaperCampaignBudget } from './lib/paper-campaign-budget';
-import { clearPaperJournalRecovery, loadPaperJournal, readPaperJournalPrimary, readPaperJournalRecovery } from './lib/paper-journal-storage';
+import { PAPER_JOURNAL_STORAGE_KEY, clearPaperJournalRecovery, loadPaperJournal, readPaperJournalPrimary, readPaperJournalRecovery } from './lib/paper-journal-storage';
 const MarketDepthPanel = lazy(() => import('./components/MarketDepthPanel'));
 const OpportunityReview = lazy(() => import('./components/OpportunityReview'));
 const GreeksPanel = lazy(() => import('./components/GreeksPanel'));
@@ -1251,6 +1251,34 @@ function App() {
     );
   };
 
+  const exportPaperJournalJson = async () => {
+    const { downloadPaperJournalJsonBackup } = await import('./lib/paper-journal-backup-actions');
+    const result = downloadPaperJournalJsonBackup(trades, isPaperTrade);
+    notify(result.ok
+      ? `تم تنزيل نسخة PAPER JSON (${result.count} سجل)؛ البيانات لم تُرفع إلى أي خادم.`
+      : result.message);
+  };
+
+  const importPaperJournalJson = async (raw: string) => {
+    if (paperJournalLoad.persistenceBlocked) {
+      notify('الاستيراد متوقف لحماية نسخة الاستعادة؛ نزّل النسخ الخام أولاً.');
+      return;
+    }
+    const { importPaperJournalJsonBackup } = await import('./lib/paper-journal-backup-actions');
+    const result = importPaperJournalJsonBackup(raw, trades, isPaperTrade, localStorage, PAPER_JOURNAL_STORAGE_KEY);
+    if (!result.ok) {
+      notify(result.message);
+      return;
+    }
+    if (result.added === 0) {
+      notify('النسخة صالحة، ولا تحتوي صفقات جديدة غير الموجودة حالياً.');
+      return;
+    }
+    setTrades(result.entries);
+    notify(`تم استيراد ${result.added} صفقة جديدة محلياً دون استبدال السجلات الموجودة.`);
+  };
+
+
   const retryPaperJournalPersistence = () => {
     if (!paperJournalLoad.persistenceBlocked) return;
     if (!window.confirm('بعد تنزيل كل النسخ الخام الظاهرة وحفظها خارج المتصفح، هل تريد إزالة قفل الاستعادة وإعادة فحص الملف الأصلي؟')) return;
@@ -1738,6 +1766,9 @@ function App() {
               onClose={closePaperTrade}
               onExportTrades={exportTrades}
               onExportIVHistory={exportIVHistoryBackup}
+              onExportJson={exportPaperJournalJson}
+              onImportBackup={importPaperJournalJson}
+              onImportBackupError={notify}
               onClearJournal={clearPaperJournal}
               onExportRecovery={exportPaperJournalRecovery}
               onExportOriginal={exportPaperJournalOriginal}
