@@ -120,9 +120,11 @@ export function computeIVRankPercentile(
     || !Number.isSafeInteger(minimumSamples) || minimumSamples < 2
     || !Number.isFinite(currentFreshnessMs) || currentFreshnessMs < 0
     || !isValidIVHistoryObservation(current);
+  const safeLookbackDays = Number.isSafeInteger(lookbackDays) && lookbackDays >= 1 && lookbackDays <= 3_650 ? lookbackDays : DEFAULT_IV_LOOKBACK_DAYS;
+  const safeMinimumSamples = Number.isSafeInteger(minimumSamples) && minimumSamples >= 2 ? minimumSamples : DEFAULT_IV_MINIMUM_SAMPLES;
   const empty = (status: IVRankStatus): IVRankPercentileResult => ({
     status, rank: null, percentile: null, currentIV: isValidIVHistoryObservation(current) ? current.iv : null,
-    minimumIV: null, maximumIV: null, sampleCount: 0, minimumSamples, lookbackDays,
+    minimumIV: null, maximumIV: null, sampleCount: 0, minimumSamples: safeMinimumSamples, lookbackDays: safeLookbackDays,
     coverageDays: 0, isPartialHistory: true,
     lookbackStart: asOfMs === null ? '' : new Date(asOfMs - safeLookbackDays * 86_400_000).toISOString(),
     lookbackEnd: asOfMs === null ? '' : new Date(asOfMs).toISOString(),
