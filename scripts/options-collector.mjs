@@ -153,6 +153,7 @@ export function mapVerifiedBinanceContractSpec(exchangeInfo, symbol, receivedAt)
     expiryAt: new Date(expiry).toISOString(),
     unit,
     premiumUnit: 'PER_CONTRACT',
+    premiumMultiplier: 1,
     quoteAsset,
     settlementAsset,
     exerciseStyle: 'EUROPEAN',
