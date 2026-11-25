@@ -222,6 +222,7 @@ export interface PaperTradeExit {
   priceSourceAtExit: 'BID';
   bidAskSourceAtExit: 'BOOK_TICKER';
   sourceTimestampsAtExit: NonNullable<OptionQuote['sourceTimestamps']>;
+  sourceReceivedAtAtExit: { bidAsk: string };
 }
 
 export interface PaperTrade {
