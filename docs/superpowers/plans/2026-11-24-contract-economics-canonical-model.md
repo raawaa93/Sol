@@ -43,6 +43,8 @@
 - [x] Route expiry payoff, max loss and scenario series through canonical cash-settlement payoff for the supported Binance Crypto Options adapter (PR #167).
 - [ ] Route position Greeks through model-specific deliverable scaling.
 - [ ] Route opportunity EV and historical replay through the same validation result.
+- [ ] Complete canonical PAPER lifecycle valuation (mark-to-market, exits and P&L).
+- [x] Persist an append-only canonical PAPER entry snapshot for provider-verified Binance contracts using the premium multiplier and matching source timestamp (PR #169); this records entry evidence only and does not calculate P&L.
 - [ ] Add invariants proving no component uses legacy unit/multiplier as a universal shortcut.
 
 ## Phase 5 — UI, CSV and migration
@@ -179,3 +181,18 @@ PR #167 merged to main as `acd5efcdbec53c2fbcee27a0a4e198a85454eb64`.
 - PR verification passed CI, including unit/property tests, mocked backup orchestration, production build, bundle budgets and Playwright browser journeys; Project Context Guard and Lighthouse passed. The published-site smoke-test workflow was skipped by its schedule/conditions, so do not claim a post-merge published-site smoke test from this PR.
 
 Remaining Phase 4 work: model-specific position Greeks, canonical risk-neutral EV, canonical PAPER journal schema and calculations, and canonical replay. CSV v2 remains USER_ASSERTED on import and cannot grant provider provenance.
+
+
+### Legacy Greek/EV bypass closure — 25 November 2026
+
+PR #168 merged to main as `f39ffde79b25ca3fd5416fa075ad1b1e7b3c3958`.
+
+- Added a shared `hasLegacyScalarAnalyticsCapability` gate that rejects every quote carrying canonical terms from legacy scalar analytics, even when unit=1.
+- Applied the gate to App, GreeksPanel and direct risk-neutral expiry metrics.
+- Per-unit model Greeks may remain visible as explicitly assumed/reference-only values, but position Greeks and Greek shock P&L are hidden until a model adapter declares canonical scale capability.
+- Direct risk-neutral EV now fails closed for canonical quotes; no probability or EV claim is made for them.
+- Regression tests, CI, Playwright, bundle budget, Project Context Guard, Lighthouse, main CI, deployment and published-site smoke test passed.
+
+### Canonical PAPER entry snapshot — PR #169
+
+PR #169 adds a PAPER-only entry snapshot for verified Binance Crypto Options. It stores canonical economics, independent premium multiplier and unit, premium debit, exact observed price basis and its source timestamp. It rejects CSV provenance, model-generated prices and missing/mismatched timestamps. It does not implement mark-to-market, exits, P&L, Greeks, EV or replay. Await PR checks before calling it delivered.
