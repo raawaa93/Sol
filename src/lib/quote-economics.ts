@@ -154,7 +154,11 @@ export function calculateQuoteCashRiskNeutralMetrics(
     || !Number.isFinite(quote.bid) || quote.bid <= 0
     || !Number.isFinite(quote.ask) || quote.ask <= 0 || quote.ask < quote.bid
     || quote.estimatedFields?.some((field) => ['bid', 'ask'].includes(field))
-    || !(quote.sourceTimestamps?.ticker || quote.sourceTimestamps?.optionTicker || quote.sourceTimestamps?.bookTicker)
+    || (quote.bidAskSource === 'BOOK_TICKER'
+      ? !quote.sourceTimestamps?.bookTicker || !Number.isFinite(Date.parse(quote.sourceTimestamps.bookTicker))
+      : quote.bidAskSource === 'OPTION_TICKER'
+        ? !quote.sourceTimestamps?.optionTicker || !Number.isFinite(Date.parse(quote.sourceTimestamps.optionTicker))
+        : true)
     || !quote.sourceTimestamps?.index
     || !Number.isFinite(Date.parse(quote.sourceTimestamps.index))
     || quote.pricingModel !== 'BLACK_SCHOLES_CARRY'
