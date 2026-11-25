@@ -128,6 +128,8 @@ function parseBookTicker(event, rawPayload, receivedAt) {
   const bidSize = numeric(event.B);
   const askSize = numeric(event.A);
   const crossed = bid !== null && ask !== null && bid > ask;
+  const invalidPrice = bid !== null && bid <= 0 || ask !== null && ask <= 0;
+  const invalidSize = bidSize !== null && bidSize < 0 || askSize !== null && askSize < 0;
   const fields = [
     observedField('bid', bid, 'VENUE_REPORTED_PRICE_UNIT', 'b', eventAt, receivedAt),
     observedField('ask', ask, 'VENUE_REPORTED_PRICE_UNIT', 'a', eventAt, receivedAt),
@@ -139,8 +141,13 @@ function parseBookTicker(event, rawPayload, receivedAt) {
   return makeRecord({
     kind: 'BOOK_TICKER', endpoint: 'WS_BOOK_TICKER', symbol, rawPayload, eventAt, receivedAt, fields,
     id: validPositiveInteger(event.u) ? `update:${event.u}` : undefined,
-    quality: crossed ? 'INVALID' : (bid === null || ask === null ? 'DEGRADED' : 'VALID'),
-    flags: crossed ? ['CROSSED_BOOK'] : (bid === null || ask === null ? ['INCOMPLETE_BBO'] : []),
+    quality: crossed || invalidPrice || invalidSize ? 'INVALID' : (bid === null || ask === null ? 'DEGRADED' : 'VALID'),
+    flags: [
+      ...(crossed ? ['CROSSED_BOOK'] : []),
+      ...(invalidPrice ? ['INVALID_BBO_PRICE'] : []),
+      ...(invalidSize ? ['INVALID_BBO_SIZE'] : []),
+      ...(bid === null || ask === null ? ['INCOMPLETE_BBO'] : []),
+    ],
   });
 }
 
@@ -165,7 +172,9 @@ function parseTrade(event, rawPayload, receivedAt) {
     observedField('reportedDirection', event.S, 'BUY_OR_SELL', 'S', eventAt, receivedAt, receivedAt, null),
     observedField('tradeType', event.X, 'MARKET_OR_BLOCK', 'X', eventAt, receivedAt, receivedAt, null),
   ];
-  const quality = !eventAt || !transactionAt || maker === null || !Number.isFinite(numeric(event.p)) || !Number.isFinite(numeric(event.q))
+  const tradePrice = numeric(event.p);
+  const tradeQuantity = numeric(event.q);
+  const quality = !eventAt || !transactionAt || maker === null || tradePrice === null || tradePrice <= 0 || tradeQuantity === null || tradeQuantity <= 0
     ? 'DEGRADED' : 'VALID';
   return makeRecord({
     kind: tradeKind, endpoint: 'WS_OPTION_TRADE', symbol: event.s, rawPayload, eventAt, receivedAt, fields,
