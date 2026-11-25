@@ -51,7 +51,7 @@ import { calculatePremiumCash } from './lib/contract-economics-calculations';
 import { formatAssetPrice, formatNumber, formatOptionPrice, formatQuantity, formatSmallNumber, getOptionPricePrecision, getQuantityPrecision, getQuoteCurrency } from './lib/format';
 import type { AssetClass, OptionQuote, OptionSide, PaperTrade, Underlying } from './lib/types';
 import { ASSET_CLASS_LABELS } from './lib/asset-class';
-import { PAPER_CAMPAIGN_CAPITAL, PAPER_CAMPAIGN_MAX_LOSS, PAPER_CAMPAIGN_PER_TRADE_CAP, canAllocatePaperCampaignTrade, summarizePaperCampaignBudget } from './lib/paper-campaign-budget';
+import { PAPER_CAMPAIGN_CAPITAL, PAPER_CAMPAIGN_ALLOCATION_CAP, PAPER_CAMPAIGN_PER_TRADE_CAP, canAllocatePaperCampaignTrade, summarizePaperCampaignBudget } from './lib/paper-campaign-budget';
 import { clearPaperJournalRecovery, loadPaperJournal, readPaperJournalPrimary, readPaperJournalRecovery } from './lib/paper-journal-storage';
 const MarketDepthPanel = lazy(() => import('./components/MarketDepthPanel'));
 const OpportunityReview = lazy(() => import('./components/OpportunityReview'));
@@ -1663,10 +1663,10 @@ function App() {
                 {hasPremiumSizingCapability && <div className="budget-row"><label htmlFor="risk-budget">ميزانية المحاولة (حد أقصى 20)</label><div><input id="risk-budget" type="number" min="0" max={PAPER_CAMPAIGN_PER_TRADE_CAP} step="1" value={riskBudget} onChange={(event) => setRiskBudget(Math.min(PAPER_CAMPAIGN_PER_TRADE_CAP, Math.max(0, Number(event.target.value))))} /><span>{quoteAssetLabel ?? 'عملة غير محددة'}</span><button onClick={handleBudgetClick} title="احسب كمية لا تتجاوز الميزانية">احسب الكمية</button></div></div>}
                 <div className="risk-summary campaign-risk-summary">
                   <div><span>مرجع رأس المال الافتراضي</span><strong>{formatMoney(PAPER_CAMPAIGN_CAPITAL, 0, 'USD')}</strong></div>
-                  <div><span>سقف القسط والرسوم التراكمي</span><strong>{formatMoney(PAPER_CAMPAIGN_MAX_LOSS, 0, quoteAssetLabel ?? 'USDT')}</strong></div>
+                  <div><span>سقف القسط والرسوم التراكمي</span><strong>{formatMoney(PAPER_CAMPAIGN_ALLOCATION_CAP, 0, quoteAssetLabel ?? 'USDT')}</strong></div>
                   <div><span>المخصص في الدفتر</span><strong>{campaignBudget.unknownEntries || campaignBudget.currencyMismatchEntries ? 'غير محسوب' : formatMoney(campaignBudget.used, 2, campaignBudget.currency || null)}</strong></div>
                   <div><span>المتبقي للحملة</span><strong>{campaignBudgetBlockMessage ? 'محجوب' : formatMoney(campaignBudget.remaining, 2, campaignBudget.currency || null)}</strong></div>
-                  <div><span>رصيد افتراضي غير مخصص</span><strong>{formatMoney(PAPER_CAMPAIGN_CAPITAL - PAPER_CAMPAIGN_MAX_LOSS, 0, 'USD')}</strong></div>
+                  <div><span>رصيد افتراضي غير مخصص</span><strong>{formatMoney(PAPER_CAMPAIGN_CAPITAL - PAPER_CAMPAIGN_ALLOCATION_CAP, 0, 'USD')}</strong></div>
                 </div>
                 {campaignBudgetBlockMessage && <div className="analysis-footnote"><ShieldAlert size={13} /><span>{campaignBudgetBlockMessage} تبقى تكلفة الدخول محسوبة ضمن سقف الحملة حتى تصفير الحملة؛ تسجيل الإغلاق لا يعيد المخصص تلقائياً.</span></div>}
                 <div className="risk-summary">
