@@ -127,7 +127,7 @@ test('canonical PAPER entry requires the timestamp for the actual observed price
   assert.equal(canCreateCanonicalPaperTrade({
     ...quote,
     bidAskSource: 'OPTION_TICKER',
-    sourceTimestamps: { ...quote.sourceTimestamps, ticker: undefined },
+    sourceTimestamps: { ...quote.sourceTimestamps, ticker: '2026-11-25T03:00:00Z', optionTicker: '2026-11-25T03:00:00Z' },
   }, 'BINANCE'), false);
   assert.equal(canCreateCanonicalPaperTrade({
     ...quote,
