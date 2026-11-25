@@ -147,7 +147,6 @@ export function createCanonicalPaperTrade(
   }
   const createdAtMs = Date.parse(createdAt);
   const expiryMs = Date.parse(quote.expiry);
-  const priceTimestamp = getObservedPriceTimestamp(quote, 'ASK');
   const indexTimestamp = Date.parse(quote.sourceTimestamps?.index ?? '');
   if (!Number.isFinite(expiryMs) || expiryMs <= createdAtMs) {
     return { ok: false, reason: 'OPTION_EXPIRED_AT_PAPER_ENTRY' };
@@ -231,6 +230,8 @@ function hasSameCanonicalContract(trade: PaperTrade, quote: OptionQuote): boolea
     && currentEconomics.premium.multiplier === trade.premiumMultiplierAtEntry
     && currentEconomics.premium.multiplier === entryEconomics.premium.multiplier
     && currentEconomics.premium.quoteCurrency === trade.premiumCurrencyAtEntry
+    && quote.quoteAsset === trade.quoteAsset
+    && quote.settlementAsset === entryEconomics.exercise.settlementCurrency
     && currentEconomics.premium.priceUnit === entryEconomics.premium.priceUnit
     && currentEconomics.exercise.style === entryEconomics.exercise.style
     && currentEconomics.exercise.settlement === entryEconomics.exercise.settlement
