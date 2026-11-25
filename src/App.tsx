@@ -1721,7 +1721,7 @@ function App() {
               onRetryPersistence={retryPaperJournalPersistence}
               onNavigateToScanner={() => navigate('scanner')}
             />
-          </Suspense>>
+          </Suspense>
 
           <footer className="app-footer"><div><span className="footer-brand-mark">V</span><span>VOLTERRA <small>DECISION LAB</small></span></div><p>أداة تحليل تعليمية ومحاكاة — ليست نصيحة مالية، ولا تنفّذ أوامر تداول.</p><div className="footer-links"><button onClick={downloadCsvTemplate}>قالب البيانات</button><a href="https://www.fca.org.uk/" target="_blank" rel="noreferrer">FCA <ExternalLink size={11} /></a></div></footer>
         </div>
