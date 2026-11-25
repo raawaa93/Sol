@@ -280,10 +280,13 @@ export class ResumableOptionsArchive {
     await mkdir(join(this.root, 'segments'), { recursive: true });
     await mkdir(join(this.root, '.tmp'), { recursive: true });
     const report = await this.verify();
-    if (!report.ok) throw new OptionsArchiveError('ARCHIVE_CORRUPT', report.errors.join('; '));
+    const fatalErrors = report.errors.filter((error) => !error.startsWith('ORPHAN_TEMP_FILE:'));
+    if (fatalErrors.length) throw new OptionsArchiveError('ARCHIVE_CORRUPT', fatalErrors.join('; '));
     this.index = new Map(report.index);
     this.initialized = true;
-    return report;
+    // Orphan temp segments are recoverable only after the exclusive writer
+    // lease is acquired; initialize must not delete files owned by a live writer.
+    return { ...report, ok: true };
   }
 
   async acquireWriterLease() {
@@ -296,7 +299,17 @@ export class ResumableOptionsArchive {
       const handle = await open(path, 'wx', 0o600);
       try { await handle.writeFile(canonicalJson(lock), 'utf8'); await handle.sync(); } finally { await handle.close(); }
       await fsyncDirectory(this.root);
-      return { path, token, expiresAt };
+      const lease = { path, token, expiresAt };
+      try {
+        await this.cleanTemporaryFiles(lease);
+        const report = await this.verify();
+        if (!report.ok) throw new OptionsArchiveError('ARCHIVE_CORRUPT', report.errors.join('; '));
+        this.index = new Map(report.index);
+        return lease;
+      } catch (cleanupError) {
+        await this.releaseWriterLease(lease);
+        throw cleanupError;
+      }
     } catch (error) {
       if (error.code !== 'EEXIST') throw error;
       let current;
