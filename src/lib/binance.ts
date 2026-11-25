@@ -270,6 +270,8 @@ export function applyBinanceOptionMarkPrice(
       estimatedFields: quote.estimatedFields.filter((field) => !(
         (event.indexPrice !== undefined && field === 'spot')
         || (event.riskFreeRate !== undefined && field === 'riskFreeRate')
+        || (event.bidIv !== undefined && field === 'bidIv')
+        || (event.askIv !== undefined && field === 'askIv')
         || (useMarkBid && field === 'bid')
         || (useMarkAsk && field === 'ask')
         || field === 'markPrice'
