@@ -12,6 +12,7 @@ export interface CanonicalPaperTradeInput {
   quantity: number;
   premiumPrice: number;
   fees: number;
+  entryFeesSource?: 'USER_ENTERED';
   spotAtEntry: number;
 }
 
@@ -103,7 +104,7 @@ export function canCreateCanonicalPaperTrade(
 export function createCanonicalPaperTrade(
   input: CanonicalPaperTradeInput,
 ): CanonicalPaperTradeResult {
-  const { quote, sourceMode, id, createdAt, quantity, premiumPrice, fees, spotAtEntry } = input;
+  const { quote, sourceMode, id, createdAt, quantity, premiumPrice, fees, entryFeesSource, spotAtEntry } = input;
   if (!canCreateCanonicalPaperTrade(quote, sourceMode)) {
     return { ok: false, reason: 'CANONICAL_PROVIDER_VERIFIED_OBSERVED_PRICE_REQUIRED' };
   }
@@ -111,6 +112,7 @@ export function createCanonicalPaperTrade(
     || !Number.isFinite(quantity) || quantity <= 0
     || !Number.isFinite(premiumPrice) || premiumPrice <= 0
     || !Number.isFinite(fees) || fees < 0
+    || (entryFeesSource !== undefined && entryFeesSource !== 'USER_ENTERED')
     || !Number.isFinite(spotAtEntry) || spotAtEntry <= 0) {
     return { ok: false, reason: 'INVALID_PAPER_ENTRY_INPUT' };
   }
@@ -145,6 +147,7 @@ export function createCanonicalPaperTrade(
   }
   const debit = calculatePremiumCash({ economics, premiumPrice, contracts: quantity, fees });
   if (!debit.ok) return { ok: false, reason: debit.reason };
+  if (fees > debit.value.premiumAmount * 0.1 + 1e-9) return { ok: false, reason: 'PAPER_ENTRY_FEE_EXCEEDS_EXCHANGE_CAP' };
 
   const trade: PaperTrade = {
     id,
@@ -157,6 +160,7 @@ export function createCanonicalPaperTrade(
     quantity,
     entryPremium: premiumPrice,
     fees,
+    ...(entryFeesSource ? { entryFeesSource } : {}),
     spotAtEntry,
     quoteAsset: quote.quoteAsset,
     contractEconomics: {
@@ -180,6 +184,7 @@ export function createCanonicalPaperTrade(
     priceSourceAtEntry: getPaperEntryPriceSource(quote),
     bidAskSourceAtEntry: quote.bidAskSource,
     sourceTimestampsAtEntry: quote.sourceTimestamps ? { ...quote.sourceTimestamps } : undefined,
+    sourceReceivedAtAtEntry: quote.sourceReceivedAt?.bidAsk ? { bidAsk: quote.sourceReceivedAt.bidAsk } : undefined,
     status: 'PAPER',
   };
   return {
@@ -223,6 +228,16 @@ export function closeCanonicalPaperTrade(input: CanonicalPaperExitInput): Canoni
     || !Number.isFinite(trade.premiumAmountAtEntry) || trade.premiumAmountAtEntry! <= 0
     || !Number.isFinite(trade.premiumDebitAtEntry) || trade.premiumDebitAtEntry! < trade.premiumAmountAtEntry!
     || !trade.premiumCurrencyAtEntry
+    || !trade.sourceReceivedAtAtEntry?.bidAsk
+    || !Number.isFinite(Date.parse(trade.sourceReceivedAtAtEntry.bidAsk))
+    || !trade.sourceTimestampsAtEntry?.bookTicker || !Number.isFinite(Date.parse(trade.sourceTimestampsAtEntry.bookTicker))
+    || !trade.sourceTimestampsAtEntry?.index || !Number.isFinite(Date.parse(trade.sourceTimestampsAtEntry.index))
+    || Date.parse(trade.sourceReceivedAtAtEntry.bidAsk) > Date.parse(trade.createdAt)
+    || Date.parse(trade.sourceTimestampsAtEntry.bookTicker) > Date.parse(trade.createdAt)
+    || Date.parse(trade.sourceTimestampsAtEntry.index) > Date.parse(trade.createdAt)
+    || Date.parse(trade.createdAt) - Date.parse(trade.sourceReceivedAtAtEntry.bidAsk) > MAX_PAPER_ENTRY_SOURCE_AGE_MS
+    || Date.parse(trade.createdAt) - Date.parse(trade.sourceTimestampsAtEntry.bookTicker) > MAX_PAPER_ENTRY_SOURCE_AGE_MS
+    || Date.parse(trade.createdAt) - Date.parse(trade.sourceTimestampsAtEntry.index) > MAX_PAPER_ENTRY_SOURCE_AGE_MS
     || !validateContractEconomics(trade.contractEconomics).adapterReady) {
     return { ok: false, reason: 'PAPER_ENTRY_SNAPSHOT_NOT_CANONICAL' };
   }
@@ -273,8 +288,13 @@ export function closeCanonicalPaperTrade(input: CanonicalPaperExitInput): Canoni
     contracts: trade.quantity,
   });
   if (!credit.ok) return { ok: false, reason: credit.reason };
+  if (exitFees !== undefined && exitFees > credit.value.premiumAmount * 0.1 + 1e-9) {
+    return { ok: false, reason: 'PAPER_EXIT_FEE_EXCEEDS_EXCHANGE_CAP' };
+  }
   const grossPnl = credit.value.premiumAmount - trade.premiumAmountAtEntry!;
   if (!Number.isFinite(grossPnl)) return { ok: false, reason: 'INVALID_PAPER_EXIT_VALUE' };
+  const hasKnownEntryFees = trade.entryFeesSource === 'USER_ENTERED';
+  const hasKnownExitFees = exitFees !== undefined;
   const exit: NonNullable<PaperTrade['exit']> = {
     closedAt,
     exitPremium: quote.bid,
@@ -282,7 +302,7 @@ export function closeCanonicalPaperTrade(input: CanonicalPaperExitInput): Canoni
     ...(exitFees !== undefined ? { exitFees, exitFeesSource: 'USER_ENTERED' as const, exitCreditAfterFees: credit.value.premiumAmount - exitFees } : {}),
     exitPremiumAmount: credit.value.premiumAmount,
     realizedGrossPnl: grossPnl,
-    ...(exitFees !== undefined ? { realizedNetPnl: credit.value.premiumAmount - exitFees - trade.premiumDebitAtEntry! } : {}),
+    ...(hasKnownEntryFees && hasKnownExitFees ? { realizedNetPnl: credit.value.premiumAmount - exitFees! - trade.premiumDebitAtEntry! } : {}),
     spotAtExit: quote.spot,
     bidQuantityAtExit: quote.bidQuantity!,
     priceSourceAtExit: 'BID',
