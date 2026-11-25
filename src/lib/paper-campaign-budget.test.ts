@@ -143,3 +143,52 @@ test('inconsistent used and remaining values in a campaign summary fail closed',
     'INVALID_CAMPAIGN_BUDGET',
   );
 });
+
+
+function closeRecord(realizedPnl: number, overrides: Partial<NonNullable<PaperTrade['close']>> = {}): NonNullable<PaperTrade['close']> {
+  const exitNetProceeds = 20 + realizedPnl;
+  const exitFees = 1;
+  const exitGrossProceeds = exitNetProceeds + exitFees;
+  return {
+    closedAt: '2026-11-25T08:00:00.000Z',
+    exitPremium: 20,
+    exitFees,
+    exitExchangeFee: 1,
+    exitAdditionalFees: 0,
+    exitGrossProceeds,
+    exitNetProceeds,
+    realizedPnl,
+    currency: 'USDT',
+    spotAtExit: 100000,
+    bidAskSource: 'BOOK_TICKER',
+    sourceTimestamps: { bookTicker: '2026-11-25T07:59:59.000Z', index: '2026-11-25T07:59:59.000Z' },
+    sourceReceivedAt: '2026-11-25T07:59:59.100Z',
+    bidQuantity: 1,
+    bidAskSizeUnit: 'CONTRACTS',
+    ...overrides,
+  };
+}
+
+test('closed PAPER trades reserve realized losses, not their released original debit', () => {
+  const loss = trade({ close: closeRecord(-5) });
+  const gain = trade({ id: 'paper-gain', close: closeRecord(8) });
+  const summary = summarizePaperCampaignBudget([loss, gain], 'USDT');
+  assert.equal(summary.used, 5);
+  assert.equal(summary.remaining, 55);
+  assert.equal(summary.canAllocate, true);
+});
+
+test('open debit plus realized losses share the same cumulative campaign cap', () => {
+  const open = trade({ premiumDebitAtEntry: 20 });
+  const closedLoss = trade({ id: 'paper-loss', close: closeRecord(-7) });
+  const summary = summarizePaperCampaignBudget([open, closedLoss], 'USDT');
+  assert.equal(summary.used, 27);
+  assert.equal(summary.remaining, 33);
+});
+
+test('malformed PAPER close records block allocation instead of releasing risk', () => {
+  const malformed = trade({ close: closeRecord(-5, { realizedPnl: -3 }) });
+  const summary = summarizePaperCampaignBudget([malformed], 'USDT');
+  assert.equal(summary.unknownEntries, 1);
+  assert.equal(summary.canAllocate, false);
+});
