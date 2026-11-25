@@ -221,4 +221,18 @@ This update supersedes the earlier 24 November statement that archive/PIT code w
 - The current execution record is maintained in docs/EXECUTION_STATUS_2026-11-24.md, and archive-specific limits are maintained in docs/OPTIONS_ARCHIVE_IMPLEMENTATION_STATUS_2026-11-25.md.
 
 No live capture, production database write, paid service, account credential, live order or funds movement was used in these changes.
-\n\n## Implementation update — BBO-aware replay contract (25 November 2026)\n\nPR #204 merged as `337e03fb26d44c906125318affc473030c165da4`.\n\n- Replay chronology uses local BBO receive/availability time; source event/snapshot time is retained separately. A source-to-receive delay above five minutes, missing/future clocks or mismatched clocks are rejected.\n- Eligible sources are explicit `BOOK_TICKER` or `OPTION_TICKER` BBO. Binance `bookTicker` supplies bid/ask and displayed contract-count quantities; REST `OPTION_TICKER` BBO uses `sourceTimestamps.ticker`. The WebSocket `optionTicker` 24-hour statistics/last-price event is not BBO.\n- Every row needs explicit `bidAskSizeUnit` (`CONTRACTS` or `UNDERLYING_UNITS`), bid/ask quantities and non-estimated two-sided prices. Entry requires enough Ask size; exit requires enough Bid size. Mark-only and modelled prices are not executable.\n- Per-side adverse slippage is configurable and visible with fills, clocks and displayed size. Zero fees/slippage are unmodelled, potentially optimistic assumptions.\n- CSV template/import preserves BBO source, event time, receive time, size unit and quantities. CSV provenance remains user-asserted and unauthenticated; generic `timestamp` is not a BBO clock.\n\nVerification: CI 45572889900 passed 303/303 unit/property tests, production build, compressed bundle budget and 18/18 Playwright journeys; Lighthouse 45572889852 and Project Context Guard 45572889839 passed.\n\nThis is a conservative one-leg fixed-hold PAPER execution baseline, not a predictive strategy. It does not create a historical BBO archive or model full depth, queue position, partial fills, latency distributions, expiry/settlement or hedging. No empirical strategy edge or profitability is established.\n
+
+
+## Implementation update — BBO-aware replay contract (25 November 2026)
+
+PR #204 merged as `337e03fb26d44c906125318affc473030c165da4`.
+
+- Replay chronology uses local BBO receive/availability time; source event/snapshot time is retained separately. A source-to-receive delay above five minutes, missing/future clocks or mismatched clocks are rejected.
+- Eligible sources are explicit `BOOK_TICKER` or `OPTION_TICKER` BBO. Binance `bookTicker` supplies bid/ask and displayed contract-count quantities; REST `OPTION_TICKER` BBO uses `sourceTimestamps.ticker`. The WebSocket `optionTicker` 24-hour statistics/last-price event is not BBO.
+- Every row needs explicit `bidAskSizeUnit` (`CONTRACTS` or `UNDERLYING_UNITS`), bid/ask quantities and non-estimated two-sided prices. Entry requires enough Ask size; exit requires enough Bid size. Mark-only and modelled prices are not executable.
+- Per-side adverse slippage is configurable and visible with fills, clocks and displayed size. Zero fees/slippage are unmodelled, potentially optimistic assumptions.
+- CSV template/import preserves BBO source, event time, receive time, size unit and quantities. CSV provenance remains user-asserted and unauthenticated; generic `timestamp` is not a BBO clock.
+
+Verification: CI 45572889900 passed 303/303 unit/property tests, production build, compressed bundle budget and 18/18 Playwright journeys; Lighthouse 45572889852 and Project Context Guard 45572889839 passed.
+
+This is a conservative one-leg fixed-hold PAPER execution baseline, not a predictive strategy. It does not create a historical BBO archive or model full depth, queue position, partial fills, latency distributions, expiry/settlement or hedging. No empirical strategy edge or profitability is established.
