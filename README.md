@@ -149,3 +149,11 @@ Volterra هو مختبر خيارات متعدد الأصول وليس منتج�
 - Binance `bookTicker` is the BBO source. Its quantities are recorded in contracts/lots. The `optionTicker` WebSocket stream is 24-hour statistics/last-price data, not BBO; its event time must not be used for bid/ask. REST `OPTION_TICKER` BBO snapshots use `sourceTimestamps.ticker`.
 - Mark-only, estimated, stale, future, missing-clock, unknown-size-unit and undersized rows are rejected. Per-side adverse slippage and fees are visible; zero values are optimistic unmodelled costs. CSV provenance remains user-supplied and unauthenticated.
 - This is a one-leg fixed-hold PAPER execution baseline. It does not model full depth, queue priority, partial fills, market impact beyond configured slippage, latency distributions, expiry/settlement or hedging. No historical BBO corpus or measured strategy edge exists.
+
+## PAPER campaign risk budget
+
+The PAPER journal uses a $200 campaign-capital assumption, a hard $60 cumulative premium-and-fee allocation ceiling, and a $20 maximum per attempt. The sizing calculator uses the remaining campaign allowance; the save path independently enforces both caps, including manually changed quantities. The remaining $140 is outside the campaign risk budget.
+
+Each saved PAPER entry reserves its full premium debit until the local journal is explicitly reset. The journal does not model closing trades or realized P&L, so it does not automatically release risk after a hypothetical exit. Export the CSV before using the confirmation-protected reset. Existing entries with unknown debit or mixed currencies block new entries until reconciled. USD and USDT are separate campaign currencies; no implicit FX conversion is made.
+
+This is a local PAPER control only. It does not submit orders, control an exchange account, or guarantee a $60 loss ceiling in live trading.
