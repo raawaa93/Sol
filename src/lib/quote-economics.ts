@@ -1,5 +1,6 @@
 import { calculateCashSettlementPayoff, type CashSettlementPayoffValue, type EconomicsCalculationResult } from './contract-economics-calculations.ts';
 import { validateContractEconomics } from './contract-economics.ts';
+import { normalCdf } from './options.ts';
 import type { OptionQuote } from './types.ts';
 
 export interface QuoteCashRiskInput {
@@ -108,6 +109,129 @@ export function calculateQuoteCashMaxLoss(
   return { ok: true, value: { amount, currency: economics.premium.quoteCurrency, contracts } };
 }
 
+
+export interface QuoteCashRiskNeutralMetrics {
+  probabilityOfProfit: number;
+  probabilityInTheMoney: number;
+  /** Undiscounted risk-neutral expected expiry P&L for one contract, before fees. */
+  expectedExpiryPnlPerContract: number;
+  /** Discounted model value for one contract under the stated risk-neutral assumptions. */
+  modelPricePerContract: number;
+  modelValueGapPerContract: number;
+  breakevenPrice: number;
+  riskFreeRate: number;
+  carryYield: number;
+  currency: string;
+}
+
+/**
+ * Risk-neutral expiry metrics for provider-verified Binance-style European
+ * cash-settled contracts. The model is conditional on the observed IV/rate
+ * and explicitly supplied carry assumption; it is not a real-world forecast.
+ */
+export function calculateQuoteCashRiskNeutralMetrics(
+  quote: OptionQuote,
+  entryPremiumPerContract: number,
+  feesPerContract = 0,
+): QuoteCashRiskNeutralMetrics | null {
+  const economics = supportedCashEconomics(quote);
+  if (!economics || economics.provenance.status !== 'PROVIDER_VERIFIED'
+    || economics.provenance.provider !== 'BINANCE'
+    || economics.exercise.style !== 'EUROPEAN'
+    || economics.exercise.settlement !== 'CASH'
+    || economics.exercise.cashSettlement?.formula !== 'INTRINSIC_VALUE'
+    || economics.exercise.cashSettlement.reference !== 'INDEX'
+    || economics.premium.priceUnit !== 'PER_CONTRACT'
+    || economics.premium.quoteCurrency !== economics.exercise.cashSettlement.currency
+    || quote.underlyingKind !== 'SPOT'
+    || !quote.sourceTimestamps?.index
+    || !Number.isFinite(Date.parse(quote.sourceTimestamps.index))
+    || quote.pricingModel !== 'BLACK_SCHOLES_CARRY'
+    || !['SUPPORTED', 'ASSUMED'].includes(quote.pricingStatus ?? '')
+    || quote.ivStatus !== 'OBSERVED'
+    || quote.estimatedFields?.some((field) => ['iv', 'spot', 'riskFreeRate', 'daysToExpiry'].includes(field))
+    || !Number.isFinite(quote.riskFreeRate)
+    || !Number.isFinite(quote.carryYield)
+    || !Number.isFinite(quote.spot) || quote.spot <= 0
+    || !Number.isFinite(quote.strike) || quote.strike <= 0
+    || !Number.isFinite(quote.daysToExpiry) || quote.daysToExpiry < 0
+    || !Number.isFinite(quote.iv) || quote.iv <= 0 || quote.iv > 5
+    || !Number.isFinite(entryPremiumPerContract) || entryPremiumPerContract < 0
+    || !Number.isFinite(feesPerContract) || feesPerContract < 0
+    || (quote.type !== 'CALL' && quote.type !== 'PUT')) return null;
+
+  const cashMultiplier = economics.exercise.cashSettlement.multiplier;
+  const premiumMultiplier = economics.premium.multiplier;
+  if (!Number.isFinite(cashMultiplier) || cashMultiplier <= 0
+    || !Number.isFinite(premiumMultiplier) || premiumMultiplier <= 0) return null;
+
+  const rate = quote.riskFreeRate!;
+  const carry = quote.carryYield!;
+  const time = quote.daysToExpiry / 365;
+  const premiumCash = entryPremiumPerContract * premiumMultiplier;
+  const totalDebit = premiumCash + feesPerContract;
+  const breakevenPrice = quote.type === 'CALL'
+    ? quote.strike + totalDebit / cashMultiplier
+    : quote.strike - totalDebit / cashMultiplier;
+  if (!Number.isFinite(breakevenPrice)) return null;
+
+  if (time === 0) {
+    const intrinsicPerReferenceUnit = quote.type === 'CALL'
+      ? Math.max(quote.spot - quote.strike, 0)
+      : Math.max(quote.strike - quote.spot, 0);
+    const expectedIntrinsic = intrinsicPerReferenceUnit * cashMultiplier;
+    const itm = quote.type === 'CALL' ? quote.spot > quote.strike : quote.spot < quote.strike;
+    const profitable = expectedIntrinsic > totalDebit;
+    const modelPricePerContract = expectedIntrinsic;
+    return {
+      probabilityOfProfit: profitable ? 1 : 0,
+      probabilityInTheMoney: itm ? 1 : 0,
+      expectedExpiryPnlPerContract: expectedIntrinsic - premiumCash,
+      modelPricePerContract,
+      modelValueGapPerContract: modelPricePerContract - premiumCash,
+      breakevenPrice,
+      riskFreeRate: rate,
+      carryYield: carry,
+      currency: economics.exercise.cashSettlement.currency,
+    };
+  }
+
+  const sigmaRootTime = quote.iv * Math.sqrt(time);
+  if (!Number.isFinite(sigmaRootTime) || sigmaRootTime <= 0) return null;
+  const drift = rate - carry - 0.5 * quote.iv * quote.iv;
+  const d2Strike = (Math.log(quote.spot / quote.strike) + drift * time) / sigmaRootTime;
+  const d1Strike = d2Strike + sigmaRootTime;
+  const probabilityInTheMoney = quote.type === 'CALL' ? normalCdf(d2Strike) : normalCdf(-d2Strike);
+
+  let probabilityOfProfit = 0;
+  if (quote.type === 'CALL' ? breakevenPrice > 0 : breakevenPrice > 0) {
+    const d2BreakEven = (Math.log(quote.spot / breakevenPrice) + drift * time) / sigmaRootTime;
+    probabilityOfProfit = quote.type === 'CALL' ? normalCdf(d2BreakEven) : normalCdf(-d2BreakEven);
+  }
+
+  const expectedUnderlying = quote.spot * Math.exp((rate - carry) * time);
+  const expectedIntrinsicPerUnit = Math.max(0, quote.type === 'CALL'
+    ? expectedUnderlying * normalCdf(d1Strike) - quote.strike * normalCdf(d2Strike)
+    : quote.strike * normalCdf(-d2Strike) - expectedUnderlying * normalCdf(-d1Strike));
+  const expectedIntrinsic = expectedIntrinsicPerUnit * cashMultiplier;
+  const discount = Math.exp(-rate * time);
+  const modelPricePerContract = expectedIntrinsic * discount;
+  const expectedExpiryPnlPerContract = expectedIntrinsic - premiumCash;
+  const modelValueGapPerContract = modelPricePerContract - premiumCash;
+
+  if (![probabilityOfProfit, probabilityInTheMoney, expectedExpiryPnlPerContract, modelPricePerContract].every(Number.isFinite)) return null;
+  return {
+    probabilityOfProfit: Math.min(1, Math.max(0, probabilityOfProfit)),
+    probabilityInTheMoney: Math.min(1, Math.max(0, probabilityInTheMoney)),
+    expectedExpiryPnlPerContract,
+    modelPricePerContract,
+    modelValueGapPerContract,
+    breakevenPrice,
+    riskFreeRate: rate,
+    carryYield: carry,
+    currency: economics.exercise.cashSettlement.currency,
+  };
+}
 
 export interface QuoteCashExpiryScenarioPoint {
   move: number;
