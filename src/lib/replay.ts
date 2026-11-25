@@ -21,7 +21,7 @@ function hasSameContractScale(entry: OptionQuote, exit: OptionQuote): boolean {
 
 function bidAskSourceTimestamp(quote: OptionQuote): string | undefined {
   if (quote.bidAskSource === 'BOOK_TICKER') return quote.sourceTimestamps?.bookTicker;
-  if (quote.bidAskSource === 'OPTION_TICKER') return quote.sourceTimestamps?.ticker;
+  if (quote.bidAskSource === 'OPTION_TICKER') return quote.sourceTimestamps?.optionTicker;
   return undefined;
 }
 
