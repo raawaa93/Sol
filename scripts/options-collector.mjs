@@ -177,6 +177,7 @@ export function mapVerifiedBinanceContractSpec(exchangeInfo, symbol, receivedAt)
     termsSource: 'BINANCE_OPTIONS_CONTRACT_SPECIFICATIONS_2026-01-05',
     settlementTermsSource: 'BINANCE_CLEARING_PROCEDURES_126_130',
     settlementTermsAmendmentNoticeSource: 'BINANCE_CLEARING_PROCEDURES_AMENDMENT_NOTICE_2026-05-21',
+    settlementTermsAmendmentScope: 'BINANCE_RCH',
     settlementTermsVersion: '1.3',
     settlementTermsConsolidatedTextVerified: false,
     version: sha256(canonicalJson({
@@ -185,6 +186,7 @@ export function mapVerifiedBinanceContractSpec(exchangeInfo, symbol, receivedAt)
       termsSource: 'BINANCE_OPTIONS_CONTRACT_SPECIFICATIONS_2026-01-05',
       settlementTermsSource: 'BINANCE_CLEARING_PROCEDURES_126_130',
       settlementTermsAmendmentNoticeSource: 'BINANCE_CLEARING_PROCEDURES_AMENDMENT_NOTICE_2026-05-21',
+      settlementTermsAmendmentScope: 'BINANCE_RCH',
       settlementTermsVersion: '1.3',
       settlementTermsConsolidatedTextVerified: false,
     })),
