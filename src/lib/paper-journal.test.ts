@@ -60,6 +60,7 @@ const quote: OptionQuote = {
     index: '2026-11-25T03:00:00Z',
     ticker: '2026-11-25T03:00:00Z',
     bookTicker: '2026-11-25T03:00:00Z',
+    bidAsk: '2026-11-25T03:00:00Z',
     markPrice: '2026-11-25T03:00:00Z',
   },
 };
@@ -125,7 +126,7 @@ test('canonical PAPER entry requires the timestamp for the actual observed price
     ...quote,
     bidAskSource: 'BOOK_TICKER',
     sourceTimestamps: { index: quote.sourceTimestamps?.index, optionTicker: quote.sourceTimestamps?.optionTicker },
-  }, 'BINANCE'), false);
+  }, 'BINANCE', paperNow), false);
   assert.equal(canCreateCanonicalPaperTrade({
     ...quote,
     bidAskSource: 'OPTION_TICKER',
@@ -143,6 +144,17 @@ test('canonical PAPER entry requires the timestamp for the actual observed price
     bidAskSource: 'BOOK_TICKER',
     sourceTimestamps: { ...quote.sourceTimestamps, index: 'not-a-date' },
   }, 'BINANCE'), false);
+});
+
+test('canonical PAPER entry rejects stale or future BBO pair timestamps', () => {
+  assert.equal(canCreateCanonicalPaperTrade({
+    ...quote,
+    sourceTimestamps: { ...quote.sourceTimestamps, bidAsk: '2026-11-25T02:59:00Z' },
+  }, 'BINANCE', paperNow), false);
+  assert.equal(canCreateCanonicalPaperTrade({
+    ...quote,
+    sourceTimestamps: { ...quote.sourceTimestamps, bidAsk: '2026-11-25T03:01:00Z' },
+  }, 'BINANCE', paperNow), false);
 });
 
 test('canonical PAPER entry accepts a markPrice-stream midpoint only with its own timestamp', () => {
