@@ -7,6 +7,7 @@ export const PAPER_CLOSE_EVENTS_RECOVERY_KEY = 'volterra-paper-close-events-reco
 export interface PaperCloseEventsStorage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
+  removeItem(key: string): void;
 }
 
 export interface PaperCloseEventsLoadResult {
@@ -161,6 +162,16 @@ export function readPaperCloseEventsPrimary(storage: PaperCloseEventsStorage): s
 export function clearPaperCloseEventsRecovery(storage: PaperCloseEventsStorage & { removeItem(key: string): void }): boolean {
   try {
     storage.removeItem(PAPER_CLOSE_EVENTS_RECOVERY_KEY);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Explicit campaign reset removes active close events but preserves recovery bytes. */
+export function clearPaperCloseEvents(storage: PaperCloseEventsStorage): boolean {
+  try {
+    storage.removeItem(PAPER_CLOSE_EVENTS_KEY);
     return true;
   } catch {
     return false;
