@@ -69,3 +69,11 @@ This is provenance tracking only. The notice is for Binance RCH and does not est
 - UI explicitly shows insufficient/partial history and states that IV Rank/Percentile are not probabilities of profit or direction forecasts. Demo/CSV/model/venue-volatility values are not mixed into the observed Binance REST mark-IV series.
 - CI 45570010720 passed 293 tests, production build, bundle budget and Playwright; Lighthouse 45570010778 and Project Context Guard 45570010823 passed.
 - No real Binance HTTP/WebSocket capture, scheduled worker, cross-device cloud archive, historical BBO dataset, strategy edge, or live trading capability is claimed.
+
+
+## Follow-up verification — IV history end-to-end coverage — 25 November 2026, 07:49 UTC
+
+- PR #194 merged as `7183ab85eac7e9d7556cc3716b7d1790948c63d6`, adding source-homogeneous IV Rank/Percentile, conservative 30-day ATM REST mark-IV extraction, bounded browser-local history and explanatory UI.
+- PR #196 merged as `26b82d63bdd533c96fba8a881a8036fcf7c0b470`, adding a deterministic browser journey for paired 20/40-DTE CALL/PUT quotes, insufficient-history disclosure and provenance-preserving JSON export.
+- CI 45570955327 passed 293 unit/property tests, production build, compressed bundle budget and 18 Playwright journeys. Lighthouse 45570955246 and Project Context Guard 45570955274 passed.
+- These are code/test results only. No live Binance request, scheduled capture, cloud archive, historical BBO corpus or strategy edge is claimed.
