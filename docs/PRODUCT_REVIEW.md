@@ -328,3 +328,6 @@ Remaining: no historical BBO corpus, scheduled collector, cloud archive, full de
 ## PAPER journal corruption recovery — PR #235
 
 The local PAPER journal now preserves the exact original JSON before filtering invalid rows, provides separate downloads for any previous recovery snapshot and the current primary journal, blocks writes/clear operations when preservation is uncertain, and supports a confirmation-gated retry after the user saves the raw snapshots outside the browser. Recovery content is not uploaded or automatically re-imported. PR #235 merged as `8a4caa82c7612d5f5b5d9da5de2a60c01537c386`; PR-head CI and Lighthouse passed.
+
+### Post-merge verification — PR #237
+The duplicate recovery-helper import from the concurrent merge was removed. Main CI 45583736477, Lighthouse 45583736442, Project Context Guard 45583736354, and GitHub Pages deployment plus published-site smoke/Lighthouse 45583736335 all passed on `194fdc1603bb9209d3b8c899f5cb53922560679e`.
