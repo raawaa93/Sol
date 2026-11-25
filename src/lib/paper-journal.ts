@@ -308,6 +308,7 @@ export function closeCanonicalPaperTrade(input: CanonicalPaperCloseInput): Canon
     },
     sourceReceivedAt: quote.sourceReceivedAt?.bidAsk ?? '',
     bidQuantity: quote.bidQuantity!,
+    takerFeeRateAtExit: quote.takerFeeRate!,
     bidAskSizeUnit: 'CONTRACTS',
   };
   return { ok: true, trade: { ...trade, close }, close };
