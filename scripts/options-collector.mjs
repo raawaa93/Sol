@@ -139,15 +139,18 @@ export function mapVerifiedBinanceContractSpec(exchangeInfo, symbol, receivedAt)
   const strike = numeric(symbolInfo.strikePrice);
   const expiry = numeric(symbolInfo.expiryDate);
   const unit = numeric(symbolInfo.unit);
-  const quoteAsset = String(symbolInfo.quoteAsset ?? contractInfo.quoteAsset ?? '').toUpperCase();
+  const quoteAsset = String(symbolInfo.quoteAsset ?? '').toUpperCase();
+  const contractQuoteAsset = String(contractInfo.quoteAsset ?? '').toUpperCase();
   const settlementAsset = String(contractInfo.settleAsset ?? '').toUpperCase();
   if (!['CALL', 'PUT'].includes(optionType) || strike === null || strike <= 0
     || expiry === null || !Number.isSafeInteger(expiry) || expiry <= serverTime
     || unit === null || !Number.isSafeInteger(unit) || unit <= 0
     || !/^[A-Z][A-Z0-9]{1,11}$/.test(quoteAsset)
+    || !/^[A-Z][A-Z0-9]{1,11}$/.test(contractQuoteAsset)
     || !/^[A-Z][A-Z0-9]{1,11}$/.test(settlementAsset)
-    || quoteAsset !== settlementAsset
-    || (contractInfo.baseAsset && contractInfo.baseAsset.toUpperCase() !== baseAsset)) return null;
+    || quoteAsset !== contractQuoteAsset || quoteAsset !== settlementAsset
+    || String(symbolInfo.status ?? '').toUpperCase() !== 'TRADING'
+    || !contractInfo.baseAsset || contractInfo.baseAsset.toUpperCase() !== baseAsset) return null;
   const contractSpec = {
     symbol,
     underlying: underlying || baseAsset,
