@@ -240,7 +240,7 @@ test('Binance normalizer avoids crossed bid/ask midpoints and preserves last-pri
 });
 
 
-test('Binance keeps ticker, index, and open-interest source timestamps separate', () => {
+test('Binance keeps 24-hour ticker close time separate from event timestamps', () => {
   const now = Date.now();
   const expiry = now + 30 * 86_400_000;
   const symbol = `BTC-${compactDate(expiry)}-100000-C`;
@@ -265,9 +265,9 @@ test('Binance keeps ticker, index, and open-interest source timestamps separate'
   });
 
   const quote = snapshot.quotes[0];
-  assert.equal(quote.sourceTimestamp, new Date(tickerTime).toISOString());
+  assert.equal(quote.sourceTimestamp, undefined, '24-hour statistics close time is not a last-trade event time');
   assert.deepEqual(quote.sourceTimestamps, {
-    ticker: new Date(tickerTime).toISOString(),
+    tickerClose: new Date(tickerTime).toISOString(),
     index: new Date(indexTime).toISOString(),
     openInterest: new Date(openInterestTime).toISOString(),
   });
