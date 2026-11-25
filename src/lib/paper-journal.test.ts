@@ -343,6 +343,39 @@ test('canonical PAPER close rejects insufficient Bid size, wrong contract and st
   if (!future.ok) assert.equal(future.reason, 'PAPER_CLOSE_MARKET_SNAPSHOT_STALE_OR_FUTURE');
 });
 
+test('runtime close-event validation rejects tampered PnL and stale source chronology', () => {
+  const entry = createCanonicalPaperTrade(input);
+  assert.equal(entry.ok, true);
+  if (!entry.ok) return;
+  const closeQuote = {
+    ...quote,
+    sourceTimestamps: {
+      ...quote.sourceTimestamps,
+      bookTicker: '2026-11-25T03:01:30Z',
+      index: '2026-11-25T03:01:30Z',
+    },
+  };
+  const result = createCanonicalPaperCloseEvent({
+    trade: entry.trade,
+    quote: closeQuote,
+    sourceMode: 'BINANCE',
+    id: 'close-integrity-1',
+    closedAt: '2026-11-25T03:02:00Z',
+    exitFees: 0.25,
+    spotAtExit: closeQuote.spot,
+  });
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(isCanonicalPaperCloseEvent({ ...result.event, netPnl: 100 }), false);
+  assert.equal(isCanonicalPaperCloseEvent({
+    ...result.event,
+    sourceTimestampsAtExit: {
+      ...result.event.sourceTimestampsAtExit,
+      bookTicker: '2026-11-25T03:00:00Z',
+    },
+  }), false);
+});
+
 test('paper close event storage appends once and rejects duplicate trade closures', () => {
   const entry = createCanonicalPaperTrade(input);
   assert.equal(entry.ok, true);
