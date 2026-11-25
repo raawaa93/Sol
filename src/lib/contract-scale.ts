@@ -143,9 +143,11 @@ export function hasCanonicalBinanceModelGreekCapability(
     && Number.isFinite(quote.carryYield)
     && [quote.delta, quote.gamma, quote.theta, quote.vega, quote.rho].every(Number.isFinite)
     && validTimestamp(quote.sourceTimestamps?.index)
-    && validTimestamp(quote.sourceTimestamps?.optionTicker)
     && validTimestamp(quote.sourceTimestamps?.markIv)
-    && quote.sourceTimestamps?.markIv === quote.sourceTimestamps?.optionTicker;
+    && ((quote.markIvSource === 'OPTION_TICKER' && validTimestamp(quote.sourceTimestamps?.optionTicker)
+      && quote.sourceTimestamps?.markIv === quote.sourceTimestamps?.optionTicker)
+      || (quote.markIvSource === 'MARK_PRICE' && validTimestamp(quote.sourceTimestamps?.markPrice)
+        && quote.sourceTimestamps?.markIv === quote.sourceTimestamps?.markPrice));
 }
 
 export function getContractScaleIssueMessage(issue: ContractScaleIssue): string {
