@@ -245,7 +245,7 @@ export interface BinanceOptionTickerEvent {
   askIv?: number;
   /** Venue ticker field vo; not the explicit REST markIV field. */
   venueVolatility?: number;
-  sourceGreeks: { delta?: number; gamma?: number; theta?: number; vega?: number };
+  sourceGreeks?: { delta?: number; gamma?: number; theta?: number; vega?: number };
 }
 
 /** Parse the Options markPrice stream. Its vo field is not markIV. */
@@ -390,7 +390,7 @@ export function applyBinanceOptionTicker(quote: OptionQuote, event: BinanceOptio
     ...(event.bidIv !== undefined ? { bidIv: event.bidIv } : {}),
     ...(event.askIv !== undefined ? { askIv: event.askIv } : {}),
     ...(event.venueVolatility !== undefined ? { venueVolatility: event.venueVolatility } : {}),
-    ...(Object.values(event.sourceGreeks).some(Number.isFinite)
+    ...(event.sourceGreeks && Object.values(event.sourceGreeks).some(Number.isFinite)
       ? { unverifiedSourceGreeks: { ...quote.unverifiedSourceGreeks, ...event.sourceGreeks } }
       : {}),
     ...(quote.estimatedFields ? {
