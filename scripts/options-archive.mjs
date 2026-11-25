@@ -564,8 +564,11 @@ export class ResumableOptionsArchive {
   async verify() {
     const errors = [];
     const index = new Map();
+    await mkdir(dirname(this.root), { recursive: true });
+    await assertRealDirectory(this.root);
     const segmentRoot = join(this.root, 'segments');
-    await mkdir(segmentRoot, { recursive: true });
+    await assertRealDirectory(segmentRoot);
+    await assertRealDirectory(join(this.root, '.tmp'));
     const files = await walkFiles(segmentRoot);
     const segmentHashes = new Set();
     for (const file of files) {
