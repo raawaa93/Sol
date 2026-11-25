@@ -219,9 +219,10 @@ async function fsyncDirectory(path) {
   try { await handle.sync(); } finally { await handle.close(); }
 }
 
-async function writeDurable(path, content) {
+async function writeDurable(path, content, tempDirectory = dirname(path)) {
   await mkdir(dirname(path), { recursive: true });
-  const temp = `${path}.${randomUUID()}.tmp`;
+  await mkdir(tempDirectory, { recursive: true });
+  const temp = join(tempDirectory, `${randomUUID()}.ndjson.tmp`);
   const handle = await open(temp, 'wx', 0o600);
   try {
     await handle.writeFile(content, 'utf8');
@@ -229,6 +230,7 @@ async function writeDurable(path, content) {
   } finally { await handle.close(); }
   await rename(temp, path);
   await fsyncDirectory(dirname(path));
+  if (tempDirectory !== dirname(path)) await fsyncDirectory(tempDirectory);
 }
 
 async function walkFiles(root) {
@@ -394,7 +396,7 @@ export class ResumableOptionsArchive {
     await this.assertLease(lease);
     const expiresAt = Date.now() + this.leaseTtlMs;
     const lock = { token: lease.token, pid: process.pid, host: process.env.HOSTNAME ?? 'local', expiresAt };
-    await writeDurable(lease.path, canonicalJson(lock));
+    await writeDurable(lease.path, canonicalJson(lock), join(this.root, '.tmp'));
     lease.expiresAt = expiresAt;
     return lease;
   }
@@ -434,7 +436,7 @@ export class ResumableOptionsArchive {
 
   async writeCursor(value) {
     const envelope = cursorEnvelope(value, new Date().toISOString());
-    await writeDurable(join(this.root, 'cursor.json'), canonicalJson(envelope));
+    await writeDurable(join(this.root, 'cursor.json'), canonicalJson(envelope), join(this.root, '.tmp'));
     return envelope;
   }
 
