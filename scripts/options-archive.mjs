@@ -236,8 +236,12 @@ async function walkFiles(root) {
   const entries = await readdir(root, { withFileTypes: true });
   for (const entry of entries) {
     const path = join(root, entry.name);
+    if (entry.isSymbolicLink()) {
+      throw new OptionsArchiveError('SYMLINK_NOT_ALLOWED', `Archive paths cannot contain symbolic links: ${relative(root, path)}`);
+    }
     if (entry.isDirectory()) found.push(...await walkFiles(path));
-    else found.push(path);
+    else if (entry.isFile()) found.push(path);
+    else throw new OptionsArchiveError('UNSUPPORTED_FILE_TYPE', `Archive paths must be regular files or directories: ${relative(root, path)}`);
   }
   return found;
 }
