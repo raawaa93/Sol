@@ -324,3 +324,7 @@ Remaining: no historical BBO corpus, scheduled collector, cloud archive, full de
 **التحقق:** CI 45574730769 نجح: 309/309 اختباراً، البناء الإنتاجي، حد الحزمة، و18/18 اختبار Playwright؛ Lighthouse 45574730886 وProject Context Guard 45574730851 نجحا.
 
 هذا حد ميزانية داخل دفتر PAPER المحلي فقط، وليس ضابط خسارة على حساب Binance ولا ضماناً للخسارة الفعلية في التداول الحي.
+
+## PAPER journal corruption recovery — PR #235
+
+The local PAPER journal now preserves the exact original JSON before filtering invalid rows, provides separate downloads for any previous recovery snapshot and the current primary journal, blocks writes/clear operations when preservation is uncertain, and supports a confirmation-gated retry after the user saves the raw snapshots outside the browser. Recovery content is not uploaded or automatically re-imported. PR #235 merged as `8a4caa82c7612d5f5b5d9da5de2a60c01537c386`; PR-head CI and Lighthouse passed.
