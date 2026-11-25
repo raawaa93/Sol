@@ -143,7 +143,7 @@ export interface OptionQuote {
   /** Venue `vo` field, preserved separately from mark IV. */
   venueVolatility?: number;
   /** Local receive time for fields from endpoints that do not publish event timestamps. */
-  sourceReceivedAt?: { markIv?: string; riskFreeRate?: string };
+  sourceReceivedAt?: { markIv?: string; riskFreeRate?: string; bidAsk?: string };
   /** Exchange-provided IV at the best bid, in annual decimal units. */
   bidIv?: number;
   /** Exchange-provided IV at the best ask, in annual decimal units. */
