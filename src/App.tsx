@@ -731,9 +731,11 @@ function App() {
     () => summarizePaperCampaignBudget(trades, quoteAssetLabel ?? '', undefined, paperCloseEvents),
     [trades, quoteAssetLabel, paperCloseEvents],
   );
-  const campaignBudgetBlockMessage = paperJournalLoad.backupAvailable || paperJournalLoad.persistenceBlocked
-    || paperCloseEventsLoad.backupAvailable || paperCloseEventsLoad.persistenceBlocked
-    ? 'توجد نسخة استعادة محلية لم يتم تأكيد حفظها خارج المتصفح؛ نزّل النسخ الخام وأكّد الاستعادة قبل أي إدخال أو إغلاق جديد.'
+  const campaignBudgetBlockMessage = !paperCloseEventsReady
+    ? 'جارٍ تحميل سجل إغلاقات PAPER والتحقق منه؛ الإدخالات والإغلاقات محجوبة مؤقتاً.'
+    : paperJournalLoad.backupAvailable || paperJournalLoad.persistenceBlocked
+      || paperCloseEventsLoad.backupAvailable || paperCloseEventsLoad.persistenceBlocked
+      ? 'توجد نسخة استعادة محلية لم يتم تأكيد حفظها خارج المتصفح؛ نزّل النسخ الخام وأكّد الاستعادة قبل أي إدخال أو إغلاق جديد.'
     : !campaignBudget.supportedCurrency
       ? 'سقف الحملة يدعم USD أو USDT فقط حالياً؛ لا نفترض تحويل عملات.'
     : campaignBudget.unknownEntries > 0
@@ -1140,8 +1142,8 @@ function App() {
     notify('أضيفت الصفقة إلى الدفتر التجريبي فقط.');
   };
 
-  const closePaperTrade = (trade: PaperTrade) => {
-    if (paperJournalLoad.persistenceBlocked || paperJournalLoad.backupAvailable || paperCloseEventsLoad.persistenceBlocked || paperCloseEventsLoad.backupAvailable) {
+  const closePaperTrade = async (trade: PaperTrade) => {
+    if (!paperCloseEventsReady || paperJournalLoad.persistenceBlocked || paperJournalLoad.backupAvailable || paperCloseEventsLoad.persistenceBlocked || paperCloseEventsLoad.backupAvailable) {
       notify('إغلاق PAPER متوقف حتى تنزيل نسخ الاستعادة خارج المتصفح وتأكيدها.');
       return;
     }
@@ -1161,15 +1163,29 @@ function App() {
       notify('أدخل رسوم الخروج يدوياً وفق جدول الرسوم المطبق على حسابك؛ لا نفترض أنها صفر.');
       return;
     }
-    const result = createCanonicalPaperCloseEvent({
-      trade,
-      quote: selectedQuote,
-      sourceMode: dataMode,
-      id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `close-${Date.now()}`,
-      closedAt: new Date().toISOString(),
-      exitFees,
-      spotAtExit: underlyingReferencePrice,
-    });
+    let result: ReturnType<typeof import('./lib/paper-journal').createCanonicalPaperCloseEvent>;
+    let appendPaperCloseEvent: typeof import('./lib/paper-journal-events').appendPaperCloseEvent;
+    let loadPaperCloseEvents: typeof import('./lib/paper-journal-events').loadPaperCloseEvents;
+    try {
+      const [journalModule, eventModule] = await Promise.all([
+        import('./lib/paper-journal'),
+        import('./lib/paper-journal-events'),
+      ]);
+      result = journalModule.createCanonicalPaperCloseEvent({
+        trade,
+        quote: selectedQuote,
+        sourceMode: dataMode,
+        id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `close-${Date.now()}`,
+        closedAt: new Date().toISOString(),
+        exitFees,
+        spotAtExit: underlyingReferencePrice,
+      });
+      appendPaperCloseEvent = eventModule.appendPaperCloseEvent;
+      loadPaperCloseEvents = eventModule.loadPaperCloseEvents;
+    } catch {
+      notify('تعذر تحميل وحدة إغلاق PAPER؛ لم نسجل أي حدث.');
+      return;
+    }
     if (!result.ok) {
       const messages: Record<string, string> = {
         CANONICAL_EXECUTABLE_BID_REQUIRED: 'يلزم Bid مرصود من BookTicker مع حجم معروض بوحدة العقود.',
