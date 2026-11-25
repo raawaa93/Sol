@@ -164,6 +164,7 @@ const canonicalGreekQuote: OptionQuote = {
   volume: 20,
   spot: 99000,
   unit: 100,
+  markIvSource: 'OPTION_TICKER',
   sourceTimestamps: {
     index: '2026-11-25T04:00:00Z',
     optionTicker: '2026-11-25T04:00:01Z',
@@ -197,6 +198,10 @@ test('canonical Binance model Greek capability rejects missing provenance, times
   assert.equal(hasCanonicalBinanceModelGreekCapability({
     ...canonicalGreekQuote,
     sourceTimestamps: { ...canonicalGreekQuote.sourceTimestamps, markIv: '2026-11-25T04:00:02Z' },
+  }, 'BINANCE'), false);
+  assert.equal(hasCanonicalBinanceModelGreekCapability({
+    ...canonicalGreekQuote,
+    markIvSource: 'MARK_PRICE',
   }, 'BINANCE'), false);
   assert.equal(hasCanonicalBinanceModelGreekCapability({
     ...canonicalGreekQuote,
