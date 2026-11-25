@@ -123,7 +123,8 @@
 - [x] Merge PR #192 as 8e97c76dea8646eec8a116b1116e2cf1e88dba72.
 
 **Not implemented / not verified (separate future task):**
-- [ ] Supervised worker, scheduler, persistent runtime, cloud archive and monitoring.
+- [x] Opt-in supervised local Node worker, bounded runtime/storage, graceful stop, idle-stream lease renewal, archive verification and offline tests — PR #216 merged as `50dfed865c75556f96aadcda12a2f8845af3fe07`.
+- [ ] Scheduler, persistent hosted runtime, durable cloud archive and monitoring.
 - [ ] Any live Binance WebSocket connection, HTTP capture or forward market-data collection.
 - [ ] Legal, licensing and exact account/product eligibility for live capture from the user's true residence.
 - [ ] Cross-process/cloud lease, durable restart recovery and end-to-end cloud backup/restore.
