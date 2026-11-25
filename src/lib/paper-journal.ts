@@ -89,7 +89,10 @@ export function canCreateCanonicalPaperTrade(
     || economics.provenance.rawFields?.unit !== quote.unit) return false;
   const entryPriceSource = getPaperEntryPriceSource(quote);
   if (entryPriceSource !== 'ASK') return false;
+  const sourceTimestamp = getObservedPriceTimestamp(quote, entryPriceSource);
+  const receivedTimestamp = Date.parse(quote.sourceReceivedAt?.bidAsk ?? '');
   if (!hasObservedPriceTimestamp(quote, entryPriceSource)
+    || !Number.isFinite(receivedTimestamp) || receivedTimestamp < sourceTimestamp
     || !quote.sourceTimestamps?.index || !Number.isFinite(Date.parse(quote.sourceTimestamps.index))) return false;
   if (!quote.quoteAsset || quote.quoteAsset !== economics.premium.quoteCurrency) return false;
   return calculatePremiumCash({ economics, premiumPrice: 1, contracts: 1 }).ok;
@@ -118,13 +121,15 @@ export function createCanonicalPaperTrade(
   const expiryMs = Date.parse(quote.expiry);
   const priceSource = getPaperEntryPriceSource(quote);
   const priceTimestamp = priceSource ? getObservedPriceTimestamp(quote, priceSource) : Number.NaN;
+  const receivedTimestamp = Date.parse(quote.sourceReceivedAt?.bidAsk ?? '');
   const indexTimestamp = Date.parse(quote.sourceTimestamps?.index ?? '');
   if (!Number.isFinite(createdAtMs) || !Number.isFinite(expiryMs) || expiryMs <= createdAtMs) {
     return { ok: false, reason: 'OPTION_EXPIRED_AT_PAPER_ENTRY' };
   }
-  if (!Number.isFinite(priceTimestamp) || !Number.isFinite(indexTimestamp)
-    || priceTimestamp > createdAtMs || indexTimestamp > createdAtMs
+  if (!Number.isFinite(priceTimestamp) || !Number.isFinite(receivedTimestamp) || !Number.isFinite(indexTimestamp)
+    || priceTimestamp > receivedTimestamp || receivedTimestamp > createdAtMs || indexTimestamp > createdAtMs
     || createdAtMs - priceTimestamp > MAX_PAPER_ENTRY_SOURCE_AGE_MS
+    || createdAtMs - receivedTimestamp > MAX_PAPER_ENTRY_SOURCE_AGE_MS
     || createdAtMs - indexTimestamp > MAX_PAPER_ENTRY_SOURCE_AGE_MS) {
     return { ok: false, reason: 'PAPER_ENTRY_MARKET_SNAPSHOT_STALE_OR_FUTURE' };
   }
@@ -178,6 +183,7 @@ export function createCanonicalPaperTrade(
     priceSourceAtEntry: getPaperEntryPriceSource(quote),
     bidAskSourceAtEntry: quote.bidAskSource,
     sourceTimestampsAtEntry: quote.sourceTimestamps ? { ...quote.sourceTimestamps } : undefined,
+    sourceReceivedAtAtEntry: quote.sourceReceivedAt ? { ...quote.sourceReceivedAt } : undefined,
     status: 'PAPER',
   };
   return {
