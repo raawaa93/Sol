@@ -357,5 +357,5 @@ test('canonical PAPER close cannot be timestamped before its entry', () => {
     closedAt: '2026-11-25T03:00:59Z',
   });
   assert.equal(result.ok, false);
-  if (!result.ok) assert.equal(result.reason, 'OPTION_EXPIRED_BEFORE_PAPER_CLOSE');
+  if (!result.ok) assert.equal(result.reason, 'PAPER_CLOSE_TIME_BEFORE_ENTRY');
 });
