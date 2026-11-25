@@ -98,6 +98,26 @@ export function validateOptionsArchiveRecord(record) {
 
   if (record.contractSpec !== null && record.contractSpec !== undefined) {
     assertObject(record.contractSpec, 'contractSpec');
+    const spec = record.contractSpec;
+    const requiredText = ['symbol', 'underlying', 'optionType', 'quoteAsset', 'settlementAsset', 'premiumUnit', 'exerciseStyle', 'settlementStyle', 'sourceEndpoint', 'version'];
+    if (requiredText.some((key) => typeof spec[key] !== 'string' || !spec[key].trim())
+      || spec.symbol !== record.symbol
+      || !['CALL', 'PUT'].includes(spec.optionType)
+      || spec.premiumUnit !== 'PER_CONTRACT'
+      || !['EUROPEAN', 'AMERICAN'].includes(spec.exerciseStyle)
+      || !['CASH', 'PHYSICAL'].includes(spec.settlementStyle)
+      || spec.sourceEndpoint !== 'REST_EXCHANGE_INFO'
+      || !Number.isFinite(spec.strike) || spec.strike <= 0
+      || !Number.isFinite(spec.unit) || spec.unit <= 0
+      || !Number.isFinite(Date.parse(spec.expiryAt))) {
+      throw new OptionsArchiveError('CONTRACT_SPEC_INCOMPLETE', 'Contract specification is missing verified symbol, unit, premium, currency, exercise, settlement, strike or expiry terms.');
+    }
+    if (spec.settlementStyle === 'CASH' && (!Number.isFinite(spec.cashSettlementMultiplier) || spec.cashSettlementMultiplier <= 0)) {
+      throw new OptionsArchiveError('CONTRACT_SPEC_INCOMPLETE', 'Cash-settled contracts require an explicit positive settlement multiplier.');
+    }
+    if (spec.settlementStyle === 'PHYSICAL' && (!Array.isArray(spec.deliverables) || spec.deliverables.length === 0)) {
+      throw new OptionsArchiveError('CONTRACT_SPEC_INCOMPLETE', 'Physically settled contracts require explicit deliverables.');
+    }
     const fingerprint = sha256(canonicalJson(record.contractSpec));
     if (record.contractSpecFingerprint !== fingerprint) throw new OptionsArchiveError('CONTRACT_FINGERPRINT_MISMATCH', 'Contract specification fingerprint is invalid.');
     timestamp(record.contractSpecObservedAt, 'contractSpecObservedAt');
@@ -209,7 +229,7 @@ function recordIdentity(record) {
 function symbolPartition(symbol) { return sha256(symbol).slice(0, 16); }
 
 function recordDate(record) {
-  return (record.clocks.exchangeEventAt ?? record.clocks.receivedAt).slice(0, 10);
+  return new Date(record.clocks.exchangeEventAt ?? record.clocks.receivedAt).toISOString().slice(0, 10);
 }
 
 function cursorEnvelope(value, updatedAt) {
