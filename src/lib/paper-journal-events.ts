@@ -49,7 +49,10 @@ export function isCanonicalPaperCloseEvent(value: unknown): value is CanonicalPa
     || typeof value.sourceTimestampsAtExit.bookTicker !== 'string'
     || !Number.isFinite(Date.parse(value.sourceTimestampsAtExit.bookTicker))
     || typeof value.sourceTimestampsAtExit.index !== 'string'
-    || !Number.isFinite(Date.parse(value.sourceTimestampsAtExit.index))) return false;
+    || !Number.isFinite(Date.parse(value.sourceTimestampsAtExit.index))
+    || !isRecord(value.sourceReceivedAtAtExit)
+    || typeof value.sourceReceivedAtAtExit.bidAsk !== 'string'
+    || !Number.isFinite(Date.parse(value.sourceReceivedAtAtExit.bidAsk))) return false;
   const economics = validateContractEconomics(value.contractEconomicsAtExit);
   if (!economics.adapterReady || !isRecord(value.contractEconomicsAtExit)) return false;
   const provenance = isRecord(value.contractEconomicsAtExit.provenance) ? value.contractEconomicsAtExit.provenance : {};
@@ -57,6 +60,7 @@ export function isCanonicalPaperCloseEvent(value: unknown): value is CanonicalPa
   const multiplier = premium.multiplier;
   const closedAt = Date.parse(value.closedAt as string);
   const bookAt = Date.parse((value.sourceTimestampsAtExit as Record<string, string>).bookTicker);
+  const receivedAt = Date.parse((value.sourceReceivedAtAtExit as Record<string, string>).bidAsk);
   const indexAt = Date.parse((value.sourceTimestampsAtExit as Record<string, string>).index);
   const grossExpected = (value.exitPremium as number) * (value.quantity as number) * (multiplier as number);
   const netExpected = (value.grossProceeds as number) - (value.exitFees as number) - (value.entryDebit as number);
@@ -68,7 +72,9 @@ export function isCanonicalPaperCloseEvent(value: unknown): value is CanonicalPa
     && Math.abs((value.grossProceeds as number) - grossExpected) <= tolerance
     && Math.abs((value.netPnl as number) - netExpected) <= Math.max(1e-8, Math.abs(netExpected) * 1e-8)
     && value.bidAtExit === value.exitPremium
-    && bookAt <= closedAt && indexAt <= closedAt
+    && bookAt <= receivedAt && receivedAt <= closedAt && indexAt <= closedAt
+    && receivedAt - bookAt <= 5 * 60_000
+    && closedAt - receivedAt <= 5 * 60_000
     && closedAt - bookAt <= 5 * 60_000
     && closedAt - indexAt <= 5 * 60_000;
 }
