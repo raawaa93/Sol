@@ -34,6 +34,8 @@ export function isCanonicalPaperCloseEvent(value: unknown): value is CanonicalPa
     || typeof value.quantity !== 'number' || !Number.isFinite(value.quantity) || value.quantity <= 0
     || typeof value.exitPremium !== 'number' || !Number.isFinite(value.exitPremium) || value.exitPremium <= 0
     || typeof value.exitFees !== 'number' || !Number.isFinite(value.exitFees) || value.exitFees < 0
+    || typeof value.exitFeesCurrency !== 'string' || !value.exitFeesCurrency.trim()
+    || value.exitFeesCurrency !== value.currency
     || value.exitFeesSource !== 'USER_ENTERED'
     || typeof value.grossProceeds !== 'number' || !Number.isFinite(value.grossProceeds) || value.grossProceeds <= 0
     || (value.exitFees as number) > (value.grossProceeds as number)
