@@ -534,6 +534,7 @@ test('WebSocket transport bounds pending messages and emits an explicit gap befo
     constructor(url) {
       this.url = url;
       this.listeners = new Map();
+      this.closeCode = null;
       FakeWebSocket.instances.push(this);
       queueMicrotask(() => this.emit('open', {}));
     }
@@ -545,7 +546,7 @@ test('WebSocket transport bounds pending messages and emits an explicit gap befo
     emit(type, event) {
       for (const callback of this.listeners.get(type) ?? []) callback(event);
     }
-    close(code = 1000, reason = '') { this.emit('close', { code, reason }); }
+    close(code = 1000, reason = '') { this.closeCode = code; this.emit('close', { code, reason }); }
   }
   const transport = createBinanceOptionsWebSocketTransport({
     WebSocketImpl: FakeWebSocket,
@@ -561,6 +562,7 @@ test('WebSocket transport bounds pending messages and emits an explicit gap befo
   assert.deepEqual((await iterator.next()).value, {
     type: 'disconnect', code: 1006, reason: 'local-buffer-overflow',
   });
+  assert.equal(socket.closeCode, 1000);
   await assert.rejects(
     iterator.next(),
     (error) => error instanceof OptionsCollectorError && error.code === 'WEBSOCKET_BUFFER_OVERFLOW',
