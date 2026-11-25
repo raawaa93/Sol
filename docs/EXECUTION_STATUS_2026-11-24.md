@@ -219,7 +219,7 @@ The old isolated worktree `research/options-pit-archive-2026-11-24` remains unav
 - Binance Crypto Options European exercise/cash INDEX assumptions now retain the published Contract Specifications and Clearing Procedures references, scoped to Binance RIE/RCH with account-specific applicability marked UNVERIFIED.
 - Exercise/settlement-dependent adapter readiness fails closed if the exact exchangeInfo source, product-family fields or legal terms provenance are absent. Independently verified per-contract premium arithmetic remains available.
 - Opportunity Review and GreeksPanel disclose the conditional legal scope.
-- Main CI run 45549655174, Project Context Guard 45549655188, local Lighthouse 45549655137 and deployment build/deploy passed. Published app and market-data-proxy smoke check passed; published-site Lighthouse collection is still running at the time of this update.
+- Main CI run 45549655174, Project Context Guard 45549655188, local Lighthouse 45549655137, deployment build/deploy, published app and market-data-proxy smoke check, and published-site Lighthouse all passed (deployment run 45549655164).
 
 ## Durable local options archive foundation merged — 25 November 2026
 
