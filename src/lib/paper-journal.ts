@@ -19,8 +19,11 @@ export type CanonicalPaperTradeResult =
   | { ok: false; reason: string };
 
 function getPaperEntryPriceSource(quote: OptionQuote): OptionQuote['priceSource'] | undefined {
-  if (quote.bid > 0 && quote.ask >= quote.bid
-    && (quote.bidAskSource === 'BOOK_TICKER' || quote.bidAskSource === 'OPTION_TICKER')) return 'MID';
+  // getMidPrice prefers a two-sided mid over markPrice. Never label that mid
+  // as MARK when its bid/ask source has no matching event timestamp.
+  if (quote.bid > 0 && quote.ask >= quote.bid) {
+    return quote.bidAskSource === 'BOOK_TICKER' || quote.bidAskSource === 'OPTION_TICKER' ? 'MID' : undefined;
+  }
   if (quote.priceSource === 'MARK' && quote.markPrice > 0) return 'MARK';
   if (quote.priceSource === 'LAST' && quote.markPrice > 0) return 'LAST';
   if (quote.priceSource === 'BID' && quote.bid > 0) return 'BID';
