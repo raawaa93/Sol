@@ -1079,6 +1079,15 @@ function App() {
     notify('تم تصدير ' + result.count + ' عينة IV محلية.');
   };
 
+  const downloadCsvTemplateFile = async () => {
+    try {
+      const { downloadCsvTemplate } = await import('./lib/csv');
+      downloadCsvTemplate();
+    } catch {
+      notify('تعذر تحميل قالب CSV.');
+    }
+  };
+
   const exportTrades = async () => {
     if (!trades.length) {
       notify('لا توجد صفقات تجريبية لتصديرها.');
@@ -1216,7 +1225,7 @@ function App() {
                 <button className={`button button-binance ${dataMode === 'BINANCE' ? 'active' : ''}`} onClick={loadBinanceOptions} disabled={binanceLoading} title="تحميل سلسلة الخيارات والبيانات العامة من Binance">
                   <RefreshCw className={binanceLoading ? 'spin' : ''} size={14} /> {binanceLoading ? 'جارٍ جلب Binance…' : dataMode === 'BINANCE' ? 'تحديث Binance' : 'تحميل Binance'}
                 </button>
-                <button className="button button-ghost" onClick={downloadCsvTemplate}><Download size={15} /> قالب CSV</button>
+                <button className="button button-ghost" onClick={downloadCsvTemplateFile}><Download size={15} /> قالب CSV</button>
                 <button className="button button-primary" onClick={() => uploadRef.current?.click()}><FileUp size={16} /> استيراد CSV</button>
                 <input ref={uploadRef} type="file" accept=".csv,text/csv" hidden onChange={(event) => handleCsvUpload(event.target.files?.[0])} />
               </div>
