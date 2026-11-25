@@ -722,13 +722,13 @@ function App() {
     ? calculateQuoteCashMaxLoss(selectedQuote, { premiumPrice: selectedEntryPremium, contracts: safeQuantity, fees: canonicalTotalFees })
     : undefined;
   const canonicalMaxLossAmount = canonicalMaxLossResult?.ok ? canonicalMaxLossResult.value.amount : undefined;
-  const canCalculatePremiumCost = canonicalPremiumPerContract !== undefined || hasExplicitConsistentContractScale;
+  const canCalculatePremiumCost = (canonicalPremiumPerContract !== undefined && Number.isFinite(canonicalTotalFees)) || hasExplicitConsistentContractScale;
   const canCalculateBreakEven = canonicalBreakEvenPrice !== undefined || hasExplicitConsistentContractScale;
   const canCalculateMaxLoss = canonicalMaxLossAmount !== undefined || hasExplicitConsistentContractScale;
   const contractScaleIssueMessage = selectedQuote.contractEconomics
     ? canonicalPremiumPerContract !== undefined
-      ? 'تم احتساب تكلفة القسط وحجم المركز من مضاعف القسط الموثق، ويمكن تسجيل إدخال PAPER مع حفظ مواصفات العقد والمصدر. Greeks المركز وEV متاحان فقط عند استيفاء محوّلات Binance الموثقة ومدخلاتها؛ أما إعادة التشغيل فتبقى محجوبة حتى اكتمال مسارها.'
-      : 'مواصفات العقد الاقتصادية غير كافية لحساب القسط أو المخاطر؛ لم نستخدم unit أو أي حساب قديم كبديل.'
+      ? 'يُحسب دخول PAPER على Ask المرصود بحجم دفتر كافٍ، مع رسوم taker وفق معدل الرمز وصيغة Binance؛ لا نستخدم midpoint كملء. Greeks المركز وEV متاحان فقط عند استيفاء محوّلات Binance الموثقة ومدخلاتها.'
+      : 'تعذر حساب تكلفة دخول قابلة للتنفيذ؛ يلزم Ask وحجم دفتر ورسوم موثقة. لم نستخدم unit أو أي حساب قديم كبديل.'
     : contractScaleIssue ? getContractScaleIssueMessage(contractScaleIssue) : '';
   const totalCost = canonicalPremiumPerContract !== undefined
     ? canonicalPremiumPerContract * safeQuantity + canonicalTotalFees
@@ -1177,7 +1177,11 @@ function App() {
         INSUFFICIENT_OR_INVALID_BID_FOR_PAPER_CLOSE: 'حجم Bid المتاح أقل من كمية المركز أو غير موثق.',
         PAPER_CLOSE_MARKET_SNAPSHOT_STALE_OR_FUTURE: 'توقيت Bid قديم أو مستقبلي؛ انتظر تحديث الدفتر.',
         PAPER_CLOSE_INDEX_SNAPSHOT_STALE_OR_FUTURE: 'توقيت مؤشر الأصل قديم أو غير صالح؛ لا يمكن حساب رسوم الإغلاق.',
+        PAPER_CLOSE_TIME_BEFORE_ENTRY: 'وقت الإغلاق أقدم من وقت الدخول المسجل.',
+        INVALID_PAPER_CLOSE_TIMESTAMP: 'توقيت الإغلاق غير صالح.',
         BINANCE_EXIT_FEE_UNAVAILABLE: 'معدل رسوم الإغلاق غير متاح لهذا العقد.',
+        PAPER_EXIT_FEES_EXCEED_PROCEEDS: 'الرسوم المقدرة تتجاوز عائد الإغلاق؛ لم نسجل نتيجة غير منطقية.',
+        INVALID_PAPER_REALIZED_PNL: 'تعذر حساب النتيجة المحققة بشكل صحيح.',
       };
       notify(messages[result.reason] ?? `تعذر إغلاق PAPER: ${result.reason}`);
       return;
