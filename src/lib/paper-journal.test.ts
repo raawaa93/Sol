@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { canCreateCanonicalPaperTrade, createCanonicalPaperTrade } from './paper-journal.ts';
+import { canCreateCanonicalPaperTrade, createCanonicalPaperTrade, createCanonicalPaperClose } from './paper-journal.ts';
 import type { OptionQuote } from './types.ts';
 import { BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS } from './contract-economics.ts';
 
@@ -260,4 +260,194 @@ test('canonical PAPER long entry requires sufficient displayed ask size in contr
   });
   assert.equal(missingSizeUnit.ok, false);
   if (!missingSizeUnit.ok) assert.equal(missingSizeUnit.reason, 'CANONICAL_PROVIDER_VERIFIED_OBSERVED_PRICE_REQUIRED');
+});
+
+
+function makeOpenCanonicalTrade() {
+  const result = createCanonicalPaperTrade(input);
+  assert.equal(result.ok, true);
+  if (!result.ok) throw new Error('test fixture must create an open canonical PAPER trade');
+  return result.trade;
+}
+
+function makeExitQuote(overrides: Partial<OptionQuote> = {}): OptionQuote {
+  return {
+    ...quote,
+    bid: 1.1,
+    ask: 1.3,
+    bidQuantity: 10,
+    askQuantity: 10,
+    bidAskSizeUnit: 'CONTRACTS',
+    bidAskSource: 'BOOK_TICKER',
+    sourceTimestamps: {
+      ...quote.sourceTimestamps,
+      bookTicker: '2026-11-25T03:02:00Z',
+      index: '2026-11-25T03:02:00Z',
+    },
+    ...overrides,
+  };
+}
+
+test('canonical PAPER close sells at timestamped Bid and calculates net realized P&L', () => {
+  const trade = makeOpenCanonicalTrade();
+  const result = createCanonicalPaperClose({
+    trade,
+    quote: makeExitQuote(),
+    closedAt: '2026-11-25T03:03:00Z',
+    exitPremium: 1.1,
+    exitFees: 0.1,
+  });
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(result.close.exitPriceSource, 'BID');
+  assert.equal(result.close.exitBidQuantity, 10);
+  assert.equal(result.close.exitBidSizeUnit, 'CONTRACTS');
+  assert.equal(result.close.exitFeeCurrency, 'USDT');
+  assert.equal(result.close.exitPremium, 1.1);
+  assert.ok(Math.abs(result.close.exitPremiumAmount - 3.3) < 1e-9);
+  assert.ok(Math.abs(result.close.exitProceeds - 3.2) < 1e-9);
+  assert.ok(Math.abs(result.realizedPnl - (-1.2)) < 1e-9);
+  assert.equal(result.close.realizedPnlCurrency, 'USDT');
+  assert.equal(result.trade.close?.closedAt, '2026-11-25T03:03:00Z');
+});
+
+test('canonical PAPER close rejects insufficient displayed Bid size', () => {
+  const result = createCanonicalPaperClose({
+    trade: makeOpenCanonicalTrade(),
+    quote: makeExitQuote({ bidQuantity: 2 }),
+    closedAt: '2026-11-25T03:03:00Z',
+    exitPremium: 1.1,
+    exitFees: 0.1,
+  });
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.reason, 'INSUFFICIENT_OBSERVED_BID_SIZE');
+});
+
+test('canonical PAPER close rejects a different contract or a non-book-ticker quote', () => {
+  const trade = makeOpenCanonicalTrade();
+  const mismatch = createCanonicalPaperClose({
+    trade,
+    quote: makeExitQuote({ symbol: 'BTC-20261125-100000-C' }),
+    closedAt: '2026-11-25T03:03:00Z',
+    exitPremium: 1.1,
+    exitFees: 0.1,
+  });
+  assert.equal(mismatch.ok, false);
+  if (!mismatch.ok) assert.equal(mismatch.reason, 'EXIT_CONTRACT_IDENTITY_MISMATCH');
+
+  const markQuote = makeExitQuote({ bidAskSource: 'MARK_PRICE', bidAskSizeUnit: undefined });
+  const unverified = createCanonicalPaperClose({
+    trade,
+    quote: markQuote,
+    closedAt: '2026-11-25T03:03:00Z',
+    exitPremium: 1.1,
+    exitFees: 0.1,
+  });
+  assert.equal(unverified.ok, false);
+  if (!unverified.ok) assert.equal(unverified.reason, 'INSUFFICIENT_OBSERVED_BID_SIZE');
+});
+
+test('canonical PAPER close rejects stale, future-dated and post-expiry snapshots', () => {
+  const trade = makeOpenCanonicalTrade();
+  const stale = createCanonicalPaperClose({
+    trade,
+    quote: makeExitQuote({ sourceTimestamps: { ...quote.sourceTimestamps, bookTicker: '2026-11-25T02:00:00Z', index: '2026-11-25T03:02:00Z' } }),
+    closedAt: '2026-11-25T03:03:00Z',
+    exitPremium: 1.1,
+    exitFees: 0.1,
+  });
+  assert.equal(stale.ok, false);
+  if (!stale.ok) assert.equal(stale.reason, 'EXIT_MARKET_SNAPSHOT_STALE_OR_FUTURE');
+
+  const future = createCanonicalPaperClose({
+    trade,
+    quote: makeExitQuote({ sourceTimestamps: { ...quote.sourceTimestamps, bookTicker: '2026-11-25T03:04:00Z' } }),
+    closedAt: '2026-11-25T03:03:00Z',
+    exitPremium: 1.1,
+    exitFees: 0.1,
+  });
+  assert.equal(future.ok, false);
+  if (!future.ok) assert.equal(future.reason, 'EXIT_MARKET_SNAPSHOT_STALE_OR_FUTURE');
+
+  const expired = createCanonicalPaperClose({
+    trade,
+    quote: makeExitQuote(),
+    closedAt: '2026-12-25T08:00:00Z',
+    exitPremium: 1.1,
+    exitFees: 0.1,
+  });
+  assert.equal(expired.ok, false);
+  if (!expired.ok) assert.equal(expired.reason, 'EXIT_MUST_BE_BEFORE_EXPIRY_AND_AFTER_ENTRY');
+});
+
+test('canonical PAPER close requires an explicit non-negative exit fee and prevents double close', () => {
+  const trade = makeOpenCanonicalTrade();
+  const missingFee = createCanonicalPaperClose({
+    trade,
+    quote: makeExitQuote(),
+    closedAt: '2026-11-25T03:03:00Z',
+    exitPremium: 1.1,
+    exitFees: Number.NaN,
+  });
+  assert.equal(missingFee.ok, false);
+  if (!missingFee.ok) assert.equal(missingFee.reason, 'EXIT_FEES_OR_ENTRY_DEBIT_UNVERIFIED');
+
+  const impossibleFee = createCanonicalPaperClose({
+    trade,
+    quote: makeExitQuote(),
+    closedAt: '2026-11-25T03:03:00Z',
+    exitPremium: 1.1,
+    exitFees: 4,
+  });
+  assert.equal(impossibleFee.ok, false);
+  if (!impossibleFee.ok) assert.equal(impossibleFee.reason, 'EXIT_FEES_OR_ENTRY_DEBIT_UNVERIFIED');
+
+  const first = createCanonicalPaperClose({
+    trade,
+    quote: makeExitQuote(),
+    closedAt: '2026-11-25T03:03:00Z',
+    exitPremium: 1.1,
+    exitFees: 0.1,
+  });
+  assert.equal(first.ok, true);
+  if (!first.ok) return;
+  const second = createCanonicalPaperClose({
+    trade: first.trade,
+    quote: makeExitQuote(),
+    closedAt: '2026-11-25T03:04:00Z',
+    exitPremium: 1.1,
+    exitFees: 0.1,
+  });
+  assert.equal(second.ok, false);
+  if (!second.ok) assert.equal(second.reason, 'PAPER_TRADE_ALREADY_CLOSED');
+});
+
+
+test('canonical PAPER close revalidates the immutable entry debit and source snapshot', () => {
+  const trade = makeOpenCanonicalTrade();
+  const corruptedDebit = createCanonicalPaperClose({
+    trade: { ...trade, premiumDebitAtEntry: trade.premiumDebitAtEntry! + 1 },
+    quote: makeExitQuote(),
+    closedAt: '2026-11-25T03:03:00Z',
+    exitPremium: 1.1,
+    exitFees: 0.1,
+  });
+  assert.equal(corruptedDebit.ok, false);
+  if (!corruptedDebit.ok) assert.equal(corruptedDebit.reason, 'ENTRY_DEBIT_OR_SOURCE_SNAPSHOT_INVALID');
+
+  const staleEntry = createCanonicalPaperClose({
+    trade: {
+      ...trade,
+      sourceTimestampsAtEntry: {
+        ...trade.sourceTimestampsAtEntry,
+        bookTicker: '2026-11-25T02:00:00Z',
+      },
+    },
+    quote: makeExitQuote(),
+    closedAt: '2026-11-25T03:03:00Z',
+    exitPremium: 1.1,
+    exitFees: 0.1,
+  });
+  assert.equal(staleEntry.ok, false);
+  if (!staleEntry.ok) assert.equal(staleEntry.reason, 'ENTRY_DEBIT_OR_SOURCE_SNAPSHOT_INVALID');
 });
