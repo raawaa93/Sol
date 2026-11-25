@@ -159,3 +159,14 @@ A remote branch search for `research/options-pit-archive-2026-11-24` returned no
 - No legacy scalar fallback is allowed for a quote carrying canonical terms, even at unit=1. Position Greeks, PAPER, EV and replay remain gated until canonical/model-aware consumers are implemented.
 - PR CI, build, bundle budget, Playwright journeys, Project Context Guard and Lighthouse passed. Published-site smoke-test job was skipped by workflow conditions; no post-merge published-site verification is claimed.
 - A subsequent audit identified that the standalone GreeksPanel and direct risk-neutral EV function still accepted the old unit=1 parity path for canonical quotes. A dedicated follow-up branch now centralizes the legacy capability gate and adds regression tests; see PR to follow.
+
+
+## Canonical cash risk-neutral EV merged — 25 November 2026
+
+- PR #170 merged to main as `71a8a027659e880f22aa3b998b0c075c1a071bd3`: https://github.com/raawaa93/Sol/pull/170
+- Adds a fail-closed risk-neutral expiry diagnostic for provider-verified Binance European Crypto Options cash-settled to INDEX.
+- Separates premium and cash-settlement multipliers; calculates probability of ITM and probability of positive expiry P&L independently; includes supplied fees in expiry P&L.
+- Requires observed IV, valid timestamped index, observed risk-free rate and model metadata; 0% carry remains an explicit assumption in UI.
+- Binance per-underlying model price/Greeks normalize to per-contract only through verified canonical cash scale (premium multiplier 1). Unknown products remain blocked.
+- CI, Project Context Guard and Lighthouse passed. Published-site smoke test skipped by workflow conditions. No strategy profitability or historical edge claim.
+- Remaining canonical work: model-aware position Greeks/shock P&L, PAPER lifecycle valuation and replay. PR #169 entry-only PAPER snapshot is under verification.
