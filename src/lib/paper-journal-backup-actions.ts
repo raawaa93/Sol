@@ -1,4 +1,5 @@
 import {
+  PAPER_JOURNAL_BACKUP_MAX_BYTES,
   createPaperJournalBackup,
   mergePaperJournalBackup,
   parsePaperJournalBackup,
@@ -31,7 +32,7 @@ export function importPaperJournalJsonBackup<T extends { id: string }>(
   isValid: (value: unknown) => value is T,
   storage: PaperJournalStorage,
   storageKey: string,
-): { ok: true; entries: T[]; added: number } | { ok: false; message: string } {
+): { ok: true; entries: T[]; added: number } | { ok: false; message: string; persistenceBlocked?: true } {
   const parsed = parsePaperJournalBackup(raw, isValid);
   if (!parsed.ok) {
     return {
@@ -58,23 +59,23 @@ export function importPaperJournalJsonBackup<T extends { id: string }>(
   try {
     original = storage.getItem(storageKey);
   } catch {
-    return { ok: false, message: 'تعذر قراءة الدفتر الحالي؛ لم تتغير بياناتك.' };
+    return { ok: false, persistenceBlocked: true, message: 'تعذر قراءة الدفتر الحالي؛ أوقفنا الاستيراد والكتابة حتى تعيد تحميل الصفحة وتتحقق من النسخة الخام.' };
   }
   const expectedCurrent = current.length === 0 && original === null ? null : JSON.stringify(current);
   if (original !== expectedCurrent) {
-    return { ok: false, message: 'تغير الدفتر في تبويب آخر؛ أعد تحميل الصفحة ثم أعد الاستيراد لتجنب فقد أي تعديل.' };
+    return { ok: false, persistenceBlocked: true, message: 'تغير الدفتر في تبويب آخر؛ أوقفنا الكتابة. أعد تحميل الصفحة ثم أعد الاستيراد لتجنب فقد أي تعديل.' };
   }
   const serialized = JSON.stringify(merged.entries);
-  if (new TextEncoder().encode(serialized).byteLength > 5 * 1024 * 1024) {
+  if (new TextEncoder().encode(serialized).byteLength > PAPER_JOURNAL_BACKUP_MAX_BYTES) {
     return { ok: false, message: 'النسخة المدمجة تتجاوز 5 MiB؛ لم تتغير بياناتك.' };
   }
   try {
     if (storage.getItem(storageKey) !== original) {
-      return { ok: false, message: 'تغير الدفتر أثناء الاستيراد؛ لم نكتب فوق التعديل الآخر.' };
+      return { ok: false, persistenceBlocked: true, message: 'تغير الدفتر أثناء الاستيراد؛ أوقفنا الكتابة ولم نكتب فوق التعديل الآخر. أعد تحميل الصفحة.' };
     }
     storage.setItem(storageKey, serialized);
     if (storage.getItem(storageKey) !== serialized) {
-      return { ok: false, message: 'تعذر التحقق من حفظ النسخة المدمجة؛ أعد تنزيل الدفتر قبل المتابعة.' };
+      return { ok: false, persistenceBlocked: true, message: 'تعذر التحقق من حفظ النسخة المدمجة؛ أوقفنا الكتابة. نزّل الملف الأصلي ثم أعد تحميل الصفحة قبل المتابعة.' };
     }
   } catch {
     return { ok: false, message: 'تعذر حفظ النسخة المدمجة بسبب مساحة التخزين؛ بقي الدفتر الحالي كما هو.' };
