@@ -32,7 +32,6 @@ import {
 } from 'lucide-react';
 import DeferredVolatilityCharts from './components/DeferredVolatilityCharts';
 import DeferredPayoffChart from './components/DeferredPayoffChart';
-import GreeksPanel from './components/GreeksPanel';
 import OpportunityReview from './components/OpportunityReview';
 import MarketDepthPanel from './components/MarketDepthPanel';
 import { DEMO_MARKETS, DEMO_QUOTES, getExpiryChoices } from './lib/demo';
@@ -52,6 +51,7 @@ import { calculatePremiumCash } from './lib/contract-economics-calculations';
 import { formatAssetPrice, formatNumber, formatOptionPrice, formatQuantity, formatSmallNumber, getOptionPricePrecision, getQuantityPrecision, getQuoteCurrency } from './lib/format';
 import type { AssetClass, OptionQuote, OptionSide, PaperTrade, Underlying } from './lib/types';
 import { ASSET_CLASS_LABELS } from './lib/asset-class';
+const GreeksPanel = lazy(() => import('./components/GreeksPanel'));
 const FinancialCockpit = lazy(() => import('./components/FinancialCockpit'));
 const HistoricalReplayPanel = lazy(() => import('./components/HistoricalReplayPanel'));
 
@@ -1366,7 +1366,9 @@ function App() {
             />}
           </section>
 
-          <GreeksPanel quote={selectedQuote} quantity={safeQuantity} dataMode={dataMode} />
+          <Suspense fallback={<div className="panel" role="status">جارٍ تحميل تحليل Greeks...</div>}>
+            <GreeksPanel quote={selectedQuote} quantity={safeQuantity} dataMode={dataMode} />
+          </Suspense>
 
           <section className="section-anchor payoff-section" id="payoff">
             <div className="section-title-row"><div><span className="section-kicker">EXPIRY SCENARIOS</span><h2>ماذا لو انتهى العقد عند مستويات مختلفة؟</h2><p>ربح/خسارة الخيار المشترى عند الانتهاء · قبل إضافة أي رسوم غير مدخلة</p></div><div className="scenario-controls"><span className="scenario-key"><i className="profit-key" /> صافي P&amp;L</span><span className="scenario-key"><i className="zero-key" /> التعادل</span></div></div>
