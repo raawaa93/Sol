@@ -172,8 +172,7 @@ function isPaperTrade(value: unknown): value is PaperTrade {
       && typeof trade.premiumAmountAtEntry === 'number' && Number.isFinite(trade.premiumAmountAtEntry) && trade.premiumAmountAtEntry >= 0
       && typeof trade.premiumDebitAtEntry === 'number' && Number.isFinite(trade.premiumDebitAtEntry) && trade.premiumDebitAtEntry >= trade.premiumAmountAtEntry
       && trade.premiumCurrencyAtEntry === trade.contractEconomics.premium.quoteCurrency
-      && (trade.entryFeesSource === undefined || trade.entryFeesSource === 'USER_ENTERED')
-      && (trade.entryFeesSource !== 'USER_ENTERED' || trade.fees <= (trade.premiumAmountAtEntry ?? 0) * 0.1 + 1e-9)
+      && (trade.entryFeesSource === undefined ? trade.fees === 0 : trade.entryFeesSource === 'USER_ENTERED' && trade.fees <= (trade.premiumAmountAtEntry ?? 0) * 0.1 + 1e-9)
       && (trade.sourceReceivedAtAtEntry === undefined || (
         typeof trade.sourceReceivedAtAtEntry.bidAsk === 'string'
         && Number.isFinite(Date.parse(trade.sourceReceivedAtAtEntry.bidAsk))
@@ -218,6 +217,7 @@ function isPaperTrade(value: unknown): value is PaperTrade {
       && (trade.exit.exitFees === undefined
         ? trade.exit.exitFeesSource === undefined && trade.exit.exitCreditAfterFees === undefined && trade.exit.realizedNetPnl === undefined
         : trade.exit.exitFeesSource === 'USER_ENTERED'
+          && trade.exit.exitFees <= trade.exit.exitPremiumAmount * 0.1 + 1e-9
           && typeof trade.exit.exitCreditAfterFees === 'number'
           && Math.abs(trade.exit.exitCreditAfterFees - (trade.exit.exitPremiumAmount - trade.exit.exitFees)) <= Math.max(1e-8, Math.abs(trade.exit.exitCreditAfterFees) * 1e-8)
           && (trade.entryFeesSource === 'USER_ENTERED'
