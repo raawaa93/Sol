@@ -20,7 +20,12 @@ export type CanonicalPaperTradeResult =
 
 function hasObservedPriceTimestamp(quote: OptionQuote): boolean {
   const timestamps = quote.sourceTimestamps;
-  return Boolean(timestamps?.ticker || timestamps?.optionTicker || timestamps?.bookTicker || timestamps?.markPrice);
+  if (!timestamps) return false;
+  if (quote.priceSource === 'MARK') return Boolean(timestamps.markPrice);
+  if (quote.priceSource === 'MID') return Boolean(timestamps.bookTicker || timestamps.optionTicker);
+  if (quote.priceSource === 'LAST') return Boolean(timestamps.ticker || timestamps.optionTicker);
+  if (quote.priceSource === 'BID' || quote.priceSource === 'ASK') return Boolean(timestamps.bookTicker || timestamps.optionTicker);
+  return false;
 }
 
 /**
