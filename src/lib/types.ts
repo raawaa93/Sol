@@ -257,6 +257,7 @@ export interface PaperTrade {
   exchangeFeeAtEntry?: number;
   additionalFeesAtEntry?: number;
   close?: PaperTradeClose;
+  integrityWarning?: 'CLOSE_RECORD_INVALID';
   status: 'PAPER';
 }
 
