@@ -97,3 +97,9 @@
 - [x] Skip fixed-hold replay trades when planned exit reaches/crosses expiry; count final would-be entries blocked by expiry.
 - [x] Regression tests and CI/build/browser/Lighthouse/Project Context Guard passed; merged as `c0a954200206f66649211af18a2ab4ab44a963f5`.
 - [ ] Implement a separately validated expiry settlement/assignment model before allowing expiry-crossing backtests.
+
+### Canonical PAPER entry time-integrity — PR #225
+- [x] Reject a contract expired at entry time.
+- [x] Reject price/index source timestamps in the future or older than five minutes.
+- [x] Regression tests and CI/Lighthouse/Project Context Guard passed; merged as `cb0897ddafba5816c7e976e5c10a0aadeaeabc03`.
+- [ ] Implement a separate, timestamped, bid-size-aware PAPER close record and realized-loss budget accounting; do not release risk on a user-entered or stale exit price.
