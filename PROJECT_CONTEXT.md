@@ -111,3 +111,8 @@ No second execution venue for a Syrian resident has been verified for global lis
 - No scheduled collector, live WebSocket capture, cross-device archive, valid historical BBO corpus, or measured strategy edge exists.
 - The shared Supabase project remains untouched. A new free project is technically available at $0/month within the free-project allowance, but it auto-pauses after low activity over seven days and requires a user-selected organization plus a secure auth/RLS design. Do not use public unauthenticated writes.
 - Continue research/PAPER only. No private keys, order routes, live trading, funds movement or geographic circumvention. See docs/superpowers/specs/2026-11-25-options-research-engine-design.md and docs/OPTIONS_RESEARCH_ENGINE_EXECUTION_2026-11-25.md.
+
+
+- PR #204 merged: 337e03fb26d44c906125318affc473030c165da4. PAPER replay now requires BBO event/receive timestamps, explicit displayed-size unit and sufficient Ask/Bid size; fees/slippage and execution provenance are visible. Binance bookTicker is the BBO source; optionTicker 24h statistics and Mark Price are not executable BBO. CSV provenance remains user-asserted.
+- PR #204 verification: CI 45572889900 passed 303/303 unit/property tests, production build, bundle budget (initial JS 96.985 KiB gzip-equivalent) and 18/18 Playwright journeys; Lighthouse 45572889852 passed (Performance 99, Accessibility 100, Best Practices 100, SEO 100); Project Context Guard 45572889839 passed.
+- Replay remains a one-leg fixed-hold PAPER baseline. No full depth/queue/partial-fill/latency/expiry-settlement/hedging model or point-in-time historical BBO corpus exists; no empirical profitability or best-strategy ranking is claimed.
