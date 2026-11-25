@@ -72,3 +72,68 @@ test('worker records an operator stop as a verified stop, not a successful full 
   assert.equal(verified, true);
   assert.equal(events.at(-1).type, 'worker_stopped');
 });
+
+
+test('worker rejects duplicate or malformed injected stream configuration', async () => {
+  const base = {
+    archiveRoot: '/tmp/sol-options',
+    maxBytes: 1024,
+    maxRuntimeMs: 10_000,
+    heartbeatMs: 1_000,
+    refreshExchangeInfo: false,
+  };
+  await assert.rejects(
+    runOptionsArchiveWorker({ config: { ...base, streams: ['btcusdt@bookTicker', 'btcusdt@bookTicker'] } }),
+    /validated options archive worker configuration/,
+  );
+  await assert.rejects(
+    runOptionsArchiveWorker({ config: { ...base, streams: [''] } }),
+    /validated options archive worker configuration/,
+  );
+});
+
+test('worker aborts collection and fails closed when archive heartbeat health checks fail', async () => {
+  const config = readOptionsWorkerConfig({
+    OPTIONS_ARCHIVE_DIR: '/tmp/sol-options',
+    OPTIONS_PUBLIC_STREAMS: 'btcusdt@bookTicker',
+    OPTIONS_ARCHIVE_HEARTBEAT_MS: '1000',
+    OPTIONS_ARCHIVE_MAX_RUNTIME_MS: '10000',
+  });
+  const events = [];
+  let byteReads = 0;
+  let released = false;
+  const archive = {
+    async initialize() {},
+    async getArchiveBytes() {
+      byteReads += 1;
+      if (byteReads > 1) throw new Error('simulated archive read failure');
+      return 0;
+    },
+    async acquireWriterLease() { return { token: 'test' }; },
+    async releaseWriterLease() { released = true; },
+    async appendBatch() { throw new Error('unexpected append'); },
+    async verify() { return { ok: true, errors: [], segmentCount: 0 }; },
+  };
+  const transport = {
+    async subscribe(_streams, { signal } = {}) {
+      return (async function* () {
+        await new Promise((resolve) => {
+          if (signal?.aborted) resolve();
+          else signal?.addEventListener('abort', resolve, { once: true });
+        });
+      })();
+    },
+  };
+  await assert.rejects(
+    runOptionsArchiveWorker({
+      config,
+      archive,
+      transport,
+      logger: (entry) => events.push(entry),
+    }),
+    /simulated archive read failure/,
+  );
+  assert.equal(released, true);
+  assert.ok(events.some((entry) => entry.type === 'worker_health_error'));
+  assert.equal(events.at(-1).type, 'worker_failed');
+});
