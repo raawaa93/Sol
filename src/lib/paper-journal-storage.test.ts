@@ -7,7 +7,6 @@ import {
   clearPaperJournalRecovery,
   readPaperJournalRecovery,
   readPaperJournalPrimary,
-  clearPaperJournalRecovery,
 } from './paper-journal-storage.ts';
 
 class MemoryStorage {
