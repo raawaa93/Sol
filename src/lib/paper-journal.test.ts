@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { canCreateCanonicalPaperTrade, createCanonicalPaperTrade } from './paper-journal.ts';
+import { canCreateCanonicalPaperTrade, closeCanonicalPaperTrade, createCanonicalPaperTrade } from './paper-journal.ts';
 import type { OptionQuote } from './types.ts';
 import { BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS } from './contract-economics.ts';
 
@@ -44,6 +44,11 @@ const quote: OptionQuote = {
   markPrice: 1.25,
   priceSource: 'MARK',
   bidAskSource: 'BOOK_TICKER',
+  bidAskSizeUnit: 'CONTRACTS',
+  bidQuantity: 10,
+  askQuantity: 10,
+  takerFeeRate: 0.00024,
+  sourceReceivedAt: { bidAsk: '2026-11-25T03:00:00Z' },
   iv: 0.5,
   delta: 0.5,
   gamma: 0.01,
@@ -68,7 +73,7 @@ const input = {
   id: 'paper-entry-1',
   createdAt: '2026-11-25T03:01:00Z',
   quantity: 3,
-  premiumPrice: 1.25,
+  premiumPrice: 1.3,
   fees: 0.5,
   spotAtEntry: 99000,
 };
@@ -78,17 +83,19 @@ test('canonical PAPER entry stores independent premium scale and full contract/s
   const result = createCanonicalPaperTrade(input);
   assert.equal(result.ok, true);
   if (!result.ok) return;
-  assert.equal(result.premiumDebit, 4.25);
+  assert.equal(result.premiumDebit, 4.79);
   assert.equal(result.premiumCurrency, 'USDT');
-  assert.equal(result.trade.entryPremium, 1.25);
-  assert.equal(result.trade.premiumAmountAtEntry, 3.75);
+  assert.equal(result.trade.entryPremium, 1.3);
+  assert.equal(result.trade.premiumAmountAtEntry, 3.9);
   assert.equal(result.trade.premiumMultiplierAtEntry, 1);
-  assert.equal(result.trade.priceSourceAtEntry, 'MID');
+  assert.equal(result.trade.priceSourceAtEntry, 'ASK');
   assert.equal(result.trade.bidAskSourceAtEntry, 'BOOK_TICKER');
   assert.equal(result.trade.contractUnitAtEntry, 100);
   assert.equal(result.trade.contractEconomics?.exercise.cashSettlement?.multiplier, 100);
   assert.equal(result.trade.sourceTimestampsAtEntry?.index, '2026-11-25T03:00:00Z');
   assert.equal(result.trade.status, 'PAPER');
+  assert.equal(result.trade.exchangeFeeAtEntry, 0.39);
+  assert.equal(result.trade.additionalFeesAtEntry, 0.5);
 });
 
 test('canonical PAPER entry rejects missing legal contract provenance', () => {
@@ -238,4 +245,83 @@ test('canonical PAPER entry rejects future-dated price and index source timestam
   });
   assert.equal(futureIndex.ok, false);
   if (!futureIndex.ok) assert.equal(futureIndex.reason, 'PAPER_ENTRY_MARKET_SNAPSHOT_STALE_OR_FUTURE');
+});
+
+
+function createEntry() {
+  const result = createCanonicalPaperTrade(input);
+  assert.equal(result.ok, true);
+  if (!result.ok) throw new Error('Expected a valid canonical PAPER entry');
+  return result.trade;
+}
+
+function closeQuote(overrides: Partial<OptionQuote> = {}): OptionQuote {
+  return {
+    ...quote,
+    bid: 1.4,
+    ask: 1.5,
+    bidQuantity: 3,
+    askQuantity: 3,
+    spot: 99500,
+    sourceTimestamps: {
+      ...quote.sourceTimestamps,
+      bookTicker: '2026-11-25T03:10:00Z',
+      index: '2026-11-25T03:10:00Z',
+    },
+    sourceReceivedAt: { bidAsk: '2026-11-25T03:10:01Z' },
+    ...overrides,
+  };
+}
+
+test('canonical PAPER close sells at fresh sized Bid, calculates exchange fee and records realized P&L', () => {
+  const trade = createEntry();
+  const result = closeCanonicalPaperTrade({
+    trade,
+    quote: closeQuote(),
+    closedAt: '2026-11-25T03:10:02Z',
+    additionalFees: 0.1,
+  });
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(result.close.exitPremium, 1.4);
+  assert.equal(result.close.exitExchangeFee, 0.42);
+  assert.equal(result.close.exitAdditionalFees, 0.1);
+  assert.equal(result.close.exitGrossProceeds, 4.2);
+  assert.equal(result.close.exitNetProceeds, 3.68);
+  assert.equal(result.close.realizedPnl, -1.11);
+  assert.equal(result.trade.close?.currency, 'USDT');
+});
+
+test('canonical PAPER close rejects stale/future books, insufficient displayed size and expired contracts', () => {
+  const trade = createEntry();
+  const stale = closeQuote({ sourceReceivedAt: { bidAsk: '2026-11-25T03:00:00Z' } });
+  assert.equal(closeCanonicalPaperTrade({ trade, quote: stale, closedAt: '2026-11-25T03:10:02Z' }).reason, 'PAPER_CLOSE_MARKET_SNAPSHOT_STALE_OR_FUTURE');
+
+  const future = closeQuote({
+    sourceTimestamps: { ...closeQuote().sourceTimestamps, bookTicker: '2026-11-25T03:11:00Z' },
+  });
+  assert.equal(closeCanonicalPaperTrade({ trade, quote: future, closedAt: '2026-11-25T03:10:02Z' }).reason, 'PAPER_CLOSE_MARKET_SNAPSHOT_STALE_OR_FUTURE');
+
+  const thin = closeQuote({ bidQuantity: 2 });
+  assert.equal(closeCanonicalPaperTrade({ trade, quote: thin, closedAt: '2026-11-25T03:10:02Z' }).reason, 'INSUFFICIENT_OR_INVALID_BID_FOR_PAPER_CLOSE');
+
+  const expired = closeQuote({ expiry: '2026-11-25T03:10:01Z' });
+  assert.equal(closeCanonicalPaperTrade({ trade, quote: expired, closedAt: '2026-11-25T03:10:02Z' }).reason, 'OPTION_EXPIRED_BEFORE_PAPER_CLOSE');
+});
+
+test('canonical PAPER close rejects a different contract and midpoint-only legacy entries', () => {
+  const trade = createEntry();
+  const mismatched = closeQuote({ strike: 101000 });
+  assert.equal(closeCanonicalPaperTrade({ trade, quote: mismatched, closedAt: '2026-11-25T03:10:02Z' }).reason, 'PAPER_CLOSE_CONTRACT_MISMATCH');
+
+  const legacy = { ...trade, priceSourceAtEntry: 'MID' as const };
+  assert.equal(closeCanonicalPaperTrade({ trade: legacy, quote: closeQuote(), closedAt: '2026-11-25T03:10:02Z' }).reason, 'LEGACY_OR_NON_EXECUTABLE_PAPER_ENTRY_CANNOT_BE_CLOSED');
+});
+
+test('canonical PAPER close cannot be applied twice', () => {
+  const trade = createEntry();
+  const closed = closeCanonicalPaperTrade({ trade, quote: closeQuote(), closedAt: '2026-11-25T03:10:02Z' });
+  assert.equal(closed.ok, true);
+  if (!closed.ok) return;
+  assert.equal(closeCanonicalPaperTrade({ trade: closed.trade, quote: closeQuote(), closedAt: '2026-11-25T03:11:00Z' }).reason, 'PAPER_TRADE_ALREADY_CLOSED_OR_INVALID');
 });
