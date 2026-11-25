@@ -140,6 +140,14 @@ No second execution venue for a Syrian resident has been verified for global lis
 - التحقق: CI 45574730769 نجح مع 309/309 اختباراً و18/18 Playwright، ونجح Lighthouse 45574730886 وProject Context Guard 45574730851.
 - هذا حد تخصيص محلي لـPAPER فقط، وليس حد خسارة على أوامر Binance الحقيقية.
 
+## 13. Worker health hardening — PR #219
+
+- PR #219 merged as `39ca0c7e8525d4ee1b72366d89a80c3a694e77a0`.
+- Archive heartbeat read/quota failures now abort the collection transport, wait for collector cleanup and writer-lease release, and fail the worker. The heartbeat interval stops before final verification to avoid a verification race.
+- The collector passes AbortSignal to the transport; programmatic worker config rejects duplicate/malformed streams and non-boolean refresh flags.
+- CI 45579436891, Lighthouse 45579436842 and Project Context Guard 45579436903 passed on the PR head.
+- Still not deployed or scheduled; no live Binance capture or cloud archive exists.
+
 ## 14. فصل أهلية سوريا عن قيد UK Retail — 25 نوفمبر 2026
 
 - FAQ Binance السورية تذكر «Options trading» صراحة ضمن المنتجات المتاحة للمقيمين السوريين بعد KYC والامتثال؛ هذا يثبت الإتاحة العامة لفئة الخيارات فقط، ولا يثبت صلاحية كل منتج فرعي أو حساب أو البيع/الكتابة.
