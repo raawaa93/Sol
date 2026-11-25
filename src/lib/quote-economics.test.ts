@@ -299,6 +299,21 @@ test('canonical risk-neutral EV accepts only a timestamped markPrice BBO source'
   }, 900, 0, riskNeutralNow), null);
 });
 
+test('canonical risk-neutral EV accepts a fresh REST ticker BBO using its own timestamp', () => {
+  const quote = canonicalBinanceRiskQuote({
+    bidAskSource: 'OPTION_TICKER',
+    sourceTimestamps: {
+      index: '2026-11-25T03:00:00.000Z',
+      ticker: '2026-11-25T03:00:00.000Z',
+    },
+  });
+  assert.ok(calculateQuoteCashRiskNeutralMetrics(quote, 900, 0, riskNeutralNow));
+  assert.equal(calculateQuoteCashRiskNeutralMetrics({
+    ...quote,
+    sourceTimestamps: { ...quote.sourceTimestamps, ticker: '2026-11-25T02:59:40.000Z' },
+  }, 900, 0, riskNeutralNow), null);
+});
+
 test('canonical put risk-neutral probability uses cash-settlement multiplier and fees in break-even', () => {
   const quote = canonicalBinanceRiskQuote({ type: 'PUT', strike: 110 });
   const metrics = calculateQuoteCashRiskNeutralMetrics(quote, 900, 3, riskNeutralNow);
@@ -321,6 +336,7 @@ test('canonical risk-neutral metrics fail closed without observed inputs or prov
   assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, exerciseStyle: 'AMERICAN' }, 900, 0, riskNeutralNow), null);
   assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, pricingModel: undefined }, 900, 0, riskNeutralNow), null);
   assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, bid: 0 }, 900, 0, riskNeutralNow), null);
+  assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, sourceTimestamps: { ...quote.sourceTimestamps, bookTicker: '2026-11-25T02:59:40.000Z' } }, 900, 0, riskNeutralNow), null);
   assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, sourceTimestamps: { index: '2026-11-25T03:00:00.000Z' } }, 900, 0, riskNeutralNow), null);
   assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, unit: 1 }, 900, 0, riskNeutralNow), null);
   assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, bidAskSource: 'BOOK_TICKER', sourceTimestamps: { index: quote.sourceTimestamps?.index } }, 900, 0, riskNeutralNow), null);
