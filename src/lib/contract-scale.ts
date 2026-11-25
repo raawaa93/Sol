@@ -81,7 +81,7 @@ export function getContractScaleIssue(
  * capability, even when the old unit=1 parity guard would otherwise pass.
  */
 export function hasLegacyScalarAnalyticsCapability(
-  quote: OptionQuote,
+  quote: ScaleMetadata & Pick<OptionQuote, 'contractEconomics'>,
   sourceMode: ContractScaleSourceMode = 'CSV',
 ): boolean {
   return quote.contractEconomics === undefined
