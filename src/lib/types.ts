@@ -208,6 +208,22 @@ export interface AssetSnapshot {
   fundingRate: number;
 }
 
+export interface PaperTradeExit {
+  closedAt: string;
+  exitPremium: number;
+  exitQuantity: number;
+  exitFees?: number;
+  exitPremiumAmount: number;
+  exitCreditAfterFees?: number;
+  realizedGrossPnl: number;
+  realizedNetPnl?: number;
+  spotAtExit: number;
+  bidQuantityAtExit: number;
+  priceSourceAtExit: 'BID';
+  bidAskSourceAtExit: 'BOOK_TICKER';
+  sourceTimestampsAtExit: NonNullable<OptionQuote['sourceTimestamps']>;
+}
+
 export interface PaperTrade {
   id: string;
   createdAt: string;
@@ -236,6 +252,8 @@ export interface PaperTrade {
   priceSourceAtEntry?: QuotePriceSource;
   bidAskSourceAtEntry?: OptionQuote['bidAskSource'];
   sourceTimestampsAtEntry?: OptionQuote['sourceTimestamps'];
+  /** A verified simulated close; absence means the PAPER position remains open. */
+  exit?: PaperTradeExit;
   status: 'PAPER';
 }
 
