@@ -123,6 +123,7 @@ export interface OptionQuote {
   ivStatus?: 'OBSERVED' | 'ESTIMATED' | 'UNAVAILABLE';
   /** Explicitly sourced mark IV from the REST mark snapshot; never sourced from websocket `vo`. */
   markIvSource?: 'REST_MARK';
+  riskFreeRateSource?: 'REST_MARK' | 'MARK_PRICE';
   /** Venue `vo` field, preserved separately from mark IV. */
   venueVolatility?: number;
   /** Local receive time for fields from endpoints that do not publish event timestamps. */
