@@ -41,6 +41,7 @@ import { getAtmTermStructure } from './lib/analysis';
 import type { IVHistoryObservation, IVRankPercentileResult } from './lib/iv-history';
 import { getLatestQuotePerContract, getMarketSnapshotFromQuotes } from './lib/market';
 import { getQuoteDataCoverage } from './lib/quote-data-coverage';
+import { MAX_CSV_FILE_BYTES } from './lib/csv-constants';
 import { assessSnapshotFreshness, DEFAULT_SNAPSHOT_STALE_AFTER_MS, formatSourceTimestampAge } from './lib/market-data-health';
 import { isQuoteFieldEstimated } from './lib/quote-quality';
 import { getContractScaleIssue, getContractScaleIssueMessage, hasLegacyScalarAnalyticsCapability } from './lib/contract-scale';
@@ -55,8 +56,6 @@ const MarketDepthPanel = lazy(() => import('./components/MarketDepthPanel'));
 const GreeksPanel = lazy(() => import('./components/GreeksPanel'));
 const FinancialCockpit = lazy(() => import('./components/FinancialCockpit'));
 const HistoricalReplayPanel = lazy(() => import('./components/HistoricalReplayPanel'));
-
-const MAX_CSV_FILE_BYTES = 5 * 1024 * 1024;
 
 const UNDERLYING_NAMES: Record<string, string> = {
   BTC: 'Bitcoin',
@@ -1085,8 +1084,9 @@ function App() {
       notify('لا توجد صفقات تجريبية لتصديرها.');
       return;
     }
-    const { downloadCsv } = await import('./lib/csv');
-    downloadCsv('volterra-paper-journal.csv', trades.map((trade) => ({
+    try {
+      const { downloadCsv } = await import('./lib/csv');
+      downloadCsv('volterra-paper-journal.csv', trades.map((trade) => ({
       createdAtUTC: trade.createdAt,
       symbol: trade.symbol,
       underlying: trade.underlying,
@@ -1108,8 +1108,11 @@ function App() {
       bidAskSourceAtEntry: trade.bidAskSourceAtEntry ?? '',
       contractEconomicsJSON: trade.contractEconomics ? JSON.stringify(trade.contractEconomics) : '',
       sourceTimestampsAtEntryJSON: trade.sourceTimestampsAtEntry ? JSON.stringify(trade.sourceTimestampsAtEntry) : '',
-      mode: 'PAPER',
-    })));
+        mode: 'PAPER',
+      })));
+    } catch {
+      notify('تعذر تحميل أداة تصدير CSV.');
+    }
   };
 
   const handleBudgetClick = () => {
