@@ -51,10 +51,9 @@ import { calculatePremiumCash } from './lib/contract-economics-calculations';
 import { formatAssetPrice, formatNumber, formatOptionPrice, formatQuantity, formatSmallNumber, getOptionPricePrecision, getQuantityPrecision, getQuoteCurrency } from './lib/format';
 import type { AssetClass, OptionQuote, OptionSide, PaperTrade, Underlying } from './lib/types';
 import { ASSET_CLASS_LABELS } from './lib/asset-class';
-import { PAPER_CAMPAIGN_CAPITAL, PAPER_CAMPAIGN_MAX_LOSS, PAPER_CAMPAIGN_PER_TRADE_CAP, canAllocatePaperCampaignTrade, summarizePaperCampaignBudget } from './lib/paper-campaign-budget';
+import { PAPER_CAMPAIGN_CAPITAL, PAPER_CAMPAIGN_MAX_LOSS, PAPER_CAMPAIGN_PER_TRADE_CAP, canAllocatePaperCampaignTrade, isCanonicalPaperCloseEventForTrade, summarizePaperCampaignBudget } from './lib/paper-campaign-budget';
 import { clearPaperJournalRecovery, loadPaperJournal, PAPER_JOURNAL_STORAGE_KEY, readPaperJournalPrimary, readPaperJournalRecovery } from './lib/paper-journal-storage';
-import { appendPaperCloseEvent, clearPaperCloseEvents, clearPaperCloseEventsRecovery, loadPaperCloseEvents, PAPER_CLOSE_EVENTS_KEY, readPaperCloseEventsPrimary, readPaperCloseEventsRecovery } from './lib/paper-journal-events';
-import { createCanonicalPaperCloseEvent, isCanonicalPaperCloseEventForTrade } from './lib/paper-journal';
+import type { PaperCloseEventsLoadResult } from './lib/paper-journal-events';
 const MarketDepthPanel = lazy(() => import('./components/MarketDepthPanel'));
 const OpportunityReview = lazy(() => import('./components/OpportunityReview'));
 const GreeksPanel = lazy(() => import('./components/GreeksPanel'));
@@ -267,8 +266,11 @@ function App() {
   const [riskBudget, setRiskBudget] = useState(PAPER_CAMPAIGN_PER_TRADE_CAP);
   const [fees, setFees] = useState(0);
   const [exitFees, setExitFees] = useState<number | null>(null);
-  const [paperCloseEventsLoad, setPaperCloseEventsLoad] = useState(() => loadPaperCloseEvents(localStorage));
-  const [paperCloseEvents, setPaperCloseEvents] = useState(paperCloseEventsLoad.events);
+  const [paperCloseEventsLoad, setPaperCloseEventsLoad] = useState<PaperCloseEventsLoadResult>({
+    events: [], rejectedCount: 0, backupAvailable: false, persistenceBlocked: true, parseError: false,
+  });
+  const [paperCloseEvents, setPaperCloseEvents] = useState<PaperCloseEventsLoadResult['events']>([]);
+  const [paperCloseEventsReady, setPaperCloseEventsReady] = useState(false);
   const [paperJournalLoad, setPaperJournalLoad] = useState(() => loadPaperJournal<PaperTrade>(localStorage, isPaperTrade));
   const [trades, setTrades] = useState<PaperTrade[]>(paperJournalLoad.entries);
   const closedTradeIds = useMemo(
@@ -280,6 +282,24 @@ function App() {
   const [toast, setToast] = useState('');
   const [csvWarnings, setCsvWarnings] = useState<string[]>([]);
   const [showAllCsvWarnings, setShowAllCsvWarnings] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    import('./lib/paper-journal-events').then(({ loadPaperCloseEvents }) => {
+      if (!active) return;
+      const loaded = loadPaperCloseEvents(localStorage);
+      setPaperCloseEventsLoad(loaded);
+      setPaperCloseEvents(loaded.events);
+      setPaperCloseEventsReady(true);
+    }).catch(() => {
+      if (!active) return;
+      setPaperCloseEventsLoad({
+        events: [], rejectedCount: 0, backupAvailable: false, persistenceBlocked: true, parseError: false,
+      });
+      setPaperCloseEventsReady(true);
+    });
+    return () => { active = false; };
+  }, []);
   const [showAssumptions, setShowAssumptions] = useState(false);
   const uploadRef = useRef<HTMLInputElement>(null);
   const binanceRequestId = useRef(0);
