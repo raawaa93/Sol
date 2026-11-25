@@ -136,3 +136,7 @@ These changes improve the PAPER execution baseline and default sizing guard only
 - New legacy entries store premium debit and currency. Unknown legacy costs and mixed currencies fail closed; USD and USDT are not implicitly converted.
 - The local PAPER journal is append-only and has no close/realized-P&L workflow. All recorded premium debit remains allocated until export and explicit confirmation-protected reset. This is conservative campaign allocation, not a live loss guarantee.
 - CI 45574730769 passed 309/309 tests, build, bundle budget and 18/18 Playwright journeys; Lighthouse 45574730886 and Project Context Guard 45574730851 passed.
+
+## Replay expiry boundary — PR #221
+
+PR #221 merged as `c0a954200206f66649211af18a2ab4ab44a963f5`. The replay rejects malformed/missing expiry, expired snapshots and fixed-hold trades whose planned exit reaches or crosses expiry. Because no expiry settlement/assignment engine exists, such trades are skipped instead of using an impossible post-expiry quote. CI 45580093851, Lighthouse 45580093810 and Project Context Guard 45580093838 passed.
