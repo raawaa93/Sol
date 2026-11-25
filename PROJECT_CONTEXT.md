@@ -98,3 +98,13 @@ No second execution venue for a Syrian resident has been verified for global lis
 - docs/SYRIA_RESIDENCY_AND_SANCTIONS_2026-11-24.md — residency, VPN and legal context.
 - docs/PRODUCT_REVIEW.md — decision and product roadmap.
 - docs/UX_AUDIT_2026-11-24.md — interface and accessibility roadmap.
+
+
+## 9. تنفيذ 25 نوفمبر 2026 — IV history وcollector
+
+- PR #192 merged: 8e97c76dea8646eec8a116b1116e2cf1e88dba72. Node-only public Binance Options WebSocket transport, opt-in, bounded, cancellable, reconnect/gap-aware. CI, Lighthouse and Project Context Guard passed. No live capture was performed.
+- PR #194 merged: 7183ab85eac7e9d7556cc3716b7d1790948c63d6. Source-bound 30-day ATM mark-IV extraction, IV Rank/Percentile, bounded local browser history and JSON export. CI run 45570010720 passed 293 tests, build, compressed bundle budget and Playwright; Lighthouse 45570010778 and Project Context Guard 45570010823 passed.
+- IV Rank/Percentile require 30 valid daily samples; only Binance REST Mark IV is eligible. They are descriptive historical context, not probabilities or directional forecasts. Data is local, unencrypted and only recorded when the Binance view is refreshed.
+- No scheduled collector, live WebSocket capture, cross-device archive, valid historical BBO corpus, or measured strategy edge exists.
+- The shared Supabase project remains untouched. A new free project is technically available at $0/month within the free-project allowance, but it auto-pauses after low activity over seven days and requires a user-selected organization plus a secure auth/RLS design. Do not use public unauthenticated writes.
+- Continue research/PAPER only. No private keys, order routes, live trading, funds movement or geographic circumvention. See docs/superpowers/specs/2026-11-25-options-research-engine-design.md and docs/OPTIONS_RESEARCH_ENGINE_EXECUTION_2026-11-25.md.

@@ -266,3 +266,17 @@
 
 FAQ Binance المنشور في 12 يونيو 2025 يثبت أن المقيمين السوريين يمكنهم التسجيل والتحقق وفق KYC والامتثال، ويقول إنهم يستطيعون الوصول إلى مجموعة واسعة من المنتجات. لكن قائمة المنتجات المسماة في الصفحة (P2P، COIN-M، USDⓈ-M Futures، Convert/Block Trade، Margin، Spot، Copy Trading، Alpha، Wallet) **لا تسمي Options صراحةً**. لذلك لا نستخدم الصفحة كدليل صريح على أهلية Options؛ يجب التحقق من تفعيل Crypto Options لكل حساب ومن Commodity/Stock Options كلٌ على حدة أو الحصول على جواب دعم مكتوب. المصدر: https://www.binance.com/en/support/faq/detail/863795c36a224bd7aa7d677996328ff9
 
+
+
+## تحديث 25 نوفمبر 2026 — IV history ووسيلة الجمع
+
+**مُدمج ومختبر:** PR #192 (8e97c76dea8646eec8a116b1116e2cf1e88dba72) يضيف ناقل WebSocket عاماً في Node، محدوداً وقابلاً للإلغاء، مع reconnect وgap events؛ لا يعمل تلقائياً ولا يفتح أوامر. PR #194 (7183ab85eac7e9d7556cc3716b7d1790948c63d6) يضيف حساب IV Rank/Percentile، استخراج 30-day ATM REST mark-IV، سجل متصفح محلي، وواجهة توضح sample count والتغطية والمصدر.
+
+**الدليل الآلي:** CI 45570010720 نجح (293 اختباراً، صفر فشل، build، bundle budget، Playwright)، Lighthouse 45570010778 نجح، وProject Context Guard 45570010823 نجح. PR #192 اجتاز CI 45569786353 وLighthouse 45569786394 وProject Context Guard 45569786341.
+
+**ما لم يكتمل:**
+- لا يوجد live Binance capture أو scheduler أو worker دائم؛ WebSocket transport مجرد طبقة نقل opt-in ولم يُختبر على الشبكة الحية.
+- سجل IV محلي وغير مشفر، يُجمع فقط عند فتح/تحديث Binance، ولا يعمل في الخلفية ولا يتزامن بين الأجهزة.
+- لا يوجد durable cloud archive. المشروع Supabase الحالي مشترك ولا نكتب إليه. المشروع المجاني المنفصل يقتضي اختيار المنظمة ونموذج مصادقة؛ لا نفتح public write endpoint.
+- لا توجد point-in-time historical BBO quotes كافية ولا نتائج استراتيجية مثبتة. الاختبار التاريخي المتقدم وترتيب الفرص عبر الأصول يبقيان محجوبين حتى تكتمل البيانات.
+- لا تداول حي أو تمويل أو تجاوز قيود جغرافية؛ بوابة القانون السوري وأهلية المنتج ما زالت قائمة.

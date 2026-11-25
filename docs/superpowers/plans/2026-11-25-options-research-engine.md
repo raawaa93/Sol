@@ -58,11 +58,10 @@
 - Require ivStatus=OBSERVED, markIvSource=REST_MARK, valid mark-IV receive timestamp, fresh quotes, positive underlying/strike/IV and matching CALL/PUT at same expiry/strike.
 - Use variance-time interpolation only when two observed expiry points bracket 30 days; otherwise accept a nearest point only within a documented narrow tolerance, or return unavailable.
 
-- [ ] Add failing tests for mark-source-only acceptance, rejection of venue vo/model/bid/ask IV, stale/future timestamps, missing call/put pair, bad moneyness and tenor interpolation.
-- [ ] Verify RED.
-- [ ] Implement extraction with no invented values and explicit source/tenor metadata.
-- [ ] Run targeted and full tests.
-- [ ] Commit as feat: derive observed near-30-day ATM IV.
+- [x] Add tests for mark-source-only acceptance, rejection of venue vo/model/bid/ask IV, stale/future timestamps, missing call/put pair, bad moneyness, nearest ATM strike and total-variance interpolation.
+- [ ] Verify the RED step in isolation (not captured as a separate successful CI run).
+- [x] Implement extraction with no invented values and explicit source/tenor metadata.
+- [x] Full CI unit/property suite passed: run 45570010720.
 
 ### Task 3: Bounded local history and backup
 
@@ -75,14 +74,13 @@
 - Versioned local storage key sol-iv-history-v1.
 - Append snapshots; do not overwrite earlier observations. Deduplicate exact observation IDs.
 - Retain a bounded trailing 400 days and maximum 2,000 observations; surface quota/corruption errors.
-- Export/import JSON with schema validation; imports remain USER_ASSERTED unless original provider provenance and raw source evidence are separately verified.
+- Export JSON with schema validation. Import is deferred: imported records cannot prove original source provenance and must not be merged into the observed Binance series.
 
-- [ ] Write failing tests for append, exact dedupe, invalid import, corrupted JSON, cap/prune, storage unavailable and round-trip.
-- [ ] Verify RED.
-- [ ] Implement storage adapter with injected Storage interface for deterministic tests.
-- [ ] Wire a successful Binance REST refresh to record only a valid observed IV sample; never record Demo/CSV/model/venue-vo data as observed REST mark IV.
-- [ ] Run targeted and full tests.
-- [ ] Commit as feat: persist local observed IV history safely.
+- [x] Add tests for append, exact dedupe, ID conflict, invalid provenance, corrupted JSON, cap/prune, storage unavailable and export round-trip.
+- [ ] Verify the RED step in isolation (the test-only commit was superseded before a separate RED result was captured).
+- [x] Implement storage adapter with injected Storage interface for deterministic tests.
+- [x] Wire a successful Binance REST refresh to record only valid observed samples; Demo/CSV/model/venue-vo data are excluded.
+- [x] Full CI unit/property suite passed: run 45570010720.
 
 ### Task 4: Explainable IV Rank/Percentile UI
 
@@ -99,16 +97,15 @@
 - Keep Demo and imported data clearly separate from provider-observed history.
 - Do not convert IV Rank into a probability of profit or directional signal.
 
-- [ ] Add component tests for available, insufficient, partial, stale and Demo states.
-- [ ] Verify RED, implement, run tests.
-- [ ] Run full tests, build and unchanged bundle-budget check.
-- [ ] Commit as feat: display sourced IV rank and percentile.
+- [ ] Add dedicated component tests for available, insufficient, partial, stale and Demo states; current verification is via the full Playwright journeys, not a component-specific test.
+- [x] Implement sourced IV Rank/Percentile UI with warming/partial/local-storage disclosures.
+- [x] Full CI unit/property tests, production build, bundle budget and Playwright passed in run 45570010720; Lighthouse passed in 45570010778.
 
 ### Task 5: Review and complete the forward-only Binance collector
 
 **Files:**
 - Existing: scripts/options-collector.mjs, scripts/options-archive.mjs.
-- Existing open PR: #192 feat/binance-options-websocket-transport.
+- Merged PR: #192 feat: add opt-in public Binance Options WebSocket transport.
 - Modify only after reviewing the PR branch and current main.
 
 **Acceptance:**
@@ -149,7 +146,7 @@
 - Update: README.md
 - Create: docs/OPTIONS_RESEARCH_ENGINE_EXECUTION_2026-11-25.md
 
-- [ ] Record implemented/tested/merged/deployed separately, with commit SHAs and workflow IDs.
-- [ ] Run full unit/property tests, production build, bundle budget, Playwright, Lighthouse and Project Context Guard.
-- [ ] Fresh-review all changed files for financial, data, legal, privacy and bundle regressions.
-- [ ] Leave unresolved data/legal/cloud blockers explicit; never label the product fully production-ready when required evidence is absent.
+- [x] Record implemented/tested/merged separately, with commit SHAs and workflow IDs in docs/OPTIONS_RESEARCH_ENGINE_EXECUTION_2026-11-25.md.
+- [x] Run full unit/property tests (293/293), production build, bundle budget, Playwright, Lighthouse and Project Context Guard.
+- [x] Fresh-review source provenance, local storage, data-quality and Syria legal gates; no production DB writes or live orders.
+- [x] Leave unresolved cloud, legal, live-capture and strategy-data blockers explicit.
