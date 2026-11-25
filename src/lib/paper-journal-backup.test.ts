@@ -74,8 +74,12 @@ class MemoryStorage {
   value: string | null = null;
   failSet = false;
   failReadBack = false;
+  failReadAfterSet = false;
   didSet = false;
-  getItem() { return this.failReadBack && this.didSet ? 'different' : this.value; }
+  getItem() {
+    if (this.failReadAfterSet && this.didSet) throw new Error('read failed');
+    return this.failReadBack && this.didSet ? 'different' : this.value;
+  }
   setItem(_key: string, value: string) {
     if (this.failSet) throw new Error('quota exceeded');
     this.value = value;
@@ -167,4 +171,18 @@ test('local import verifies the final persisted bytes before reporting success',
   const result = importPaperJournalJsonBackup(backup.json, [first], valid, storage);
   assert.equal(result.ok, false);
   assert.match(result.message, /التحقق من حفظ/);
+});
+
+
+test('local import blocks later writes when storage readback throws after a successful set', () => {
+  const backup = createPaperJournalBackup([second], valid, '2026-11-25T09:00:00Z');
+  assert.equal(backup.ok, true);
+  if (!backup.ok || !backup.json) return;
+  const storage = new MemoryStorage();
+  storage.value = JSON.stringify([first]);
+  storage.failReadAfterSet = true;
+  const result = importPaperJournalJsonBackup(backup.json, [first], valid, storage);
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.equal(result.persistenceBlocked, true);
+  assert.deepEqual(JSON.parse(storage.value!), [first, second]);
 });
