@@ -53,7 +53,7 @@ function observedField(name, value, unit, sourcePath, eventAt, receivedAt, avail
 
 function isSupportedPublicStream(stream) {
   return typeof stream === 'string' && (
-    /^[a-z0-9-]+@(bookTicker|optionTrade|optionTicker\\d{6}?|optionTicker|kline_(1m|3m|5m|15m|30m|1h|2h|4h|6h|8h|12h|1d|3d|1w|1M)|depth@(100ms|500ms)|depth(5|10|20)@(100ms|500ms))$/i.test(stream)
+    /^[a-z0-9-]+@(bookTicker|optionTrade|optionTicker\d{6}?|optionTicker|kline_(1m|3m|5m|15m|30m|1h|2h|4h|6h|8h|12h|1d|3d|1w|1M)|depth@(100ms|500ms)|depth(5|10|20)@(100ms|500ms))$/i.test(stream)
     || /^[a-z0-9]+@(optionMarkPrice|markPrice)$/i.test(stream)
     || stream === '!index@arr'
   );
