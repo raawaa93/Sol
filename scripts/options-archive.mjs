@@ -544,6 +544,7 @@ export class ResumableOptionsArchive {
   async exportTo(destination) {
     const lease = await this.acquireWriterLease();
     try {
+      await this.cleanTemporaryFiles(lease);
       const report = await this.verify();
       if (!report.ok) throw new OptionsArchiveError('ARCHIVE_CORRUPT', report.errors.join('; '));
       const target = resolve(destination);
@@ -562,6 +563,7 @@ export class ResumableOptionsArchive {
     await sourceArchive.initialize();
     const lease = await sourceArchive.acquireWriterLease();
     try {
+      await sourceArchive.cleanTemporaryFiles(lease);
       const report = await sourceArchive.verify();
       if (!report.ok) throw new OptionsArchiveError('ARCHIVE_CORRUPT', report.errors.join('; '));
       const target = resolve(destination);
