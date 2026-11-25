@@ -33,7 +33,7 @@ import {
 import DeferredVolatilityCharts from './components/DeferredVolatilityCharts';
 import DeferredPayoffChart from './components/DeferredPayoffChart';
 import OpportunityReview from './components/OpportunityReview';
-import MarketDepthPanel from './components/MarketDepthPanel';
+
 import { DEMO_MARKETS, DEMO_QUOTES, getExpiryChoices } from './lib/demo';
 import { applyBinanceBookTicker, applyBinanceOptionMarkPrice, applyBinanceOptionTicker, BinanceMarketDataError, fetchBinanceDepth, fetchBinanceOptions, parseBinanceBookTickerMessage, parseBinanceOptionMarkPriceMessage, parseBinanceOptionTickerMessage } from './lib/binance';
 import type { BinanceDepthSnapshot, BinanceOptionsSnapshot } from './lib/binance';
@@ -51,6 +51,7 @@ import { calculatePremiumCash } from './lib/contract-economics-calculations';
 import { formatAssetPrice, formatNumber, formatOptionPrice, formatQuantity, formatSmallNumber, getOptionPricePrecision, getQuantityPrecision, getQuoteCurrency } from './lib/format';
 import type { AssetClass, OptionQuote, OptionSide, PaperTrade, Underlying } from './lib/types';
 import { ASSET_CLASS_LABELS } from './lib/asset-class';
+const MarketDepthPanel = lazy(() => import('./components/MarketDepthPanel'));
 const GreeksPanel = lazy(() => import('./components/GreeksPanel'));
 const FinancialCockpit = lazy(() => import('./components/FinancialCockpit'));
 const HistoricalReplayPanel = lazy(() => import('./components/HistoricalReplayPanel'));
@@ -1356,14 +1357,18 @@ function App() {
                 <div className="no-signal"><ShieldAlert size={15} /><span>لا يصدر المختبر توصية شراء أو بيع.</span></div>
               </aside>
             </div>
-            {dataMode === 'BINANCE' && <MarketDepthPanel
-              quote={selectedQuote}
-              quantity={safeQuantity}
-              depth={binanceDepth}
-              loading={binanceDepthLoading}
-              error={binanceDepthError}
-              onRefresh={() => setBinanceDepthRefreshKey((value) => value + 1)}
-            />}
+            {dataMode === 'BINANCE' && (
+              <Suspense fallback={<div className="panel" role="status">جارٍ تحميل دفتر العمق...</div>}>
+                <MarketDepthPanel
+                  quote={selectedQuote}
+                  quantity={safeQuantity}
+                  depth={binanceDepth}
+                  loading={binanceDepthLoading}
+                  error={binanceDepthError}
+                  onRefresh={() => setBinanceDepthRefreshKey((value) => value + 1)}
+                />
+              </Suspense>
+            )}
           </section>
 
           <Suspense fallback={<div className="panel" role="status">جارٍ تحميل تحليل Greeks...</div>}>
