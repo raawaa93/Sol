@@ -123,7 +123,7 @@ export interface OptionQuote {
   /** Best displayed side quantities when supplied by a live venue stream. */
   bidQuantity?: number;
   askQuantity?: number;
-  /** Provenance for the current bid/ask values; no inference from mere presence. */
+  /** Provenance for the current bid/ask values; OPTION_TICKER is legacy-only and is rejected by canonical freshness gates because the 24-hour stream has no BBO fields. */
   bidAskSource?: 'BOOK_TICKER' | 'OPTION_TICKER' | 'MARK_PRICE';
   markPrice: number;
   priceSource?: QuotePriceSource;
