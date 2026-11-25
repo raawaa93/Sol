@@ -202,6 +202,7 @@ export interface PaperTrade {
   contractUnitAtEntry?: number;
   premiumMultiplierAtEntry?: number;
   premiumAmountAtEntry?: number;
+  premiumDebitAtEntry?: number;
   premiumCurrencyAtEntry?: string;
   priceSourceAtEntry?: QuotePriceSource;
   sourceTimestampsAtEntry?: OptionQuote['sourceTimestamps'];
