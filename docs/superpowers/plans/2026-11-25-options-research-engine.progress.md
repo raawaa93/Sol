@@ -103,3 +103,8 @@
 - [x] Reject price/index source timestamps in the future or older than five minutes.
 - [x] Regression tests and CI/Lighthouse/Project Context Guard passed; merged as `cb0897ddafba5816c7e976e5c10a0aadeaeabc03`.
 - [ ] Implement a separate, timestamped, bid-size-aware PAPER close record and realized-loss budget accounting; do not release risk on a user-entered or stale exit price.
+
+### PAPER execution realism — next gate
+- Current journal entries are timestamped audit snapshots using midpoint, not Ask-side simulated fills; there is no close record, Bid-side exit, realized P&L or budget release.
+- Binance's official options fee formula is `min(rate × index × contract unit, 10% × option traded price) × option traded size`; fee rate varies and exercise fee is separate. Source: https://www.binance.com/en-PH/support/faq/detail/5326e5de61c34fed98abe28d2f175a23
+- Next: implement Ask/size-aware entry, Bid/size-aware close, verified same-contract and pre-expiry checks, fee calculation with source index and symbol fee rate, and budget accounting as open debit + realized losses. Keep legacy midpoint-only entries locked until export/reset; never reinterpret them as executable fills.
