@@ -77,3 +77,14 @@ This is provenance tracking only. The notice is for Binance RCH and does not est
 - PR #196 merged as `26b82d63bdd533c96fba8a881a8036fcf7c0b470`, adding a deterministic browser journey for paired 20/40-DTE CALL/PUT quotes, insufficient-history disclosure and provenance-preserving JSON export.
 - CI 45570955327 passed 293 unit/property tests, production build, compressed bundle budget and 18 Playwright journeys. Lighthouse 45570955246 and Project Context Guard 45570955274 passed.
 - These are code/test results only. No live Binance request, scheduled capture, cloud archive, historical BBO corpus or strategy edge is claimed.
+
+
+## Follow-up — timestamped BBO replay — 25 November 2026, 08:14 UTC
+
+- PR #204 merged as `337e03fb26d44c906125318affc473030c165da4`.
+- Replay requires explicit BBO source, source-event time, receive time, displayed quantity and size unit; it checks displayed Ask size at entry and Bid size at exit.
+- Binance `bookTicker` is the executable BBO source and its quantities are recorded in contract units. The 24-hour `optionTicker` feed and Mark Price are not substituted for executable BBO.
+- CSV imports preserve these fields, but source identity and timestamps remain user-asserted; there is no cryptographic or provider-side authenticity check.
+- Fees and per-side slippage are configurable and visible; zero means unmodeled, not free execution.
+- CI 45572889900 passed 303/303 unit/property tests, production build, bundle budget, 18/18 Playwright journeys. Lighthouse 45572889852 passed (99/100 performance, 100 accessibility, 100 best practices, 100 SEO). Project Context Guard 45572889839 passed.
+- No full order-book depth, queue position, partial-fill, latency, expiry-settlement or hedging model. No historical BBO corpus or empirical strategy edge is claimed.
