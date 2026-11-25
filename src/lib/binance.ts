@@ -229,23 +229,16 @@ export interface BinanceOptionMarkPriceEvent {
 
 export interface BinanceOptionTickerEvent {
   symbol: string;
+  /** Event time E; this ticker stream does not publish a trade transaction time. */
   eventTime: number;
-  transactionTime?: number;
   lastPrice?: number;
   lastQuantity?: number;
+  /** 24-hour volume in contracts, field v. */
   volume?: number;
+  /** 24-hour trade amount in quote asset, field q. */
   volumeQuote?: number;
+  /** Statistics close time C, not the last trade time. */
   closeTime?: number;
-  markPrice?: number;
-  bestBid?: number;
-  bestAsk?: number;
-  bestBidQuantity?: number;
-  bestAskQuantity?: number;
-  bidIv?: number;
-  askIv?: number;
-  /** Venue ticker field vo; not the explicit REST markIV field. */
-  venueVolatility?: number;
-  sourceGreeks: { delta?: number; gamma?: number; theta?: number; vega?: number };
 }
 
 /** Parse the Options markPrice stream. Its vo field is not markIV. */
