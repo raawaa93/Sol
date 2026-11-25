@@ -372,7 +372,7 @@ test('canonical PAPER close rejects stale, future-dated and post-expiry snapshot
   const expired = createCanonicalPaperClose({
     trade,
     quote: makeExitQuote(),
-    closedAt: '2026-11-25T20:00:00Z',
+    closedAt: '2026-12-25T08:00:00Z',
     exitPremium: 1.1,
     exitFees: 0.1,
   });
@@ -391,6 +391,16 @@ test('canonical PAPER close requires an explicit non-negative exit fee and preve
   });
   assert.equal(missingFee.ok, false);
   if (!missingFee.ok) assert.equal(missingFee.reason, 'EXIT_FEES_OR_ENTRY_DEBIT_UNVERIFIED');
+
+  const impossibleFee = createCanonicalPaperClose({
+    trade,
+    quote: makeExitQuote(),
+    closedAt: '2026-11-25T03:03:00Z',
+    exitPremium: 1.1,
+    exitFees: 4,
+  });
+  assert.equal(impossibleFee.ok, false);
+  if (!impossibleFee.ok) assert.equal(impossibleFee.reason, 'EXIT_FEES_OR_ENTRY_DEBIT_UNVERIFIED');
 
   const first = createCanonicalPaperClose({
     trade,
