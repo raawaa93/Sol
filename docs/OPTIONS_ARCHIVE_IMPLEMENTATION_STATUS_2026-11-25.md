@@ -52,3 +52,12 @@ No point-in-time dataset, historical BBO series, measured strategy edge, profita
 The canonical legal provenance and archived contract specification now include the official 21 May 2026 amendment notice (https://bin.bnbstatic.com/static/cms/cg08ou2ak0tn7mcplvfg/file/fa97cef498054d23290ba2a132eda63816395d84766af2db7b433d906432dd0b.pdf), its effective date, version 1.3, and `clearingProceduresConsolidatedTextVerified=false`. The canonical validator requires the exact amendment reference; missing or substituted provenance prevents exercise/settlement adapter readiness.
 
 This is provenance tracking only. The notice is for Binance RCH and does not establish applicability to Binance RIE or any specific account/entity. The consolidated v1.3 text and its section-level impact on Crypto Options settlement remain unverified.
+
+
+## Legal amendment provenance — PR #193
+
+Archived Binance contract-spec snapshots now include the official 21 May 2026 Clearing Procedures amendment notice reference, its effective date, version 1.3, and `settlementTermsAmendmentScope: BINANCE_RCH`. The same fields are included in the contract-spec fingerprint. The canonical contract validator requires this exact metadata.
+
+The notice is RCH-only; it does not prove that the amendments apply to Binance RIE or a particular account/entity. The consolidated v1.3 text is explicitly recorded as unverified. The app displays this caveat in Greeks and EV disclosures.
+
+Source: https://bin.bnbstatic.com/static/cms/cg08ou2ak0tn7mcplvfg/file/fa97cef498054d23290ba2a132eda63816395d84766af2db7b433d906432dd0b.pdf
