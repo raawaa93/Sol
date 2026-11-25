@@ -121,7 +121,7 @@ test('missing IV is solved only when explicit European spot contract mechanics a
   ].join('\n');
   const result = parseOptionsCsv(csv, referenceTime);
   assert.equal(result.quotes.length, 1);
-  assert.ok(Math.abs(result.quotes[0].iv - 0.4) < 0.01);
+  assert.ok(Math.abs(result.quotes[0].iv - 0.4) < 0.01, `expected IV near 0.4; received ${result.quotes[0].iv}; warnings=${result.warnings.join(' | ')}`);
   assert.ok(result.quotes[0].estimatedFields?.includes('iv'));
   assert.equal(result.quotes[0].pricingStatus, 'SUPPORTED');
   assert.equal(result.quotes[0].pricingModel, 'BLACK_SCHOLES_CARRY');
