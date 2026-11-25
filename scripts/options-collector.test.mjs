@@ -59,6 +59,12 @@ test('REST URL builder only exposes the public Options allowlist and rejects pri
   assert.throws(() => buildPublicBinanceRestUrl('order', { symbol: SYMBOL }), (error) => error.code === 'ENDPOINT_NOT_ALLOWED');
   assert.throws(() => buildPublicBinanceRestUrl('depth', { symbol: SYMBOL, recvWindow: 5000 }), (error) => error.code === 'PARAM_NOT_ALLOWED');
   assert.throws(() => buildPublicBinanceRestUrl('index', { underlying: 'BTC', apiKey: 'secret' }), (error) => error.code === 'PARAM_NOT_ALLOWED');
+  const openInterest = buildPublicBinanceRestUrl('openInterest', { underlyingAsset: 'ETH/BTC', expiration: '221225' });
+  assert.equal(openInterest.searchParams.get('underlyingAsset'), 'ETH/BTC');
+  assert.equal(buildPublicBinanceRestUrl('klines', { symbol: SYMBOL, interval: '1m', limit: 1500 }).searchParams.get('limit'), '1500');
+  assert.equal(buildPublicBinanceRestUrl('blockTrades', { symbol: SYMBOL, limit: 500 }).pathname, '/eapi/v1/blockTrades');
+  assert.throws(() => buildPublicBinanceRestUrl('recentTrades', { symbol: SYMBOL, limit: 501 }), (error) => error.code === 'LIMIT_TOO_LARGE');
+  assert.throws(() => buildPublicBinanceRestUrl('depth', { symbol: SYMBOL, limit: 5 }), (error) => error.code === 'INVALID_DEPTH_LIMIT');
 });
 
 test('HTTP 451/403 eligibility responses stop without retry or alternate egress', async () => {
@@ -244,7 +250,7 @@ test('depth diffs remain invalid until a snapshot bridge and sequence gaps are e
   const archive = await makeArchive(t);
   const snapshot = {
     type: 'depthSnapshot', symbol: SYMBOL, lastUpdateId: 100,
-    payload: { lastUpdateId: 100, bids: [['1200', '1']], asks: [['1210', '2']] },
+    payload: { lastUpdateId: 100, T: EVENT_MS, bids: [['1200', '1']], asks: [['1210', '2']] },
     bids: [['1200', '1']], asks: [['1210', '2']],
   };
   const diff = (U, u, pu) => ({
