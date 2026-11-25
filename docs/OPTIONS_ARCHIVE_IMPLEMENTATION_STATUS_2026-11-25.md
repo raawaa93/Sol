@@ -218,11 +218,11 @@ No cloud resource, subscription, credential, schedule or billing change was crea
 
 - PR #226 corrected canonical long-option entries to use the timestamped Binance BOOK_TICKER Ask and sufficient displayed ask quantity. The older midpoint-based description above was superseded.
 - The current follow-up implements a simulated close at the timestamped BOOK_TICKER Bid, requiring sufficient displayed bid quantity, the same symbol/underlying/type/expiry/strike/settlement terms, valid contract provenance, a pre-expiry close time, and source plus local receive clocks no older than five minutes.
-- Gross P&L is exit premium amount minus entry premium amount. Net P&L is emitted only when the exact exit fee is explicitly supplied; otherwise the UI reports gross P&L and clearly marks net P&L unknown. No fee rate is silently assumed.
+- Gross P&L is exit premium amount minus entry premium amount. Net P&L is emitted only when both entry and exit fees were explicitly supplied; a default zero or a missing fee is never treated as proof of zero fees. The exact entry/exit fee values are capped at the published 10% of premium ceiling as a validation bound, not inferred fee rates.
 - The close snapshot is still a PAPER simulation, not a guaranteed fill: displayed top-of-book quantity can disappear before a real order reaches the exchange. There is no live order placement.
 - No expiry settlement/assignment simulation is added. A contract at or past expiry cannot be closed through the market-Bid path; expiry outcomes remain unmodeled.
 - Closed trades continue to consume the campaign allocation cap. This is intentionally conservative: the system does not recycle allocation or imply a loss budget reset merely because a simulated close was recorded.
-- Binance's official fee FAQ says trading fees apply when opening and closing, are based on the Spot Index × contract unit, and are capped at 10% of the option traded price. Binance's fee table also shows different Crypto Options rates and a promotion limited by contract listing date. The app does not have verified account/contract-specific fee entitlement, so exact fees must be entered to calculate net PAPER P&L; otherwise net remains unknown.
+- Binance's official Options fee FAQ (updated 6 March 2026) says trading fees apply when opening and closing, are based on Spot Index × contract unit, and are capped at 10% of option traded price. The official fee-rate page distinguishes Crypto Options rates/promotions by contract listing date; the account's applicable rate and contract entitlement are not verified by this app. The app therefore does not infer a rate: both exact entry and exit fees must be supplied to calculate net PAPER P&L. The 10% ceiling is only a sanity bound, not a fee estimate. Sources: https://www.binance.com/en/support/faq/detail/5326e5de61c34fed98abe28d2f175a23 and https://www.binance.com/en-NZ/fee/optionsTrading.
 - Official references: https://developers.binance.info/en/docs/catalog/core-trading-derivatives-trading-options/api/ws-streams (bookTicker publishes best bid/ask prices, quantities, event and transaction times); https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-options/api/rest-api/market-data (contract unit and market-data schema); https://www.binance.com/en/support/faq/detail/5326e5de61c34fed98abe28d2f175a23 (fee formula, updated 22 October 2026); https://www.binance.com/en-NZ/fee/optionsTrading (published fee tiers and contract-listing promotion).
 ## External data-access review — 25 November 2026
 
@@ -246,9 +246,9 @@ No cloud resource, subscription, credential, schedule or billing change was crea
 
 - Added a canonical close constructor for open Binance long-option PAPER entries. It only accepts the identical contract and provider-verified contract terms, a positive BOOK_TICKER Bid, and displayed bid quantity at least equal to the recorded position.
 - Rejects repeated closes, invalid fee inputs, expired contracts, stale/future exchange timestamps, and stale/future local receive timestamps.
-- Captures Bid price/quantity, spot index, source timestamps and local receive time. Calculates gross P&L from premium cash amounts. Net P&L is deliberately absent unless the exact exit fee is supplied.
+- Captures Bid price/quantity, spot index, source timestamps and local receive time at exit. The follow-up hardening also persists the entry-side local receive clock. Calculates gross P&L from premium cash amounts. Net P&L is emitted only when both entry and exit fee amounts are explicitly entered; a default zero is not treated as a confirmed zero-fee fill.
 - Added desktop/mobile close controls. The operator must select the same contract in the scanner; the button is disabled for other contracts and legacy entries without canonical terms. An optional exact fee input is in the contract currency.
-- CSV export includes exit price, quantity, fees, gross/net P&L, index, and source/receive clocks.
+- CSV export includes entry and exit fee provenance, exit price/quantity, gross/net P&L, index, and source/receive clocks. Legacy rows without an entry receive clock remain readable but cannot use the new close path; the UI explains why.
 - No automatic fee-rate inference, expiry settlement, live orders, or allocation release.
 - PR #243 merged to main as `6e9596eec4145191764b6a71c668ef4880c25d31`.
 - PR-head CI 45591077111, Lighthouse 45591077116 and Project Context Guard 45591077100 passed. Main CI 45591319706, Lighthouse 45591319674, Project Context Guard 45591319676, Pages build/deploy and published-site smoke/Lighthouse 45591319704 passed.
@@ -270,3 +270,10 @@ Still open and materially blocking:
 - #113/#179: branch protection and Supabase leaked-password protection require dashboard/admin controls not exposed by the current integrations; Free-tier Supabase feature limits remain, no upgrade approved.
 
 No live orders, account credentials, payments, new cloud resources, or Binance-region workarounds were introduced.
+
+## PAPER close fee-provenance hardening — follow-up
+
+- The entry-fee field is blank by default and resets when the selected contract changes. A fee is marked USER_ENTERED only after an explicit value is entered; clearing it leaves the fee unknown.
+- The canonical entry stores the local BOOK_TICKER receive timestamp. A close requires that stored clock and verifies it alongside the entry event/index clocks; older canonical rows without this clock remain visible and exportable but cannot be closed using an unverifiable entry snapshot.
+- Net P&L requires both USER_ENTERED entry fees and USER_ENTERED exit fees. Gross P&L remains available without inventing a net figure. Stored fee amounts above Binance's published 10% premium cap are rejected; this cap is not used as an assumed fee rate.
+- Added tests for missing fee provenance, zero-default behavior, fee-cap violations, persisted entry receive time and legacy close rejection.
