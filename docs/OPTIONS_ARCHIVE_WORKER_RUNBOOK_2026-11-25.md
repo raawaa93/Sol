@@ -1,6 +1,6 @@
 # Supervised Options Archive Worker — Operator Runbook
 
-**Status:** implemented; latest lifecycle and lease-renewal changes are awaiting CI; not deployed, not scheduled, and not live-market verified.
+**Status:** merged to main in PR #216 (`50dfed865c75556f96aadcda12a2f8845af3fe07`); CI, Project Context Guard, and Lighthouse passed on the PR head. Not deployed, not scheduled, and not live-market verified.
 
 ## Safety boundary
 
