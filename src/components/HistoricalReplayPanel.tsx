@@ -99,12 +99,14 @@ export default function HistoricalReplayPanel({ quotes, dataMode, underlying }: 
           </div>
           <div className="replay-trades-wrap">
             <table className="replay-trades">
-              <thead><tr><th>العقد</th><th>الدخول UTC</th><th>الخروج UTC</th><th>Ask</th><th>Bid</th><th>Fill دخول</th><th>Fill خروج</th><th>الانزلاق</th><th>صافي P&amp;L</th></tr></thead>
+              <thead><tr><th>العقد</th><th>الدخول UTC</th><th>الخروج UTC</th><th>مصدر BBO</th><th>وقت مصدر الدخول/الخروج UTC</th><th>Ask</th><th>Bid</th><th>Fill دخول</th><th>Fill خروج</th><th>حجم Ask/Bid</th><th>الانزلاق</th><th>صافي P&amp;L</th></tr></thead>
               <tbody>{replay!.trades.slice(-8).reverse().map((trade, index) => (
                 <tr key={`${trade.symbol}-${trade.entryTimestamp}-${index}`}>
                   <td>{trade.symbol}</td><td>{formatReplayTime(trade.entryTimestamp)}</td><td>{formatReplayTime(trade.exitTimestamp)}</td>
+                  <td>{trade.entryBidAskSource} / {trade.exitBidAskSource}</td><td>{formatReplayTime(trade.entrySourceTimestamp)} / {formatReplayTime(trade.exitSourceTimestamp)}</td>
                   <td>{formatOptionPrice(trade.entryAsk, undefined, replayCurrency)}</td><td>{formatOptionPrice(trade.exitBid, undefined, replayCurrency)}</td>
                   <td>{formatOptionPrice(trade.entryFill, undefined, replayCurrency)}</td><td>{formatOptionPrice(trade.exitFill, undefined, replayCurrency)}</td>
+                  <td>{trade.entryDisplayedSize.toFixed(2)} / {trade.exitDisplayedSize.toFixed(2)} {trade.bidAskSizeUnit}</td>
                   <td>{formatSmallAmount(trade.slippageCost, replayCurrency)}</td>
                   <td className={trade.netPnl >= 0 ? 'replay-positive' : 'replay-negative'}>{formatPnl(trade.netPnl, replayCurrency)}</td>
                 </tr>
