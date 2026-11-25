@@ -141,12 +141,13 @@ function parseBookTicker(event, rawPayload, receivedAt) {
   return makeRecord({
     kind: 'BOOK_TICKER', endpoint: 'WS_BOOK_TICKER', symbol, rawPayload, eventAt, receivedAt, fields,
     id: validPositiveInteger(event.u) ? `update:${event.u}` : undefined,
-    quality: crossed || invalidPrice || invalidSize ? 'INVALID' : (bid === null || ask === null ? 'DEGRADED' : 'VALID'),
+    quality: crossed || invalidPrice || invalidSize ? 'INVALID' : (!eventAt || bid === null || ask === null ? 'DEGRADED' : 'VALID'),
     flags: [
       ...(crossed ? ['CROSSED_BOOK'] : []),
       ...(invalidPrice ? ['INVALID_BBO_PRICE'] : []),
       ...(invalidSize ? ['INVALID_BBO_SIZE'] : []),
       ...(bid === null || ask === null ? ['INCOMPLETE_BBO'] : []),
+      ...(!eventAt ? ['EVENT_TIME_MISSING'] : []),
     ],
   });
 }
@@ -299,8 +300,11 @@ export function parseBinancePublicStreamEvent(rawPayload, receivedAt, state = {}
       && numeric(event.U) <= prior.lastUpdateId + 1
       && current >= prior.lastUpdateId + 1;
     const sequenceValid = prior && (prior.synced ? previous === prior.lastUpdateId : firstDiffBridgesSnapshot);
-    const quality = sequenceValid ? 'VALID' : 'INVALID';
-    const flags = sequenceValid ? [] : [prior?.lastUpdateId === null || !prior ? 'DEPTH_BASELINE_MISSING' : 'DEPTH_SEQUENCE_GAP'];
+    const quality = !sequenceValid ? 'INVALID' : (!eventAt ? 'DEGRADED' : 'VALID');
+    const flags = [
+      ...(!sequenceValid ? [prior?.lastUpdateId === null || !prior ? 'DEPTH_BASELINE_MISSING' : 'DEPTH_SEQUENCE_GAP'] : []),
+      ...(!eventAt ? ['EVENT_TIME_MISSING'] : []),
+    ];
     const diff = makeRecord({
       kind: 'DEPTH_DIFF', endpoint: 'WS_DEPTH', symbol, rawPayload, eventAt, receivedAt,
       fields: [
