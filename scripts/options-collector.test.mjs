@@ -56,6 +56,9 @@ test('REST URL builder only exposes the public Options allowlist and rejects pri
   assert.equal(depth.origin, 'https://eapi.binance.com');
   assert.equal(depth.pathname, '/eapi/v1/depth');
   assert.equal(depth.searchParams.get('symbol'), SYMBOL);
+  assert.equal(buildPublicBinanceRestUrl('klines', { symbol: SYMBOL, interval: '8h' }).searchParams.get('interval'), '8h');
+  assert.equal(buildPublicBinanceRestUrl('klines', { symbol: SYMBOL, interval: '3d' }).searchParams.get('interval'), '3d');
+  assert.equal(buildPublicBinanceRestUrl('klines', { symbol: SYMBOL, interval: '1M' }).searchParams.get('interval'), '1M');
   assert.throws(() => buildPublicBinanceRestUrl('order', { symbol: SYMBOL }), (error) => error.code === 'ENDPOINT_NOT_ALLOWED');
   assert.throws(() => buildPublicBinanceRestUrl('depth', { symbol: SYMBOL, recvWindow: 5000 }), (error) => error.code === 'PARAM_NOT_ALLOWED');
   assert.throws(() => buildPublicBinanceRestUrl('index', { underlying: 'BTC', apiKey: 'secret' }), (error) => error.code === 'PARAM_NOT_ALLOWED');
@@ -290,6 +293,10 @@ test('collector accepts current public Binance Options stream names and rejects 
     'btcusdt@optionMarkPrice',
     '!index@arr',
     'btc-261225-100000-c@kline_1m',
+    'btc-261225-100000-c@kline_8h',
+    'btc-261225-100000-c@kline_3d',
+    'btc-261225-100000-c@kline_1w',
+    'btc-261225-100000-c@kline_1M',
     'btc-261225-100000-c@depth@100ms',
   ];
   let subscribed;
