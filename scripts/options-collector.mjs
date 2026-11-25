@@ -1,4 +1,4 @@
-import { createOptionsArchiveRecord, sha256 } from './options-archive.mjs';
+import { canonicalJson, createOptionsArchiveRecord, sha256 } from './options-archive.mjs';
 
 const REST_ENDPOINTS = Object.freeze({
   exchangeInfo: { path: '/eapi/v1/exchangeInfo', required: [], optional: [] },
@@ -92,7 +92,7 @@ export async function requestPublicBinanceRest(endpoint, params, transport) {
 
 function makeRecord({ kind, endpoint, symbol, rawPayload, eventAt, receivedAt, fields, id, quality = 'VALID', flags = [], historicalBackfill = false }) {
   const normalizedSymbol = typeof symbol === 'string' && symbol ? symbol.toUpperCase() : 'UNKNOWN';
-  const key = id ?? sha256(typeof rawPayload === 'string' ? rawPayload : JSON.stringify(rawPayload));
+  const key = id ?? sha256(typeof rawPayload === 'string' ? rawPayload : canonicalJson(rawPayload));
   return createOptionsArchiveRecord({
     kind,
     endpoint,
@@ -352,6 +352,7 @@ export async function collectForwardOptionsEvents({ archive, transport, streams,
     const iterable = await transport.subscribe(streams);
     for await (const item of iterable) {
       const receivedAt = now();
+      if (Date.now() >= lease.expiresAt - 10_000) await archive.renewWriterLease(lease);
       let records = [];
       if (item?.type === 'depthSnapshot') {
         records = [parseDepthSnapshot(item, receivedAt, state)];
