@@ -245,8 +245,11 @@ function canonicalBinanceRiskQuote(overrides: Partial<OptionQuote> = {}): Option
     carryYield: 0,
     pricingStatus: 'ASSUMED',
     pricingModel: 'BLACK_SCHOLES_CARRY',
-    bidAskSource: 'OPTION_TICKER',
-    sourceTimestamps: { index: '2026-11-25T03:00:00.000Z', optionTicker: '2026-11-25T03:00:00.000Z', ticker: '2026-11-25T03:00:00.000Z' },
+    bidAskSource: 'BOOK_TICKER',
+    markIvSource: 'REST_MARK',
+    riskFreeRateSource: 'REST_MARK',
+    sourceReceivedAt: { markIv: '2026-11-25T03:00:00.000Z', riskFreeRate: '2026-11-25T03:00:00.000Z' },
+    sourceTimestamps: { index: '2026-11-25T03:00:00.000Z', bookTicker: '2026-11-25T03:00:00.000Z', ticker: '2026-11-25T03:00:00.000Z' },
     contractEconomics: {
       premium: { multiplier: 1, quoteCurrency: 'USDT', priceUnit: 'PER_CONTRACT' },
       exercise: {
@@ -267,9 +270,11 @@ function canonicalBinanceRiskQuote(overrides: Partial<OptionQuote> = {}): Option
   };
 }
 
+const riskNeutralNow = Date.parse('2026-11-25T03:00:05.000Z');
+
 test('canonical Binance risk-neutral EV scales intrinsic value by settlement multiplier, not premium multiplier', () => {
   const quote = canonicalBinanceRiskQuote();
-  const metrics = calculateQuoteCashRiskNeutralMetrics(quote, 900, 2);
+  const metrics = calculateQuoteCashRiskNeutralMetrics(quote, 900, 2, riskNeutralNow);
   assert.ok(metrics);
   assert.equal(metrics?.currency, 'USDT');
   assert.ok((metrics?.probabilityInTheMoney ?? 0) > 0.5);
@@ -279,9 +284,24 @@ test('canonical Binance risk-neutral EV scales intrinsic value by settlement mul
     - ((metrics?.modelPricePerContract ?? 0) * Math.exp(quote.riskFreeRate! * (quote.daysToExpiry / 365)) - 900 - 2)) < 1e-8);
 });
 
+test('canonical risk-neutral EV accepts only a timestamped markPrice BBO source', () => {
+  const quote = canonicalBinanceRiskQuote({
+    bidAskSource: 'MARK_PRICE',
+    sourceTimestamps: {
+      index: '2026-11-25T03:00:00.000Z',
+      markPrice: '2026-11-25T03:00:01.000Z',
+    },
+  });
+  assert.ok(calculateQuoteCashRiskNeutralMetrics(quote, 900, 0, riskNeutralNow));
+  assert.equal(calculateQuoteCashRiskNeutralMetrics({
+    ...quote,
+    sourceTimestamps: { index: quote.sourceTimestamps?.index },
+  }, 900, 0, riskNeutralNow), null);
+});
+
 test('canonical put risk-neutral probability uses cash-settlement multiplier and fees in break-even', () => {
   const quote = canonicalBinanceRiskQuote({ type: 'PUT', strike: 110 });
-  const metrics = calculateQuoteCashRiskNeutralMetrics(quote, 900, 3);
+  const metrics = calculateQuoteCashRiskNeutralMetrics(quote, 900, 3, riskNeutralNow);
   assert.ok(metrics);
   assert.ok((metrics?.breakevenPrice ?? quote.strike) < quote.strike);
   assert.ok((metrics?.probabilityOfProfit ?? 0) < (metrics?.probabilityInTheMoney ?? 1));
@@ -291,19 +311,29 @@ test('canonical put risk-neutral probability uses cash-settlement multiplier and
 
 test('canonical risk-neutral metrics fail closed without observed inputs or provider provenance', () => {
   const quote = canonicalBinanceRiskQuote();
-  assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, sourceTimestamps: undefined }, 900), null);
-  assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, ivStatus: 'ESTIMATED' }, 900), null);
-  assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, estimatedFields: ['riskFreeRate'] }, 900), null);
+  assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, sourceTimestamps: undefined }, 900, 0, riskNeutralNow), null);
+  assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, ivStatus: 'ESTIMATED' }, 900, 0, riskNeutralNow), null);
+  assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, estimatedFields: ['riskFreeRate'] }, 900, 0, riskNeutralNow), null);
   assert.equal(calculateQuoteCashRiskNeutralMetrics({
     ...quote,
     contractEconomics: { ...quote.contractEconomics!, provenance: { status: 'USER_ASSERTED' } },
-  }, 900), null);
-  assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, exerciseStyle: 'AMERICAN' }, 900), null);
-  assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, pricingModel: undefined }, 900), null);
-  assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, bid: 0 }, 900), null);
-  assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, sourceTimestamps: { index: '2026-11-25T03:00:00.000Z' } }, 900), null);
-  assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, unit: 1 }, 900), null);
-  assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, bidAskSource: 'BOOK_TICKER', sourceTimestamps: { index: quote.sourceTimestamps?.index, optionTicker: quote.sourceTimestamps?.optionTicker } }, 900), null);
-  assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, bidAskSource: undefined }, 900), null);
-  assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, venue: 'CSV' }, 900), null);
+  }, 900, 0, riskNeutralNow), null);
+  assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, exerciseStyle: 'AMERICAN' }, 900, 0, riskNeutralNow), null);
+  assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, pricingModel: undefined }, 900, 0, riskNeutralNow), null);
+  assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, bid: 0 }, 900, 0, riskNeutralNow), null);
+  assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, sourceTimestamps: { index: '2026-11-25T03:00:00.000Z' } }, 900, 0, riskNeutralNow), null);
+  assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, unit: 1 }, 900, 0, riskNeutralNow), null);
+  assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, bidAskSource: 'BOOK_TICKER', sourceTimestamps: { index: quote.sourceTimestamps?.index } }, 900, 0, riskNeutralNow), null);
+  assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, bidAskSource: undefined }, 900, 0, riskNeutralNow), null);
+  assert.equal(calculateQuoteCashRiskNeutralMetrics({ ...quote, venue: 'CSV' }, 900, 0, riskNeutralNow), null);
+  assert.equal(calculateQuoteCashRiskNeutralMetrics({
+    ...quote,
+    sourceReceivedAt: { markIv: '2026-11-25T02:00:00.000Z', riskFreeRate: '2026-11-25T02:00:00.000Z' },
+  }, 900, 0, riskNeutralNow), null);
+  assert.equal(calculateQuoteCashRiskNeutralMetrics({
+    ...quote,
+    riskFreeRateSource: 'MARK_PRICE',
+    sourceTimestamps: { ...quote.sourceTimestamps, riskFreeRate: '2026-11-25T02:00:00.000Z' },
+  }, 900, 0, riskNeutralNow), null);
+
 });
