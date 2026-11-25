@@ -194,6 +194,8 @@ export function applyBinanceBookTicker(
   receivedAtMs = Date.now(),
 ): OptionQuote {
   const timestamp = event.transactionTime ?? event.eventTime;
+  if (timestamp === undefined || !Number.isFinite(timestamp) || timestamp <= 0
+    || !Number.isFinite(receivedAtMs) || receivedAtMs < timestamp) return quote;
   const currentBboTimestamp = quote.bidAskSource === 'OPTION_TICKER'
     ? Date.parse(quote.sourceTimestamps?.ticker ?? '')
     : quote.bidAskSource === 'MARK_PRICE'
@@ -201,23 +203,21 @@ export function applyBinanceBookTicker(
       : quote.bidAskSource === 'BOOK_TICKER'
         ? Date.parse(quote.sourceTimestamps?.bookTicker ?? '')
         : Number.NaN;
-  if (timestamp !== undefined && Number.isFinite(currentBboTimestamp) && timestamp < currentBboTimestamp) return quote;
+  if (Number.isFinite(currentBboTimestamp) && timestamp < currentBboTimestamp) return quote;
   return {
     ...quote,
     bid: event.bidPrice,
     ask: event.askPrice,
     sourceTimestamps: {
       ...quote.sourceTimestamps,
-      ...(timestamp !== undefined && timestamp > 0 ? { bookTicker: new Date(timestamp).toISOString() } : {}),
+      bookTicker: new Date(timestamp).toISOString(),
     },
     bidQuantity: event.bidQuantity,
     askQuantity: event.askQuantity,
     bidAskSource: 'BOOK_TICKER',
     sourceReceivedAt: {
       ...quote.sourceReceivedAt,
-      ...(timestamp !== undefined && timestamp > 0 && Number.isFinite(receivedAtMs) && receivedAtMs >= timestamp
-        ? { bidAsk: new Date(receivedAtMs).toISOString() }
-        : {}),
+      bidAsk: new Date(receivedAtMs).toISOString(),
     },
   };
 }
