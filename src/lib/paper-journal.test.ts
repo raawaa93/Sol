@@ -412,6 +412,14 @@ test('runtime close-event validation rejects tampered PnL and stale source chron
       bookTicker: '2026-11-25T03:01:32Z',
     },
   }), false);
+  assert.equal(isCanonicalPaperCloseEvent({
+    ...result.event,
+    exitFees: result.event.grossProceeds + 1,
+  }), false);
+  assert.equal(isCanonicalPaperCloseEvent({
+    ...result.event,
+    contractAtExit: { ...result.event.contractAtExit, expiry: '2026-11-25T03:00:00Z' },
+  }), false);
 });
 
 test('paper close event storage appends once and rejects duplicate trade closures', () => {
