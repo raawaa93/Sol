@@ -17,7 +17,10 @@ export interface BinanceCryptoOptionContractTerms {
  * used as the premium multiplier. Option premium orders are contract-denominated,
  * so the premium multiplier is 1.
  *
- * This reference adapter does not declare pricing/Greeks model capability.
+ * Exercise/settlement assumptions are cross-referenced to the Binance RIE/RCH
+ * contract and clearing documents. Account-specific applicability is explicitly
+ * unverified; consumers must surface that limitation. This adapter does not
+ * declare pricing/Greeks model capability by itself.
  */
 export function mapBinanceCryptoOptionEconomics(
   terms: BinanceCryptoOptionContractTerms,
