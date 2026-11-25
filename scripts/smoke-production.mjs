@@ -139,7 +139,8 @@ async function main() {
   }
   console.log(`Published llms.txt: HTTP ${llmsResponse.status}.`);
 
-  if (process.env.BINANCE_UPSTREAM_SMOKE !== 'true') {
+  const BINANCE_UPSTREAM_PROBES_ALLOWED = false;
+  if (!BINANCE_UPSTREAM_PROBES_ALLOWED) {
     const line = "SKIP — GitHub-hosted production audit checks the published app and assets only. It does not call Binance: runner egress may be classified as US and return HTTP 451, which is not the Syrian user network path. Verify live market data from the intended browser/network instead.";
     console.log(line);
     annotate('notice', 'Binance upstream probe skipped on CI', line);
