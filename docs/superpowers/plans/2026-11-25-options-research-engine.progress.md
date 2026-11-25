@@ -8,6 +8,14 @@
 
 ## Completed and verified
 
+### PAPER campaign risk cap — PR #209
+- Merge commit `f413ba8a5453a730fe4649d90c648f27390499b1`.
+- Encoded 200 USD campaign capital, 60 USD/USDT cumulative premium-and-fee allocation cap, 20 per-attempt cap, and 140 outside the risk budget.
+- Sizing uses remaining campaign allocation; the save handler independently enforces the cap even when quantity is manually edited.
+- New legacy journal entries store premium debit and currency. Unknown old costs and mixed currencies block allocation; no implicit FX conversion.
+- PAPER journal is append-only; entries remain allocated until export and explicit reset because close/realized-P&L workflow does not exist. Reset requires confirmation.
+- CI 45574730769: 309/309 tests, build, bundle budget and 18/18 Playwright passed; Lighthouse 45574730886 and Project Context Guard 45574730851 passed.
+
 ### Historical IV analytics
 - Pure IV Rank / IV Percentile calculations use the same underlying, venue, source reference and IV convention.
 - One latest sample per UTC day is selected; future samples and invalid source/time records are excluded.
