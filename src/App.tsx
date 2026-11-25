@@ -294,9 +294,9 @@ function App() {
   const [binanceDepthLoading, setBinanceDepthLoading] = useState(false);
   const [binanceDepthError, setBinanceDepthError] = useState('');
   const [binanceDepthRefreshKey, setBinanceDepthRefreshKey] = useState(0);
-  const bookTickerStatus = 'idle' as const;
+  const bookTickerStatus: string = 'idle';
   const bookTickerUpdates = 0;
-  const optionMarkStatus = 'idle' as const;
+  const optionMarkStatus: string = 'idle';
   const optionMarkUpdates = 0;
   const [importedAt, setImportedAt] = useState<Date | null>(null);
   const [sourceTimeRange, setSourceTimeRange] = useState<CsvTimestampRange | null>(null);
