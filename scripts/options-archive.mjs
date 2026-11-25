@@ -366,8 +366,7 @@ export class ResumableOptionsArchive {
         try { existingRecovery = JSON.parse(await readFile(recoveryPath, 'utf8')); } catch {
           const recoveryStat = await stat(recoveryPath);
           if (Date.now() - recoveryStat.mtimeMs > this.leaseTtlMs) {
-            await unlink(recoveryPath).catch((error) => { if (error.code !== 'ENOENT') throw error; });
-            return this.acquireWriterLease();
+            throw new OptionsArchiveError('WRITER_LEASE_RECOVERY_CORRUPT', 'Recovery lock is malformed and cannot be safely reclaimed without owner metadata.');
           }
           throw new OptionsArchiveError('WRITER_LEASE_RECOVERY_BUSY', 'Recovery lock is being initialized or is too recent to reclaim safely.');
         }
