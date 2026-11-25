@@ -322,7 +322,7 @@ function App() {
   const [paperJournalLoad, setPaperJournalLoad] = useState(() => loadPaperJournal<PaperTrade>(localStorage, isPaperTrade));
   const [trades, setTrades] = useState<PaperTrade[]>(paperJournalLoad.entries);
   const closedTradeIds = useMemo(
-    () => new Set(paperCloseEvents.filter((event) => trades.some((trade) => isCanonicalPaperCloseEventForTrade(event, trade))).map((event) => event.tradeId)),
+    () => new Set(paperCloseEvents.filter((event) => trades.some((trade) => isVisiblePaperCloseEventForTrade(event, trade))).map((event) => event.tradeId)),
     [paperCloseEvents, trades],
   );
   const getPaperCloseEventForTrade = (trade: PaperTrade) =>
