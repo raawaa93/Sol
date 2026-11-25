@@ -3,6 +3,7 @@ import test from 'node:test';
 import { blackScholes, estimateGreekPnl, getBreakeven, getExpiryPnl, getExpectedMove, getMaxLoss, getRiskNeutralExpiryMetrics, getSpreadPct, impliedVolatility, normalCdf } from './options.ts';
 import type { OptionQuote } from './types';
 import { priceOption } from './pricing-model.ts';
+import { BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS } from './contract-economics.ts';
 
 const call: OptionQuote = {
   id: 'BTC-test-C', symbol: 'BTC-test-C', underlying: 'BTC', expiry: '2026-12-30T08:00:00.000Z',
@@ -219,6 +220,8 @@ test('risk-neutral metrics reject canonical terms until a canonical probability 
         provider: 'BINANCE',
         sourceRef: 'https://eapi.binance.com/eapi/v1/exchangeInfo',
         retrievedAt: '2026-11-25T03:00:00Z',
+        rawFields: { unit: 1, underlyingType: 'CRYPTO', contractType: 'CRYPTO_OPTIONS' },
+        legalTerms: { ...BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS },
       },
     },
   };
