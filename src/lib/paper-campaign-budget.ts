@@ -1,4 +1,5 @@
 import type { PaperTrade } from './types.ts';
+import { isValidPaperTradeCloseRecord } from './paper-journal.ts';
 
 export const PAPER_CAMPAIGN_CAPITAL = 200;
 export const PAPER_CAMPAIGN_MAX_LOSS = 60;
@@ -72,20 +73,12 @@ export function summarizePaperCampaignBudget(
       continue;
     }
     if (trade.close) {
-      const close = trade.close;
-      const consistent = close.currency === normalizedCurrency
-        && Number.isFinite(Date.parse(close.closedAt))
-        && Number.isFinite(close.exitGrossProceeds) && close.exitGrossProceeds >= 0
-        && Number.isFinite(close.exitNetProceeds) && close.exitNetProceeds >= 0
-        && Number.isFinite(close.exitFees) && close.exitFees >= 0
-        && Number.isFinite(close.realizedPnl)
-        && Math.abs(close.realizedPnl - (close.exitNetProceeds - debit)) <= 1e-8
-        && Math.abs(close.exitGrossProceeds - close.exitNetProceeds - close.exitFees) <= 1e-8;
-      if (!consistent) {
+      if (!isValidPaperTradeCloseRecord(trade.close, trade)
+        || trade.close.currency !== normalizedCurrency) {
         unknownEntries += 1;
         continue;
       }
-      used += Math.max(0, -close.realizedPnl);
+      used += Math.max(0, -trade.close.realizedPnl);
       continue;
     }
     used += debit;
