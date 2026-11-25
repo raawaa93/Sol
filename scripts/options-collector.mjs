@@ -171,6 +171,8 @@ export function mapVerifiedBinanceContractSpec(exchangeInfo, symbol, receivedAt)
     exerciseStyle: 'EUROPEAN',
     settlementStyle: 'CASH',
     cashSettlementMultiplier: unit,
+    settlementPriceMethod: 'INDEX_ARITHMETIC_MEAN',
+    settlementWindowMs: 30 * 60 * 1000,
     sourceEndpoint: 'REST_EXCHANGE_INFO',
     termsSource: 'BINANCE_OPTIONS_CONTRACT_SPECIFICATIONS_2026-01-05',
     settlementTermsSource: 'BINANCE_CLEARING_PROCEDURES_126_130',
