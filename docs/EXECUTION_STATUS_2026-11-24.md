@@ -222,8 +222,10 @@ The old isolated worktree `research/options-pit-archive-2026-11-24` remains unav
 - No real Binance HTTP/WebSocket transport, exchangeInfo contract-spec mapper, cloud archive, or market capture is delivered. No historical edge or profitability claim.
 
 
-## Binance mark-IV source provenance correction — PR #180 under verification
+## Binance mark-IV source provenance correction merged — 25 November 2026
 
-- Follow-up audit found that the Binance Options `vo` field had been treated as observed `markIV` in the ticker stream parser.
-- PR #180 separates `venueVolatility` from explicit `markIV`, and requires `markIvSource=OPTION_TICKER` with matching event timestamps before position Greeks are enabled: https://github.com/raawaa93/Sol/pull/180.
-- Until this correction is merged, treat the current mainline position-Greek adapter as subject to this provenance issue; no live trading is enabled.
+- PR #180 merged as `762918f8e95c958e8013512a623341d83946e20a`: https://github.com/raawaa93/Sol/pull/180.
+- Binance `vo` is now preserved as venue-reported volatility, not relabelled as observed `markIV`.
+- Observed mark IV is accepted only from the explicit `markIV` field, with `markIvSource=OPTION_TICKER` and a matching event timestamp. Mark-price events cannot create an IV timestamp.
+- Canonical position Greeks remain fail-closed when this explicit IV source is absent. No live trading is enabled.
+- PR CI, Project Context Guard and Lighthouse passed. Mainline deployment/smoke verification for this merge is pending.
