@@ -141,3 +141,22 @@ Volterra هو مختبر خيارات متعدد الأصول وليس منتج�
 - لا تظهر القيم قبل 30 عينة يومية صالحة على الأقل. التاريخ الجزئي موسوم بوضوح، ويُفصل كل أصل ومنصة ومنهج IV عن الآخر. لا تُخلط بيانات Demo أو CSV أو IV النموذجي أو bid/ask IV مع Binance REST Mark IV.
 - تُسجل العينات عند فتح/تحديث شاشة Binance فقط، وليس في الخلفية. تُحفظ في localStorage في المتصفح الحالي، بحد 400 يوم و2,000 سجل، ويمكن تصدير نسخة JSON. التخزين المحلي غير مشفر ولا يتزامن بين الأجهزة.
 - لا يوجد بعد أرشيف سحابي دائم أو جامع بيانات مجدول أو سلسلة تاريخية موثقة لعروض وطلبات الخيارات. لذلك لا تُستخدم هذه المؤشرات وحدها لترتيب صفقة على أنها مربحة.
+
+
+## Historical replay: BBO provenance, size and slippage
+
+The CSV replay is a conservative long-option execution baseline, not a signal strategy or a profitability forecast. It buys at the observed Ask and exits at the observed Bid after the selected holding period. Its execution timeline uses the local BBO receive/availability time; the legacy generic `timestamp` / last-trade timestamp is never substituted for a bid/ask quote time.
+
+Replay-eligible CSV rows must explicitly provide:
+
+- `bidAskSource`: `BOOK_TICKER` or `OPTION_TICKER`.
+- `bidAskTimestamp`: the source event/snapshot time.
+- `bidAskReceivedAt`: the local time the BBO became available.
+- `bidAskSizeUnit`: `CONTRACTS` or `UNDERLYING_UNITS`.
+- `bidQuantity` and `askQuantity`.
+
+The replay rejects mark-only or estimated execution prices, missing/future clocks, source-to-receive delays above five minutes, unknown size units, missing size and insufficient displayed size. It requires enough Ask size for entry and Bid size for exit. Additional adverse slippage is configurable in basis points per side; fees and slippage set to zero are optimistic assumptions, not a realistic default. CSV source labels, clocks and sizes are user-supplied claims and are not independently authenticated.
+
+The Binance `bookTicker` stream provides the BBO update and its event/transaction time; the adapter records local receive time and labels displayed quantities in contracts/lots. The `optionTicker` 24-hour statistics stream is not a BBO source and its event time must not be used to timestamp bid/ask. The REST option-ticker BBO snapshot clock, when explicitly supplied, is `sourceTimestamps.ticker`.
+
+This remains a baseline only: it does not model partial fills, queue priority, market impact beyond the configured slippage, expiry/settlement payoffs, or a predictive entry signal. No historical point-in-time BBO corpus or measured strategy edge exists.
