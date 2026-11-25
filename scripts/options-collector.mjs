@@ -172,7 +172,7 @@ export function mapVerifiedBinanceContractSpec(exchangeInfo, symbol, receivedAt)
     settlementStyle: 'CASH',
     cashSettlementMultiplier: unit,
     sourceEndpoint: 'REST_EXCHANGE_INFO',
-    version: sha256(canonicalJson({ serverTime, symbolInfo, contractInfo })),
+    version: sha256(canonicalJson({ symbolInfo, contractInfo })),
   };
   return {
     contractSpec,
