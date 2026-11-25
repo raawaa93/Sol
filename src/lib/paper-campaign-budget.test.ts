@@ -85,6 +85,7 @@ function closeEventForBudget(record: PaperTrade, netPnl: number): CanonicalPaper
     quantity: record.quantity,
     exitPremium: grossProceeds,
     exitFees: 0,
+    exitFeesCurrency: 'USDT',
     exitFeesSource: 'USER_ENTERED',
     grossProceeds,
     entryDebit: 20,
