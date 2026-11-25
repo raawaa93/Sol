@@ -242,7 +242,7 @@ No cloud resource, subscription, credential, schedule or billing change was crea
 - Remaining lifecycle gap: there is no close/exit workflow, Bid-side exit size check, realized P&L, expiry settlement/assignment, or fee calculation from the current contract-specific Binance fee schedule. No risk-budget release is inferred; all debit remains reserved until export and explicit reset.
 
 
-## PAPER Bid-side close lifecycle — PR #227 (validation pending)
+## PAPER Bid-side close lifecycle — PR #243 (merged and deployed)
 
 - Added a canonical close constructor for open Binance long-option PAPER entries. It only accepts the identical contract and provider-verified contract terms, a positive BOOK_TICKER Bid, and displayed bid quantity at least equal to the recorded position.
 - Rejects repeated closes, invalid fee inputs, expired contracts, stale/future exchange timestamps, and stale/future local receive timestamps.
@@ -250,4 +250,23 @@ No cloud resource, subscription, credential, schedule or billing change was crea
 - Added desktop/mobile close controls. The operator must select the same contract in the scanner; the button is disabled for other contracts and legacy entries without canonical terms. An optional exact fee input is in the contract currency.
 - CSV export includes exit price, quantity, fees, gross/net P&L, index, and source/receive clocks.
 - No automatic fee-rate inference, expiry settlement, live orders, or allocation release.
-- PR-head CI, browser journeys, Lighthouse and Project Context Guard must pass before merge.
+- PR #243 merged to main as `6e9596eec4145191764b6a71c668ef4880c25d31`.
+- PR-head CI 45591077111, Lighthouse 45591077116 and Project Context Guard 45591077100 passed. Main CI 45591319706, Lighthouse 45591319674, Project Context Guard 45591319676, Pages build/deploy and published-site smoke/Lighthouse 45591319704 passed.
+- Published site: https://raawaa93.github.io/Sol/ (HTTP 200 for app shell, JS, CSS and `llms.txt`). Published-site Lighthouse median of three runs: Performance 99, Accessibility 100, Best Practices 100, SEO 100; FCP 865 ms, LCP 865 ms, TBT 115 ms, CLS 0.000. Transfer size 147 KiB.
+- Production audit intentionally did not call Binance upstream from GitHub-hosted runners because their egress may be classified as US; public proxy path and app assets were smoke-tested. Verify market-data availability only from the user's intended network.
+
+
+## Post-deployment boundary — 25 November 2026
+
+The PAPER journal now has a guarded canonical entry and Bid-side close path, plus local raw-journal recovery. This does not make the overall strategy system ready for performance claims or unattended collection.
+
+Still open and materially blocking:
+- #153: append-only follow-up mark/Greek snapshots, amendments, forecast-vs-outcome review, expiry/assignment/settlement model, import/export migration tests and strategy-performance review.
+- #159: worker is opt-in local only; no verified live Binance capture, account/product eligibility, off-device archive, independent restore drill or monitored scheduler.
+- #155: normalized optionTrade MARKET/BLOCK flow decoder, maker/taker direction, point-in-time quote/Greek join and real event-level capture are not complete.
+- #160: no licensed point-in-time executable BBO corpus and no walk-forward strategy edge validation; no profitability claim is supported.
+- #91: full canonical economics still need routing through every P&L, payoff, Greeks, EV, replay and non-crypto provider path.
+- #106/#33: production encrypted backup and restore remain unverified; do not treat mocked backup tests as a real restore.
+- #113/#179: branch protection and Supabase leaked-password protection require dashboard/admin controls not exposed by the current integrations; Free-tier Supabase feature limits remain, no upgrade approved.
+
+No live orders, account credentials, payments, new cloud resources, or Binance-region workarounds were introduced.
