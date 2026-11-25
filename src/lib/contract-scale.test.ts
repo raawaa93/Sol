@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { getContractScaleIssue, getContractScaleIssueMessage, hasLegacyScalarAnalyticsCapability } from './contract-scale.ts';
+import { getContractScaleIssue, getContractScaleIssueMessage, hasLegacyScalarAnalyticsCapability, hasCanonicalBinanceModelGreekCapability } from './contract-scale.ts';
+import type { OptionQuote } from './types.ts';
 
 const demo = { venue: 'DEMO', unit: 1, contractMultiplier: 1 };
 const binanceCrypto = {
@@ -108,4 +109,96 @@ test('canonical terms disable legacy scalar analytics even when unit one is nume
   assert.equal(hasLegacyScalarAnalyticsCapability(binanceCrypto, 'BINANCE'), true);
   assert.equal(hasLegacyScalarAnalyticsCapability(canonicalBinanceQuote, 'BINANCE'), false);
   assert.equal(hasLegacyScalarAnalyticsCapability(demo, 'DEMO'), true);
+});
+
+
+const canonicalGreekQuote: OptionQuote = {
+  id: 'BTC-20261225-100000-C',
+  symbol: 'BTC-20261225-100000-C',
+  underlying: 'BTC',
+  venue: 'BINANCE',
+  assetClass: 'CRYPTO',
+  underlyingKind: 'SPOT',
+  exerciseStyle: 'EUROPEAN',
+  settlementStyle: 'CASH',
+  quoteAsset: 'USDT',
+  settlementAsset: 'USDT',
+  contractEconomics: {
+    premium: { multiplier: 1, quoteCurrency: 'USDT', priceUnit: 'PER_CONTRACT' },
+    exercise: {
+      style: 'EUROPEAN',
+      settlement: 'CASH',
+      settlementCurrency: 'USDT',
+      deliverables: [],
+      cashSettlement: { formula: 'INTRINSIC_VALUE', reference: 'INDEX', currency: 'USDT', multiplier: 100 },
+    },
+    provenance: {
+      status: 'PROVIDER_VERIFIED',
+      provider: 'BINANCE',
+      sourceRef: 'https://eapi.binance.com/eapi/v1/exchangeInfo',
+      retrievedAt: '2026-11-25T04:00:00Z',
+      rawFields: { unit: 100, underlyingType: 'CRYPTO', contractType: 'CRYPTO_OPTIONS' },
+    },
+  },
+  expiry: '2026-12-25T08:00:00.000Z',
+  daysToExpiry: 30,
+  strike: 100000,
+  type: 'CALL',
+  bid: 1.2,
+  ask: 1.3,
+  markPrice: 1.25,
+  priceSource: 'MARK',
+  bidAskSource: 'BOOK_TICKER',
+  iv: 0.5,
+  ivStatus: 'OBSERVED',
+  delta: 0.5,
+  gamma: 0.00001,
+  theta: -10,
+  vega: 20,
+  rho: 5,
+  pricingStatus: 'ASSUMED',
+  pricingModel: 'BLACK_SCHOLES_CARRY',
+  riskFreeRate: 0,
+  carryYield: 0,
+  openInterest: 100,
+  volume: 20,
+  spot: 99000,
+  unit: 100,
+  sourceTimestamps: {
+    index: '2026-11-25T04:00:00Z',
+    optionTicker: '2026-11-25T04:00:01Z',
+    markIv: '2026-11-25T04:00:01Z',
+  },
+};
+
+test('canonical Binance model Greek capability scales per-underlying values by verified contract unit', () => {
+  assert.equal(hasCanonicalBinanceModelGreekCapability(canonicalGreekQuote, 'BINANCE'), true);
+  assert.equal(hasCanonicalBinanceModelGreekCapability(canonicalGreekQuote, 'CSV'), false);
+  assert.equal(hasLegacyScalarAnalyticsCapability(canonicalGreekQuote, 'BINANCE'), false);
+});
+
+test('canonical Binance model Greek capability rejects missing provenance, timestamp or estimated model inputs', () => {
+  assert.equal(hasCanonicalBinanceModelGreekCapability({
+    ...canonicalGreekQuote,
+    sourceTimestamps: { index: canonicalGreekQuote.sourceTimestamps!.index },
+  }, 'BINANCE'), false);
+  assert.equal(hasCanonicalBinanceModelGreekCapability({
+    ...canonicalGreekQuote,
+    ivStatus: 'ESTIMATED',
+  }, 'BINANCE'), false);
+  assert.equal(hasCanonicalBinanceModelGreekCapability({
+    ...canonicalGreekQuote,
+    estimatedFields: ['delta'],
+  }, 'BINANCE'), false);
+  assert.equal(hasCanonicalBinanceModelGreekCapability({
+    ...canonicalGreekQuote,
+    unit: 10,
+  }, 'BINANCE'), false);
+  assert.equal(hasCanonicalBinanceModelGreekCapability({
+    ...canonicalGreekQuote,
+    contractEconomics: {
+      ...canonicalGreekQuote.contractEconomics!,
+      provenance: { ...canonicalGreekQuote.contractEconomics!.provenance, status: 'USER_ASSERTED' },
+    },
+  }, 'BINANCE'), false);
 });
