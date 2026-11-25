@@ -256,6 +256,7 @@ export interface PaperTrade {
   priceSourceAtEntry?: QuotePriceSource;
   bidAskSourceAtEntry?: OptionQuote['bidAskSource'];
   sourceTimestampsAtEntry?: OptionQuote['sourceTimestamps'];
+  sourceReceivedAtAtEntry?: { bidAsk: string };
   /** A verified simulated close; absence means the PAPER position remains open. */
   exit?: PaperTradeExit;
   status: 'PAPER';
