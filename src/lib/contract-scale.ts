@@ -114,7 +114,7 @@ export function hasCanonicalBinanceModelGreekCapability(
   const bboTimestamp = Date.parse(quote.bidAskSource === 'BOOK_TICKER'
     ? quote.sourceTimestamps?.bookTicker ?? ''
     : quote.bidAskSource === 'OPTION_TICKER'
-      ? quote.sourceTimestamps?.optionTicker ?? ''
+      ? quote.sourceTimestamps?.ticker ?? ''
       : quote.bidAskSource === 'MARK_PRICE'
         ? quote.sourceTimestamps?.markPrice ?? ''
         : '');
