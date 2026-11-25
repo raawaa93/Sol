@@ -244,7 +244,7 @@ export function applyBinanceOptionMarkPrice(
     ? Date.parse(quote.sourceTimestamps.bookTicker)
     : Number.NaN;
   const bookTickerFresh = Number.isFinite(bookTickerTimestamp)
-    && nowMs >= bookTickerTimestamp && nowMs - bookTickerTimestamp <= 5_000;
+    && Math.abs(event.eventTime - bookTickerTimestamp) <= 5_000;
   const useMarkBid = !bookTickerFresh && event.bestBid !== undefined;
   const useMarkAsk = !bookTickerFresh && event.bestAsk !== undefined;
   const updated: OptionQuote = {
