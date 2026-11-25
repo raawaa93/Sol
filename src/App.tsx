@@ -44,7 +44,6 @@ import { getQuoteDataCoverage } from './lib/quote-data-coverage';
 import { assessSnapshotFreshness, DEFAULT_SNAPSHOT_STALE_AFTER_MS, formatSourceTimestampAge } from './lib/market-data-health';
 import { isQuoteFieldEstimated } from './lib/quote-quality';
 import { getContractScaleIssue, getContractScaleIssueMessage, hasLegacyScalarAnalyticsCapability } from './lib/contract-scale';
-import { downloadCsv, downloadCsvTemplate, MAX_CSV_FILE_BYTES, parseOptionsCsv } from './lib/csv';
 import type { CsvTimestampRange } from './lib/csv';
 import { buildScenarioSeries, getBreakeven, getExpectedMove, getMaxLoss, getMidPrice, getSpreadPct, getUnderlyingReferencePrice } from './lib/options';
 import { buildQuoteCashExpiryScenarioSeries, calculateQuoteCashBreakeven, calculateQuoteCashMaxLoss } from './lib/quote-economics';
@@ -56,6 +55,8 @@ const MarketDepthPanel = lazy(() => import('./components/MarketDepthPanel'));
 const GreeksPanel = lazy(() => import('./components/GreeksPanel'));
 const FinancialCockpit = lazy(() => import('./components/FinancialCockpit'));
 const HistoricalReplayPanel = lazy(() => import('./components/HistoricalReplayPanel'));
+
+const MAX_CSV_FILE_BYTES = 5 * 1024 * 1024;
 
 const UNDERLYING_NAMES: Record<string, string> = {
   BTC: 'Bitcoin',
@@ -936,29 +937,34 @@ function App() {
     setBinanceError('');
     setBinanceAccessRestricted(false);
     const reader = new FileReader();
-    reader.onload = () => {
-      const result = parseOptionsCsv(String(reader.result ?? ''));
-      if (!result.quotes.length) {
+    reader.onload = async () => {
+      try {
+        const { parseOptionsCsv } = await import('./lib/csv');
+        const result = parseOptionsCsv(String(reader.result ?? ''));
+        if (!result.quotes.length) {
+          setCsvWarnings(result.warnings);
+          setShowAllCsvWarnings(false);
+          notify('لم يتم العثور على عقود صالحة في الملف.');
+          return;
+        }
+        setQuotes(result.quotes);
+        setDataMode('CSV');
+        setAssetClassFilter('ALL');
+        setVenueFilter('ALL');
+        setImportedAt(new Date());
+        setSourceTimeRange(result.sourceTimeRange ?? null);
         setCsvWarnings(result.warnings);
         setShowAllCsvWarnings(false);
-        notify('لم يتم العثور على عقود صالحة في الملف.');
-        return;
+        const first = result.quotes[0];
+        setUnderlying(first.underlying);
+        setSelectedExpiry(first.expiry);
+        setSelectedType(first.type);
+        setSelectedId(first.id);
+        setSearchQuery('');
+        notify(`تم استيراد ${formatNumber(result.quotes.length, 0)} عقد محلياً.`);
+      } catch {
+        notify('تعذر معالجة ملف CSV. تحقق من الملف ثم حاول مجدداً.');
       }
-      setQuotes(result.quotes);
-      setDataMode('CSV');
-      setAssetClassFilter('ALL');
-      setVenueFilter('ALL');
-      setImportedAt(new Date());
-      setSourceTimeRange(result.sourceTimeRange ?? null);
-      setCsvWarnings(result.warnings);
-      setShowAllCsvWarnings(false);
-      const first = result.quotes[0];
-      setUnderlying(first.underlying);
-      setSelectedExpiry(first.expiry);
-      setSelectedType(first.type);
-      setSelectedId(first.id);
-      setSearchQuery('');
-      notify(`تم استيراد ${formatNumber(result.quotes.length, 0)} عقد محلياً.`);
     };
     reader.onerror = () => notify('تعذر قراءة الملف. جرّب ملف CSV آخر.');
     reader.readAsText(file);
@@ -1074,11 +1080,12 @@ function App() {
     notify('تم تصدير ' + result.count + ' عينة IV محلية.');
   };
 
-  const exportTrades = () => {
+  const exportTrades = async () => {
     if (!trades.length) {
       notify('لا توجد صفقات تجريبية لتصديرها.');
       return;
     }
+    const { downloadCsv } = await import('./lib/csv');
     downloadCsv('volterra-paper-journal.csv', trades.map((trade) => ({
       createdAtUTC: trade.createdAt,
       symbol: trade.symbol,
