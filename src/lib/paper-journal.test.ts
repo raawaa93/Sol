@@ -41,6 +41,9 @@ const quote: OptionQuote = {
   type: 'CALL',
   bid: 1.2,
   ask: 1.3,
+  bidQuantity: 10,
+  askQuantity: 10,
+  bidAskSizeUnit: 'CONTRACTS',
   markPrice: 1.25,
   priceSource: 'MARK',
   bidAskSource: 'BOOK_TICKER',
@@ -68,7 +71,7 @@ const input = {
   id: 'paper-entry-1',
   createdAt: '2026-11-25T03:01:00Z',
   quantity: 3,
-  premiumPrice: 1.25,
+  premiumPrice: 1.3,
   fees: 0.5,
   spotAtEntry: 99000,
 };
@@ -78,12 +81,12 @@ test('canonical PAPER entry stores independent premium scale and full contract/s
   const result = createCanonicalPaperTrade(input);
   assert.equal(result.ok, true);
   if (!result.ok) return;
-  assert.equal(result.premiumDebit, 4.25);
+  assert.equal(result.premiumDebit, 4.4);
   assert.equal(result.premiumCurrency, 'USDT');
-  assert.equal(result.trade.entryPremium, 1.25);
-  assert.equal(result.trade.premiumAmountAtEntry, 3.75);
+  assert.equal(result.trade.entryPremium, 1.3);
+  assert.ok(Math.abs(result.trade.premiumAmountAtEntry! - 3.9) < 1e-9);
   assert.equal(result.trade.premiumMultiplierAtEntry, 1);
-  assert.equal(result.trade.priceSourceAtEntry, 'MID');
+  assert.equal(result.trade.priceSourceAtEntry, 'ASK');
   assert.equal(result.trade.bidAskSourceAtEntry, 'BOOK_TICKER');
   assert.equal(result.trade.contractUnitAtEntry, 100);
   assert.equal(result.trade.contractEconomics?.exercise.cashSettlement?.multiplier, 100);
@@ -154,13 +157,14 @@ test('canonical PAPER entry requires the timestamp for the actual observed price
   }, 'BINANCE'), false);
 });
 
-test('canonical PAPER entry accepts a markPrice-stream midpoint only with its own timestamp', () => {
+test('canonical PAPER entry rejects markPrice BBO because it has no verified displayed execution size', () => {
   const markQuote = {
     ...quote,
     bidAskSource: 'MARK_PRICE' as const,
+    bidAskSizeUnit: undefined,
     sourceTimestamps: { ...quote.sourceTimestamps, markPrice: '2026-11-25T03:00:01Z' },
   };
-  assert.equal(canCreateCanonicalPaperTrade(markQuote, 'BINANCE'), true);
+  assert.equal(canCreateCanonicalPaperTrade(markQuote, 'BINANCE'), false);
 });
 
 test('canonical PAPER entry rejects a premium or spot value that does not match the timestamped source', () => {
@@ -238,4 +242,22 @@ test('canonical PAPER entry rejects future-dated price and index source timestam
   });
   assert.equal(futureIndex.ok, false);
   if (!futureIndex.ok) assert.equal(futureIndex.reason, 'PAPER_ENTRY_MARKET_SNAPSHOT_STALE_OR_FUTURE');
+});
+
+
+test('canonical PAPER long entry requires sufficient displayed ask size in contract units', () => {
+  const tooSmall = createCanonicalPaperTrade({
+    ...input,
+    quantity: 11,
+    quote: { ...quote, askQuantity: 10 },
+  });
+  assert.equal(tooSmall.ok, false);
+  if (!tooSmall.ok) assert.equal(tooSmall.reason, 'INSUFFICIENT_OBSERVED_ASK_SIZE');
+
+  const missingSizeUnit = createCanonicalPaperTrade({
+    ...input,
+    quote: { ...quote, bidAskSizeUnit: undefined },
+  });
+  assert.equal(missingSizeUnit.ok, false);
+  if (!missingSizeUnit.ok) assert.equal(missingSizeUnit.reason, 'CANONICAL_PROVIDER_VERIFIED_OBSERVED_PRICE_REQUIRED');
 });
