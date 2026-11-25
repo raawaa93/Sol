@@ -32,18 +32,23 @@ function getPaperEntryPriceSource(quote: OptionQuote): OptionQuote['priceSource'
   return undefined;
 }
 
-function hasObservedPriceTimestamp(quote: OptionQuote, source: NonNullable<OptionQuote['priceSource']>): boolean {
+function hasObservedPriceTimestamp(
+  quote: OptionQuote,
+  source: NonNullable<OptionQuote['priceSource']>,
+  nowMs: number,
+): boolean {
   const timestamps = quote.sourceTimestamps;
   if (!timestamps) return false;
-  const isValidTimestamp = (value: string | undefined) => Boolean(value && Number.isFinite(Date.parse(value)));
-  if (source === 'MARK') return isValidTimestamp(timestamps.markPrice);
-  if (source === 'LAST') return isValidTimestamp(timestamps.ticker);
-  if (source === 'MID' || source === 'BID' || source === 'ASK') {
-    if (quote.bidAskSource === 'BOOK_TICKER') return isValidTimestamp(timestamps.bookTicker);
-    if (quote.bidAskSource === 'OPTION_TICKER') return isValidTimestamp(timestamps.optionTicker);
-    if (quote.bidAskSource === 'MARK_PRICE') return isValidTimestamp(timestamps.markPrice);
+  let value: string | undefined;
+  if (source === 'MARK') value = timestamps.markPrice;
+  else if (source === 'LAST') value = timestamps.ticker;
+  else if (source === 'MID' || source === 'BID' || source === 'ASK') {
+    if (quote.bidAskSource === 'BOOK_TICKER') value = timestamps.bookTicker;
+    else if (quote.bidAskSource === 'OPTION_TICKER') value = timestamps.optionTicker;
+    else if (quote.bidAskSource === 'MARK_PRICE') value = timestamps.markPrice;
   }
-  return false;
+  const timestamp = Date.parse(value ?? '');
+  return Number.isFinite(timestamp) && nowMs >= timestamp && nowMs - timestamp <= 15_000;
 }
 
 /**
@@ -54,6 +59,7 @@ function hasObservedPriceTimestamp(quote: OptionQuote, source: NonNullable<Optio
 export function canCreateCanonicalPaperTrade(
   quote: OptionQuote,
   sourceMode: PaperJournalSourceMode,
+  nowMs = Date.now(),
 ): boolean {
   const economics = quote.contractEconomics;
   if (sourceMode !== 'BINANCE' || quote.venue !== 'BINANCE' || !economics) return false;
@@ -77,8 +83,9 @@ export function canCreateCanonicalPaperTrade(
     || economics.provenance.rawFields?.unit !== quote.unit) return false;
   const entryPriceSource = getPaperEntryPriceSource(quote);
   if (!entryPriceSource || quote.estimatedFields?.includes('markPrice') && entryPriceSource === 'MARK') return false;
-  if (!hasObservedPriceTimestamp(quote, entryPriceSource)
-    || !quote.sourceTimestamps?.index || !Number.isFinite(Date.parse(quote.sourceTimestamps.index))) return false;
+  const indexTimestamp = Date.parse(quote.sourceTimestamps?.index ?? '');
+  if (!hasObservedPriceTimestamp(quote, entryPriceSource, nowMs)
+    || !Number.isFinite(indexTimestamp) || nowMs < indexTimestamp || nowMs - indexTimestamp > 15_000) return false;
   if (!quote.quoteAsset || quote.quoteAsset !== economics.premium.quoteCurrency) return false;
   return calculatePremiumCash({ economics, premiumPrice: 1, contracts: 1 }).ok;
 }
@@ -90,9 +97,10 @@ export function canCreateCanonicalPaperTrade(
  */
 export function createCanonicalPaperTrade(
   input: CanonicalPaperTradeInput,
+  nowMs = Date.now(),
 ): CanonicalPaperTradeResult {
   const { quote, sourceMode, id, createdAt, quantity, premiumPrice, fees, spotAtEntry } = input;
-  if (!canCreateCanonicalPaperTrade(quote, sourceMode)) {
+  if (!canCreateCanonicalPaperTrade(quote, sourceMode, nowMs)) {
     return { ok: false, reason: 'CANONICAL_PROVIDER_VERIFIED_OBSERVED_PRICE_REQUIRED' };
   }
   if (!id.trim() || !Number.isFinite(Date.parse(createdAt))
