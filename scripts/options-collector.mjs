@@ -472,8 +472,8 @@ export async function collectForwardOptionsEvents({ archive, transport, streams,
     throw new OptionsCollectorError('TRANSPORT_REQUIRED', 'An archive and injected async-iterable transport are required.');
   }
   const isSupportedPublicStream = (stream) => typeof stream === 'string' && (
-    /^[a-z0-9-]+@(bookTicker|optionTrade|optionTicker(?:@\d{6})?|kline_(1m|3m|5m|15m|30m|1h|2h|4h|6h|12h|1d)|depth@(100ms|500ms|1000ms))$/i.test(stream)
-    || /^[a-z0-9]+@optionMarkPrice$/i.test(stream)
+    /^[a-z0-9-]+@(bookTicker|optionTrade|optionTicker\d{6}?|optionTicker|kline_(1m|3m|5m|15m|30m|1h|2h|4h|6h|12h|1d)|depth@(100ms|500ms)|depth(5|10|20)@(100ms|500ms))$/i.test(stream)
+    || /^[a-z0-9]+@(optionMarkPrice|markPrice)$/i.test(stream)
     || stream === '!index@arr'
   );
   if (!Array.isArray(streams) || streams.length === 0 || streams.some((stream) => !isSupportedPublicStream(stream))) {
