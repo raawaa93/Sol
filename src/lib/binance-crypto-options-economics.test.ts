@@ -24,7 +24,7 @@ test('Binance crypto adapter keeps premium and underlying delivery scales indepe
   assert.equal(economics.exercise.settlementCurrency, 'USDT');
   assert.equal(economics.provenance.status, 'PROVIDER_VERIFIED');
   assert.equal(economics.provenance.legalTerms?.scope, 'BINANCE_RIE_RCH');
-  assert.equal(economics.provenance.legalTerms?.effectiveDate, '2026-01-05');
+  assert.equal(economics.provenance.legalTerms?.contractSpecificationPublicationDate, '2026-01-05');
   assert.equal(economics.provenance.legalTerms?.accountApplicability, 'UNVERIFIED');
   assert.match(economics.provenance.legalTerms?.contractSpecificationRef ?? '', /bin\.bnbstatic\.com/);
   assert.match(economics.provenance.legalTerms?.clearingProceduresRef ?? '', /bin\.bnbstatic\.com/);
