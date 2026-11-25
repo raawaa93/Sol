@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { canCreateCanonicalPaperTrade, closeCanonicalPaperTrade, createCanonicalPaperTrade } from './paper-journal.ts';
+import { canCreateCanonicalPaperTrade, closeCanonicalPaperTrade, createCanonicalPaperTrade, isValidPaperTradeCloseRecord, normalizePaperTradeRecord } from './paper-journal.ts';
 import type { OptionQuote } from './types.ts';
 import { BINANCE_CRYPTO_OPTIONS_LEGAL_TERMS } from './contract-economics.ts';
 
@@ -374,4 +374,21 @@ test('canonical PAPER close cannot be timestamped before its entry', () => {
   });
   assert.equal(result.ok, false);
   if (!result.ok) assert.equal(result.reason, 'PAPER_CLOSE_TIME_BEFORE_ENTRY');
+});
+
+
+test('persisted PAPER close records are validated and corrupt close data keeps the original debit open', () => {
+  const trade = createEntry();
+  const result = closeCanonicalPaperTrade({ trade, quote: closeQuote(), closedAt: '2026-11-25T03:10:02Z' });
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(isValidPaperTradeCloseRecord(result.close, result.trade), true);
+  const corrupted = {
+    ...result.trade,
+    close: { ...result.close, exitNetProceeds: result.close.exitNetProceeds + 0.25 },
+  };
+  const recovered = normalizePaperTradeRecord(corrupted);
+  assert.equal(recovered.close, undefined);
+  assert.equal(recovered.integrityWarning, 'CLOSE_RECORD_INVALID');
+  assert.equal(recovered.premiumDebitAtEntry, trade.premiumDebitAtEntry);
 });
