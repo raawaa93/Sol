@@ -3,6 +3,7 @@ import {
   mergePaperJournalBackup,
   parsePaperJournalBackup,
 } from './paper-journal-backup.ts';
+import { PAPER_JOURNAL_STORAGE_KEY } from './paper-journal-storage.ts';
 import type { PaperJournalStorage } from './paper-journal-storage.ts';
 
 export function downloadPaperJournalJsonBackup<T>(
@@ -30,7 +31,6 @@ export function importPaperJournalJsonBackup<T extends { id: string }>(
   current: T[],
   isValid: (value: unknown) => value is T,
   storage: PaperJournalStorage,
-  storageKey: string,
 ): { ok: true; entries: T[]; added: number } | { ok: false; message: string } {
   const parsed = parsePaperJournalBackup(raw, isValid);
   if (!parsed.ok) {
@@ -55,7 +55,7 @@ export function importPaperJournalJsonBackup<T extends { id: string }>(
   const added = merged.entries.length - current.length;
   if (added === 0) return { ok: true, entries: merged.entries, added: 0 };
   try {
-    storage.setItem(storageKey, JSON.stringify(merged.entries));
+    storage.setItem(PAPER_JOURNAL_STORAGE_KEY, JSON.stringify(merged.entries));
   } catch {
     return { ok: false, message: 'تعذر حفظ النسخة المدمجة بسبب مساحة التخزين؛ بقي الدفتر الحالي كما هو.' };
   }
