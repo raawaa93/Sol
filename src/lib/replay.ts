@@ -50,6 +50,8 @@ export interface OptionReplayTrade {
   exitTimestamp: string;
   entrySourceTimestamp: string;
   exitSourceTimestamp: string;
+  entryBidAskSource: 'BOOK_TICKER' | 'OPTION_TICKER';
+  exitBidAskSource: 'BOOK_TICKER' | 'OPTION_TICKER';
   entryAsk: number;
   exitBid: number;
   entryFill: number;
@@ -271,6 +273,8 @@ export function replayLongOptionSnapshots(
         exitTimestamp: new Date(exit.timestamp).toISOString(),
         entrySourceTimestamp: new Date(entry.sourceTimestamp).toISOString(),
         exitSourceTimestamp: new Date(exit.sourceTimestamp).toISOString(),
+        entryBidAskSource: entry.quote.bidAskSource as 'BOOK_TICKER' | 'OPTION_TICKER',
+        exitBidAskSource: exit.quote.bidAskSource as 'BOOK_TICKER' | 'OPTION_TICKER',
         entryAsk: entry.quote.ask,
         exitBid: exit.quote.bid,
         entryFill,
