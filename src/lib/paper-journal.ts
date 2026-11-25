@@ -478,7 +478,13 @@ export function isCanonicalPaperCloseEventForTrade(
     || event.contractAtExit.underlyingKind !== trade.contractUnderlyingKindAtEntry
     || event.contractAtExit.unit !== trade.contractUnitAtEntry
     || event.contractAtExit.quoteAsset !== trade.quoteAsset
-    || stableJson(event.contractEconomicsAtExit) !== stableJson(economics)) return false;
+    || trade.priceSourceAtEntry !== 'ASK'
+    || trade.bidAskSourceAtEntry !== 'BOOK_TICKER'
+    || trade.askSizeUnitAtEntry !== 'CONTRACTS'
+    || !Number.isFinite(trade.askQuantityAtEntry) || trade.askQuantityAtEntry! + 1e-9 < trade.quantity
+    || Date.parse(event.closedAt) <= Date.parse(trade.createdAt)
+    || Date.parse(event.closedAt) >= Date.parse(trade.expiry)
+    || stableJson(comparableContractEconomics(event.contractEconomicsAtExit)) !== stableJson(comparableContractEconomics(economics))) return false;
   const entry = calculatePremiumCash({
     economics,
     premiumPrice: trade.entryPremium,
