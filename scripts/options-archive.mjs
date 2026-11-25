@@ -131,10 +131,13 @@ export function createOptionsArchiveRecord(input) {
   const rawPayload = input.rawPayload;
   const rawPayloadSha256 = sha256(typeof rawPayload === 'string' ? rawPayload : canonicalJson(rawPayload));
   const record = {
+    ...input,
     schemaVersion: OPTIONS_ARCHIVE_SCHEMA_VERSION,
     provider: 'BINANCE',
-    ...input,
     rawPayloadSha256,
+    ...(input.contractSpec ? {
+      contractSpecFingerprint: sha256(canonicalJson(input.contractSpec)),
+    } : {}),
   };
   validateOptionsArchiveRecord(record);
   return record;
@@ -222,6 +225,10 @@ export class ResumableOptionsArchive {
     this.root = resolve(root);
     this.maxBytes = options.maxBytes ?? 512 * 1024 * 1024;
     this.leaseTtlMs = options.leaseTtlMs ?? 30_000;
+    if (!Number.isSafeInteger(this.maxBytes) || this.maxBytes <= 0
+      || !Number.isSafeInteger(this.leaseTtlMs) || this.leaseTtlMs < 1_000) {
+      throw new OptionsArchiveError('INVALID_ARCHIVE_LIMIT', 'Archive quota and lease TTL must be positive safe integers.');
+    }
     this.index = new Map();
     this.initialized = false;
   }
@@ -377,7 +384,11 @@ export class ResumableOptionsArchive {
       committed.push({ hash: segment.hash, path: relative(this.root, segment.path), records: segment.group.length });
     }
 
-    const cursor = await this.writeCursor(options.cursor);
+    const cursorValue = {
+      source: options.cursor ?? null,
+      committedSegmentHashes: committed.map((segment) => segment.hash),
+    };
+    const cursor = await this.writeCursor(cursorValue);
     return { appended: pending.size, duplicates, segments: committed, cursor };
   }
 
@@ -387,6 +398,7 @@ export class ResumableOptionsArchive {
     const segmentRoot = join(this.root, 'segments');
     await mkdir(segmentRoot, { recursive: true });
     const files = await walkFiles(segmentRoot);
+    const segmentHashes = new Set();
     for (const file of files) {
       if (!file.endsWith('.ndjson')) { errors.push(`UNEXPECTED_FILE:${relative(this.root, file)}`); continue; }
       const content = await readFile(file, 'utf8');
@@ -397,6 +409,8 @@ export class ResumableOptionsArchive {
         try {
           const record = JSON.parse(line);
           validateOptionsArchiveRecord(record);
+          const expectedPath = join('segments', record.kind.toLowerCase(), symbolPartition(record.symbol), recordDate(record), `${expectedHash}.ndjson`);
+          if (relative(this.root, file) !== expectedPath) errors.push(`SEGMENT_PARTITION_MISMATCH:${relative(this.root, file)}`);
           const identity = recordIdentity(record);
           const hash = sha256(canonicalJson(record));
           const prior = index.get(identity);
@@ -411,7 +425,12 @@ export class ResumableOptionsArchive {
     for (const file of tempFiles) errors.push(`ORPHAN_TEMP_FILE:${relative(this.root, file)}`);
     try {
       const cursor = await readFile(join(this.root, 'cursor.json'), 'utf8');
-      verifyCursor(JSON.parse(cursor));
+      const cursorValue = verifyCursor(JSON.parse(cursor));
+      if (Array.isArray(cursorValue?.committedSegmentHashes)) {
+        for (const hash of cursorValue.committedSegmentHashes) {
+          if (!segmentHashes.has(hash)) errors.push(`CURSOR_SEGMENT_MISSING:${hash}`);
+        }
+      }
     } catch (error) {
       if (error.code !== 'ENOENT') errors.push(`CURSOR_INVALID:${error.code ?? 'PARSE_ERROR'}`);
     }
