@@ -44,7 +44,7 @@ export interface ContractLegalTermsProvenance {
   contractSpecificationRef: string;
   clearingProceduresRef: string;
   scope: 'BINANCE_RIE_RCH';
-  effectiveDate: string;
+  contractSpecificationPublicationDate: string;
   accountApplicability: 'UNVERIFIED';
 }
 
