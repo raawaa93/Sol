@@ -2,7 +2,7 @@ name: Encrypted Supabase backup
 
 on:
   schedule:
-    - cron: '23 4 * * 0'
+    - cron: '23 4 * * *'
   workflow_dispatch:
 
 permissions:
@@ -39,10 +39,7 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          if [[ "$SUPABASE_DB_URL" != *oyoyozdugicmnkfhjovo* ]]; then
-            echo "The configured database URL does not identify the Sol project." >&2
-            exit 1
-          fi
+          bash scripts/validate-supabase-db-url.sh
           if [[ ! "$AGE_RECIPIENT" =~ ^age1[0-9a-z]+$ ]]; then
             echo "AGE_RECIPIENT is not a valid age public recipient." >&2
             exit 1
