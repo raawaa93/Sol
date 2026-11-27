@@ -16,7 +16,7 @@ fi
 : "${MOCK_SUPABASE_LOG:?MOCK_SUPABASE_LOG is required}"
 printf '%q ' "$@" >> "$MOCK_SUPABASE_LOG"
 printf '\n' >> "$MOCK_SUPABASE_LOG"
-if [[ "${1:-}" == "init" || "${1:-}" == "stop" || "${1:-}" == "db" ]]; then
+if [[ "${1:-}" == "init" || "${1:-}" == "stop" || ( "${1:-}" == "db" && "${2:-}" == "start" ) ]]; then
   exit 0
 fi
 output=""
