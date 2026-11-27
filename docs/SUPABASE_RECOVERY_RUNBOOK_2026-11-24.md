@@ -92,7 +92,7 @@ The connected GitHub tools cannot inspect or write Actions secrets, and the data
 
 A one-time trigger was executed on 24 November 2026 at 08:55 UTC. The workflow completed successfully but **skipped the export** because at least one of `SUPABASE_DB_URL` or `AGE_RECIPIENT` was absent; its configuration check confirms that no database connection was attempted and no backup artifact was created. The temporary push trigger was then removed; the daily schedule and manual `workflow_dispatch` remain. The skipped-state summary quoting was also corrected.
 
-The scheduled workflow intentionally skips with a warning while either setting is missing. A successful workflow run before configuration is not a backup. A successful encrypted export still is not a verified restore; the matching private identity is needed to decrypt and test it in an isolated environment.
+The earlier workflow version intentionally skipped with a warning while either setting was missing, and could therefore show a green run without producing a backup. The hardened workflow now fails closed with an explicit error and summary if either setting is absent; it does not attempt a database connection and does not publish a release. This is deliberate: a red run accurately signals that no backup exists. A successful encrypted export still is not a verified restore; the matching private identity is needed to decrypt and test it in an isolated environment.
 
 The release asset is publicly downloadable because this repository is public. Its contents are protected only by age encryption and the offline private key. If the private key is lost, the backup cannot be decrypted.
 
@@ -164,6 +164,6 @@ The earlier `commerce` and `rawaa_store` schema deletion removed the two Telegra
 - Current footprint: one application table `public.volterra_rate_limit_windows` (121 transient rows at check time); RLS enabled. Auth currently contains 1 user and 6 sessions; Storage objects count is 0.
 - The standard backup scope still excludes Auth users/sessions, Storage object bytes, Edge Function secrets, and project settings. Do not describe the current workflow as a complete Supabase project backup.
 - New validation requires the exact project-scoped Session Pooler username and `*.pooler.supabase.com:5432` endpoint before any dump command can run. This avoids GitHub-hosted runner IPv4/direct-endpoint incompatibility and rejects project-ref substring spoofing.
-- Backup cadence changed from weekly to daily at 04:23 UTC. The workflow still skips without the owner-configured database URL and age recipient; no live export has been run.
+- Backup cadence changed from weekly to daily at 04:23 UTC. The hardened workflow fails explicitly without the owner-configured Session Pooler URL and age recipient; no live export has been run.
 - Supabase CLI v3 remains explicitly pinned. All hosted dumps use explicit `--remote="$SUPABASE_DB_URL"`, consistent with the v3 local-by-default behavior.
 - No live database writes, migrations, secrets reads, or credential rotations were performed in this recheck.
