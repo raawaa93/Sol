@@ -137,6 +137,10 @@ expect_failure "direct database endpoint rejected for IPv4-only GitHub runners" 
   env SUPABASE_DB_URL='postgresql://postgres:placeholder@db.oyoyozdugicmnkfhjovo.supabase.co:5432/postgres' \
   bash "$repo_root/scripts/validate-supabase-db-url.sh"
 
+expect_failure "pooler URL without explicit TLS mode rejected" \
+  env SUPABASE_DB_URL='postgresql://postgres.oyoyozduigcmnfhjovo:placeholder@aws-0-eu-west-1.pooler.supabase.com:5432/postgres' \
+  bash "$repo_root/scripts/validate-supabase-db-url.sh"
+
 expect_failure "pooler from a different Supabase region rejected" \
   env SUPABASE_DB_URL='postgresql://postgres.oyoyozdugicmnkfhjovo:placeholder@aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require' \
   bash "$repo_root/scripts/validate-supabase-db-url.sh"
