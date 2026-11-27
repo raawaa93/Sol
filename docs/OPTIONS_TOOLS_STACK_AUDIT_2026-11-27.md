@@ -109,3 +109,40 @@ The practical low-cost stack is:
 - **Not verified:** authenticated Loris API call; Laevitas authenticated SOL/Binance API response; GammaFlip account/bot subscription state; direct live Binance chain comparison from the user's approved Syrian-origin network. Loris IV scaling inconsistency remains unresolved.
 - **Not implemented:** no adapter, secret, account, subscription, cloud worker, archive or production setting changed.
 - **No trading advice or order execution:** project remains read-only/PAPER under its Syria legal and account-eligibility gates.
+
+
+## Follow-up correction — 27 November 2026, 09:15 UTC
+
+This section supersedes earlier statements in this report that treated Loris as the primary ready-made dashboard and described Basis SOL coverage as unverified. A fresh review of the current Basis data-source and SOL options pages found stronger direct evidence.
+
+### Updated ready-made stack
+
+1. **Basis — primary free options workspace for SOL.** Its current SOL page states that the free workspace merges SOL options from Deribit, OKX, Bybit and Binance, with no account, trial or subscription. It provides OI by strike/expiry, max pain, modelled GEX, smile/term structure, and a full chain with bid, mark, ask, IV, delta, OI and volume, exportable to CSV. The venue panel shows each venue's share, and the chain can be inspected per expiry. The current Basis data-source page says Binance contributes European option marks, tickers and per-expiry OI. This is a browser-based research tool, not an execution quote source. Do not interpret merged OI/GEX as Binance-only positioning.
+2. **Binance official — execution and contract truth.** Keep the official SOL chain and Options API as the last word for the selected Binance contract, its live bid/ask/size, status, unit, expiry, strike and mark IV/Greeks. Continue through Sol's existing approved Syrian-origin Volterra route only; no direct client or foreign-runner Binance access.
+3. **Laevitas — secondary venue-specific analysis.** The current options-flow dashboard lists Binance in its exchange comparison and exposes market-level volume, OI and block-volume columns. A current page snapshot showed Binance in the table, while its Telegram trade-tape description still does not establish a Binance SOL alert feed. The web dashboard's Binance row is not proof that every displayed block/trade metric is available for SOL or that Telegram sends Binance alerts. The direct Binance/SOL chain URL remains the intended venue-specific view; verify the exact contract and timestamp against Binance before relying on it.
+4. **Loris — optional manual comparison only.** Keep it out of Sol's automated path. Its public page previously showed materially inconsistent IV figures. Its terms prohibit unauthorized scraping/automated extraction and integrations without prior written consent. Its API requires an API key; the Options Snapshot page lists SOL/Binance among supported pairs and says all tiers, while the generic Quickstart says the Free tier returns only BTC/ETH. No free authenticated SOL/Binance response or written redistribution permission has been verified. Do not create an account, key, or integration as part of this work.
+5. **Telegram — context, not a consolidated Binance SOL feed.** Follow official Binance announcements for product/maintenance news. Laevitas Telegram may be useful for its stated venue coverage, but do not treat it as Binance SOL trade flow. GammaFlip's Telegram alerts concern modelled gamma-flip levels, not confirmed opening trades or execution signals; the paid crypto tier remains above the approved monthly budget.
+
+### Evidence reviewed in this follow-up
+
+- Basis SOL free options page: https://www.basischarts.com/free/free-solana-options-data
+- Basis data-source coverage: https://www.basischarts.com/data-sources
+- Basis options-flow coverage note: https://www.basischarts.com/free/free-crypto-options-flow
+- Basis free crypto options workspace: https://www.basischarts.com/free/free-crypto-options-data
+- Laevitas current options-flow dashboard: https://app.laevitas.ch/crypto/options-flows
+- Laevitas Binance/SOL chain route: https://app.laevitas.ch/crypto/options?exchange=binance&currency=SOL&view=contracts&presentation=chain
+- Loris Options Snapshot: https://loris.tools/docs/api/options/snapshot
+- Loris Quickstart: https://loris.tools/docs
+- Loris terms, especially Sections 4 and 6: https://loris.tools/terms
+- Binance Options market-data API: https://developers.binance.com/en/docs/catalog/core-trading-derivatives-trading-options/api/rest-api/market-data
+
+### Revised conclusion
+
+For immediate use without subscriptions, start with **Basis + Binance official + Laevitas web**. Basis is the strongest free merged options workspace; Binance remains authoritative for a specific Binance contract; Laevitas provides a separate market-flow and venue-comparison lens. There is still no verified free Telegram group or bot that combines Binance SOL trade-by-trade flow, venue-specific options Greeks, cross-venue positioning, and reliable alerts in one place.
+
+### Status and guardrails
+
+- This follow-up is a research/documentation correction only.
+- No application code, data adapter, API key, account, Telegram bot configuration, subscription, cloud worker, or production setting was changed.
+- No automated scraping or redistribution from Basis, Laevitas or Loris was enabled.
+- Sol remains read-only/research/PAPER; all Binance market-data retrieval remains subject to the existing Syrian-network-only policy.
