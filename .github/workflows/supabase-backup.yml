@@ -31,18 +31,16 @@ jobs:
         shell: bash
         run: |
           if [[ -z "$SUPABASE_DB_URL" || -z "$AGE_RECIPIENT" ]]; then
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Encrypted backup is not configured. Add the SUPABASE_DB_URL Actions secret and AGE_RECIPIENT Actions variable; no database connection was attempted."
             {
-              echo "### Encrypted Supabase backup skipped"
-              echo 'No backup was created. Configure the `SUPABASE_DB_URL` repository secret and `AGE_RECIPIENT` repository variable.'
+              echo "### Encrypted Supabase backup NOT created"
+              echo 'The required `SUPABASE_DB_URL` Actions secret and `AGE_RECIPIENT` Actions variable are not both configured.'
+              echo 'No database connection was attempted and no backup or Release asset was created.'
+              echo 'This workflow fails closed so a missing backup cannot appear as a successful run.'
             } >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-          if [[ "$SUPABASE_DB_URL" != *oyoyozdugicmnkfhjovo* ]]; then
-            echo "The configured database URL does not identify the Sol project." >&2
+            echo "::error::Encrypted backup is not configured; no database connection or backup was attempted."
             exit 1
           fi
+          python3 scripts/validate-supabase-db-url.py
           if [[ ! "$AGE_RECIPIENT" =~ ^age1[0-9a-z]+$ ]]; then
             echo "AGE_RECIPIENT is not a valid age public recipient." >&2
             exit 1
@@ -94,6 +92,3 @@ jobs:
           gh release create "$tag" "$BACKUP_FILE" --target main --title "Encrypted Sol database backup $timestamp" --notes-file "$notes"
           echo "Published encrypted backup release: $tag" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Record unconfigured state
-        if: steps.config.outputs.ready != 'true'
-        run: echo "No backup was created because required encryption and database credentials are not configured." >> "$GITHUB_STEP_SUMMARY"
