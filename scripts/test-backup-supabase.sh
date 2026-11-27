@@ -14,7 +14,7 @@ if [[ "${1:-}" == "--version" ]]; then
   exit 0
 fi
 : "${MOCK_SUPABASE_LOG:?MOCK_SUPABASE_LOG is required}"
-printf '%q ' "$@" >> "$MOCK_SUPABASE_LOG"
+printf '%s ' "$@" >> "$MOCK_SUPABASE_LOG"
 printf '\n' >> "$MOCK_SUPABASE_LOG"
 if [[ "${1:-}" == "init" || "${1:-}" == "stop" || ( "${1:-}" == "db" && "${2:-}" == "start" ) ]]; then
   exit 0
@@ -67,7 +67,7 @@ cat > "$tmp/bin/psql" <<'MOCK_PSQL'
 #!/usr/bin/env bash
 set -Eeuo pipefail
 : "${MOCK_PSQL_LOG:?MOCK_PSQL_LOG is required}"
-printf '%q ' "$@" >> "$MOCK_PSQL_LOG"
+printf '%s ' "$@" >> "$MOCK_PSQL_LOG"
 printf '\\n' >> "$MOCK_PSQL_LOG"
 if [[ "$*" == *"to_regclass"* ]]; then
   echo "1:1:1:0:1"
