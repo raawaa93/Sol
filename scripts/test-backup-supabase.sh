@@ -92,7 +92,9 @@ test -f "$tmp/restored/roles.sql"
 grep -q "volterra_rate_limit_windows" "$tmp/restored/schema.sql"
 echo "Remote-target argument checks, real age encryption/decryption and checksums passed with a mocked database CLI; no live database was accessed."
 
-SUPABASE_DB_URL="$base_url" bash "$repo_root/scripts/validate-supabase-db-url.sh"\n\nmock_path="$tmp/bin:$PATH"
+SUPABASE_DB_URL="$base_url" bash "$repo_root/scripts/validate-supabase-db-url.sh"
+
+mock_path="$tmp/bin:$PATH"
 
 expect_failure() {
   local label="$1"
