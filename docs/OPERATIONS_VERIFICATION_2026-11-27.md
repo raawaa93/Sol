@@ -110,3 +110,30 @@
   - FCP 905 ms، LCP 905 ms، TBT 49 ms، CLS 0.000
 
 لم يتغير كود التطبيق بين النشرين؛ التغيير الأخير وثائقي وتصحيح لتسمية خطوة الاختبار. وما زال فحص Binance upstream متخطياً عمداً، ولا يثبت هذا النشر وحده توافر البيانات الحية من شبكة المستخدم.
+
+
+## دورة التحقق بعد PR #257 — 27 نوفمبر 2026، 09:51 UTC
+
+- PR #257: https://github.com/raawaa93/Sol/pull/257 — merged.
+- Merge commit: `7714018fd2418bb3b93653ba4bceb6f625973b53`.
+- التغيير: تقوية اختبار النسخ الاحتياطي ليتحقق من استهداف قاعدة Sol البعيدة صراحةً في كل استدعاء dump، والتحقق من أوضاع roles/schema/data و`--use-copy` واستثناءات جداول التخزين المدارة.
+- PR CI run `45976492751`: success؛ بما في ذلك اختبار age encryption/decryption/checksum، والاختبارات، والبناء، وPlaywright.
+- PR Lighthouse run `45976492514`: success.
+- Main CI run `45976733370`: success؛ اختبار النسخ الاحتياطي نفسه نجح على main بعد الدمج.
+- Main Lighthouse run `45976733273`: success.
+- Project Context Guard run `45976733230`: success.
+- GitHub Pages deployment + production audit run `45976876234`: success.
+- الإنتاج المنشور: https://raawaa93.github.io/Sol/
+- Smoke test المنشور: success؛ App shell والأصول الثابتة والـmanifest تم التحقق منها. Binance upstream ظل متخطياً عمداً.
+- Lighthouse على الموقع المنشور، median من 3 تشغيلات: Performance 100، Accessibility 100، Best Practices 100، SEO 100؛ FCP 943 ms، LCP 943 ms، TBT 27 ms، CLS 0.000.
+- Artifact تقارير Lighthouse: [published-lighthouse-reports](https://github.com/raawaa93/Sol/actions/runs/45976876234/artifacts/15187202929).
+
+### ما لم يتغير
+
+- لم تتم تهيئة `SUPABASE_DB_URL` أو `AGE_RECIPIENT` عبر أدوات GitHub؛ لا توجد نسخة قاعدة بيانات مشفرة فعلية أو restore drill مثبت.
+- اختبار النسخ يستخدم Supabase CLI mock؛ يثبت صحة orchestration والتشفير والاستعادة المحلية للملف التجريبي، ولا يثبت اتصال قاعدة الإنتاج.
+- لم يتم تغيير إعدادات branch protection؛ GitHub rulesets endpoint أعاد قائمة فارغة، وقراءة branch protection محجوبة عن التكامل الحالي. لا توجد أداة كتابة إعدادات الإدارة ضمن الصلاحيات المتاحة.
+- Supabase ما زال `ACTIVE_HEALTHY` على PostgreSQL 17.11. Security advisor: finding INFO واحد عن RLS enabled/no policy لجدول rate-limit (وهو مقصود ومقيد بالـRPC)، وWARN واحد عن leaked-password protection المعطلة على الخطة الحالية. Performance وHealth advisors بلا findings.
+- لا يوجد تحقق حي من Binance من المسار السوري في هذه الدورة، ولا تشغيل تداول أو أوامر خاصة.
+
+هذا التحديث يوثق الاختبار والنشر الفعليين بعد PR #257، ولا يغيّر وصف حدود النسخ الاحتياطي أو توفر Binance.
