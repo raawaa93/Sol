@@ -44,6 +44,7 @@ jobs:
         run: |
           bash -n scripts/backup-supabase.sh
           bash -n scripts/test-backup-supabase.sh
+          bash -n scripts/validate-supabase-db-url.sh
           bash -n scripts/options-archive-termux-start.sh
           sudo apt-get update
           sudo apt-get install --yes age
