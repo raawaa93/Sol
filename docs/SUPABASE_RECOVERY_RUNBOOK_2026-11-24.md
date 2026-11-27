@@ -11,7 +11,7 @@ The live application schema is deliberately small:
 
 - `public.volterra_rate_limit_windows` — the only application table; RLS enabled, no direct client or service-role table privileges.
 - `public.volterra_check_rate_limit(text, integer, integer)` — service-side RPC, `SECURITY DEFINER`, pinned `search_path`, executable only by `service_role`.
-- `volterra-binance-market-data` Edge Function — active v10; source is stored in `supabase/functions/volterra-binance-market-data/index.ts` and uses Supabase's injected `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` runtime values. No user-supplied API key is required by this public market-data proxy.
+- `volterra-binance-market-data` Edge Function — active v12; source is stored in `supabase/functions/volterra-binance-market-data/index.ts` and uses Supabase's injected `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` runtime values. No user-supplied API key is required by this public market-data proxy.
 - Six old Edge Function deployments are inert HTTP 410 handlers and still registered; they are not part of the Sol deploy path.
 - Current read-only check at 09:43 UTC: 78 ephemeral rate-limit rows (this count changes as requests arrive). The earlier audit recorded 1 Auth user and 0 Storage objects; those counts were not re-queried in this pass. The Auth user is not included in the standard CLI dump described below.
 
@@ -92,7 +92,11 @@ The connected GitHub tools cannot inspect or write Actions secrets, and the data
 
 A one-time trigger was executed on 24 November 2026 at 08:55 UTC. The workflow completed successfully but **skipped the export** because at least one of `SUPABASE_DB_URL` or `AGE_RECIPIENT` was absent; its configuration check confirms that no database connection was attempted and no backup artifact was created. The temporary push trigger was then removed; the weekly schedule and manual `workflow_dispatch` remain. The skipped-state summary quoting was also corrected.
 
-The scheduled workflow intentionally skips with a warning while either setting is missing. A successful workflow run before configuration is not a backup. A successful encrypted export still is not a verified restore; the matching private identity is needed to decrypt and test it in an isolated environment.
+The earlier workflow version intentionally skipped with a warning while either setting was missing, and could therefore show a green run without producing a backup. The hardened workflow now fails closed with an explicit error and summary if either setting is absent; it does not attempt a database connection and does not publish a release. This is deliberate: a red run accurately signals that no backup exists. A successful encrypted export still is not a verified restore; the matching private identity is needed to decrypt and test it in an isolated environment.
+
+The backup script also validates the destination before invoking Supabase CLI: it accepts only the project's direct host `db.oyoyozdugicmnkfhjovo.supabase.co:5432` or the EU West 1 shared session pooler on port 5432, with the expected database/user. It rejects transaction pooler port 6543, other regions, arbitrary hosts, and URLs that merely contain the project ref in a path. This prevents a malformed connection secret from sending the database password to an unrelated host. See [Supabase connection options](https://supabase.com/docs/guides/database/connecting-to-postgres).
+
+CI also checks the actual Supabase CLI v3.0.0 `db dump --help` output for the explicit `--remote` flag. Supabase CLI v3 supports `--remote=<postgres-url>`; the deprecated `--db-url` option is not used. See [CLI v3 migration notes](https://supabase.com/docs/guides/local-development/cli/migrating-to-v3).
 
 The release asset is publicly downloadable because this repository is public. Its contents are protected only by age encryption and the offline private key. If the private key is lost, the backup cannot be decrypted.
 
@@ -144,13 +148,13 @@ For iPhone and Android tablet users without a local computer, follow [the mobile
 
 ## 9. Remaining blockers
 
-- [ ] Repository owner configures `SUPABASE_DB_URL` as an Actions secret and `AGE_RECIPIENT` as an Actions variable; neither is visible/writable through the connected GitHub tools.
+- [ ] Repository owner configures `SUPABASE_DB_URL` as an Actions secret and `AGE_RECIPIENT` as an Actions variable; neither is visible/writable through the connected GitHub tools. The hardened workflow fails explicitly until both exist.
 - [ ] Generate an age key pair offline and keep the private identity outside GitHub.
 - [ ] Dispatch the encrypted-backup workflow; verify the first ciphertext release asset and checksum.
 - [ ] Run an isolated restore test.
 - [ ] Decide whether the single Auth user needs separate preservation; the standard CLI dump excludes Auth.
 - [ ] Reconcile the 19 obsolete remote migration history rows only after backup/restore verification.
-- [ ] Protect `main` with PR + required checks. The repository currently has no rulesets and `main` is not protected; the connected GitHub tool cannot write repository administration settings.
+- [ ] Protect `main` with PR + required checks. The rulesets endpoint currently returns an empty list; branch-protection reads return HTTP 403 from the GitHub integration, and no repository-administration write action is exposed.
 - [ ] Remove six retired Edge Function deployments if/when a Supabase delete-function action or authorized CLI/Management API path becomes available.
 
 ## 10. Incident boundary
