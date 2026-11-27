@@ -73,7 +73,7 @@ test -n "$recipient"
 
 PATH="$tmp/bin:$PATH" \
 MOCK_SUPABASE_LOG="$tmp/supabase-commands.log" \
-SUPABASE_DB_URL='postgresql://postgres.oyoyozdugicmnkfhjovo:placeholder@db.oyoyozdugicmnkfhjovo.supabase.co:5432/postgres' \
+SUPABASE_DB_URL="$base_url" \
 AGE_RECIPIENT="$recipient" \
 BACKUP_OUTPUT_FILE="$tmp/backup.age" \
 bash "$repo_root/scripts/backup-supabase.sh"
