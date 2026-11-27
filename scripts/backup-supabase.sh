@@ -56,11 +56,11 @@ if [[ "${VERIFY_LOCAL_RESTORE:-false}" == "true" ]]; then
   supabase db start --workdir "$restore_dir"
   restore_started=true
   restore_url='postgresql://postgres:postgres@127.0.0.1:54322/postgres'
-  psql --single-transaction --variable ON_ERROR_STOP=1 \\
-    --file "$work_dir/roles.sql" \\
-    --file "$work_dir/schema.sql" \\
-    --command 'SET session_replication_role = replica' \\
-    --file "$work_dir/data.sql" \\
+  psql --single-transaction --variable ON_ERROR_STOP=1 \
+    --file "$work_dir/roles.sql" \
+    --file "$work_dir/schema.sql" \
+    --command 'SET session_replication_role = replica' \
+    --file "$work_dir/data.sql" \
     --dbname "$restore_url"
   restore_check="$(psql --tuples-only --no-align --dbname "$restore_url" --command "SELECT (to_regclass('public.volterra_rate_limit_windows') IS NOT NULL)::int || ':' || COALESCE((SELECT relrowsecurity::int FROM pg_class WHERE oid = to_regclass('public.volterra_rate_limit_windows')), 0)::text || ':' || (to_regprocedure('public.volterra_check_rate_limit(text,integer,integer)') IS NOT NULL)::int || ':' || has_function_privilege('anon', 'public.volterra_check_rate_limit(text,integer,integer)', 'EXECUTE')::int || ':' || has_function_privilege('service_role', 'public.volterra_check_rate_limit(text,integer,integer)', 'EXECUTE')::int")"
   if [[ "$restore_check" != "1:1:1:0:1" ]]; then
