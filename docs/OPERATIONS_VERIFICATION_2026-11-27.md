@@ -162,7 +162,7 @@
 - المؤسسة على Free؛ وثائق Supabase الحالية توصي بتصدير CLI يدوياً مع نسخة خارجية، ولا توفر Free خطة النسخ اليومي الآلي. [Supabase backups](https://supabase.com/docs/guides/platform/backups).
 - لا توجد GitHub Releases ولا ciphertext backup منشور.
 - إعدادات Actions secrets/variables غير قابلة للقراءة عبر التكامل، ولذلك لا يمكن تأكيد وجود `SUPABASE_DB_URL` و`AGE_RECIPIENT`.
-- النسخة القديمة من workflow كانت تنهي التنفيذ بنجاح عند غياب الإعدادات، رغم عدم إنشاء backup. هذا السلوك سيُصلح في PR منفصل: fail-closed صريح، مع التحقق من hostname/region/port/user قبل استعمال بيانات الاتصال.
+- النسخة القديمة من workflow كانت تنهي التنفيذ بنجاح عند غياب الإعدادات، رغم عدم إنشاء backup. هذا السلوك يُعالج في PR #259: fail-closed صريح، مع التحقق من hostname/region/port/user قبل استعمال بيانات الاتصال.
 - لم يتم الاتصال بقاعدة البيانات بواسطة CLI، ولم تُنشأ نسخة إنتاجية أو restore drill.
 
 ### حدود الاستمرار
