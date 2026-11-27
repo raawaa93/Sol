@@ -32,7 +32,7 @@ jobs:
         run: |
           if [[ -z "$SUPABASE_DB_URL" || -z "$AGE_RECIPIENT" ]]; then
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Encrypted backup is not configured. Add the SUPABASE_DB_URL Actions secret and AGE_RECIPIENT Actions variable; no database connection was attempted."
+            echo "::warning::Encrypted backup is not configured. Add the SUPABASE_DB_URL Session Pooler Actions secret and AGE_RECIPIENT Actions variable; no database connection was attempted."
             {
               echo "### Encrypted Supabase backup skipped"
               echo 'No backup was created. Configure the `SUPABASE_DB_URL` repository secret and `AGE_RECIPIENT` repository variable.'
