@@ -62,7 +62,7 @@ chmod +x "$tmp/bin/supabase"
 
 command -v age >/dev/null 2>&1 || { echo "age is required for this test." >&2; exit 1; }
 command -v age-keygen >/dev/null 2>&1 || { echo "age-keygen is required for this test." >&2; exit 1; }
-base_url='postgresql://postgres.oyoyozdugicmnkfhjovo:placeholder@db.oyoyozdugicmnkfhjovo.supabase.co:5432/postgres'
+base_url='postgresql://postgres.oyoyozdugicmnkfhjovo:placeholder@aws-0-eu-west-1.pooler.supabase.com:5432/postgres?sslmode=require'
 age-keygen -o "$tmp/identity.txt" 2> "$tmp/keygen.log"
 recipient="$(sed -n 's/^# public key: //p' "$tmp/identity.txt")"
 test -n "$recipient"
@@ -92,7 +92,7 @@ test -f "$tmp/restored/roles.sql"
 grep -q "volterra_rate_limit_windows" "$tmp/restored/schema.sql"
 echo "Remote-target argument checks, real age encryption/decryption and checksums passed with a mocked database CLI; no live database was accessed."
 
-mock_path="$tmp/bin:$PATH"
+bash "$repo_root/scripts/validate-supabase-db-url.sh"\n\nmock_path="$tmp/bin:$PATH"
 
 expect_failure() {
   local label="$1"
@@ -108,6 +108,10 @@ expect_failure() {
 expect_failure "missing SUPABASE_DB_URL" \
   env -u SUPABASE_DB_URL PATH="$mock_path" AGE_RECIPIENT="$recipient" \
   BACKUP_OUTPUT_FILE="$tmp/missing-url.age" bash "$repo_root/scripts/backup-supabase.sh"
+
+expect_failure "direct database endpoint rejected for IPv4-only GitHub runners" \
+  env SUPABASE_DB_URL='postgresql://postgres:placeholder@db.oyoyozdugicmnkfhjovo.supabase.co:5432/postgres' \
+  bash "$repo_root/scripts/validate-supabase-db-url.sh"
 
 expect_failure "database URL for a different project" \
   env PATH="$mock_path" \
