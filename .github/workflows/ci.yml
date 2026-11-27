@@ -48,6 +48,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes age
           bash scripts/test-backup-supabase.sh
+      - name: Install Supabase CLI v3
+        uses: supabase/setup-cli@v1
+        with:
+          version: 3.0.0
+      - name: Verify Supabase CLI v3 explicit remote dump target
+        run: |
+          supabase db dump --help > /tmp/supabase-db-dump-help.txt
+          grep -Fq -- '--remote' /tmp/supabase-db-dump-help.txt
       - name: Build the app
         run: npm run build
       - name: Enforce compressed bundle budgets
