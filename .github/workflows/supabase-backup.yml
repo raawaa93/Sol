@@ -31,13 +31,14 @@ jobs:
         shell: bash
         run: |
           if [[ -z "$SUPABASE_DB_URL" || -z "$AGE_RECIPIENT" ]]; then
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Encrypted backup is not configured. Add the SUPABASE_DB_URL Session Pooler Actions secret and AGE_RECIPIENT Actions variable; no database connection was attempted."
             {
-              echo "### Encrypted Supabase backup skipped"
-              echo 'No backup was created. Configure the `SUPABASE_DB_URL` repository secret and `AGE_RECIPIENT` repository variable.'
+              echo "### Encrypted Supabase backup NOT created"
+              echo 'The required `SUPABASE_DB_URL` Session Pooler Actions secret and `AGE_RECIPIENT` Actions variable are not both configured.'
+              echo 'No database connection was attempted and no backup or Release asset was created.'
+              echo 'This workflow fails closed so a missing backup cannot appear as a successful run.'
             } >> "$GITHUB_STEP_SUMMARY"
-            exit 0
+            echo "::error::Encrypted backup is not configured; no database connection or backup was attempted."
+            exit 1
           fi
           bash scripts/validate-supabase-db-url.sh
           if [[ ! "$AGE_RECIPIENT" =~ ^age1[0-9a-z]+$ ]]; then
