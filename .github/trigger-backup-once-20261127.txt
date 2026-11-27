@@ -1,1 +1,0 @@
-Temporary one-time trigger for the encrypted Sol backup workflow. Remove this file and the matching push trigger after the run. Contains no credentials.
