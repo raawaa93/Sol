@@ -102,7 +102,7 @@ jobs:
           fi
           "$CHROME_PATH" --version
           echo "CHROME_PATH=$CHROME_PATH" >> "$GITHUB_ENV"
-      - name: Verify published app and live market-data proxy
+      - name: Verify published app, static assets and manifest (Binance upstream skipped)
         run: npm run smoke:production
       - name: Collect published-site Lighthouse reports
         run: |
