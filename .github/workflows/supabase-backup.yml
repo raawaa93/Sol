@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   backup:
-    if: github.ref == 'refs/heads/main' && (github.event_name != 'push' || startsWith(github.event.head_commit.message, 'ops: trigger encrypted backup once'))
+    if: "github.ref == 'refs/heads/main' && (github.event_name != 'push' || startsWith(github.event.head_commit.message, 'ops: trigger encrypted backup once'))"
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
