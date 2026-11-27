@@ -59,9 +59,10 @@
 ### Binance upstream origin — critical distinction
 
 - The frontend reads `VITE_BINANCE_PROXY_URL`, which is currently set by the Pages workflow to the Supabase Edge Function `https://oyoyozdugicmnkfhjovo.supabase.co/functions/v1/volterra-binance-market-data`.
-- The Supabase project is hosted in `eu-west-1`; the Edge Function performs its own `fetch("https://eapi.binance.com")`. Therefore the Binance upstream request originates from Supabase's EU execution environment, not from a Syriatel/Damascus browser or a Syria-hosted server.
-- A previously recorded 50/50 HTTP 200 result from a Syriatel-connected browser is evidence for that browser-origin test only; no exact Syrian proxy/server endpoint or repeatable command was preserved. It does not prove that the current Supabase Edge Function uses Syrian egress.
-- No live Binance request was sent during this audit. Do not label the current Supabase proxy as a Syrian-network proxy or treat EU-origin responses as evidence of Syrian availability. The current function remains a read-only public-data proxy, but the Syrian-origin transport is unverified and needs a real endpoint/configuration before it can be claimed as implemented.
+- The Supabase database project is hosted in `eu-west-1`, but Edge Function execution is routed by Supabase close to the invoking client; the function itself then fetches `https://eapi.binance.com` from its Edge execution region. The database region alone does not determine every invocation's Edge region.
+- Read-only aggregation of the last 24 hours (26 Nov 14:31–27 Nov 14:31 UTC) found 31 invocations classified as Dublin/IE, executed in `eu-west-1`, returning HTTP 200; one invocation classified as Centreville/US executed in `us-east-1`, returning HTTP 451. No Syria-classified invocation appeared in that 24-hour window.
+- The historical 24 Nov test recorded 50/50 HTTP 200 for requests classified by Cloudflare as SY / Damascus / 3G Syriatel through Supabase Edge v10 in `eu-west-2`. This is evidence that the Syrian client path worked for that specific batch; it is not proof of a server physically hosted in Syria or a guarantee of current availability.
+- No live Binance request was sent during this audit; only logs were queried. Do not call Supabase Edge a Syria-hosted server or infer current Syrian availability from the historical test. The app still requires a request initiated from the intended Syrian client network, and any HTTP 451 remains terminal for that request.
 
 ### الوظائف القديمة
 
