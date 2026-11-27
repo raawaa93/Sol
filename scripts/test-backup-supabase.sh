@@ -137,6 +137,10 @@ expect_failure "direct database endpoint rejected for IPv4-only GitHub runners" 
   env SUPABASE_DB_URL='postgresql://postgres:placeholder@db.oyoyozdugicmnkfhjovo.supabase.co:5432/postgres' \
   bash "$repo_root/scripts/validate-supabase-db-url.sh"
 
+expect_failure "pooler from a different Supabase region rejected" \
+  env SUPABASE_DB_URL='postgresql://postgres.oyoyozdugicmnkfhjovo:placeholder@aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require' \
+  bash "$repo_root/scripts/validate-supabase-db-url.sh"
+
 expect_failure "database URL for a different project" \
   env PATH="$mock_path" \
   SUPABASE_DB_URL='postgresql://postgres.otherproject:placeholder@aws-0-eu-west-1.pooler.supabase.com:5432/postgres?sslmode=require' \
@@ -171,4 +175,19 @@ expect_failure "reject output that is not age ciphertext" \
 workflow="$repo_root/.github/workflows/supabase-backup.yml"
 grep -Fq 'BACKUP_FILE: ${{ steps.backup.outputs.file }}' "$workflow"
 grep -Fq 'gh release create "$tag" "$BACKUP_FILE" --target main' "$workflow"
+python3 - "$workflow" <<'PY'
+import re
+import sys
+source = open(sys.argv[1], encoding="utf-8").read()
+match = re.search(
+    r'if \[\[ -z "\$SUPABASE_DB_URL" \|\| -z "\$AGE_RECIPIENT" \]\]; then(?P<body>.*?)\n\s*fi',
+    source,
+    re.S,
+)
+assert match, "backup preflight must check both required settings"
+body = match.group("body")
+assert "exit 1" in body and "exit 0" not in body, "missing configuration must fail closed"
+assert "::error::" in body and "No database connection was attempted" in body
+print("Missing backup configuration is tested as an explicit failure, not a green skip.")
+PY
 echo "Release publication wiring verified: the encrypted backup output is the release asset input."
