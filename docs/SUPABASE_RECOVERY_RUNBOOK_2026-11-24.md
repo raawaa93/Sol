@@ -1,6 +1,6 @@
 # Sol / Volterra Supabase recovery runbook
 
-**Checked:** 24 November 2026, 09:43 UTC  
+**Checked:** 27 November 2026, 14:03 UTC  
 **Project:** `Ghaiooth-core` / `oyoyozdugicmnkfhjovo`  
 **Repository:** `raawaa93/Sol` (public)  
 **Database:** PostgreSQL 17.11, Supabase Free
@@ -11,9 +11,9 @@ The live application schema is deliberately small:
 
 - `public.volterra_rate_limit_windows` — the only application table; RLS enabled, no direct client or service-role table privileges.
 - `public.volterra_check_rate_limit(text, integer, integer)` — service-side RPC, `SECURITY DEFINER`, pinned `search_path`, executable only by `service_role`.
-- `volterra-binance-market-data` Edge Function — active v10; source is stored in `supabase/functions/volterra-binance-market-data/index.ts` and uses Supabase's injected `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` runtime values. No user-supplied API key is required by this public market-data proxy.
+- `volterra-binance-market-data` Edge Function — active v12; source is stored in `supabase/functions/volterra-binance-market-data/index.ts` and uses Supabase's injected `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` runtime values. No user-supplied API key is required by this public market-data proxy.
 - Six old Edge Function deployments are inert HTTP 410 handlers and still registered; they are not part of the Sol deploy path.
-- Current read-only check at 09:43 UTC: 78 ephemeral rate-limit rows (this count changes as requests arrive). The earlier audit recorded 1 Auth user and 0 Storage objects; those counts were not re-queried in this pass. The Auth user is not included in the standard CLI dump described below.
+- Current read-only check at 14:03 UTC: 121 ephemeral rate-limit rows (this count changes as requests arrive), 1 Auth user, 6 Auth sessions, and 0 Storage objects. PostgreSQL reports version 17.11 and the database is active. The Auth user is not included in the standard CLI dump described below.
 
 The repository currently tracks three Sol migrations; the live remote ledger contains 22 rows. The other 19 historical records belong to retired systems and must not be copied into the active migration directory or blindly replayed.
 
@@ -70,7 +70,7 @@ Encrypt the resulting archive with a strong encryption tool and a key held outsi
 
 ## 5. Automated encrypted backups (workflow added; credentials still required)
 
-The repository now contains `.github/workflows/supabase-backup.yml` and `scripts/backup-supabase.sh`. Once configured, the workflow runs weekly (Sunday 04:23 UTC) or on manual dispatch:
+The repository now contains `.github/workflows/supabase-backup.yml` and `scripts/backup-supabase.sh`. Once configured, the workflow runs daily (04:23 UTC) or on manual dispatch. The daily schedule was increased from weekly because the database is small and the project is on the Free plan without platform-managed automatic backups:
 
 1. Uses Supabase CLI v3 with explicit `--remote=<database-url>` for all three dumps.
 2. Exports cluster roles, non-managed schema, and non-managed schema data.
@@ -144,7 +144,7 @@ For iPhone and Android tablet users without a local computer, follow [the mobile
 
 ## 9. Remaining blockers
 
-- [ ] Repository owner configures `SUPABASE_DB_URL` as an Actions secret and `AGE_RECIPIENT` as an Actions variable; neither is visible/writable through the connected GitHub tools.
+- [ ] Repository owner configures `SUPABASE_DB_URL` as an Actions secret using the Sol Session Pooler URL and `AGE_RECIPIENT` as an Actions variable; neither is visible/writable through the connected GitHub tools.
 - [ ] Generate an age key pair offline and keep the private identity outside GitHub.
 - [ ] Dispatch the encrypted-backup workflow; verify the first ciphertext release asset and checksum.
 - [ ] Run an isolated restore test.
@@ -156,3 +156,14 @@ For iPhone and Android tablet users without a local computer, follow [the mobile
 ## 10. Incident boundary
 
 The earlier `commerce` and `rawaa_store` schema deletion removed the two Telegram pairing/recipient rows. Those records are absent from the live database. No backup has been located in the connected project, Storage, or Library. This runbook does not recreate placeholders and does not claim the deleted records can be recovered. An external pre-cleanup backup, if one exists, must be located separately.
+
+
+## 11. Recheck — 27 November 2026, 14:03 UTC
+
+- Read-only database probe: database `postgres`, PostgreSQL `17.11`, active since 4 October 2026.
+- Current footprint: one application table `public.volterra_rate_limit_windows` (121 transient rows at check time); RLS enabled. Auth currently contains 1 user and 6 sessions; Storage objects count is 0.
+- The standard backup scope still excludes Auth users/sessions, Storage object bytes, Edge Function secrets, and project settings. Do not describe the current workflow as a complete Supabase project backup.
+- New validation requires the exact project-scoped Session Pooler username and `*.pooler.supabase.com:5432` endpoint before any dump command can run. This avoids GitHub-hosted runner IPv4/direct-endpoint incompatibility and rejects project-ref substring spoofing.
+- Backup cadence changed from weekly to daily at 04:23 UTC. The workflow still skips without the owner-configured database URL and age recipient; no live export has been run.
+- Supabase CLI v3 remains explicitly pinned. All hosted dumps use explicit `--remote="$SUPABASE_DB_URL"`, consistent with the v3 local-by-default behavior.
+- No live database writes, migrations, secrets reads, or credential rotations were performed in this recheck.
