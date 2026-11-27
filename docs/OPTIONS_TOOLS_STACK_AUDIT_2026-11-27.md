@@ -62,7 +62,7 @@ The practical low-cost stack is:
 ## Sol integration plan
 
 ### Implement now (no code change to market-data path)
-1. Keep the current Binance adapter and Syrian-network-only policy unchanged.
+1. Keep the current read-only Binance adapter unchanged. Do not call the Supabase EU Edge Function a Syrian egress path: its upstream request runs from the Supabase `eu-west-1` region. A prior Syriatel browser result is not proof of the current proxy's egress; no Syria-hosted proxy endpoint is recorded.
 2. Use Loris Tools web dashboard manually as a secondary independent comparison. Label every value with provider, venue, capture time and field freshness.
 3. Use GammaFlip's public daily SOL page only as a secondary structural reference. Do not pay for the $39 plan under the current budget.
 4. Use [GammaFlip's free daily SOL GEX page](https://gammaflip.io/gex/sol) for a daily, combined-market structural snapshot. At the 27 Nov 2026 08:00 UTC publication it showed SOL spot 73.31, gamma flip 72.00 and a positive regime. It is a once-daily combined crypto snapshot, not a live Binance-only signal. Treat Telegram alerts as contextual notifications only. Do not turn a gamma-flip alert or block alert into an automatic signal.
@@ -145,4 +145,4 @@ For immediate use without subscriptions, start with **Basis + Binance official +
 - This follow-up is a research/documentation correction only.
 - No application code, data adapter, API key, account, Telegram bot configuration, subscription, cloud worker, or production setting was changed.
 - No automated scraping or redistribution from Basis, Laevitas or Loris was enabled.
-- Sol remains read-only/research/PAPER; all Binance market-data retrieval remains subject to the existing Syrian-network-only policy.
+- Sol remains read-only/research/PAPER; the current Supabase proxy's upstream egress is EU-origin; Syrian-origin transport remains unverified and must not be inferred from a browser connected through Syriatel.
