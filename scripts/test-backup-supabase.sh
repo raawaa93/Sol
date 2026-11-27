@@ -16,6 +16,9 @@ fi
 : "${MOCK_SUPABASE_LOG:?MOCK_SUPABASE_LOG is required}"
 printf '%q ' "$@" >> "$MOCK_SUPABASE_LOG"
 printf '\n' >> "$MOCK_SUPABASE_LOG"
+if [[ "${1:-}" == "init" || "${1:-}" == "stop" || "${1:-}" == "db" ]]; then
+  exit 0
+fi
 output=""
 role_only=false
 data_only=false
@@ -81,13 +84,15 @@ test -n "$recipient"
 
 PATH="$tmp/bin:$PATH" \
 MOCK_SUPABASE_LOG="$tmp/supabase-commands.log" \
+MOCK_PSQL_LOG="$tmp/psql-commands.log" \
+VERIFY_LOCAL_RESTORE=true \
 SUPABASE_DB_URL="$base_url" \
 AGE_RECIPIENT="$recipient" \
 BACKUP_OUTPUT_FILE="$tmp/backup.age" \
 bash "$repo_root/scripts/backup-supabase.sh"
 
 # Prove the backup invokes three explicit remote dumps with the intended modes.
-test "$(wc -l < "$tmp/supabase-commands.log" | tr -d ' ')" = "3"
+test "$(grep -c -- "--remote=" "$tmp/supabase-commands.log")" = "3"
 grep -Fq -- "--remote=$base_url" "$tmp/supabase-commands.log"
 grep -Fq -- "--role-only" "$tmp/supabase-commands.log"
 grep -Fq -- "--data-only" "$tmp/supabase-commands.log"
