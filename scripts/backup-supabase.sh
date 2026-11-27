@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+
 : "${SUPABASE_DB_URL:?SUPABASE_DB_URL is required}"
 : "${AGE_RECIPIENT:?AGE_RECIPIENT is required}"
 : "${BACKUP_OUTPUT_FILE:?BACKUP_OUTPUT_FILE is required}"
