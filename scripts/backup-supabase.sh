@@ -5,10 +5,8 @@ set -Eeuo pipefail
 : "${AGE_RECIPIENT:?AGE_RECIPIENT is required}"
 : "${BACKUP_OUTPUT_FILE:?BACKUP_OUTPUT_FILE is required}"
 
-case "$SUPABASE_DB_URL" in
-  *oyoyozdugicmnkfhjovo*) ;;
-  *) echo "Refusing to back up a database URL that does not identify the Sol project." >&2; exit 2 ;;
-esac
+command -v python3 >/dev/null 2>&1 || { echo "Python 3 is required to validate the database target." >&2; exit 2; }
+python3 "$repo_root/scripts/validate-supabase-db-url.py"
 
 if [[ ! "$AGE_RECIPIENT" =~ ^age1[0-9a-z]+$ ]]; then
   echo "AGE_RECIPIENT must be a valid age public recipient (age1...). " >&2
