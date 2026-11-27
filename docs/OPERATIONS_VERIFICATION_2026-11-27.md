@@ -2,7 +2,7 @@
 
 ## الحالة العامة
 
-**نشر الواجهة ناجح ومختبر.** تم نشر commit `eb0106f60dcdd1c7ae6cd05119f2fe371211eab3` إلى GitHub Pages بعد نجاح CI على `main`.
+**آخر نسخة واجهة منشورة ومختبرة** هي commit `7714018fd2418bb3b93653ba4bceb6f625973b53`. رأس `main` بعد دمج PR #259 هو `c250335aa60e4a18bd0c0d405224e8c51751b694`؛ تغييرات النسخ الاحتياطي وCI لا تغيّر كود الواجهة.
 
 - PR #254: https://github.com/raawaa93/Sol/pull/254 — مدمج.
 - Main CI: run [45973145932](https://github.com/raawaa93/Sol/actions/runs/45973145932) — success.
@@ -144,3 +144,28 @@
 - لا يوجد تحقق حي من Binance من المسار السوري في هذه الدورة، ولا تشغيل تداول أو أوامر خاصة.
 
 هذا التحديث يوثق الاختبار والنشر الفعليين بعد PR #257، ولا يغيّر وصف حدود النسخ الاحتياطي أو توفر Binance.
+
+
+## إعادة التدقيق والتنفيذ — 27 نوفمبر 2026، بعد 14:16 UTC
+
+### PR #259 — تحسين النسخ الاحتياطي
+- PR #259 مدمج في `main`: https://github.com/raawaa93/Sol/pull/259
+- Merge commit: `c250335aa60e4a18bd0c0d405224e8c51751b694`.
+- PR CI run `46014082444`: success؛ يتضمن اختبارات `age`، محاكاة dump/restore، التحقق من URL، فحص CLI v3.0.0، وإعادة بناء migrations على PostgreSQL محلي حقيقي.
+- PR Lighthouse run `46014082537`: success.
+- PR Project Context Guard run `46014082236`: success.
+- التغيير التشغيلي: نسخ يومي 04:23 UTC، استخدام Session Pooler الخاص بمشروع Sol فقط في EU West 1 على المنفذ 5432، مع TLS صريح، وفشل مغلق عند غياب الإعدادات.
+- قبل نشر أي نسخة، يستعيد workflow ملفات SQL في PostgreSQL محلي مؤقت ويتحقق من الجدول وRLS وRPC وصلاحيات `anon` و`authenticated` و`service_role`.
+- CI أعاد بناء migrations الثلاثة على PostgreSQL محلي، وتحقق من حدود الصلاحيات. هذا اختبار لإعادة بناء المخطط وليس استعادة نسخة إنتاجية.
+
+### الحالة الحية
+- Supabase Free، المشروع `ACTIVE_HEALTHY`، PostgreSQL 17.11، Edge Function Volterra v12 ومصدرها يطابق المستودع.
+- 1 Auth user و6 Auth sessions و0 Storage objects. هذه العناصر لا تدخل في نسخة CLI الحالية؛ لا تدّعِ أن النسخة نسخة كاملة للمشروع.
+- لا توجد GitHub Releases أو نسخة مشفرة منشورة حتى الآن. لا يمكن قراءة أسماء Actions secrets/variables عبر التكامل.
+- إعدادات branch protection: لا توجد Rulesets؛ قراءة branch protection محجوبة من تكامل GitHub. اتصال GitHub في Activepieces أعاد HTTP 403 برسالة `Your account was suspended` على طلبات القراءة فقط؛ لم تُنفذ أي تغييرات من هذا الاتصال، ولا أستنتج من ذلك أن حساب GitHub الأساسي موقوف.
+- لا يوجد اختبار Binance حي من مسار سوري مصرح به.
+
+### محاولة تشغيل النسخة فوراً
+- لا تتوفر أداة workflow-dispatch في تكامل GitHub الحالي، كما أن اتصال Activepieces لا يسمح بطلبات GitHub (HTTP 403).
+- أضيف في PR مؤقت مسار push مقيداً بملف marker واحد ورسالة commit محددة لتشغيل نفس workflow مرة واحدة بعد الدمج. سيُحذف هذا المسار والملف بعد ظهور نتيجة التشغيل، سواء نجح النسخ أو فشل بسبب إعداد مفقود.
+- هذا لا يقرأ الأسرار ولا يغيّر قاعدة البيانات؛ أقصى أثره إنشاء Release يحتوي ciphertext مشفراً إذا كانت الإعدادات صحيحة.
