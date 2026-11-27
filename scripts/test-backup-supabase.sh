@@ -60,6 +60,18 @@ fi
 MOCK
 chmod +x "$tmp/bin/supabase"
 
+cat > "$tmp/bin/psql" <<'MOCK_PSQL'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+: "${MOCK_PSQL_LOG:?MOCK_PSQL_LOG is required}"
+printf '%q ' "$@" >> "$MOCK_PSQL_LOG"
+printf '\\n' >> "$MOCK_PSQL_LOG"
+if [[ "$*" == *"to_regclass"* ]]; then
+  echo "1:1:1:0:1"
+fi
+MOCK_PSQL
+chmod +x "$tmp/bin/psql"
+
 command -v age >/dev/null 2>&1 || { echo "age is required for this test." >&2; exit 1; }
 command -v age-keygen >/dev/null 2>&1 || { echo "age-keygen is required for this test." >&2; exit 1; }
 base_url='postgresql://postgres.oyoyozdugicmnkfhjovo:placeholder@aws-0-eu-west-1.pooler.supabase.com:5432/postgres?sslmode=require'
@@ -82,6 +94,11 @@ grep -Fq -- "--data-only" "$tmp/supabase-commands.log"
 grep -Fq -- "--use-copy" "$tmp/supabase-commands.log"
 grep -Fq -- "storage.buckets_vectors" "$tmp/supabase-commands.log"
 grep -Fq -- "storage.vector_indexes" "$tmp/supabase-commands.log"
+grep -Fq -- "init" "$tmp/supabase-commands.log"
+grep -Fq -- "db start" "$tmp/supabase-commands.log"
+grep -Fq -- "stop" "$tmp/supabase-commands.log"
+grep -Fq -- "--single-transaction" "$tmp/psql-commands.log"
+grep -Fq -- "to_regclass" "$tmp/psql-commands.log"
 
 grep -q '^age-encryption.org/v1' "$tmp/backup.age"
 age -d -i "$tmp/identity.txt" -o "$tmp/backup.tar.gz" "$tmp/backup.age"
