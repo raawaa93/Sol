@@ -167,3 +167,8 @@ The earlier `commerce` and `rawaa_store` schema deletion removed the two Telegra
 - Backup cadence changed from weekly to daily at 04:23 UTC. The hardened workflow fails explicitly without the owner-configured Session Pooler URL and age recipient; no live export has been run.
 - Supabase CLI v3 remains explicitly pinned. CI checks the real v3.0.0 flags used by the dump and local restore commands, and rebuilds the three Sol migrations on a disposable local Supabase Postgres instance. All hosted dumps use explicit `--remote="$SUPABASE_DB_URL"`, consistent with the v3 local-by-default behavior. This CI check proves migration reconstruction and access-control grants; it is not a restore of a production dump.
 - No live database writes, migrations, secrets reads, or credential rotations were performed in this recheck.
+
+
+## نتيجة محاولة التشغيل المؤقت — 27 نوفمبر 2026
+
+تم تشغيل workflow عبر push trigger مؤقت ثم حُذف بعد المحاولة. run `46015893521` فشل في preflight لأن `SUPABASE_DB_URL` و`AGE_RECIPIENT` كانا فارغين. لم يُتصل بقاعدة الإنتاج ولم يُنشأ dump أو Release. الجدول اليومي يبقى فعالاً لكنه سيفشل بوضوح حتى إضافة القيم المطلوبة. لا ترسل كلمة مرور قاعدة البيانات أو age private identity إلى المحادثة.
