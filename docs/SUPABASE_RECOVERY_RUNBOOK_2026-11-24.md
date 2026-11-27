@@ -167,3 +167,16 @@ The earlier `commerce` and `rawaa_store` schema deletion removed the two Telegra
 - Backup cadence changed from weekly to daily at 04:23 UTC. The hardened workflow fails explicitly without the owner-configured Session Pooler URL and age recipient; no live export has been run.
 - Supabase CLI v3 remains explicitly pinned. CI checks the real v3.0.0 flags used by the dump and local restore commands, and rebuilds the three Sol migrations on a disposable local Supabase Postgres instance. All hosted dumps use explicit `--remote="$SUPABASE_DB_URL"`, consistent with the v3 local-by-default behavior. This CI check proves migration reconstruction and access-control grants; it is not a restore of a production dump.
 - No live database writes, migrations, secrets reads, or credential rotations were performed in this recheck.
+
+
+## 12. محاولة تشغيل فعلية — 27 نوفمبر 2026، 14:26 UTC
+
+تم تشغيل مسار push مؤقتاً ومحدوداً بملف marker واحد ورسالة commit محددة، ثم أزيل بعد النتيجة.
+
+- Backup workflow run: [46015893521](https://github.com/raawaa93/Sol/actions/runs/46015893521).
+- فشل preflight لأن كلا من `SUPABASE_DB_URL` و`AGE_RECIPIENT` غير موجودين في بيئة GitHub Actions.
+- لم يحدث أي اتصال بقاعدة البيانات أو dump أو restore أو تشفير أو نشر Release.
+- PR #264 أزال push trigger وملف marker. بقي daily schedule وmanual workflow_dispatch.
+- الحالة: لا توجد نسخة إنتاجية؛ لا تعتبر هذا التشغيل نسخة ناجحة.
+
+لا يمكن للأدوات المتصلة قراءة أو إنشاء هذين الإعدادين. يلزم إضافتهما من إعدادات GitHub وفق الخطوات أعلاه، مع إبقاء age private identity خارج GitHub.
