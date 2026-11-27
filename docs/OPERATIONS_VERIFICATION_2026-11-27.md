@@ -2,7 +2,7 @@
 
 ## الحالة العامة
 
-**نشر الواجهة ناجح ومختبر.** تم نشر commit `eb0106f60dcdd1c7ae6cd05119f2fe371211eab3` إلى GitHub Pages بعد نجاح CI على `main`.
+**آخر نسخة واجهة منشورة ومختبرة** هي commit `7714018fd2418bb3b93653ba4bceb6f625973b53`؛ أما رأس `main` الحالي فهو `ba58e9e6d713a155ad4a0b33765e02fbc7dbac3f` ويتضمن تحديثاً توثيقياً بعد النشر. لا توجد تغييرات كود تطبيق بعد النسخة المنشورة.
 
 - PR #254: https://github.com/raawaa93/Sol/pull/254 — مدمج.
 - Main CI: run [45973145932](https://github.com/raawaa93/Sol/actions/runs/45973145932) — success.
@@ -137,3 +137,36 @@
 - لا يوجد تحقق حي من Binance من المسار السوري في هذه الدورة، ولا تشغيل تداول أو أوامر خاصة.
 
 هذا التحديث يوثق الاختبار والنشر الفعليين بعد PR #257، ولا يغيّر وصف حدود النسخ الاحتياطي أو توفر Binance.
+
+
+## إعادة التدقيق التشغيلي — 27 نوفمبر 2026، بعد 14:02 UTC
+
+### GitHub / النشر
+- رأس `main` الحالي عند بدء هذه الدورة: `ba58e9e6d713a155ad4a0b33765e02fbc7dbac3f`.
+- PR #258 مدمج، وProject Context Guard على الرأس الحالي نجح (run `45977271353`).
+- آخر نشر ناجح للواجهة: run `45976876234` على commit `7714018fd2418bb3b93653ba4bceb6f625973b53`. التغييرات بعده توثيقية أو تخص أدوات النسخ، ولا تغيّر bundle الواجهة.
+- لا توجد GitHub Releases حالياً.
+- قواعد المستودع: `/rulesets` أعاد قائمة فارغة. قراءة branch protection أعادت HTTP 403 من تكامل GitHub رغم أن بيانات صلاحية المستودع تشير إلى admin؛ لا توجد عملية كتابة إعدادات الإدارة ضمن أدوات التكامل. لذلك لم يتم تفعيل حماية `main`.
+
+### Supabase live read-only audit
+- Organization `Ghaioooth`: الخطة `free`.
+- Project `oyoyozdugicmnkfhjovo`: `ACTIVE_HEALTHY`, region `eu-west-1`, PostgreSQL `17.11.0.002`.
+- Edge Function `volterra-binance-market-data`: ACTIVE v12؛ تمت مقارنة نص `index.ts` المنشور مع ملف المستودع، والتطابق حرفي.
+- جدول `public.volterra_rate_limit_windows`: 121 صفاً وقت الفحص، فهرسان، RLS مفعّل، بلا سياسات. هذا مقصود لأن الجدول لا يُمنح وصولاً مباشراً لعملاء API.
+- الامتيازات الفعلية: table grants محصورة بمالك `postgres`؛ function EXECUTE لكل من `postgres` و`service_role`. دالة RPC ما زالت `SECURITY DEFINER` مع `search_path=pg_catalog`.
+- Auth users: 1؛ Storage objects: 0. لم تُقرأ بيانات المستخدم ولا محتوى الملفات.
+- Security advisor: INFO واحد عن RLS بلا policy على جدول rate-limit (نموذج الوصول المقصود)، وWARN واحد عن leaked-password protection المعطلة على Free. Performance وHealth advisors بلا findings.
+- لم تُنفذ أي كتابة أو migration أو تغيير إعداد Auth أو نشر وظيفة.
+
+### النسخ الاحتياطي: مشكلة صدق حالة التنفيذ
+- المؤسسة على Free؛ وثائق Supabase الحالية توصي بتصدير CLI يدوياً مع نسخة خارجية، ولا توفر Free خطة النسخ اليومي الآلي. [Supabase backups](https://supabase.com/docs/guides/platform/backups).
+- لا توجد GitHub Releases ولا ciphertext backup منشور.
+- إعدادات Actions secrets/variables غير قابلة للقراءة عبر التكامل، ولذلك لا يمكن تأكيد وجود `SUPABASE_DB_URL` و`AGE_RECIPIENT`.
+- النسخة القديمة من workflow كانت تنهي التنفيذ بنجاح عند غياب الإعدادات، رغم عدم إنشاء backup. هذا السلوك سيُصلح في PR منفصل: fail-closed صريح، مع التحقق من hostname/region/port/user قبل استعمال بيانات الاتصال.
+- لم يتم الاتصال بقاعدة البيانات بواسطة CLI، ولم تُنشأ نسخة إنتاجية أو restore drill.
+
+### حدود الاستمرار
+- Binance upstream لم يُختبر من مسار سوري مصرح به في هذه الدورة.
+- حماية `main` تحتاج إعدادات GitHub admin التي لا يتيحها التكامل الحالي.
+- النسخ الإنتاجي يحتاج سر الاتصال وعنوان التشفير العام، والمفتاح الخاص يجب أن يبقى خارج GitHub.
+- لا تداول آلي، لا أوامر تداول، لا إنفاق أو ترقية خطة.
