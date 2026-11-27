@@ -144,3 +144,69 @@
 - لا يوجد تحقق حي من Binance من المسار السوري في هذه الدورة، ولا تشغيل تداول أو أوامر خاصة.
 
 هذا التحديث يوثق الاختبار والنشر الفعليين بعد PR #257، ولا يغيّر وصف حدود النسخ الاحتياطي أو توفر Binance.
+
+
+## دورة التحقق بعد PR #259 — 27 نوفمبر 2026، 14:20 UTC
+
+### الدمج والنشر
+
+- PR #259: https://github.com/raawaa93/Sol/pull/259 — merged.
+- Merge commit: `c250335aa60e4a18bd0c0d405224e8c51751b694`.
+- Main CI: run [46014484835](https://github.com/raawaa93/Sol/actions/runs/46014484835) — success.
+- Main Lighthouse baseline: run [46014484857](https://github.com/raawaa93/Sol/actions/runs/46014484857) — success.
+- Project Context Guard: run [46014484820](https://github.com/raawaa93/Sol/actions/runs/46014484820) — success.
+- GitHub Pages deploy + production audit: run [46014817479](https://github.com/raawaa93/Sol/actions/runs/46014817479) — success.
+- الموقع: https://raawaa93.github.io/Sol/
+
+### ما اختُبر فعلياً في CI
+
+1. Unit/property tests — success.
+2. Backup harness — success: age key generation, encryption/decryption, checksums, explicit remote dump targeting, local-restore orchestration mocks, and fail-closed cases for missing DB URL, direct endpoint, wrong region, wrong project, invalid recipient, and invalid ciphertext.
+3. Supabase CLI v3 — تثبيت النسخة 3.0.0 والتحقق من أعلام `--remote` و`--workdir` المستخدمة في التصدير والاستعادة.
+4. إعادة بناء مخطط Sol على Supabase/PostgreSQL محلي مؤقت من migrations الثلاث — success؛ تم التحقق من وجود الجدول، RLS، RPC، ومنع صلاحيات anon/authenticated المباشرة والسماح بتنفيذ service_role للدالة.
+5. Build وbundle budget وPlaywright browser journeys — success.
+
+**حدود هذا الإثبات:** اختبارات النسخ في CI استخدمت قاعدة بيانات وهمية للتحقق من orchestration والتشفير. إعادة بناء المخطط اختبرت migrations الحالية في PostgreSQL مؤقت. لم يتم الاتصال بقاعدة الإنتاج لإنشاء نسخة فعلية، ولم تتم استعادة dump إنتاجي حقيقي.
+
+### فحص الموقع المنشور
+
+- App shell: HTTP 200، 184 ms.
+- JavaScript bundle: HTTP 200.
+- CSS bundle: HTTP 200.
+- ARD manifest: HTTP 200، 0 entries.
+- `llms.txt`: HTTP 200.
+- Lighthouse median من 3 تشغيلات:
+  - Performance 100/100
+  - Accessibility 100/100
+  - Best Practices 100/100
+  - SEO 100/100
+  - FCP 930 ms، LCP 930 ms، TBT 74 ms، CLS 0.000
+- Artifact: [published-lighthouse-reports](https://github.com/raawaa93/Sol/actions/runs/46014817479/artifacts/15205327584).
+
+### النسخ الاحتياطي بعد التحسين
+
+- أصبح الجدول اليومي 04:23 UTC بدلاً من الأسبوعي.
+- سير العمل يفشل صراحةً إذا غاب `SUPABASE_DB_URL` أو `AGE_RECIPIENT`؛ لا يتصل بقاعدة البيانات ولا ينشئ Release عند غياب الإعداد.
+- رابط قاعدة البيانات المطلوب هو Session Pooler الإقليمي للمشروع: `aws-0-eu-west-1.pooler.supabase.com:5432`، المستخدم `postgres.oyoyozdugicmnkfhjovo`، مع TLS صريح (`sslmode=require` أو تحقق شهادة).
+- يرفض السكربت Direct endpoint، ومشروعاً أو منطقة مختلفة، وأي رابط لا يحتوي على TLS.
+- بعد تصدير roles/schema/data، يختبر الاستعادة في Supabase محلي مؤقت، ويتحقق من الجدول وRLS وRPC وامتيازات anon/service_role؛ لا ينشر ciphertext إلا بعد نجاح هذا الفحص.
+- لا توجد حتى الآن نسخة إنتاجية مشفرة مثبتة أو Release أو restore لبيانات إنتاج فعلية؛ لا توجد أسرار قرأتها أو كتبتها الأدوات. يجب على المالك إعداد سر Session Pooler والمتغير العام age recipient، مع حفظ المفتاح الخاص خارج GitHub.
+- يظل نطاق النسخة محدوداً: لا Auth users/sessions، ولا Storage object bytes، ولا Edge Function secrets، ولا إعدادات المشروع.
+
+### مسار Binance — توضيح لازم
+
+- تطبيق Pages يستخدم `VITE_BINANCE_PROXY_URL` الذي يشير إلى Edge Function في مشروع Supabase.
+- مشروع Supabase في `eu-west-1`، والوظيفة تنفذ `fetch("https://eapi.binance.com")` من بيئة Supabase؛ لذلك اتصال Binance upstream الحالي يخرج من منطقة Supabase الأوروبية، وليس من Syriatel/دمشق.
+- نتيجة 50/50 HTTP 200 المسجلة سابقاً عبر متصفح متصل بـSyriatel تثبت اختبار ذلك المتصفح فقط. لم يُحفظ عنوان خادم أو proxy سوري قابل لإعادة الاستخدام، ولا تثبت تلك النتيجة أن Edge Function الحالية تستخدم خروجاً سورياً.
+- لم نرسل طلب Binance حياً في هذه الدورة، ولم نستخدم GitHub runners لهذا الغرض. أزلنا فقط وصفاً مضللاً في رسالة الخطأ التي كانت تسمي وسيط EU بأنه وسيط سوري.
+- النتيجة: توفر Binance من مسار سوري ما زال غير مثبت داخل التطبيق الحالي. لا يجوز وصف Volterra EU proxy بأنه Syrian egress، ولا استنتاج أهلية الحساب من HTTP 451 أو 200.
+
+### الحالة المتبقية
+
+1. إعداد سر Session Pooler ومتغير age recipient ومفتاح فك التشفير خارج GitHub؛ ثم تنفيذ أول backup إنتاجي والتحقق من Release وchecksum.
+2. اختبار استعادة النسخة الإنتاجية وفهم قرار حفظ مستخدم Auth الواحد؛ لا يشمل CLI dump بيانات Auth.
+3. إعداد Branch protection/Rulesets؛ لم تتوفر أداة كتابة إعدادات إدارة المستودع ضمن تكامل GitHub الحالي.
+4. التحقق من Binance من مسار سوري حقيقي قابل للتكرار، بعد توفر عنوان/خادم موثوق لذلك المسار.
+5. إبقاء الوظائف القديمة ذات HTTP 410 دون حذف حتى التأكد من عدم وجود مستهلكين خارجيين.
+
+لم يتم إجراء أي شراء أو ترقية أو تدوير كلمة مرور أو migration أو كتابة على قاعدة الإنتاج أو تشغيل تداول آلي.
