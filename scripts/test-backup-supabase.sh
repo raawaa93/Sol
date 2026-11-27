@@ -13,21 +13,47 @@ if [[ "${1:-}" == "--version" ]]; then
   echo "supabase 3.0.0"
   exit 0
 fi
+: "${MOCK_SUPABASE_LOG:?MOCK_SUPABASE_LOG is required}"
+printf '%q ' "$@" >> "$MOCK_SUPABASE_LOG"
+printf '\n' >> "$MOCK_SUPABASE_LOG"
 output=""
 role_only=false
+data_only=false
+use_copy=false
+remote_seen=false
 while (($#)); do
   case "$1" in
+    --remote=*)
+      [[ "$1" == "--remote=$SUPABASE_DB_URL" ]] || {
+        echo "mock received an unexpected remote database target" >&2
+        exit 1
+      }
+      remote_seen=true
+      shift
+      ;;
     -f) output="$2"; shift 2 ;;
     --role-only) role_only=true; shift ;;
+    --data-only) data_only=true; shift ;;
+    --use-copy) use_copy=true; shift ;;
     *) shift ;;
   esac
 done
+if [[ "$remote_seen" != true ]]; then
+  echo "mock requires an explicit --remote database URL" >&2
+  exit 1
+fi
 if [[ -z "$output" ]]; then
   echo "mock could not parse output file" >&2
   exit 1
 fi
 if [[ "$role_only" == true ]]; then
   printf '%s\n' '-- roles' > "$output"
+elif [[ "$data_only" == true ]]; then
+  [[ "$use_copy" == true ]] || {
+    echo "data dump must use --use-copy" >&2
+    exit 1
+  }
+  printf '%s\n' '-- data' > "$output"
 else
   printf '%s\n' 'CREATE TABLE public.volterra_rate_limit_windows (); CREATE FUNCTION public.volterra_check_rate_limit();' > "$output"
 fi
@@ -41,10 +67,20 @@ recipient="$(sed -n 's/^# public key: //p' "$tmp/identity.txt")"
 test -n "$recipient"
 
 PATH="$tmp/bin:$PATH" \
+MOCK_SUPABASE_LOG="$tmp/supabase-commands.log" \
 SUPABASE_DB_URL='postgresql://postgres.oyoyozdugicmnkfhjovo:placeholder@db.oyoyozdugicmnkfhjovo.supabase.co:5432/postgres' \
 AGE_RECIPIENT="$recipient" \
 BACKUP_OUTPUT_FILE="$tmp/backup.age" \
 bash "$repo_root/scripts/backup-supabase.sh"
+
+# Prove the backup invokes three explicit remote dumps with the intended modes.
+test "$(wc -l < "$tmp/supabase-commands.log" | tr -d ' ')" = "3"
+grep -Fq -- "--remote=$SUPABASE_DB_URL" "$tmp/supabase-commands.log"
+grep -Fq -- "--role-only" "$tmp/supabase-commands.log"
+grep -Fq -- "--data-only" "$tmp/supabase-commands.log"
+grep -Fq -- "--use-copy" "$tmp/supabase-commands.log"
+grep -Fq -- "storage.buckets_vectors" "$tmp/supabase-commands.log"
+grep -Fq -- "storage.vector_indexes" "$tmp/supabase-commands.log"
 
 grep -q '^age-encryption.org/v1' "$tmp/backup.age"
 age -d -i "$tmp/identity.txt" -o "$tmp/backup.tar.gz" "$tmp/backup.age"
@@ -53,7 +89,7 @@ tar -xzf "$tmp/backup.tar.gz" -C "$tmp/restored"
 (cd "$tmp/restored" && sha256sum -c SHA256SUMS)
 test -f "$tmp/restored/roles.sql"
 grep -q "volterra_rate_limit_windows" "$tmp/restored/schema.sql"
-echo "Real age encryption/decryption and checksum test passed with a mocked database CLI; no live database was accessed."
+echo "Remote-target argument checks, real age encryption/decryption and checksums passed with a mocked database CLI; no live database was accessed."
 
 base_url='postgresql://postgres.oyoyozdugicmnkfhjovo:placeholder@db.oyoyozdugicmnkfhjovo.supabase.co:5432/postgres'
 mock_path="$tmp/bin:$PATH"
@@ -108,4 +144,3 @@ workflow="$repo_root/.github/workflows/supabase-backup.yml"
 grep -Fq 'BACKUP_FILE: ${{ steps.backup.outputs.file }}' "$workflow"
 grep -Fq 'gh release create "$tag" "$BACKUP_FILE" --target main' "$workflow"
 echo "Release publication wiring verified: the encrypted backup output is the release asset input."
-
