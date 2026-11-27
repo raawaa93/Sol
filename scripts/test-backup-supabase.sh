@@ -62,6 +62,7 @@ chmod +x "$tmp/bin/supabase"
 
 command -v age >/dev/null 2>&1 || { echo "age is required for this test." >&2; exit 1; }
 command -v age-keygen >/dev/null 2>&1 || { echo "age-keygen is required for this test." >&2; exit 1; }
+base_url='postgresql://postgres.oyoyozdugicmnkfhjovo:placeholder@db.oyoyozdugicmnkfhjovo.supabase.co:5432/postgres'
 age-keygen -o "$tmp/identity.txt" 2> "$tmp/keygen.log"
 recipient="$(sed -n 's/^# public key: //p' "$tmp/identity.txt")"
 test -n "$recipient"
@@ -75,7 +76,7 @@ bash "$repo_root/scripts/backup-supabase.sh"
 
 # Prove the backup invokes three explicit remote dumps with the intended modes.
 test "$(wc -l < "$tmp/supabase-commands.log" | tr -d ' ')" = "3"
-grep -Fq -- "--remote=$SUPABASE_DB_URL" "$tmp/supabase-commands.log"
+grep -Fq -- "--remote=$base_url" "$tmp/supabase-commands.log"
 grep -Fq -- "--role-only" "$tmp/supabase-commands.log"
 grep -Fq -- "--data-only" "$tmp/supabase-commands.log"
 grep -Fq -- "--use-copy" "$tmp/supabase-commands.log"
@@ -91,7 +92,6 @@ test -f "$tmp/restored/roles.sql"
 grep -q "volterra_rate_limit_windows" "$tmp/restored/schema.sql"
 echo "Remote-target argument checks, real age encryption/decryption and checksums passed with a mocked database CLI; no live database was accessed."
 
-base_url='postgresql://postgres.oyoyozdugicmnkfhjovo:placeholder@db.oyoyozdugicmnkfhjovo.supabase.co:5432/postgres'
 mock_path="$tmp/bin:$PATH"
 
 expect_failure() {
