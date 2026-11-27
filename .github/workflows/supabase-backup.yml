@@ -88,7 +88,7 @@ jobs:
           - Created: $timestamp UTC
           - Encryption: age recipient encryption
           - Asset: ciphertext only; the matching private age identity is not stored in this repository.
-          - Restore has not been tested by this workflow. See docs/SUPABASE_RECOVERY_RUNBOOK_2026-11-24.md.
+          - Before encryption, the SQL dump was restored into a disposable local Supabase stack and the Sol table, RLS, RPC, and anon/service_role grants were checked. Auth, Storage object bytes, Edge Function secrets, and project settings are outside this backup scope.
           EOF
           gh release create "$tag" "$BACKUP_FILE" --target main --title "Encrypted Sol database backup $timestamp" --notes-file "$notes"
           echo "Published encrypted backup release: $tag" >> "$GITHUB_STEP_SUMMARY"
