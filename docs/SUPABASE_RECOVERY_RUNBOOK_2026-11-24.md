@@ -119,7 +119,7 @@ Then:
 5. Run app unit/property tests, browser journeys, production smoke tests, and a market-data proxy smoke test.
 6. Record the backup timestamp, artifact digest, restore duration, and any missing Auth/Storage/Edge configuration.
 
-No isolated restore has been run yet; the current state is **not** a verified backup.
+No restore of a real production dump has been run yet; the current state is **not** a verified backup. Once the connection and encryption settings are configured, each scheduled backup will fail closed unless its dump restores successfully in a disposable local Supabase stack.
 
 ## 7. Migration-history reconciliation
 
