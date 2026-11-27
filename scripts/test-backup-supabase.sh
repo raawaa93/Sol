@@ -70,7 +70,7 @@ set -Eeuo pipefail
 printf '%s ' "$@" >> "$MOCK_PSQL_LOG"
 printf '\\n' >> "$MOCK_PSQL_LOG"
 if [[ "$*" == *"to_regclass"* ]]; then
-  echo "1:1:1:0:1"
+  echo "1:1:1:0:0:1:0"
 fi
 MOCK_PSQL
 chmod +x "$tmp/bin/psql"
