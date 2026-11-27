@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: '23 4 * * *'
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/trigger-backup-once-20261127.txt'
 
 permissions:
   contents: write
@@ -14,7 +19,7 @@ concurrency:
 
 jobs:
   backup:
-    if: github.ref == 'refs/heads/main'
+    if: "github.ref == 'refs/heads/main' && (github.event_name != 'push' || startsWith(github.event.head_commit.message, 'ops: trigger encrypted backup once'))"
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
