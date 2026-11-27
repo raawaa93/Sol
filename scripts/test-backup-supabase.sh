@@ -62,7 +62,11 @@ chmod +x "$tmp/bin/supabase"
 
 command -v age >/dev/null 2>&1 || { echo "age is required for this test." >&2; exit 1; }
 command -v age-keygen >/dev/null 2>&1 || { echo "age-keygen is required for this test." >&2; exit 1; }
-base_url='postgresql://postgres.oyoyozdugicmnkfhjovo:placeholder@db.oyoyozdugicmnkfhjovo.supabase.co:5432/postgres'
+base_url='postgresql://postgres:placeholder@db.oyoyozdugicmnkfhjovo.supabase.co:5432/postgres?sslmode=require'
+pooler_url='postgresql://postgres.oyoyozdugicmnkfhjovo:placeholder@aws-0-eu-west-1.pooler.supabase.com:5432/postgres?sslmode=require'
+command -v python3 >/dev/null 2>&1 || { echo "Python 3 is required for URL validation tests." >&2; exit 1; }
+SUPABASE_DB_URL="$base_url" python3 "$repo_root/scripts/validate-supabase-db-url.py"
+SUPABASE_DB_URL="$pooler_url" python3 "$repo_root/scripts/validate-supabase-db-url.py"
 age-keygen -o "$tmp/identity.txt" 2> "$tmp/keygen.log"
 recipient="$(sed -n 's/^# public key: //p' "$tmp/identity.txt")"
 test -n "$recipient"
@@ -105,6 +109,18 @@ expect_failure() {
   echo "Expected failure verified: $label"
 }
 
+expect_failure "reject untrusted hostname even when project ref is present" \
+  env SUPABASE_DB_URL='postgresql://postgres:placeholder@attacker.example/oyoyozdugicmnkfhjovo' \
+  python3 "$repo_root/scripts/validate-supabase-db-url.py"
+
+expect_failure "reject transaction pooler port" \
+  env SUPABASE_DB_URL='postgresql://postgres.oyoyozdugicmnkfhjovo:placeholder@aws-0-eu-west-1.pooler.supabase.com:6543/postgres' \
+  python3 "$repo_root/scripts/validate-supabase-db-url.py"
+
+expect_failure "reject pooler for a different region" \
+  env SUPABASE_DB_URL='postgresql://postgres.oyoyozdugicmnkfhjovo:placeholder@aws-0-us-east-1.pooler.supabase.com:5432/postgres' \
+  python3 "$repo_root/scripts/validate-supabase-db-url.py"
+
 expect_failure "missing SUPABASE_DB_URL" \
   env -u SUPABASE_DB_URL PATH="$mock_path" AGE_RECIPIENT="$recipient" \
   BACKUP_OUTPUT_FILE="$tmp/missing-url.age" bash "$repo_root/scripts/backup-supabase.sh"
@@ -143,4 +159,20 @@ expect_failure "reject output that is not age ciphertext" \
 workflow="$repo_root/.github/workflows/supabase-backup.yml"
 grep -Fq 'BACKUP_FILE: ${{ steps.backup.outputs.file }}' "$workflow"
 grep -Fq 'gh release create "$tag" "$BACKUP_FILE" --target main' "$workflow"
+grep -Fq 'python3 scripts/validate-supabase-db-url.py' "$workflow"
+python3 - "$workflow" <<'PY'
+import re
+import sys
+source = open(sys.argv[1], encoding="utf-8").read()
+match = re.search(
+    r'if \[\[ -z "\$SUPABASE_DB_URL" \|\| -z "\$AGE_RECIPIENT" \]\]; then(?P<body>.*?)\n\s*fi',
+    source,
+    re.S,
+)
+assert match, "backup preflight must check both required settings"
+body = match.group("body")
+assert "exit 1" in body and "exit 0" not in body, "missing backup configuration must fail closed"
+assert "::error::" in body and "No database connection was attempted" in body
+print("Missing backup configuration is tested as an explicit failure, not a green skip.")
+PY
 echo "Release publication wiring verified: the encrypted backup output is the release asset input."
