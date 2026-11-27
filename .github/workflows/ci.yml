@@ -47,7 +47,7 @@ jobs:
           bash -n scripts/validate-supabase-db-url.sh
           bash -n scripts/options-archive-termux-start.sh
           sudo apt-get update
-          sudo apt-get install --yes age
+          sudo apt-get install --yes age postgresql-client
           bash scripts/test-backup-supabase.sh
       - name: Install Supabase CLI v3
         uses: supabase/setup-cli@v1
@@ -63,6 +63,29 @@ jobs:
           grep -Fq -- '--workdir' /tmp/supabase-init-help.txt
           grep -Fq -- '--workdir' /tmp/supabase-db-start-help.txt
           grep -Fq -- '--workdir' /tmp/supabase-stop-help.txt
+      - name: Rebuild Sol schema on disposable local Supabase Postgres
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          restore_dir="$(mktemp -d)"
+          cleanup() {
+            supabase stop --workdir "$restore_dir" --no-backup >/dev/null 2>&1 || true
+            rm -rf "$restore_dir"
+          }
+          trap cleanup EXIT
+          supabase init --workdir "$restore_dir"
+          supabase db start --workdir "$restore_dir"
+          PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres \
+            --single-transaction --set ON_ERROR_STOP=1 \
+            --file supabase/migrations/20261123160346_volterra_shared_rate_limits.sql \
+            --file supabase/migrations/20261123160830_volterra_lock_down_rate_limit_table.sql \
+            --file supabase/migrations/20261124052328_remove_non_sol_legacy_schemas_20261124.sql
+          restore_check="$(PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres --tuples-only --no-align --command "SELECT (to_regclass('public.volterra_rate_limit_windows') IS NOT NULL)::int || ':' || COALESCE((SELECT relrowsecurity::int FROM pg_class WHERE oid = to_regclass('public.volterra_rate_limit_windows')), 0)::text || ':' || (to_regprocedure('public.volterra_check_rate_limit(text,integer,integer)') IS NOT NULL)::int || ':' || has_function_privilege('anon', 'public.volterra_check_rate_limit(text,integer,integer)', 'EXECUTE')::int || ':' || has_function_privilege('service_role', 'public.volterra_check_rate_limit(text,integer,integer)', 'EXECUTE')::int || ':' || has_table_privilege('service_role', 'public.volterra_rate_limit_windows', 'SELECT')::int")"
+          if [[ "$restore_check" != "1:1:1:0:1:0" ]]; then
+            echo "Disposable Sol schema rebuild failed access-control checks: $restore_check" >&2
+            exit 1
+          fi
+          echo "Disposable local Sol schema rebuild passed: table, RLS, RPC and grants verified."
       - name: Build the app
         run: npm run build
       - name: Enforce compressed bundle budgets
