@@ -16,7 +16,7 @@ jobs:
   backup:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Check out main
         uses: actions/checkout@v7
@@ -56,15 +56,16 @@ jobs:
         if: steps.config.outputs.ready == 'true'
         run: |
           sudo apt-get update
-          sudo apt-get install --yes age
+          sudo apt-get install --yes age postgresql-client
 
-      - name: Create encrypted logical backup
+      - name: Create, restore-check and encrypt logical backup
         id: backup
         if: steps.config.outputs.ready == 'true'
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
           AGE_RECIPIENT: ${{ vars.AGE_RECIPIENT }}
           BACKUP_OUTPUT_FILE: ${{ runner.temp }}/sol-supabase-backup.tar.gz.age
+          VERIFY_LOCAL_RESTORE: "true"
           GITHUB_SHA: ${{ github.sha }}
         run: |
           bash scripts/backup-supabase.sh
