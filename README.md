@@ -158,3 +158,7 @@ The PAPER journal uses a $200 campaign-capital assumption, a hard $60 cumulative
 Each saved PAPER entry reserves its full premium debit until the local journal is explicitly reset. The journal does not model closing trades or realized P&L, so it does not automatically release risk after a hypothetical exit. Export the CSV before using the confirmation-protected reset. Existing entries with unknown debit or mixed currencies block new entries until reconciled. USD and USDT are separate campaign currencies; no implicit FX conversion is made.
 
 This is a local PAPER control only. It does not submit orders, control an exchange account, or guarantee a $60 loss ceiling in live trading.
+
+## بحث أدوات الخيارات الخارجية — 27 نوفمبر 2026
+
+راجع [مذكرة أدوات الخيارات والمواقع وTelegram وGitHub وواجهات API](docs/OPTIONS_TOOLING_STACK_2026-11-27.md) للاطلاع على المصادر التي تم التحقق منها، حدود البيانات، قرارات الدمج، ومصفوفة الاستخدام الآمن.
