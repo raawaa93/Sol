@@ -84,3 +84,29 @@
 ## الخطوة التالية الآمنة
 
 الواجهة منشورة وتنجح اختبارات البناء والمتصفح وLighthouse. الأولوية التشغيلية التالية هي إكمال النسخ الاحتياطي المشفر واختبار استعادة معزول، ثم إعداد حماية `main`، دون ترقية مدفوعة. أما تحقق Binance الحي فيبقى منفصلاً عن CI ويجب ألا يُجرى إلا من مسار المستخدم السوري المصرح به.
+
+
+## التحقق النهائي بعد توضيح نطاق smoke test — 27 نوفمبر 2026، 09:30 UTC
+
+هذا التحديث يحل محل أرقام Lighthouse السابقة أعلاه بوصفه أحدث تحقق منشور.
+
+- PR #255: https://github.com/raawaa93/Sol/pull/255 — مدمج؛ أضاف هذا التقرير وصحح تسمية خطوة smoke test.
+- Main CI: run [45973864341](https://github.com/raawaa93/Sol/actions/runs/45973864341) — success.
+- Main Lighthouse: run [45973864167](https://github.com/raawaa93/Sol/actions/runs/45973864167) — success.
+- Project Context Guard: run [45973864124](https://github.com/raawaa93/Sol/actions/runs/45973864124) — success.
+- آخر نشر بعد PR #255: run [45974040797](https://github.com/raawaa93/Sol/actions/runs/45974040797) — success، commit `d2acc21cfcd070d737037937bd7822d98f908bd0`.
+- تسمية خطوة الفحص الآن صريحة: `Verify published app, static assets and manifest (Binance upstream skipped)`.
+
+النتائج:
+- App shell HTTP 200، 212 ms.
+- JavaScript وCSS: HTTP 200.
+- ARD manifest: HTTP 200، 0 entries.
+- `llms.txt`: HTTP 200.
+- Lighthouse median من 3 تشغيلات على الموقع المنشور:
+  - Performance 100/100
+  - Accessibility 100/100
+  - Best Practices 100/100
+  - SEO 100/100
+  - FCP 905 ms، LCP 905 ms، TBT 49 ms، CLS 0.000
+
+لم يتغير كود التطبيق بين النشرين؛ التغيير الأخير وثائقي وتصحيح لتسمية خطوة الاختبار. وما زال فحص Binance upstream متخطياً عمداً، ولا يثبت هذا النشر وحده توافر البيانات الحية من شبكة المستخدم.
