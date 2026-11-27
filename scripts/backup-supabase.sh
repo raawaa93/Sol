@@ -5,10 +5,7 @@ set -Eeuo pipefail
 : "${AGE_RECIPIENT:?AGE_RECIPIENT is required}"
 : "${BACKUP_OUTPUT_FILE:?BACKUP_OUTPUT_FILE is required}"
 
-case "$SUPABASE_DB_URL" in
-  *oyoyozdugicmnkfhjovo*) ;;
-  *) echo "Refusing to back up a database URL that does not identify the Sol project." >&2; exit 2 ;;
-esac
+bash "$(dirname "$0")/validate-supabase-db-url.sh"
 
 if [[ ! "$AGE_RECIPIENT" =~ ^age1[0-9a-z]+$ ]]; then
   echo "AGE_RECIPIENT must be a valid age public recipient (age1...). " >&2
@@ -19,7 +16,14 @@ command -v supabase >/dev/null 2>&1 || { echo "Supabase CLI is required." >&2; e
 command -v age >/dev/null 2>&1 || { echo "age is required." >&2; exit 2; }
 
 work_dir="$(mktemp -d "${TMPDIR:-/tmp}/sol-supabase-backup.XXXXXX")"
-cleanup() { rm -rf "$work_dir"; }
+restore_started=false
+restore_dir="$work_dir/restore-check"
+cleanup() {
+  if [[ "$restore_started" == true ]]; then
+    supabase stop --workdir "$restore_dir" --no-backup >/dev/null 2>&1 || true
+  fi
+  rm -rf "$work_dir"
+}
 trap cleanup EXIT
 
 output_dir="$(dirname "$BACKUP_OUTPUT_FILE")"
@@ -43,6 +47,28 @@ grep -q "volterra_check_rate_limit" "$work_dir/schema.sql" || {
   echo "The dump does not contain the expected Sol rate-limit RPC; refusing to publish it." >&2
   exit 1
 }
+
+# Optional full SQL restore verification. The scheduled workflow enables this;
+# unit tests can keep it disabled or mock the local Supabase/psql commands.
+if [[ "${VERIFY_LOCAL_RESTORE:-false}" == "true" ]]; then
+  command -v psql >/dev/null 2>&1 || { echo "psql is required for local restore verification." >&2; exit 2; }
+  supabase init --workdir "$restore_dir"
+  supabase db start --workdir "$restore_dir"
+  restore_started=true
+  restore_url='postgresql://postgres:postgres@127.0.0.1:54322/postgres'
+  psql --single-transaction --variable ON_ERROR_STOP=1 \
+    --file "$work_dir/roles.sql" \
+    --file "$work_dir/schema.sql" \
+    --command 'SET session_replication_role = replica' \
+    --file "$work_dir/data.sql" \
+    --dbname "$restore_url"
+  restore_check="$(psql --tuples-only --no-align --dbname "$restore_url" --command "SELECT (to_regclass('public.volterra_rate_limit_windows') IS NOT NULL)::int || ':' || COALESCE((SELECT relrowsecurity::int FROM pg_class WHERE oid = to_regclass('public.volterra_rate_limit_windows')), 0)::text || ':' || (to_regprocedure('public.volterra_check_rate_limit(text,integer,integer)') IS NOT NULL)::int || ':' || has_function_privilege('anon', 'public.volterra_check_rate_limit(text,integer,integer)', 'EXECUTE')::int || ':' || has_function_privilege('authenticated', 'public.volterra_check_rate_limit(text,integer,integer)', 'EXECUTE')::int || ':' || has_function_privilege('service_role', 'public.volterra_check_rate_limit(text,integer,integer)', 'EXECUTE')::int || ':' || has_table_privilege('service_role', 'public.volterra_rate_limit_windows', 'SELECT')::int")"
+  if [[ "$restore_check" != "1:1:1:0:0:1:0" ]]; then
+    echo "Restored database failed Sol schema/RLS/function privilege checks (result: $restore_check)." >&2
+    exit 1
+  fi
+  echo "Isolated local restore passed: Sol table, RLS, RPC and role grants verified."
+fi
 
 cli_version="$(supabase --version)"
 created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"

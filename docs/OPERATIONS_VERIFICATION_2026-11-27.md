@@ -56,6 +56,13 @@
 - `public.volterra_check_rate_limit(text, integer, integer)` هي SECURITY DEFINER مع `search_path=pg_catalog`، وEXECUTE متاح لـservice_role فقط.
 - لم تُنفذ أي migration أو كتابة قاعدة بيانات أو إعادة نشر للدالة في هذه الدورة.
 
+### Binance upstream origin — critical distinction
+
+- The frontend reads `VITE_BINANCE_PROXY_URL`, which is currently set by the Pages workflow to the Supabase Edge Function `https://oyoyozdugicmnkfhjovo.supabase.co/functions/v1/volterra-binance-market-data`.
+- The Supabase project is hosted in `eu-west-1`; the Edge Function performs its own `fetch("https://eapi.binance.com")`. Therefore the Binance upstream request originates from Supabase's EU execution environment, not from a Syriatel/Damascus browser or a Syria-hosted server.
+- A previously recorded 50/50 HTTP 200 result from a Syriatel-connected browser is evidence for that browser-origin test only; no exact Syrian proxy/server endpoint or repeatable command was preserved. It does not prove that the current Supabase Edge Function uses Syrian egress.
+- No live Binance request was sent during this audit. Do not label the current Supabase proxy as a Syrian-network proxy or treat EU-origin responses as evidence of Syrian availability. The current function remains a read-only public-data proxy, but the Syrian-origin transport is unverified and needs a real endpoint/configuration before it can be claimed as implemented.
+
 ### الوظائف القديمة
 
 أعيد فحص الوظائف الست التالية. كلها ما زالت مسجلة ACTIVE، لكن مصادرها الحالية تعيد HTTP 410 مع `ENDPOINT_RETIRED` وتتطلب JWT:

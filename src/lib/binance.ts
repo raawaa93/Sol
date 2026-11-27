@@ -813,7 +813,7 @@ async function getJson<T>(
   externalSignal?: AbortSignal,
 ): Promise<T> {
   if (!proxyUrl) {
-    throw new Error('Syrian-network market-data proxy is required; direct Binance connections are disabled.');
+    throw new Error('Approved market-data proxy is required; direct Binance connections are disabled.');
   }
   const endpoint = path.match(/^\/eapi\/v1\/([a-zA-Z]+)$/)?.[1];
   if (!endpoint) throw new Error('Unsupported Binance market-data endpoint.');

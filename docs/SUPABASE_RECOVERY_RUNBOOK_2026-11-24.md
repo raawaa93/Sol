@@ -1,6 +1,6 @@
 # Sol / Volterra Supabase recovery runbook
 
-**Checked:** 24 November 2026, 09:43 UTC  
+**Checked:** 27 November 2026, 14:03 UTC  
 **Project:** `Ghaiooth-core` / `oyoyozdugicmnkfhjovo`  
 **Repository:** `raawaa93/Sol` (public)  
 **Database:** PostgreSQL 17.11, Supabase Free
@@ -11,9 +11,9 @@ The live application schema is deliberately small:
 
 - `public.volterra_rate_limit_windows` — the only application table; RLS enabled, no direct client or service-role table privileges.
 - `public.volterra_check_rate_limit(text, integer, integer)` — service-side RPC, `SECURITY DEFINER`, pinned `search_path`, executable only by `service_role`.
-- `volterra-binance-market-data` Edge Function — active v10; source is stored in `supabase/functions/volterra-binance-market-data/index.ts` and uses Supabase's injected `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` runtime values. No user-supplied API key is required by this public market-data proxy.
+- `volterra-binance-market-data` Edge Function — active v12; source is stored in `supabase/functions/volterra-binance-market-data/index.ts` and uses Supabase's injected `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` runtime values. No user-supplied API key is required by this public market-data proxy.
 - Six old Edge Function deployments are inert HTTP 410 handlers and still registered; they are not part of the Sol deploy path.
-- Current read-only check at 09:43 UTC: 78 ephemeral rate-limit rows (this count changes as requests arrive). The earlier audit recorded 1 Auth user and 0 Storage objects; those counts were not re-queried in this pass. The Auth user is not included in the standard CLI dump described below.
+- Current read-only check at 14:03 UTC: 121 ephemeral rate-limit rows (this count changes as requests arrive), 1 Auth user, 6 Auth sessions, and 0 Storage objects. PostgreSQL reports version 17.11 and the database is active. The Auth user is not included in the standard CLI dump described below.
 
 The repository currently tracks three Sol migrations; the live remote ledger contains 22 rows. The other 19 historical records belong to retired systems and must not be copied into the active migration directory or blindly replayed.
 
@@ -70,7 +70,7 @@ Encrypt the resulting archive with a strong encryption tool and a key held outsi
 
 ## 5. Automated encrypted backups (workflow added; credentials still required)
 
-The repository now contains `.github/workflows/supabase-backup.yml` and `scripts/backup-supabase.sh`. Once configured, the workflow runs weekly (Sunday 04:23 UTC) or on manual dispatch:
+The repository now contains `.github/workflows/supabase-backup.yml` and `scripts/backup-supabase.sh`. Once configured, the workflow runs daily (04:23 UTC) or on manual dispatch. The daily schedule was increased from weekly because the database is small and the project is on the Free plan without platform-managed automatic backups:
 
 1. Uses Supabase CLI v3 with explicit `--remote=<database-url>` for all three dumps.
 2. Exports cluster roles, non-managed schema, and non-managed schema data.
@@ -87,12 +87,12 @@ The connected GitHub tools cannot inspect or write Actions secrets, and the data
    `age-keygen -o age-identity.txt`
 2. Keep the `AGE-SECRET-KEY-...` identity in an offline password manager or encrypted offline storage. Never upload it to GitHub.
 3. Copy only the public `age1...` recipient printed by age-keygen into GitHub repository **Settings → Secrets and variables → Actions → Variables** as `AGE_RECIPIENT`.
-4. In GitHub **Settings → Secrets and variables → Actions → Secrets**, add `SUPABASE_DB_URL` containing the PostgreSQL connection URL for project `oyoyozdugicmnkfhjovo`. Use the Session Pooler URL where possible. The workflow validates that the URL identifies this project and never prints it.
+4. In GitHub **Settings → Secrets and variables → Actions → Secrets**, add `SUPABASE_DB_URL` containing the PostgreSQL connection URL for project `oyoyozdugicmnkfhjovo`. Use only the Session Pooler URL: host `aws-0-eu-west-1.pooler.supabase.com`, port `5432`, and username `postgres.oyoyozdugicmnkfhjovo`. Percent-encode reserved characters in the password and retain TLS parameters from the Connect panel. GitHub-hosted runners are IPv4-only, so direct `db.<ref>.supabase.co` endpoints may fail unless the project has the IPv4 add-on. The workflow rejects non-matching region/project pooler URLs before attempting a connection and never prints the URL.
 5. Open **Actions → Encrypted Supabase backup → Run workflow**. Confirm that a new `sol-db-backup-...` release appears and contains only a `.age` ciphertext asset.
 
-A one-time trigger was executed on 24 November 2026 at 08:55 UTC. The workflow completed successfully but **skipped the export** because at least one of `SUPABASE_DB_URL` or `AGE_RECIPIENT` was absent; its configuration check confirms that no database connection was attempted and no backup artifact was created. The temporary push trigger was then removed; the weekly schedule and manual `workflow_dispatch` remain. The skipped-state summary quoting was also corrected.
+A one-time trigger was executed on 24 November 2026 at 08:55 UTC. The workflow completed successfully but **skipped the export** because at least one of `SUPABASE_DB_URL` or `AGE_RECIPIENT` was absent; its configuration check confirms that no database connection was attempted and no backup artifact was created. The temporary push trigger was then removed; the daily schedule and manual `workflow_dispatch` remain. The skipped-state summary quoting was also corrected.
 
-The scheduled workflow intentionally skips with a warning while either setting is missing. A successful workflow run before configuration is not a backup. A successful encrypted export still is not a verified restore; the matching private identity is needed to decrypt and test it in an isolated environment.
+The earlier workflow version intentionally skipped with a warning while either setting was missing, and could therefore show a green run without producing a backup. The hardened workflow now fails closed with an explicit error and summary if either setting is absent; it does not attempt a database connection and does not publish a release. This is deliberate: a red run accurately signals that no backup exists. A successful encrypted export still is not a verified restore; the matching private identity is needed to decrypt and test it in an isolated environment.
 
 The release asset is publicly downloadable because this repository is public. Its contents are protected only by age encryption and the offline private key. If the private key is lost, the backup cannot be decrypted.
 
@@ -119,7 +119,7 @@ Then:
 5. Run app unit/property tests, browser journeys, production smoke tests, and a market-data proxy smoke test.
 6. Record the backup timestamp, artifact digest, restore duration, and any missing Auth/Storage/Edge configuration.
 
-No isolated restore has been run yet; the current state is **not** a verified backup.
+No restore of a real production dump has been run yet; the current state is **not** a verified backup. Once the connection and encryption settings are configured, each scheduled backup will fail closed unless its dump restores successfully in a disposable local Supabase stack.
 
 ## 7. Migration-history reconciliation
 
@@ -144,7 +144,7 @@ For iPhone and Android tablet users without a local computer, follow [the mobile
 
 ## 9. Remaining blockers
 
-- [ ] Repository owner configures `SUPABASE_DB_URL` as an Actions secret and `AGE_RECIPIENT` as an Actions variable; neither is visible/writable through the connected GitHub tools.
+- [ ] Repository owner configures `SUPABASE_DB_URL` as an Actions secret using the Sol Session Pooler URL and `AGE_RECIPIENT` as an Actions variable; neither is visible/writable through the connected GitHub tools.
 - [ ] Generate an age key pair offline and keep the private identity outside GitHub.
 - [ ] Dispatch the encrypted-backup workflow; verify the first ciphertext release asset and checksum.
 - [ ] Run an isolated restore test.
@@ -156,3 +156,14 @@ For iPhone and Android tablet users without a local computer, follow [the mobile
 ## 10. Incident boundary
 
 The earlier `commerce` and `rawaa_store` schema deletion removed the two Telegram pairing/recipient rows. Those records are absent from the live database. No backup has been located in the connected project, Storage, or Library. This runbook does not recreate placeholders and does not claim the deleted records can be recovered. An external pre-cleanup backup, if one exists, must be located separately.
+
+
+## 11. Recheck — 27 November 2026, 14:03 UTC
+
+- Read-only database probe: database `postgres`, PostgreSQL `17.11`, active since 4 October 2026.
+- Current footprint: one application table `public.volterra_rate_limit_windows` (121 transient rows at check time); RLS enabled. Auth currently contains 1 user and 6 sessions; Storage objects count is 0.
+- The standard backup scope still excludes Auth users/sessions, Storage object bytes, Edge Function secrets, and project settings. Do not describe the current workflow as a complete Supabase project backup.
+- New validation requires the exact project-scoped Session Pooler username and `*.pooler.supabase.com:5432` endpoint before any dump command can run. This avoids GitHub-hosted runner IPv4/direct-endpoint incompatibility and rejects project-ref substring spoofing.
+- Backup cadence changed from weekly to daily at 04:23 UTC. The hardened workflow fails explicitly without the owner-configured Session Pooler URL and age recipient; no live export has been run.
+- Supabase CLI v3 remains explicitly pinned. CI checks the real v3.0.0 flags used by the dump and local restore commands, and rebuilds the three Sol migrations on a disposable local Supabase Postgres instance. All hosted dumps use explicit `--remote="$SUPABASE_DB_URL"`, consistent with the v3 local-by-default behavior. This CI check proves migration reconstruction and access-control grants; it is not a restore of a production dump.
+- No live database writes, migrations, secrets reads, or credential rotations were performed in this recheck.
