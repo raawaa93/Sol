@@ -49,6 +49,20 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes age
           bash scripts/test-backup-supabase.sh
+      - name: Install Supabase CLI v3
+        uses: supabase/setup-cli@v1
+        with:
+          version: 3.0.0
+      - name: Verify Supabase CLI v3 flags used by backup and restore
+        run: |
+          supabase db dump --help > /tmp/supabase-db-dump-help.txt
+          supabase init --help > /tmp/supabase-init-help.txt
+          supabase db start --help > /tmp/supabase-db-start-help.txt
+          supabase stop --help > /tmp/supabase-stop-help.txt
+          grep -Fq -- '--remote' /tmp/supabase-db-dump-help.txt
+          grep -Fq -- '--workdir' /tmp/supabase-init-help.txt
+          grep -Fq -- '--workdir' /tmp/supabase-db-start-help.txt
+          grep -Fq -- '--workdir' /tmp/supabase-stop-help.txt
       - name: Build the app
         run: npm run build
       - name: Enforce compressed bundle budgets
